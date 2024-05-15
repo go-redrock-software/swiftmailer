@@ -7,7 +7,7 @@
  */
 class SwiftMailerSmokeTestCase extends SwiftMailerTestCase
 {
-    protected function setUp()
+    protected function setUp(): void
     {
         if (!\defined('SWIFT_SMOKE_TRANSPORT_TYPE')) {
             $this->markTestSkipped(
@@ -18,8 +18,16 @@ class SwiftMailerSmokeTestCase extends SwiftMailerTestCase
 
     protected function getMailer()
     {
+        /**
+         * This is suppressed because this would be set in a file (smoke.conf.php)
+         * @noinspection PhpUndefinedConstantInspection
+         */
         switch (SWIFT_SMOKE_TRANSPORT_TYPE) {
             case 'smtp':
+                /**
+                 * This is suppressed because this would be set in a file (smoke.conf.php)
+                 * @noinspection PhpUndefinedConstantInspection
+                 */
                 $transport = Swift_DependencyContainer::getInstance()->lookup('transport.smtp')
                     ->setHost(SWIFT_SMOKE_SMTP_HOST)
                     ->setPort(SWIFT_SMOKE_SMTP_PORT)
@@ -29,6 +37,10 @@ class SwiftMailerSmokeTestCase extends SwiftMailerTestCase
                     ;
                 break;
             case 'sendmail':
+                /**
+                 * This is suppressed because this would be set in a file (smoke.conf.php)
+                 * @noinspection PhpUndefinedConstantInspection
+                 */
                 $transport = Swift_DependencyContainer::getInstance()->lookup('transport.sendmail')
                     ->setCommand(SWIFT_SMOKE_SENDMAIL_COMMAND)
                     ;
@@ -38,6 +50,10 @@ class SwiftMailerSmokeTestCase extends SwiftMailerTestCase
                 $transport = Swift_DependencyContainer::getInstance()->lookup('transport.mail');
                 break;
             default:
+                /**
+                 * This is suppressed because this would be set in a file (smoke.conf.php)
+                 * @noinspection PhpUndefinedConstantInspection
+                 */
                 throw new Exception('Undefined transport ['.SWIFT_SMOKE_TRANSPORT_TYPE.']');
         }
 
