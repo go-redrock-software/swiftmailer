@@ -4,7 +4,7 @@ require_once __DIR__.'/AbstractStreamBufferAcceptanceTest.php';
 
 class Swift_Transport_StreamBuffer_TlsSocketAcceptanceTest extends Swift_Transport_StreamBuffer_AbstractStreamBufferAcceptanceTest
 {
-    protected function setUp()
+    protected function setUp(): void
     {
         $streams = stream_get_transports();
         if (!\in_array('tls', $streams)) {
@@ -28,6 +28,10 @@ class Swift_Transport_StreamBuffer_TlsSocketAcceptanceTest extends Swift_Transpo
 
     protected function initializeBuffer()
     {
+        /**
+         * This is suppressed because this would be set in a file (acceptance.conf.php)
+         * @noinspection PhpUndefinedConstantInspection
+         */
         $parts = explode(':', SWIFT_TLS_HOST);
         $host = $parts[0];
         $port = $parts[1] ?? 25;

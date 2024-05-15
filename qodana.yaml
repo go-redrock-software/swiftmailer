@@ -1,0 +1,17 @@
+version: "1.0"
+linter: jetbrains/qodana-php:latest
+profile:
+  path: ./.idea/inspectionProfiles/Project_Default.xml
+php:
+  version: "8.3"
+include:
+  - name: PhpVulnerablePathsInspection
+  - name: VulnerableLibrariesGlobal
+  - name: PhpTaintFunctionInspection
+exclude:
+  - name: All
+    paths:
+      - vendor
+      - doc
+      - .github
+bootstrap: composer install -q --no-interaction --no-progress --classmap-authoritative --ignore-platform-reqs --no-dev
