@@ -7,7 +7,7 @@ class Swift_Smoke_HtmlWithAttachmentSmokeTest extends SwiftMailerSmokeTestCase
 {
     private $attFile;
 
-    protected function setUp()
+    protected function setUp(): void
     {
         parent::setUp();
 
@@ -17,6 +17,10 @@ class Swift_Smoke_HtmlWithAttachmentSmokeTest extends SwiftMailerSmokeTestCase
     public function testAttachmentSending()
     {
         $mailer = $this->getMailer();
+        /**
+         * This is suppressed because this would be set in a file (smoke.conf.php)
+         * @noinspection PhpUndefinedConstantInspection
+         */
         $message = (new Swift_Message('[Swift Mailer] HtmlWithAttachmentSmokeTest'))
             ->setFrom([SWIFT_SMOKE_EMAIL_ADDRESS => 'Swift Mailer'])
             ->setTo(SWIFT_SMOKE_EMAIL_ADDRESS)
