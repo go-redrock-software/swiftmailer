@@ -10,3 +10,23 @@ qodana:
     - qodana scan --clear-cache
   tags:
     - t5-fast-shell
+
+
+phpunit:
+  image: docker.trac.cloud/trac/backdrop/8.3-image:latest
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+    GIT_STRATEGY: clone
+    DISABLE_AUTO_INSTALL: "true"
+  script:
+    - composer install -q --no-interaction --no-progress --classmap-authoritative --ignore-platform-reqs --no-dev
+    - ./vendor/bin/phpunit --do-not-cache-result --log-junit phpunit-report.xml --coverage-cobertura phpunit-coverage.xml
+  artifacts:
+    when: always
+    reports:
+      junit: phpunit-report.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: phpunit-coverage.xml
+    expire_in: 14 days
+    when: always
