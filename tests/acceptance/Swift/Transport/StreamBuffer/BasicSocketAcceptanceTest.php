@@ -4,7 +4,7 @@ require_once __DIR__.'/AbstractStreamBufferAcceptanceTest.php';
 
 class Swift_Transport_StreamBuffer_BasicSocketAcceptanceTest extends Swift_Transport_StreamBuffer_AbstractStreamBufferAcceptanceTest
 {
-    protected function setUp()
+    protected function setUp(): void
     {
         if (!\defined('SWIFT_SMTP_HOST')) {
             $this->markTestSkipped(
@@ -17,6 +17,10 @@ class Swift_Transport_StreamBuffer_BasicSocketAcceptanceTest extends Swift_Trans
 
     protected function initializeBuffer()
     {
+        /**
+         * This is suppressed because this would be set in a file (acceptance.conf.php)
+         * @noinspection PhpUndefinedConstantInspection
+         */
         $parts = explode(':', SWIFT_SMTP_HOST);
         $host = $parts[0];
         $port = $parts[1] ?? 25;
