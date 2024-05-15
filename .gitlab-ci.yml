@@ -1,0 +1,12 @@
+qodana:
+  only:
+    - develop
+  variables:
+    QODANA_TOKEN: $QODANA_TOKEN
+    GIT_SUBMODULE_STRATEGY: recursive
+    GIT_STRATEGY: clone
+    DISABLE_AUTO_INSTALL: "true"
+  script:
+    - qodana scan --clear-cache
+  tags:
+    - t5-fast-shell
