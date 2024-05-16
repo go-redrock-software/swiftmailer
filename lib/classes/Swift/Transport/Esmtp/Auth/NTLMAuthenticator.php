@@ -10,6 +10,9 @@
  * file that was distributed with this source code.
  */
 
+use phpseclib3\Crypt\Common\SymmetricKey;
+use phpseclib3\Crypt\DES;
+
 /**
  * Handles NTLM authentication.
  *
@@ -549,9 +552,11 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticator implements Swift_Transport_Es
      */
     protected function desEncrypt($value, $key)
     {
-        return substr(openssl_encrypt($value, 'DES-ECB', $key, \OPENSSL_RAW_DATA), 0, 8);
-    }
+        $des = new DES('ecb');
+        $des->setKey($key);
 
+        return substr($des->encrypt($value), 0, 8);
+    }
     /**
      * MD5 Encryption.
      *
