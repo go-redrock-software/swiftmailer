@@ -13,11 +13,16 @@ class SwiftMailerTestCase extends \PHPUnit\Framework\TestCase
 
     public static function regExp($pattern)
     {
-        if (!\is_string($pattern)) {
-            throw PHPUnit\Util\InvalidArgumentHelper::factory(1, 'string');
-        }
+        self::validatePattern($pattern);
 
         return new \PHPUnit\Framework\Constraint\RegularExpression($pattern);
+    }
+
+    private static function validatePattern($pattern)
+    {
+        if (!\is_string($pattern)) {
+            throw new \InvalidArgumentException(sprintf('Argument 1 passed must be of the type string, %s given', gettype($pattern)));
+        }
     }
 
     public function assertIdenticalBinary($expected, $actual, $message = '')
