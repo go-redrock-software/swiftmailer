@@ -18,20 +18,42 @@ class Swift_Transport_StreamBuffer_ProcessAcceptanceTest extends Swift_Transport
 
     public function testReadLine()
     {
-        if (true == getenv('GITHUB_ACTIONS')) {
-            $this->markTestSkipped(
-                'Cannot run test on CI due to unknown PCRE pattern failure'
-            );
-        }
+        // Initialize buffer with the required command
+        $this->initializeBuffer();
+
+        // Simulate writing a command to the sendmail process
+        $this->buffer->write("EHLO localhost\r\n");
+
+        // Read response from the sendmail process
+        $line = $this->buffer->readLine(0);
+
+        // Assert the line is not false or empty
+        $this->assertNotEmpty($line);
+
+        // Assert the line starts with a valid SMTP response code (e.g., "220")
+        $this->assertMatchesRegularExpression('/^\d{3}/', $line);
+
     }
 
     public function testWrite()
     {
-        if (true == getenv('GITHUB_ACTIONS')) {
-            $this->markTestSkipped(
-                'Cannot run test on CI due to unknown PCRE pattern failure'
-            );
-        }
+        // Initialize buffer with the required command
+        $this->initializeBuffer();
+
+        // Simulate writing a command to the sendmail process
+        $bytes = "EHLO localhost\r\n";
+        $this->buffer->write($bytes);
+
+        // Read back the response from the sendmail process
+        $response = $this->buffer->readLine(0);
+
+        // Assert the response is not false or empty
+        $this->assertNotEmpty($response);
+
+        // Assert the response starts with a valid SMTP response code (e.g., "220")
+        $this->assertMatchesRegularExpression('/^\d{3}/', $response);
+
+
     }
 
     protected function initializeBuffer()

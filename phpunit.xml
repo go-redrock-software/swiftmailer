@@ -8,6 +8,8 @@
          processIsolation="false"
          stopOnFailure="false"
          bootstrap="tests/bootstrap.php"
+         executionOrder="depends,defects"
+
 >
     <php>
         <ini name="intl.default_locale" value="en"/>
