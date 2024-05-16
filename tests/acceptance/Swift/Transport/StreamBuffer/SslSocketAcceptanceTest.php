@@ -39,6 +39,13 @@ class Swift_Transport_StreamBuffer_SslSocketAcceptanceTest extends Swift_Transpo
             'protocol' => 'ssl',
             'blocking' => 1,
             'timeout' => 15,
+            'stream_context_options' => [
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false,
+                    'allow_self_signed' => true,
+                ],
+            ]
         ]);
     }
 }
