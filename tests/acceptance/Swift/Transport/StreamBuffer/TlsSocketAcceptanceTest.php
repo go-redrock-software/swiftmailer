@@ -43,6 +43,13 @@ class Swift_Transport_StreamBuffer_TlsSocketAcceptanceTest extends Swift_Transpo
             'protocol' => 'tls',
             'blocking' => 1,
             'timeout' => 15,
-            ]);
+            'stream_context_options' => [
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false,
+                    'allow_self_signed' => true,
+                ],
+            ]]);
+
     }
 }

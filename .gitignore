@@ -3,7 +3,6 @@
 /.phpunit.result.cache
 /build/*
 /composer.lock
-/phpunit.xml
 /tests/acceptance.conf.php
 /tests/smoke.conf.php
 /vendor/
@@ -105,7 +104,6 @@ fabric.properties
 
 # PHPUnit
 /app/phpunit.xml
-/phpunit.xml
 
 # Build data
 /build/
@@ -165,7 +163,6 @@ fabric.properties
 
 # PHPUnit
 /app/phpunit.xml
-/phpunit.xml
 
 # Build data
 /build/

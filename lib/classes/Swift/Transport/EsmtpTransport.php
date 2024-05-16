@@ -346,7 +346,7 @@ class Swift_Transport_EsmtpTransport extends Swift_Transport_AbstractSmtpTranspo
                 $this->executeCommand("STARTTLS\r\n", [220]);
 
                 if (!$this->buffer->startTLS()) {
-                    throw new Swift_TransportException('Unable to connect with TLS encryption');
+                    throw new Swift_TransportException('Unable to connect with STARTTLS encryption');
                 }
 
                 try {
