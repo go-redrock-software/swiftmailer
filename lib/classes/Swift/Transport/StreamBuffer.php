@@ -132,10 +132,15 @@ class Swift_Transport_StreamBuffer extends Swift_ByteStream_AbstractFilterableIn
 
         foreach ($replacements as $search => $replace) {
             if (!isset($this->translations[$search])) {
-                $this->addFilter(
-                    $this->replacementFactory->createFilter($search, $replace), $search
-                    );
-                $this->translations[$search] = true;
+                $filter = $this->replacementFactory->createFilter($search, $replace);
+
+                if (!$filter || !($filter instanceOf Swift_StreamFilter)) {
+                    // handle the error, maybe with an exception or logging
+                    throw new Exception("Invalid filter created for search='$search', replace='$replace'");
+                } else {
+                    $this->addFilter($filter, $search);
+                    $this->translations[$search] = true;
+                }
             }
         }
     }
