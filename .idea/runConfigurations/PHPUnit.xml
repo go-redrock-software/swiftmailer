@@ -1,11 +1,11 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="PHPUnit 8.3" type="PHPUnitRunConfigurationType" factoryName="PHPUnit">
+  <configuration default="false" name="PHPUnit" type="PHPUnitRunConfigurationType" factoryName="PHPUnit">
     <CommandLine>
       <envs>
         <env name="SYMFONY_DEPRECATIONS_HELPER" value="weak" />
       </envs>
     </CommandLine>
-    <TestRunner configuration_file="$PROJECT_DIR$/phpunit.xml" directory="$PROJECT_DIR$/../cloud-services/traccloud" scope="Pattern" use_alternative_configuration_file="true">
+    <TestRunner configuration_file="$PROJECT_DIR$/phpunit.xml" directory="$PROJECT_DIR$/../cloud-services/traccloud" scope="XML" use_alternative_configuration_file="true">
       <test_patterns>
         <composite_test_pattern class_fqn="Swift_Transport_StreamBuffer_SslSocketAcceptanceTest" file_path="$PROJECT_DIR$/tests/acceptance/Swift/Transport/StreamBuffer/SslSocketAcceptanceTest.php" method_name="testReadLine" />
       </test_patterns>
