@@ -19,7 +19,8 @@
         "ext-iconv": "*",
         "ext-mbstring": "*",
         "ext-intl": "*",
-        "egulias/email-validator": "^2.0|^3.1|^4.0.2"
+        "egulias/email-validator": "^2.0|^3.1|^4.0.2",
+        "phpseclib/phpseclib": "3.0.37"
     },
     "require-dev": {
         "mockery/mockery": "^1.0",
