@@ -17,7 +17,7 @@ class Swift_Transport_StreamBufferTest extends \PHPUnit\Framework\TestCase
     public function testOverridingTranslationsOnlyAddsNeededFilters()
     {
         $factory = $this->createFactory();
-        $factory->expects($this->exactly(2))
+        $factory->expects($this->exactly(3))
                 ->method('createFilter')
                 ->willReturnCallback([$this, 'createFilter']);
 
