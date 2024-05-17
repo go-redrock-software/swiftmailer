@@ -40,7 +40,7 @@ class Swift_Transport_EsmtpTransport extends Swift_Transport_AbstractSmtpTranspo
         'port' => 25,
         'timeout' => 30,
         'blocking' => 1,
-        'tls' => false,
+        CONNECTION_ENCRYPTION_MODE_STARTTLS => false,
         'type' => Swift_Transport_IoBuffer::TYPE_SOCKET,
         'stream_context_options' => [],
         ];
@@ -142,12 +142,12 @@ class Swift_Transport_EsmtpTransport extends Swift_Transport_AbstractSmtpTranspo
     public function setEncryption($encryption)
     {
         $encryption = strtolower($encryption ?? '');
-        if ('tls' == $encryption) {
+        if (CONNECTION_ENCRYPTION_MODE_STARTTLS == $encryption) {
             $this->params['protocol'] = 'tcp';
-            $this->params['tls'] = true;
+            $this->params[CONNECTION_ENCRYPTION_MODE_STARTTLS] = true;
         } else {
             $this->params['protocol'] = $encryption;
-            $this->params['tls'] = false;
+            $this->params[CONNECTION_ENCRYPTION_MODE_STARTTLS] = false;
         }
 
         return $this;
@@ -160,7 +160,7 @@ class Swift_Transport_EsmtpTransport extends Swift_Transport_AbstractSmtpTranspo
      */
     public function getEncryption()
     {
-        return $this->params['tls'] ? 'tls' : $this->params['protocol'];
+        return $this->params[CONNECTION_ENCRYPTION_MODE_STARTTLS] ? CONNECTION_ENCRYPTION_MODE_STARTTLS : $this->params['protocol'];
     }
 
     /**
@@ -341,7 +341,7 @@ class Swift_Transport_EsmtpTransport extends Swift_Transport_AbstractSmtpTranspo
             return parent::doHeloCommand();
         }
 
-        if ($this->params['tls']) {
+        if ($this->params[CONNECTION_ENCRYPTION_MODE_STARTTLS]) {
             try {
                 $this->executeCommand("STARTTLS\r\n", [220]);
 

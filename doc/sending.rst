@@ -135,9 +135,9 @@ by specifying it as a parameter or with a method call::
 
     // Create the Transport
     // Option #1: SMTPS = SMTP over TLS (always encrypted):
-    $transport = new Swift_SmtpTransport('smtp.example.org', 587, 'ssl');
+    $transport = new Swift_SmtpTransport('smtp.example.org', 587, CONNECTION_MODE_TLS);
     // Option #2: SMTP with STARTTLS (best effort encryption):
-    $transport = new Swift_SmtpTransport('smtp.example.org', 587, 'tls');
+    $transport = new Swift_SmtpTransport('smtp.example.org', 587, CONNECTION_MODE_STARTTLS);
 
     // Create the Mailer using your created Transport
     $mailer = new Swift_Mailer($transport);

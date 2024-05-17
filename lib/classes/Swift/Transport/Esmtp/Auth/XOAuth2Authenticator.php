@@ -13,7 +13,7 @@
  *
  * Example:
  * <code>
- * $transport = (new Swift_SmtpTransport('smtp.gmail.com', 587, 'tls'))
+ * $transport = (new Swift_SmtpTransport('smtp.gmail.com', 587, CONNECTION_MODE_STARTTLS))
  *   ->setAuthMode('XOAUTH2')
  *   ->setUsername('YOUR_EMAIL_ADDRESS')
  *   ->setPassword('YOUR_ACCESS_TOKEN');
