@@ -228,11 +228,11 @@ class Swift_Plugins_PopBeforeSmtpPlugin implements Swift_Events_TransportChangeL
     {
         $host = $this->host;
         switch (strtolower($this->crypto ?? '')) {
-            case 'ssl':
+            case CONNECTION_ENCRYPTION_MODE_TLS:
                 $host = 'ssl://'.$host;
                 break;
 
-            case 'tls':
+            case CONNECTION_ENCRYPTION_MODE_STARTTLS:
                 $host = 'tls://'.$host;
                 break;
         }

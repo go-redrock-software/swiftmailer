@@ -7,7 +7,7 @@ class Swift_Transport_StreamBuffer_SslSocketAcceptanceTest extends Swift_Transpo
     protected function setUp(): void
     {
         $streams = stream_get_transports();
-        if (!\in_array('ssl', $streams)) {
+        if (!\in_array(CONNECTION_ENCRYPTION_MODE_TLS, $streams)) {
             $this->markTestSkipped(
                 'SSL is not configured for your system.  It is not possible to run this test'
              );
@@ -36,11 +36,11 @@ class Swift_Transport_StreamBuffer_SslSocketAcceptanceTest extends Swift_Transpo
             'type' => Swift_Transport_IoBuffer::TYPE_SOCKET,
             'host' => $host,
             'port' => $port,
-            'protocol' => 'ssl',
+            'protocol' => CONNECTION_ENCRYPTION_MODE_TLS,
             'blocking' => 1,
             'timeout' => 15,
             'stream_context_options' => [
-                'ssl' => [
+                CONNECTION_ENCRYPTION_MODE_TLS => [
                     'verify_peer' => false,
                     'verify_peer_name' => false,
                     'allow_self_signed' => true,

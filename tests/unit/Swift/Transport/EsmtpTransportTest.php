@@ -42,8 +42,8 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
     {
         $buf = $this->getBuffer();
         $smtp = $this->getTransport($buf);
-        $smtp->setEncryption('tls');
-        $this->assertEquals('tls', $smtp->getEncryption(), '%s: Crypto should be returned');
+        $smtp->setEncryption(CONNECTION_ENCRYPTION_MODE_STARTTLS);
+        $this->assertEquals(CONNECTION_ENCRYPTION_MODE_STARTTLS, $smtp->getEncryption(), '%s: Crypto should be returned');
     }
 
     public function testStartSendsHeloToInitiate()
@@ -642,7 +642,7 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
         $ref = $smtp
             ->setHost('foo')
             ->setPort(25)
-            ->setEncryption('tls')
+            ->setEncryption(CONNECTION_ENCRYPTION_MODE_STARTTLS)
             ->setTimeout(30)
             ->setPipelining(false)
             ;

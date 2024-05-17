@@ -8,6 +8,12 @@
  * file that was distributed with this source code.
  */
 
+//Define constants here
+const CONNECTION_ENCRYPTION_MODE_STARTTLS = 'tls';
+const CONNECTION_ENCRYPTION_MODE_TLS = 'ssl';
+const CONNECTION_ENCRYPTION_MODE_NONE = null;
+
+
 require __DIR__.'/classes/Swift.php';
 
 Swift::registerAutoload(function () {
