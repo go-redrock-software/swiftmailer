@@ -1,0 +1,3 @@
+<component name="DependencyValidationManager">
+  <scope name="Swiftmailer Tests" pattern="file[swiftmailer]:tests//*" />
+</component>

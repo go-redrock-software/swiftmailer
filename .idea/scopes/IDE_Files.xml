@@ -1,0 +1,3 @@
+<component name="DependencyValidationManager">
+  <scope name="IDE Files" pattern="file[swiftmailer]:.phpunit.cache//*||file[swiftmailer]:.idea//*||file[swiftmailer]:.gitlab//*||file:.phpunit.result.cache||file:phpunit.xml||file:phpunit-report.xml||file:.gitignore||file:qodana.yaml||file:.php_cs.dist||file:.gitlab-ci.yml||file:.gitattributes" />
+</component>
