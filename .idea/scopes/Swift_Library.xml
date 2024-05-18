@@ -1,0 +1,3 @@
+<component name="DependencyValidationManager">
+  <scope name="Swift Library" pattern="file[swiftmailer]:lib//*" />
+</component>
