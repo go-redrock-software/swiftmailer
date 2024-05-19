@@ -52,8 +52,6 @@ class Swift_CharacterStream_NgCharacterStream implements Swift_CharacterStream
 
     /**
      * Map.
-     *
-     * @var mixed
      */
     private $map;
 
@@ -98,9 +96,9 @@ class Swift_CharacterStream_NgCharacterStream implements Swift_CharacterStream
      */
     public function setCharacterSet($charset)
     {
-        $this->charset = $charset;
+        $this->charset    = $charset;
         $this->charReader = null;
-        $this->mapType = 0;
+        $this->mapType    = 0;
     }
 
     /**
@@ -116,11 +114,11 @@ class Swift_CharacterStream_NgCharacterStream implements Swift_CharacterStream
      */
     public function flushContents()
     {
-        $this->datas = null;
-        $this->map = null;
-        $this->charCount = 0;
+        $this->datas      = null;
+        $this->map        = null;
+        $this->charCount  = 0;
         $this->currentPos = 0;
-        $this->datasSize = 0;
+        $this->datasSize  = 0;
     }
 
     /**
@@ -159,14 +157,16 @@ class Swift_CharacterStream_NgCharacterStream implements Swift_CharacterStream
         if ($this->currentPos >= $this->charCount) {
             return false;
         }
-        $ret = false;
+        $ret    = false;
         $length = ($this->currentPos + $length > $this->charCount) ? $this->charCount - $this->currentPos : $length;
         switch ($this->mapType) {
             case Swift_CharacterReader::MAP_TYPE_FIXED_LEN:
                 $len = $length * $this->map;
-                $ret = substr($this->datas,
-                        $this->currentPos * $this->map,
-                        $len);
+                $ret = \substr(
+                    $this->datas,
+                    $this->currentPos * $this->map,
+                    $len,
+                );
                 $this->currentPos += $length;
                 break;
 
@@ -182,9 +182,9 @@ class Swift_CharacterStream_NgCharacterStream implements Swift_CharacterStream
                 break;
 
             case Swift_CharacterReader::MAP_TYPE_POSITIONS:
-                $end = $this->currentPos + $length;
-                $end = $end > $this->charCount ? $this->charCount : $end;
-                $ret = '';
+                $end   = $this->currentPos + $length;
+                $end   = $end > $this->charCount ? $this->charCount : $end;
+                $ret   = '';
                 $start = 0;
                 if ($this->currentPos > 0) {
                     $start = $this->map['p'][$this->currentPos - 1];
@@ -192,13 +192,13 @@ class Swift_CharacterStream_NgCharacterStream implements Swift_CharacterStream
                 $to = $start;
                 for (; $this->currentPos < $end; ++$this->currentPos) {
                     if (isset($this->map['i'][$this->currentPos])) {
-                        $ret .= substr($this->datas, $start, $to - $start).'?';
+                        $ret .= \substr($this->datas, $start, $to - $start).'?';
                         $start = $this->map['p'][$this->currentPos];
                     } else {
                         $to = $this->map['p'][$this->currentPos];
                     }
                 }
-                $ret .= substr($this->datas, $start, $to - $start);
+                $ret .= \substr($this->datas, $start, $to - $start);
                 break;
         }
 
@@ -216,7 +216,7 @@ class Swift_CharacterStream_NgCharacterStream implements Swift_CharacterStream
     {
         $read = $this->read($length);
         if (false !== $read) {
-            $ret = array_map('ord', str_split($read, 1));
+            $ret = \array_map('ord', \str_split($read, 1));
 
             return $ret;
         }
@@ -246,13 +246,14 @@ class Swift_CharacterStream_NgCharacterStream implements Swift_CharacterStream
     {
         if (!isset($this->charReader)) {
             $this->charReader = $this->charReaderFactory->getReaderFor(
-                $this->charset);
-            $this->map = [];
+                $this->charset,
+            );
+            $this->map     = [];
             $this->mapType = $this->charReader->getMapType();
         }
         $ignored = '';
         $this->datas .= $chars;
-        $this->charCount += $this->charReader->getCharPositions(substr($this->datas, $this->datasSize), $this->datasSize, $this->map, $ignored);
+        $this->charCount += $this->charReader->getCharPositions(\substr($this->datas, $this->datasSize), $this->datasSize, $this->map, $ignored);
         if (false !== $ignored) {
             $this->datasSize = \strlen($this->datas) - \strlen($ignored);
         } else {

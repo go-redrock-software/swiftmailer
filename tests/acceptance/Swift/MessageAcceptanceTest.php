@@ -12,8 +12,8 @@ class Swift_MessageAcceptanceTest extends Swift_Mime_SimpleMessageAcceptanceTest
         $message->setFrom([
             'chris.corbyn@swiftmailer.org' => 'Chris Corbyn', ]);
 
-        $id = $message->getId();
-        $date = $message->getDate();
+        $id       = $message->getId();
+        $date     = $message->getDate();
         $boundary = $message->getBoundary();
 
         $message->addPart('foo', 'text/plain', 'iso-8859-1');
@@ -41,8 +41,8 @@ class Swift_MessageAcceptanceTest extends Swift_Mime_SimpleMessageAcceptanceTest
             'test <b>foo</b>'.
             "\r\n\r\n".
             '--'.$boundary.'--'."\r\n",
-            $message->toString()
-            );
+            $message->toString(),
+        );
     }
 
     protected function createMessage()

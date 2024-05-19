@@ -31,7 +31,7 @@ class Swift_ByteStream_FileByteStream extends Swift_ByteStream_AbstractFilterabl
     private $writer;
 
     /** If stream is seekable true/false, or null if not known */
-    private $seekable = null;
+    private $seekable;
 
     /**
      * Create a new FileByteStream for $path.
@@ -75,13 +75,13 @@ class Swift_ByteStream_FileByteStream extends Swift_ByteStream_AbstractFilterabl
     public function read($length)
     {
         $fp = $this->getReadHandle();
-        if (!feof($fp)) {
-            $bytes = fread($fp, $length);
-            $this->offset = ftell($fp);
+        if (!\feof($fp)) {
+            $bytes        = \fread($fp, $length);
+            $this->offset = \ftell($fp);
 
             // If we read one byte after reaching the end of the file
             // feof() will return false and an empty string is returned
-            if ((false === $bytes || '' === $bytes) && feof($fp)) {
+            if ((false === $bytes || '' === $bytes) && \feof($fp)) {
                 $this->resetReadHandle();
 
                 return false;
@@ -113,7 +113,7 @@ class Swift_ByteStream_FileByteStream extends Swift_ByteStream_AbstractFilterabl
     /** Just write the bytes to the file */
     protected function doCommit($bytes)
     {
-        fwrite($this->getWriteHandle(), $bytes);
+        \fwrite($this->getWriteHandle(), $bytes);
         $this->resetReadHandle();
     }
 
@@ -126,7 +126,7 @@ class Swift_ByteStream_FileByteStream extends Swift_ByteStream_AbstractFilterabl
     private function getReadHandle()
     {
         if (!isset($this->reader)) {
-            $pointer = @fopen($this->path, 'rb');
+            $pointer = @\fopen($this->path, 'rb');
             if (!$pointer) {
                 throw new Swift_IoException('Unable to open file for reading ['.$this->path.']');
             }
@@ -144,7 +144,7 @@ class Swift_ByteStream_FileByteStream extends Swift_ByteStream_AbstractFilterabl
     private function getWriteHandle()
     {
         if (!isset($this->writer)) {
-            if (!$this->writer = fopen($this->path, $this->mode)) {
+            if (!$this->writer = \fopen($this->path, $this->mode)) {
                 throw new Swift_IoException('Unable to open file for writing ['.$this->path.']');
             }
         }
@@ -156,7 +156,7 @@ class Swift_ByteStream_FileByteStream extends Swift_ByteStream_AbstractFilterabl
     private function resetReadHandle()
     {
         if (isset($this->reader)) {
-            fclose($this->reader);
+            \fclose($this->reader);
             $this->reader = null;
         }
     }
@@ -164,7 +164,7 @@ class Swift_ByteStream_FileByteStream extends Swift_ByteStream_AbstractFilterabl
     /** Check if ReadOnly Stream is seekable */
     private function getReadStreamSeekableStatus()
     {
-        $metas = stream_get_meta_data($this->reader);
+        $metas          = \stream_get_meta_data($this->reader);
         $this->seekable = $metas['seekable'];
     }
 
@@ -175,40 +175,40 @@ class Swift_ByteStream_FileByteStream extends Swift_ByteStream_AbstractFilterabl
             $this->getReadStreamSeekableStatus();
         }
         if (false === $this->seekable) {
-            $currentPos = ftell($this->reader);
+            $currentPos = \ftell($this->reader);
             if ($currentPos < $offset) {
                 $toDiscard = $offset - $currentPos;
-                fread($this->reader, $toDiscard);
+                \fread($this->reader, $toDiscard);
 
                 return;
             }
             $this->copyReadStream();
         }
-        fseek($this->reader, $offset, SEEK_SET);
+        \fseek($this->reader, $offset, SEEK_SET);
     }
 
     /** Copy a readOnly Stream to ensure seekability */
     private function copyReadStream()
     {
-        if ($tmpFile = fopen('php://temp/maxmemory:4096', 'w+b')) {
+        if ($tmpFile = \fopen('php://temp/maxmemory:4096', 'w+b')) {
             /* We have opened a php:// Stream Should work without problem */
-        } elseif (\function_exists('sys_get_temp_dir') && is_writable(sys_get_temp_dir()) && ($tmpFile = tmpfile())) {
+        } elseif (\function_exists('sys_get_temp_dir') && \is_writable(\sys_get_temp_dir()) && ($tmpFile = \tmpfile())) {
             /* We have opened a tmpfile */
         } else {
             throw new Swift_IoException('Unable to copy the file to make it seekable, sys_temp_dir is not writable, php://memory not available');
         }
-        $currentPos = ftell($this->reader);
-        fclose($this->reader);
-        $source = fopen($this->path, 'rb');
+        $currentPos = \ftell($this->reader);
+        \fclose($this->reader);
+        $source = \fopen($this->path, 'rb');
         if (!$source) {
             throw new Swift_IoException('Unable to open file for copying ['.$this->path.']');
         }
-        fseek($tmpFile, 0, SEEK_SET);
-        while (!feof($source)) {
-            fwrite($tmpFile, fread($source, 4096));
+        \fseek($tmpFile, 0, SEEK_SET);
+        while (!\feof($source)) {
+            \fwrite($tmpFile, \fread($source, 4096));
         }
-        fseek($tmpFile, $currentPos, SEEK_SET);
-        fclose($source);
+        \fseek($tmpFile, $currentPos, SEEK_SET);
+        \fclose($source);
         $this->reader = $tmpFile;
     }
 }

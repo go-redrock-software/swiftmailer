@@ -11,21 +11,22 @@ class SwiftMailerSmokeTestCase extends SwiftMailerTestCase
     {
         if (!\defined('SWIFT_SMOKE_TRANSPORT_TYPE')) {
             $this->markTestSkipped(
-                'Smoke tests are skipped if tests/smoke.conf.php is not edited'
-             );
+                'Smoke tests are skipped if tests/smoke.conf.php is not edited',
+            );
         }
     }
 
     protected function getMailer()
     {
-        /**
+        /*
          * This is suppressed because this would be set in a file (smoke.conf.php)
          * @noinspection PhpUndefinedConstantInspection
          */
         switch (SWIFT_SMOKE_TRANSPORT_TYPE) {
             case 'smtp':
                 /**
-                 * This is suppressed because this would be set in a file (smoke.conf.php)
+                 * This is suppressed because this would be set in a file (smoke.conf.php).
+                 *
                  * @noinspection PhpUndefinedConstantInspection
                  */
                 $transport = Swift_DependencyContainer::getInstance()->lookup('transport.smtp')
@@ -34,23 +35,24 @@ class SwiftMailerSmokeTestCase extends SwiftMailerTestCase
                     ->setUsername(SWIFT_SMOKE_SMTP_USER)
                     ->setPassword(SWIFT_SMOKE_SMTP_PASS)
                     ->setEncryption(SWIFT_SMOKE_SMTP_ENCRYPTION)
-                    ;
+                ;
                 break;
             case 'sendmail':
                 /**
-                 * This is suppressed because this would be set in a file (smoke.conf.php)
+                 * This is suppressed because this would be set in a file (smoke.conf.php).
+                 *
                  * @noinspection PhpUndefinedConstantInspection
                  */
                 $transport = Swift_DependencyContainer::getInstance()->lookup('transport.sendmail')
                     ->setCommand(SWIFT_SMOKE_SENDMAIL_COMMAND)
-                    ;
+                ;
                 break;
             case 'mail':
             case 'nativemail':
                 $transport = Swift_DependencyContainer::getInstance()->lookup('transport.mail');
                 break;
             default:
-                /**
+                /*
                  * This is suppressed because this would be set in a file (smoke.conf.php)
                  * @noinspection PhpUndefinedConstantInspection
                  */

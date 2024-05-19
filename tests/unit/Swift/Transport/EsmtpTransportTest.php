@@ -4,7 +4,7 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
 {
     protected function getTransport($buf, $dispatcher = null, $addressEncoder = null)
     {
-        $dispatcher = $dispatcher ?? $this->createEventDispatcher();
+        $dispatcher     = $dispatcher     ?? $this->createEventDispatcher();
         $addressEncoder = $addressEncoder ?? new Swift_AddressEncoder_IdnAddressEncoder();
 
         return new Swift_Transport_EsmtpTransport($buf, [], $dispatcher, 'example.org', $addressEncoder);
@@ -12,7 +12,7 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
 
     public function testHostCanBeSetAndFetched()
     {
-        $buf = $this->getBuffer();
+        $buf  = $this->getBuffer();
         $smtp = $this->getTransport($buf);
         $smtp->setHost('foo');
         $this->assertEquals('foo', $smtp->getHost(), '%s: Host should be returned');
@@ -20,7 +20,7 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
 
     public function testPortCanBeSetAndFetched()
     {
-        $buf = $this->getBuffer();
+        $buf  = $this->getBuffer();
         $smtp = $this->getTransport($buf);
         $smtp->setPort(25);
         $this->assertEquals(25, $smtp->getPort(), '%s: Port should be returned');
@@ -40,7 +40,7 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
 
     public function testEncryptionCanBeSetAndFetched()
     {
-        $buf = $this->getBuffer();
+        $buf  = $this->getBuffer();
         $smtp = $this->getTransport($buf);
         $smtp->setEncryption(CONNECTION_ENCRYPTION_MODE_STARTTLS);
         $this->assertEquals(CONNECTION_ENCRYPTION_MODE_STARTTLS, $smtp->getEncryption(), '%s: Crypto should be returned');
@@ -88,7 +88,7 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
 
      */
 
-        $buf = $this->getBuffer();
+        $buf  = $this->getBuffer();
         $smtp = $this->getTransport($buf);
 
         $buf->shouldReceive('initialize')
@@ -124,7 +124,7 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
        that it was in before the EHLO was received.
         */
 
-        $buf = $this->getBuffer();
+        $buf  = $this->getBuffer();
         $smtp = $this->getTransport($buf);
 
         $buf->shouldReceive('initialize')
@@ -155,15 +155,15 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
             $smtp->start();
         } catch (Exception $e) {
             $this->fail(
-                'Starting Esmtp should fallback to HELO if needed and accept 250 response'
-                );
+                'Starting Esmtp should fallback to HELO if needed and accept 250 response',
+            );
         }
     }
 
     public function testInvalidHeloResponseCausesException()
     {
-        //Overridden to first try EHLO
-        $buf = $this->getBuffer();
+        // Overridden to first try EHLO
+        $buf  = $this->getBuffer();
         $smtp = $this->getTransport($buf);
 
         $buf->shouldReceive('initialize')
@@ -212,7 +212,7 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
        identifying the client.
         */
 
-        $buf = $this->getBuffer();
+        $buf  = $this->getBuffer();
         $smtp = $this->getTransport($buf);
         $buf->shouldReceive('initialize')
             ->once();
@@ -236,7 +236,7 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
 
     public function testDomainNameIsPlacedInHelo()
     {
-        //Overridden to include ESMTP
+        // Overridden to include ESMTP
         /* -- RFC 2821, 4.1.4.
 
        The SMTP client MUST, if possible, ensure that the domain parameter
@@ -248,7 +248,7 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
        identifying the client.
         */
 
-        $buf = $this->getBuffer();
+        $buf  = $this->getBuffer();
         $smtp = $this->getTransport($buf);
         $buf->shouldReceive('initialize')
             ->once();
@@ -280,17 +280,17 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
 
     public function testPipelining()
     {
-        $buf = $this->getBuffer();
+        $buf  = $this->getBuffer();
         $smtp = $this->getTransport($buf);
         $this->assertNull($smtp->getPipelining());
 
         $message = $this->createMessage();
         $message->shouldReceive('getFrom')
-                ->zeroOrMoreTimes()
-                ->andReturn(['me@domain.com' => 'Me']);
+            ->zeroOrMoreTimes()
+            ->andReturn(['me@domain.com' => 'Me']);
         $message->shouldReceive('getTo')
-                ->zeroOrMoreTimes()
-                ->andReturn(['foo@bar' => null]);
+            ->zeroOrMoreTimes()
+            ->andReturn(['foo@bar' => null]);
 
         $buf->shouldReceive('initialize')
             ->once();
@@ -350,21 +350,21 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
 
     public function testPipeliningWithRecipientFailure()
     {
-        $buf = $this->getBuffer();
+        $buf  = $this->getBuffer();
         $smtp = $this->getTransport($buf);
         $this->assertNull($smtp->getPipelining());
 
         $message = $this->createMessage();
         $message->shouldReceive('getFrom')
-                ->zeroOrMoreTimes()
-                ->andReturn(['me@domain.com' => 'Me']);
+            ->zeroOrMoreTimes()
+            ->andReturn(['me@domain.com' => 'Me']);
         $message->shouldReceive('getTo')
-                ->zeroOrMoreTimes()
-                ->andReturn([
-                    'good@foo' => null,
-                    'bad@foo' => null,
-                    'good@bar' => null,
-                ]);
+            ->zeroOrMoreTimes()
+            ->andReturn([
+                'good@foo' => null,
+                'bad@foo'  => null,
+                'good@bar' => null,
+            ]);
 
         $buf->shouldReceive('initialize')
             ->once();
@@ -448,17 +448,17 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
 
     public function testPipeliningWithSenderFailure()
     {
-        $buf = $this->getBuffer();
+        $buf  = $this->getBuffer();
         $smtp = $this->getTransport($buf);
         $this->assertNull($smtp->getPipelining());
 
         $message = $this->createMessage();
         $message->shouldReceive('getFrom')
-                ->zeroOrMoreTimes()
-                ->andReturn(['me@domain.com' => 'Me']);
+            ->zeroOrMoreTimes()
+            ->andReturn(['me@domain.com' => 'Me']);
         $message->shouldReceive('getTo')
-                ->zeroOrMoreTimes()
-                ->andReturn(['foo@bar' => null]);
+            ->zeroOrMoreTimes()
+            ->andReturn(['foo@bar' => null]);
 
         $buf->shouldReceive('initialize')
             ->once();
@@ -508,17 +508,17 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
 
     public function testPipeliningWithDataFailure()
     {
-        $buf = $this->getBuffer();
+        $buf  = $this->getBuffer();
         $smtp = $this->getTransport($buf);
         $this->assertNull($smtp->getPipelining());
 
         $message = $this->createMessage();
         $message->shouldReceive('getFrom')
-                ->zeroOrMoreTimes()
-                ->andReturn(['me@domain.com' => 'Me']);
+            ->zeroOrMoreTimes()
+            ->andReturn(['me@domain.com' => 'Me']);
         $message->shouldReceive('getTo')
-                ->zeroOrMoreTimes()
-                ->andReturn(['foo@bar' => null]);
+            ->zeroOrMoreTimes()
+            ->andReturn(['foo@bar' => null]);
 
         $buf->shouldReceive('initialize')
             ->once();
@@ -576,7 +576,7 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
         $smtp->send($message, $failedRecipients);
     }
 
-    public function providerPipeliningOverride()
+    public static function providerPipeliningOverride()
     {
         return [
             [null, true, true],
@@ -593,7 +593,7 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
      */
     public function testPipeliningOverride($enabled, bool $supported, bool $expected)
     {
-        $buf = $this->getBuffer();
+        $buf  = $this->getBuffer();
         $smtp = $this->getTransport($buf);
         $this->assertNull($smtp->getPipelining());
 
@@ -602,8 +602,8 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
 
         $message = $this->createMessage();
         $message->shouldReceive('getFrom')
-                ->zeroOrMoreTimes()
-                ->andReturn(['me@domain.com' => 'Me']);
+            ->zeroOrMoreTimes()
+            ->andReturn(['me@domain.com' => 'Me']);
 
         $buf->shouldReceive('initialize')
             ->once();
@@ -633,7 +633,7 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
 
     public function testFluidInterface()
     {
-        $buf = $this->getBuffer();
+        $buf  = $this->getBuffer();
         $smtp = $this->getTransport($buf);
         $buf->shouldReceive('setParam')
             ->once()
@@ -645,7 +645,7 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
             ->setEncryption(CONNECTION_ENCRYPTION_MODE_STARTTLS)
             ->setTimeout(30)
             ->setPipelining(false)
-            ;
+        ;
         $this->assertEquals($ref, $smtp);
     }
 }

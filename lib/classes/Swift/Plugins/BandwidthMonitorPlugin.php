@@ -149,6 +149,6 @@ class Swift_Plugins_BandwidthMonitorPlugin implements Swift_Events_SendListener,
     public function reset()
     {
         $this->out = 0;
-        $this->in = 0;
+        $this->in  = 0;
     }
 }

@@ -29,7 +29,7 @@ class Swift_StreamFilters_StringReplacementFilter implements Swift_StreamFilter
      */
     public function __construct($search, $replace)
     {
-        $this->search = $search;
+        $this->search  = $search;
         $this->replace = $replace;
     }
 
@@ -46,9 +46,9 @@ class Swift_StreamFilters_StringReplacementFilter implements Swift_StreamFilter
             return false;
         }
 
-        $endOfBuffer = substr($buffer, -1);
+        $endOfBuffer = \substr($buffer, -1);
         foreach ((array) $this->search as $needle) {
-            if (false !== strpos($needle, $endOfBuffer)) {
+            if (\str_contains($needle, $endOfBuffer)) {
                 return true;
             }
         }
@@ -65,6 +65,6 @@ class Swift_StreamFilters_StringReplacementFilter implements Swift_StreamFilter
      */
     public function filter($buffer)
     {
-        return str_replace($this->search, $this->replace, $buffer);
+        return \str_replace($this->search, $this->replace, $buffer);
     }
 }

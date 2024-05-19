@@ -1,26 +1,28 @@
 <?php
 
-class Swift_Bug76Test extends \PHPUnit\Framework\TestCase
+class Swift_Bug76Test extends PHPUnit\Framework\TestCase
 {
     private $inputFile;
+
     private $outputFile;
+
     private $encoder;
 
     protected function setUp(): void
     {
-        $this->inputFile = sys_get_temp_dir().'/in.bin';
-        file_put_contents($this->inputFile, '');
+        $this->inputFile = \sys_get_temp_dir().'/in.bin';
+        \file_put_contents($this->inputFile, '');
 
-        $this->outputFile = sys_get_temp_dir().'/out.bin';
-        file_put_contents($this->outputFile, '');
+        $this->outputFile = \sys_get_temp_dir().'/out.bin';
+        \file_put_contents($this->outputFile, '');
 
         $this->encoder = $this->createEncoder();
     }
 
     protected function tearDown(): void
     {
-        unlink($this->inputFile);
-        unlink($this->outputFile);
+        \unlink($this->inputFile);
+        \unlink($this->outputFile);
     }
 
     public function testBase64EncodedLineLengthNeverExceeds76CharactersEvenIfArgsDo()
@@ -30,18 +32,20 @@ class Swift_Bug76Test extends \PHPUnit\Framework\TestCase
         $os = $this->createStream($this->inputFile);
         $is = $this->createStream($this->outputFile);
 
-        $this->encoder->encodeByteStream($os, $is, 0, 80); //Exceeds 76
+        $this->encoder->encodeByteStream($os, $is, 0, 80); // Exceeds 76
 
-        $this->assertMaxLineLength(76, $this->outputFile,
-            '%s: Line length should not exceed 76 characters'
+        $this->assertMaxLineLength(
+            76,
+            $this->outputFile,
+            '%s: Line length should not exceed 76 characters',
         );
     }
 
     public function assertMaxLineLength($length, $filePath, $message = '%s')
     {
-        $lines = file($filePath);
+        $lines = \file($filePath);
         foreach ($lines as $line) {
-            $this->assertTrue((\strlen(trim($line)) <= 76), $message);
+            $this->assertTrue(\strlen(\trim($line)) <= 76, $message);
         }
     }
 
@@ -50,13 +54,13 @@ class Swift_Bug76Test extends \PHPUnit\Framework\TestCase
         // I was going to use dd with if=/dev/random but this way seems more
         // cross platform even if a hella expensive!!
 
-        file_put_contents($file, '');
-        $fp = fopen($file, 'wb');
+        \file_put_contents($file, '');
+        $fp = \fopen($file, 'wb');
         for ($i = 0; $i < $byteCount; ++$i) {
-            $byteVal = random_int(0, 255);
-            fwrite($fp, pack('i', $byteVal));
+            $byteVal = \random_int(0, 255);
+            \fwrite($fp, \pack('i', $byteVal));
         }
-        fclose($fp);
+        \fclose($fp);
     }
 
     private function createEncoder()

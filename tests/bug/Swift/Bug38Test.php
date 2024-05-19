@@ -1,16 +1,18 @@
 <?php
 
-class Swift_Bug38Test extends \PHPUnit\Framework\TestCase
+class Swift_Bug38Test extends PHPUnit\Framework\TestCase
 {
     private $attFile;
+
     private $attFileName;
+
     private $attFileType;
 
     protected function setUp(): void
     {
         $this->attFileName = 'data.txt';
         $this->attFileType = 'text/plain';
-        $this->attFile = __DIR__.'/../../_samples/files/data.txt';
+        $this->attFile     = __DIR__.'/../../_samples/files/data.txt';
         Swift_Preferences::getInstance()->setCharset('utf-8');
     }
 
@@ -27,10 +29,10 @@ class Swift_Bug38Test extends \PHPUnit\Framework\TestCase
         $cid = $message->embed($image);
         $message->setBody('HTML part', 'text/html');
 
-        $id = $message->getId();
-        $date = preg_quote($message->getDate()->format('r'), '~');
+        $id       = $message->getId();
+        $date     = \preg_quote($message->getDate()->format('r'), '~');
         $boundary = $message->getBoundary();
-        $imgId = $image->getId();
+        $imgId    = $image->getId();
 
         $stream = new Swift_ByteStream_ArrayByteStream();
 
@@ -57,14 +59,14 @@ class Swift_Bug38Test extends \PHPUnit\Framework\TestCase
             '--'.$boundary."\r\n".
             'Content-Type: image/gif; name=image.gif'."\r\n".
             'Content-Transfer-Encoding: base64'."\r\n".
-            'Content-ID: <'.preg_quote($imgId, '~').'>'."\r\n".
+            'Content-ID: <'.\preg_quote($imgId, '~').'>'."\r\n".
             'Content-Disposition: inline; filename=image.gif'."\r\n".
             "\r\n".
-            preg_quote(base64_encode('<data>'), '~').
+            \preg_quote(\base64_encode('<data>'), '~').
             "\r\n\r\n".
             '--'.$boundary.'--'."\r\n".
             '$~D',
-            $stream
+            $stream,
         );
     }
 
@@ -81,10 +83,10 @@ class Swift_Bug38Test extends \PHPUnit\Framework\TestCase
         $cid = $message->embed($image);
         $message->setBody('HTML part', 'text/html');
 
-        $id = $message->getId();
-        $date = preg_quote($message->getDate()->format('r'), '~');
+        $id       = $message->getId();
+        $date     = \preg_quote($message->getDate()->format('r'), '~');
         $boundary = $message->getBoundary();
-        $imgId = $image->getId();
+        $imgId    = $image->getId();
 
         $pattern = '~^'.
         'Message-ID: <'.$id.'>'."\r\n".
@@ -106,10 +108,10 @@ class Swift_Bug38Test extends \PHPUnit\Framework\TestCase
         '--'.$boundary."\r\n".
         'Content-Type: image/gif; name=image.gif'."\r\n".
         'Content-Transfer-Encoding: base64'."\r\n".
-        'Content-ID: <'.preg_quote($imgId, '~').'>'."\r\n".
+        'Content-ID: <'.\preg_quote($imgId, '~').'>'."\r\n".
         'Content-Disposition: inline; filename=image.gif'."\r\n".
         "\r\n".
-        preg_quote(base64_encode('<data>'), '~').
+        \preg_quote(\base64_encode('<data>'), '~').
         "\r\n\r\n".
         '--'.$boundary.'--'."\r\n".
         '$~D'
@@ -139,8 +141,8 @@ class Swift_Bug38Test extends \PHPUnit\Framework\TestCase
 
         $message->setBody('HTML part', 'text/html');
 
-        $id = $message->getId();
-        $date = preg_quote($message->getDate()->format('r'), '~');
+        $id       = $message->getId();
+        $date     = \preg_quote($message->getDate()->format('r'), '~');
         $boundary = $message->getBoundary();
 
         $streamA = new Swift_ByteStream_ArrayByteStream();
@@ -168,11 +170,11 @@ class Swift_Bug38Test extends \PHPUnit\Framework\TestCase
             'Content-Transfer-Encoding: base64'."\r\n".
             'Content-Disposition: attachment; filename='.$this->attFileName."\r\n".
             "\r\n".
-            preg_quote(base64_encode(file_get_contents($this->attFile)), '~').
+            \preg_quote(\base64_encode(\file_get_contents($this->attFile)), '~').
             "\r\n\r\n".
             '--'.$boundary.'--'."\r\n".
             '$~D'
-            ;
+        ;
 
         $message->toByteStream($streamA);
         $message->toByteStream($streamB);

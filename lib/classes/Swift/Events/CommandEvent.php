@@ -38,7 +38,7 @@ class Swift_Events_CommandEvent extends Swift_Events_EventObject
     public function __construct(Swift_Transport $source, $command, $successCodes = [])
     {
         parent::__construct($source);
-        $this->command = $command;
+        $this->command      = $command;
         $this->successCodes = $successCodes;
     }
 

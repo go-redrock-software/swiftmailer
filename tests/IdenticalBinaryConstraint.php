@@ -5,7 +5,7 @@
  *
  * @author Chris Corbyn
  */
-class IdenticalBinaryConstraint extends \PHPUnit\Framework\Constraint\Constraint
+class IdenticalBinaryConstraint extends PHPUnit\Framework\Constraint\Constraint
 {
     protected $value;
 
@@ -47,12 +47,12 @@ class IdenticalBinaryConstraint extends \PHPUnit\Framework\Constraint\Constraint
     {
         $hex = '';
 
-        $bytes = unpack('H*', $binary);
+        $bytes = \unpack('H*', $binary);
 
         foreach ($bytes as &$byte) {
-            $byte = strtoupper($byte);
+            $byte = \strtoupper($byte);
         }
 
-        return implode('', $bytes);
+        return \implode('', $bytes);
     }
 }

@@ -1,6 +1,6 @@
 <?php
 
-class Swift_Events_CommandEventTest extends \PHPUnit\Framework\TestCase
+class Swift_Events_CommandEventTest extends PHPUnit\Framework\TestCase
 {
     public function testCommandCanBeFetchedByGetter()
     {
@@ -17,8 +17,8 @@ class Swift_Events_CommandEventTest extends \PHPUnit\Framework\TestCase
     public function testSourceIsBuffer()
     {
         $transport = $this->createTransport();
-        $evt = $this->createEvent($transport, "FOO\r\n");
-        $ref = $evt->getSource();
+        $evt       = $this->createEvent($transport, "FOO\r\n");
+        $ref       = $evt->getSource();
         $this->assertEquals($transport, $ref);
     }
 

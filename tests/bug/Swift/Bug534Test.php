@@ -2,7 +2,7 @@
 
 use Mockery as m;
 
-class Swift_Bug534Test extends \SwiftMailerTestCase
+class Swift_Bug534Test extends SwiftMailerTestCase
 {
     public function testEmbeddedImagesAreEmbedded()
     {
@@ -14,11 +14,11 @@ class Swift_Bug534Test extends \SwiftMailerTestCase
         $cid = $message->embed(Swift_Image::fromPath(__DIR__.'/../../_samples/files/swiftmailer.png'));
         $message->setBody('<img src="'.$cid.'" />', 'text/html');
 
-        $that = $this;
+        $that              = $this;
         $messageValidation = function (Swift_Mime_SimpleMessage $message) use ($that) {
-            preg_match('/cid:(.*)"/', $message->toString(), $matches);
+            \preg_match('/cid:(.*)"/', $message->toString(), $matches);
             $cid = $matches[1];
-            preg_match('/Content-ID: <(.*)>/', $message->toString(), $matches);
+            \preg_match('/Content-ID: <(.*)>/', $message->toString(), $matches);
             $contentId = $matches[1];
             $that->assertEquals($cid, $contentId, 'cid in body and mime part Content-ID differ');
 

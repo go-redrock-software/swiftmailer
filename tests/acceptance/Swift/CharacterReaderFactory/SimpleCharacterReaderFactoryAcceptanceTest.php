@@ -1,8 +1,9 @@
 <?php
 
-class Swift_CharacterReaderFactory_SimpleCharacterReaderFactoryAcceptanceTest extends \PHPUnit\Framework\TestCase
+class Swift_CharacterReaderFactory_SimpleCharacterReaderFactoryAcceptanceTest extends PHPUnit\Framework\TestCase
 {
     private $factory;
+
     private $prefix = 'Swift_CharacterReader_';
 
     protected function setUp(): void
@@ -21,12 +22,12 @@ class Swift_CharacterReaderFactory_SimpleCharacterReaderFactoryAcceptanceTest ex
     public function testCreatingIso8859XReaders()
     {
         $charsets = [];
-        foreach (range(1, 16) as $number) {
+        foreach (\range(1, 16) as $number) {
             foreach (['iso', 'iec'] as $body) {
                 $charsets[] = $body.'-8859-'.$number;
                 $charsets[] = $body.'8859-'.$number;
-                $charsets[] = strtoupper($body).'-8859-'.$number;
-                $charsets[] = strtoupper($body).'8859-'.$number;
+                $charsets[] = \strtoupper($body).'-8859-'.$number;
+                $charsets[] = \strtoupper($body).'8859-'.$number;
             }
         }
 
@@ -40,7 +41,7 @@ class Swift_CharacterReaderFactory_SimpleCharacterReaderFactoryAcceptanceTest ex
     public function testCreatingWindows125XReaders()
     {
         $charsets = [];
-        foreach (range(0, 8) as $number) {
+        foreach (\range(0, 8) as $number) {
             $charsets[] = 'windows-125'.$number;
             $charsets[] = 'windows125'.$number;
             $charsets[] = 'WINDOWS-125'.$number;
@@ -57,7 +58,7 @@ class Swift_CharacterReaderFactory_SimpleCharacterReaderFactoryAcceptanceTest ex
     public function testCreatingCodePageReaders()
     {
         $charsets = [];
-        foreach (range(0, 8) as $number) {
+        foreach (\range(0, 8) as $number) {
             $charsets[] = 'cp-125'.$number;
             $charsets[] = 'cp125'.$number;
             $charsets[] = 'CP-125'.$number;

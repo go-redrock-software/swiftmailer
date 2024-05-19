@@ -1,6 +1,6 @@
 <?php
 
-class Swift_Encoder_QpEncoderTest extends \SwiftMailerTestCase
+class Swift_Encoder_QpEncoderTest extends SwiftMailerTestCase
 {
     /* -- RFC 2045, 6.7 --
     (1)   (General 8bit representation) Any octet, except a CR or
@@ -29,21 +29,21 @@ class Swift_Encoder_QpEncoderTest extends \SwiftMailerTestCase
                     respectively).
                     */
 
-        foreach (array_merge(range(33, 60), range(62, 126)) as $ordinal) {
+        foreach (\array_merge(\range(33, 60), \range(62, 126)) as $ordinal) {
             $char = \chr($ordinal);
 
             $charStream = $this->createCharStream();
             $charStream->shouldReceive('flushContents')
-                       ->once();
+                ->once();
             $charStream->shouldReceive('importString')
-                       ->once()
-                       ->with($char);
+                ->once()
+                ->with($char);
             $charStream->shouldReceive('readBytes')
-                       ->once()
-                       ->andReturn([$ordinal]);
+                ->once()
+                ->andReturn([$ordinal]);
             $charStream->shouldReceive('readBytes')
-                       ->atLeast()->times(1)
-                       ->andReturn(false);
+                ->atLeast()->times(1)
+                ->andReturn(false);
 
             $encoder = new Swift_Encoder_QpEncoder($charStream);
 
@@ -76,18 +76,18 @@ class Swift_Encoder_QpEncoderTest extends \SwiftMailerTestCase
                     intermediate transport agents.
                     */
 
-        $HT = \chr(0x09); //9
-        $SPACE = \chr(0x20); //32
+        $HT    = \chr(0x09); // 9
+        $SPACE = \chr(0x20); // 32
 
-        //HT
+        // HT
         $string = 'a'.$HT.$HT."\r\n".'b';
 
         $charStream = $this->createCharStream();
         $charStream->shouldReceive('flushContents')
-                    ->once();
+            ->once();
         $charStream->shouldReceive('importString')
-                    ->once()
-                    ->with($string);
+            ->once()
+            ->with($string);
 
         $charStream->shouldReceive('readBytes')->once()->andReturn([\ord('a')]);
         $charStream->shouldReceive('readBytes')->once()->andReturn([0x09]);
@@ -100,18 +100,18 @@ class Swift_Encoder_QpEncoderTest extends \SwiftMailerTestCase
         $encoder = new Swift_Encoder_QpEncoder($charStream);
         $this->assertEquals(
             'a'.$HT.'=09'."\r\n".'b',
-            $encoder->encodeString($string)
-            );
+            $encoder->encodeString($string),
+        );
 
-        //SPACE
+        // SPACE
         $string = 'a'.$SPACE.$SPACE."\r\n".'b';
 
         $charStream = $this->createCharStream();
         $charStream->shouldReceive('flushContents')
-                    ->once();
+            ->once();
         $charStream->shouldReceive('importString')
-                    ->once()
-                    ->with($string);
+            ->once()
+            ->with($string);
 
         $charStream->shouldReceive('readBytes')->once()->andReturn([\ord('a')]);
         $charStream->shouldReceive('readBytes')->once()->andReturn([0x20]);
@@ -124,8 +124,8 @@ class Swift_Encoder_QpEncoderTest extends \SwiftMailerTestCase
         $encoder = new Swift_Encoder_QpEncoder($charStream);
         $this->assertEquals(
             'a'.$SPACE.'=20'."\r\n".'b',
-            $encoder->encodeString($string)
-            );
+            $encoder->encodeString($string),
+        );
     }
 
     public function testCRLFIsLeftAlone()
@@ -161,10 +161,10 @@ class Swift_Encoder_QpEncoderTest extends \SwiftMailerTestCase
 
         $charStream = $this->createCharStream();
         $charStream->shouldReceive('flushContents')
-                    ->once();
+            ->once();
         $charStream->shouldReceive('importString')
-                    ->once()
-                    ->with($string);
+            ->once()
+            ->with($string);
 
         $charStream->shouldReceive('readBytes')->once()->andReturn([\ord('a')]);
         $charStream->shouldReceive('readBytes')->once()->andReturn([0x0D]);
@@ -193,20 +193,20 @@ class Swift_Encoder_QpEncoderTest extends \SwiftMailerTestCase
                     line break in the encoded text.
                     */
 
-        $input = str_repeat('a', 140);
+        $input = \str_repeat('a', 140);
 
         $charStream = $this->createCharStream();
         $charStream->shouldReceive('flushContents')
-                    ->once();
+            ->once();
         $charStream->shouldReceive('importString')
-                    ->once()
-                    ->with($input);
+            ->once()
+            ->with($input);
 
         $output = '';
         for ($i = 0; $i < 140; ++$i) {
             $charStream->shouldReceive('readBytes')
-                       ->once()
-                       ->andReturn([\ord('a')]);
+                ->once()
+                ->andReturn([\ord('a')]);
 
             if (75 == $i) {
                 $output .= "=\r\n";
@@ -215,8 +215,8 @@ class Swift_Encoder_QpEncoderTest extends \SwiftMailerTestCase
         }
 
         $charStream->shouldReceive('readBytes')
-                    ->once()
-                    ->andReturn(false);
+            ->once()
+            ->andReturn(false);
 
         $encoder = new Swift_Encoder_QpEncoder($charStream);
         $this->assertEquals($output, $encoder->encodeString($input));
@@ -224,20 +224,20 @@ class Swift_Encoder_QpEncoderTest extends \SwiftMailerTestCase
 
     public function testMaxLineLengthCanBeSpecified()
     {
-        $input = str_repeat('a', 100);
+        $input = \str_repeat('a', 100);
 
         $charStream = $this->createCharStream();
         $charStream->shouldReceive('flushContents')
-                    ->once();
+            ->once();
         $charStream->shouldReceive('importString')
-                    ->once()
-                    ->with($input);
+            ->once()
+            ->with($input);
 
         $output = '';
         for ($i = 0; $i < 100; ++$i) {
             $charStream->shouldReceive('readBytes')
-                       ->once()
-                       ->andReturn([\ord('a')]);
+                ->once()
+                ->andReturn([\ord('a')]);
 
             if (53 == $i) {
                 $output .= "=\r\n";
@@ -245,8 +245,8 @@ class Swift_Encoder_QpEncoderTest extends \SwiftMailerTestCase
             $output .= 'a';
         }
         $charStream->shouldReceive('readBytes')
-                    ->once()
-                    ->andReturn(false);
+            ->once()
+            ->andReturn(false);
 
         $encoder = new Swift_Encoder_QpEncoder($charStream);
         $this->assertEquals($output, $encoder->encodeString($input, 0, 54));
@@ -258,27 +258,28 @@ class Swift_Encoder_QpEncoderTest extends \SwiftMailerTestCase
         According to Rule (1 & 2)
         */
 
-        foreach (range(0, 32) as $ordinal) {
+        foreach (\range(0, 32) as $ordinal) {
             $char = \chr($ordinal);
 
             $charStream = $this->createCharStream();
             $charStream->shouldReceive('flushContents')
-                       ->once();
+                ->once();
             $charStream->shouldReceive('importString')
-                       ->once()
-                       ->with($char);
+                ->once()
+                ->with($char);
             $charStream->shouldReceive('readBytes')
-                       ->once()
-                       ->andReturn([$ordinal]);
+                ->once()
+                ->andReturn([$ordinal]);
             $charStream->shouldReceive('readBytes')
-                       ->atLeast()->times(1)
-                       ->andReturn(false);
+                ->atLeast()->times(1)
+                ->andReturn(false);
 
             $encoder = new Swift_Encoder_QpEncoder($charStream);
 
             $this->assertEquals(
-                sprintf('=%02X', $ordinal), $encoder->encodeString($char)
-                );
+                \sprintf('=%02X', $ordinal),
+                $encoder->encodeString($char),
+            );
         }
     }
 
@@ -292,16 +293,16 @@ class Swift_Encoder_QpEncoderTest extends \SwiftMailerTestCase
 
         $charStream = $this->createCharStream();
         $charStream->shouldReceive('flushContents')
-                    ->once();
+            ->once();
         $charStream->shouldReceive('importString')
-                    ->once()
-                    ->with($char);
+            ->once()
+            ->with($char);
         $charStream->shouldReceive('readBytes')
-                    ->once()
-                    ->andReturn([61]);
+            ->once()
+            ->andReturn([61]);
         $charStream->shouldReceive('readBytes')
-                    ->atLeast()->times(1)
-                    ->andReturn(false);
+            ->atLeast()->times(1)
+            ->andReturn(false);
 
         $encoder = new Swift_Encoder_QpEncoder($charStream);
 
@@ -314,46 +315,47 @@ class Swift_Encoder_QpEncoderTest extends \SwiftMailerTestCase
         According to Rule (1 & 2)
         */
 
-        foreach (range(127, 255) as $ordinal) {
+        foreach (\range(127, 255) as $ordinal) {
             $char = \chr($ordinal);
 
             $charStream = $this->createCharStream();
             $charStream->shouldReceive('flushContents')
-                       ->once();
+                ->once();
             $charStream->shouldReceive('importString')
-                       ->once()
-                       ->with($char);
+                ->once()
+                ->with($char);
             $charStream->shouldReceive('readBytes')
-                       ->once()
-                       ->andReturn([$ordinal]);
+                ->once()
+                ->andReturn([$ordinal]);
             $charStream->shouldReceive('readBytes')
-                       ->atLeast()->times(1)
-                       ->andReturn(false);
+                ->atLeast()->times(1)
+                ->andReturn(false);
 
             $encoder = new Swift_Encoder_QpEncoder($charStream);
 
             $this->assertEquals(
-                sprintf('=%02X', $ordinal), $encoder->encodeString($char)
-                );
+                \sprintf('=%02X', $ordinal),
+                $encoder->encodeString($char),
+            );
         }
     }
 
     public function testFirstLineLengthCanBeDifferent()
     {
-        $input = str_repeat('a', 140);
+        $input = \str_repeat('a', 140);
 
         $charStream = $this->createCharStream();
         $charStream->shouldReceive('flushContents')
-                    ->once();
+            ->once();
         $charStream->shouldReceive('importString')
-                    ->once()
-                    ->with($input);
+            ->once()
+            ->with($input);
 
         $output = '';
         for ($i = 0; $i < 140; ++$i) {
             $charStream->shouldReceive('readBytes')
-                       ->once()
-                       ->andReturn([\ord('a')]);
+                ->once()
+                ->andReturn([\ord('a')]);
 
             if (53 == $i || 53 + 75 == $i) {
                 $output .= "=\r\n";
@@ -362,27 +364,29 @@ class Swift_Encoder_QpEncoderTest extends \SwiftMailerTestCase
         }
 
         $charStream->shouldReceive('readBytes')
-                    ->once()
-                    ->andReturn(false);
+            ->once()
+            ->andReturn(false);
 
         $encoder = new Swift_Encoder_QpEncoder($charStream);
         $this->assertEquals(
-            $output, $encoder->encodeString($input, 22),
-            '%s: First line should start at offset 22 so can only have max length 54'
-            );
+            $output,
+            $encoder->encodeString($input, 22),
+            '%s: First line should start at offset 22 so can only have max length 54',
+        );
     }
 
     public function testTextIsPreWrapped()
     {
         $encoder = $this->createEncoder();
 
-        $input = str_repeat('a', 70)."\r\n".
-                 str_repeat('a', 70)."\r\n".
-                 str_repeat('a', 70);
+        $input = \str_repeat('a', 70)."\r\n".
+                 \str_repeat('a', 70)."\r\n".
+                 \str_repeat('a', 70);
 
         $this->assertEquals(
-            $input, $encoder->encodeString($input)
-            );
+            $input,
+            $encoder->encodeString($input),
+        );
     }
 
     private function createCharStream()
@@ -392,7 +396,7 @@ class Swift_Encoder_QpEncoderTest extends \SwiftMailerTestCase
 
     private function createEncoder()
     {
-        $factory = new Swift_CharacterReaderFactory_SimpleCharacterReaderFactory();
+        $factory    = new Swift_CharacterReaderFactory_SimpleCharacterReaderFactory();
         $charStream = new Swift_CharacterStream_NgCharacterStream($factory, 'utf-8');
 
         return new Swift_Encoder_QpEncoder($charStream);

@@ -48,6 +48,6 @@ class Swift_Mailer_ArrayRecipientIterator implements Swift_Mailer_RecipientItera
      */
     public function nextRecipient()
     {
-        return array_splice($this->recipients, 0, 1);
+        return \array_splice($this->recipients, 0, 1);
     }
 }

@@ -1,6 +1,6 @@
 <?php
 
-class Swift_Bug111Test extends \PHPUnit\Framework\TestCase
+class Swift_Bug111Test extends PHPUnit\Framework\TestCase
 {
     public function testUnstructuredHeaderSlashesShouldNotBeEscaped()
     {
@@ -29,7 +29,7 @@ class Swift_Bug111Test extends \PHPUnit\Framework\TestCase
                 ],
             ],
         ];
-        $json = json_encode($complicated_header);
+        $json = \json_encode($complicated_header);
 
         $message = new Swift_Message();
         $headers = $message->getHeaders();

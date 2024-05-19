@@ -70,7 +70,7 @@ class Swift_CharacterReader_Utf8Reader implements Swift_CharacterReader
         "\xe8" => 3, "\xe9" => 3, "\xea" => 3, "\xeb" => 3, "\xec" => 3, "\xed" => 3, "\xee" => 3, "\xef" => 3,
         "\xf0" => 4, "\xf1" => 4, "\xf2" => 4, "\xf3" => 4, "\xf4" => 4, "\xf5" => 4, "\xf6" => 4, "\xf7" => 4,
         "\xf8" => 5, "\xf9" => 5, "\xfa" => 5, "\xfb" => 5, "\xfc" => 6, "\xfd" => 6, "\xfe" => 0, "\xff" => 0,
-     ];
+    ];
 
     /**
      * Returns the complete character map.
@@ -78,7 +78,6 @@ class Swift_CharacterReader_Utf8Reader implements Swift_CharacterReader
      * @param string $string
      * @param int    $startOffset
      * @param array  $currentMap
-     * @param mixed  $ignoredChars
      *
      * @return int
      */
@@ -88,10 +87,10 @@ class Swift_CharacterReader_Utf8Reader implements Swift_CharacterReader
             $currentMap['p'] = $currentMap['i'] = [];
         }
 
-        $strlen = \strlen($string);
-        $charPos = \count($currentMap['p']);
+        $strlen     = \strlen($string);
+        $charPos    = \count($currentMap['p']);
         $foundChars = 0;
-        $invalid = false;
+        $invalid    = false;
         for ($i = 0; $i < $strlen; ++$i) {
             $char = $string[$i];
             $size = self::$s_length_map[$char];
@@ -108,7 +107,7 @@ class Swift_CharacterReader_Utf8Reader implements Swift_CharacterReader
                     $invalid = false;
                 }
                 if (($i + $size) > $strlen) {
-                    $ignoredChars = substr($string, $i);
+                    $ignoredChars = \substr($string, $i);
                     break;
                 }
                 for ($j = 1; $j < $size; ++$j) {

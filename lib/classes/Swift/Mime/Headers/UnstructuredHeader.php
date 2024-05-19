@@ -100,8 +100,8 @@ class Swift_Mime_Headers_UnstructuredHeader extends Swift_Mime_Headers_AbstractH
     {
         if (!$this->getCachedValue()) {
             $this->setCachedValue(
-                $this->encodeWords($this, $this->value)
-                );
+                $this->encodeWords($this, $this->value),
+            );
         }
 
         return $this->getCachedValue();

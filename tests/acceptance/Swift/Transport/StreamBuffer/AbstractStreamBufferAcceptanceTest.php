@@ -1,6 +1,6 @@
 <?php
 
-abstract class Swift_Transport_StreamBuffer_AbstractStreamBufferAcceptanceTest extends \PHPUnit\Framework\TestCase
+abstract class Swift_Transport_StreamBuffer_AbstractStreamBufferAcceptanceTest extends PHPUnit\Framework\TestCase
 {
     protected $buffer;
 
@@ -8,15 +8,15 @@ abstract class Swift_Transport_StreamBuffer_AbstractStreamBufferAcceptanceTest e
 
     protected function setUp(): void
     {
-        if (true == getenv('TRAVIS')) {
+        if (true == \getenv('TRAVIS')) {
             $this->markTestSkipped(
                 'Will fail on travis-ci if not skipped due to travis blocking '.
-                'socket mailing tcp connections.'
-             );
+                'socket mailing tcp connections.',
+            );
         }
 
         $this->buffer = new Swift_Transport_StreamBuffer(
-            $this->getMockBuilder('Swift_ReplacementFilterFactory')->getMock()
+            $this->getMockBuilder('Swift_ReplacementFilterFactory')->getMock(),
         );
     }
 
@@ -63,13 +63,13 @@ abstract class Swift_Transport_StreamBuffer_AbstractStreamBufferAcceptanceTest e
             ->method('write')
             ->withConsecutive(
                 ['x'],
-                ['y']
+                ['y'],
             );
         $is2->expects($this->exactly(2))
             ->method('write')
             ->withConsecutive(
                 ['x'],
-                ['y']
+                ['y'],
             );
 
         $this->buffer->bind($is1);
@@ -108,7 +108,7 @@ abstract class Swift_Transport_StreamBuffer_AbstractStreamBufferAcceptanceTest e
             ->method('write')
             ->withConsecutive(
                 ['x'],
-                ['y']
+                ['y'],
             );
         $is2->expects($this->once())
             ->method('write')

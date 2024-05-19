@@ -24,7 +24,7 @@ class Swift_Transport_SendmailTransportTest extends Swift_Transport_AbstractSmtp
 
     public function testCommandCanBeSetAndFetched()
     {
-        $buf = $this->getBuffer();
+        $buf      = $this->getBuffer();
         $sendmail = $this->getSendmail($buf);
 
         $sendmail->setCommand('/usr/sbin/sendmail -bs');
@@ -33,18 +33,18 @@ class Swift_Transport_SendmailTransportTest extends Swift_Transport_AbstractSmtp
         $this->assertEquals('/usr/sbin/sendmail -oi -t', $sendmail->getCommand());
     }
 
-    public function testSendingMessageIn_t_ModeUsesSimplePipe()
+    public function testSendingMessageInTModeUsesSimplePipe()
     {
-        $buf = $this->getBuffer();
+        $buf      = $this->getBuffer();
         $sendmail = $this->getSendmail($buf);
-        $message = $this->createMessage();
+        $message  = $this->createMessage();
 
         $message->shouldReceive('getTo')
-                ->zeroOrMoreTimes()
-                ->andReturn(['foo@bar' => 'Foobar', 'zip@button' => 'Zippy']);
+            ->zeroOrMoreTimes()
+            ->andReturn(['foo@bar' => 'Foobar', 'zip@button' => 'Zippy']);
         $message->shouldReceive('toByteStream')
-                ->once()
-                ->with($buf);
+            ->once()
+            ->with($buf);
         $buf->shouldReceive('initialize')
             ->once();
         $buf->shouldReceive('terminate')
@@ -60,18 +60,18 @@ class Swift_Transport_SendmailTransportTest extends Swift_Transport_AbstractSmtp
         $this->assertEquals(2, $sendmail->send($message));
     }
 
-    public function testSendingIn_t_ModeWith_i_FlagDoesntEscapeDot()
+    public function testSendingInTModeWithIFlagDoesntEscapeDot()
     {
-        $buf = $this->getBuffer();
+        $buf      = $this->getBuffer();
         $sendmail = $this->getSendmail($buf);
-        $message = $this->createMessage();
+        $message  = $this->createMessage();
 
         $message->shouldReceive('getTo')
-                ->zeroOrMoreTimes()
-                ->andReturn(['foo@bar' => 'Foobar', 'zip@button' => 'Zippy']);
+            ->zeroOrMoreTimes()
+            ->andReturn(['foo@bar' => 'Foobar', 'zip@button' => 'Zippy']);
         $message->shouldReceive('toByteStream')
-                ->once()
-                ->with($buf);
+            ->once()
+            ->with($buf);
         $buf->shouldReceive('initialize')
             ->once();
         $buf->shouldReceive('terminate')
@@ -87,18 +87,18 @@ class Swift_Transport_SendmailTransportTest extends Swift_Transport_AbstractSmtp
         $this->assertEquals(2, $sendmail->send($message));
     }
 
-    public function testSendingInTModeWith_oi_FlagDoesntEscapeDot()
+    public function testSendingInTModeWithOiFlagDoesntEscapeDot()
     {
-        $buf = $this->getBuffer();
+        $buf      = $this->getBuffer();
         $sendmail = $this->getSendmail($buf);
-        $message = $this->createMessage();
+        $message  = $this->createMessage();
 
         $message->shouldReceive('getTo')
-                ->zeroOrMoreTimes()
-                ->andReturn(['foo@bar' => 'Foobar', 'zip@button' => 'Zippy']);
+            ->zeroOrMoreTimes()
+            ->andReturn(['foo@bar' => 'Foobar', 'zip@button' => 'Zippy']);
         $message->shouldReceive('toByteStream')
-                ->once()
-                ->with($buf);
+            ->once()
+            ->with($buf);
         $buf->shouldReceive('initialize')
             ->once();
         $buf->shouldReceive('terminate')
@@ -116,13 +116,13 @@ class Swift_Transport_SendmailTransportTest extends Swift_Transport_AbstractSmtp
 
     public function testSendingMessageRegeneratesId()
     {
-        $buf = $this->getBuffer();
+        $buf      = $this->getBuffer();
         $sendmail = $this->getSendmail($buf);
-        $message = $this->createMessage();
+        $message  = $this->createMessage();
 
         $message->shouldReceive('getTo')
-                ->zeroOrMoreTimes()
-                ->andReturn(['foo@bar' => 'Foobar', 'zip@button' => 'Zippy']);
+            ->zeroOrMoreTimes()
+            ->andReturn(['foo@bar' => 'Foobar', 'zip@button' => 'Zippy']);
         $message->shouldReceive('generateId');
         $buf->shouldReceive('initialize')
             ->once();
@@ -141,7 +141,7 @@ class Swift_Transport_SendmailTransportTest extends Swift_Transport_AbstractSmtp
 
     public function testFluidInterface()
     {
-        $buf = $this->getBuffer();
+        $buf      = $this->getBuffer();
         $sendmail = $this->getTransport($buf);
 
         $ref = $sendmail->setCommand('/foo');

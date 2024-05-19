@@ -1,25 +1,25 @@
 <?php
 
-class Swift_MailerTest extends \SwiftMailerTestCase
+class Swift_MailerTest extends SwiftMailerTestCase
 {
     public function testTransportIsStartedWhenSending()
     {
         $transport = $this->createTransport();
-        $message = $this->createMessage();
+        $message   = $this->createMessage();
 
         $started = false;
         $transport->shouldReceive('isStarted')
-                  ->zeroOrMoreTimes()
-                  ->andReturnUsing(function () use (&$started) {
-                      return $started;
-                  });
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function () use (&$started) {
+                return $started;
+            });
         $transport->shouldReceive('start')
-                  ->once()
-                  ->andReturnUsing(function () use (&$started) {
-                      $started = true;
+            ->once()
+            ->andReturnUsing(function () use (&$started) {
+                $started = true;
 
-                      return;
-                  });
+                return;
+            });
 
         $mailer = $this->createMailer($transport);
         $mailer->send($message);
@@ -28,21 +28,21 @@ class Swift_MailerTest extends \SwiftMailerTestCase
     public function testTransportIsOnlyStartedOnce()
     {
         $transport = $this->createTransport();
-        $message = $this->createMessage();
+        $message   = $this->createMessage();
 
         $started = false;
         $transport->shouldReceive('isStarted')
-                  ->zeroOrMoreTimes()
-                  ->andReturnUsing(function () use (&$started) {
-                      return $started;
-                  });
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function () use (&$started) {
+                return $started;
+            });
         $transport->shouldReceive('start')
-                  ->once()
-                  ->andReturnUsing(function () use (&$started) {
-                      $started = true;
+            ->once()
+            ->andReturnUsing(function () use (&$started) {
+                $started = true;
 
-                      return;
-                  });
+                return;
+            });
 
         $mailer = $this->createMailer($transport);
         for ($i = 0; $i < 10; ++$i) {
@@ -53,10 +53,10 @@ class Swift_MailerTest extends \SwiftMailerTestCase
     public function testMessageIsPassedToTransport()
     {
         $transport = $this->createTransport();
-        $message = $this->createMessage();
+        $message   = $this->createMessage();
         $transport->shouldReceive('send')
-                  ->once()
-                  ->with($message, \Mockery::any());
+            ->once()
+            ->with($message, Mockery::any());
 
         $mailer = $this->createMailer($transport);
         $mailer->send($message);
@@ -65,11 +65,11 @@ class Swift_MailerTest extends \SwiftMailerTestCase
     public function testSendReturnsCountFromTransport()
     {
         $transport = $this->createTransport();
-        $message = $this->createMessage();
+        $message   = $this->createMessage();
         $transport->shouldReceive('send')
-                  ->once()
-                  ->with($message, \Mockery::any())
-                  ->andReturn(57);
+            ->once()
+            ->with($message, Mockery::any())
+            ->andReturn(57);
 
         $mailer = $this->createMailer($transport);
         $this->assertEquals(57, $mailer->send($message));
@@ -80,11 +80,11 @@ class Swift_MailerTest extends \SwiftMailerTestCase
         $failures = [];
 
         $transport = $this->createTransport();
-        $message = $this->createMessage();
+        $message   = $this->createMessage();
         $transport->shouldReceive('send')
-                  ->once()
-                  ->with($message, $failures)
-                  ->andReturn(57);
+            ->once()
+            ->with($message, $failures)
+            ->andReturn(57);
 
         $mailer = $this->createMailer($transport);
         $mailer->send($message, $failures);
@@ -95,15 +95,15 @@ class Swift_MailerTest extends \SwiftMailerTestCase
         $failures = [];
 
         $rfcException = new Swift_RfcComplianceException('test');
-        $transport = $this->createTransport();
-        $message = $this->createMessage();
+        $transport    = $this->createTransport();
+        $message      = $this->createMessage();
         $message->shouldReceive('getTo')
-                  ->once()
-                  ->andReturn(['foo&invalid' => 'Foo', 'bar@valid.tld' => 'Bar']);
+            ->once()
+            ->andReturn(['foo&invalid' => 'Foo', 'bar@valid.tld' => 'Bar']);
         $transport->shouldReceive('send')
-                  ->once()
-                  ->with($message, $failures)
-                  ->andThrow($rfcException);
+            ->once()
+            ->with($message, $failures)
+            ->andThrow($rfcException);
 
         $mailer = $this->createMailer($transport);
         $this->assertEquals(0, $mailer->send($message, $failures), '%s: Should return 0');
@@ -112,13 +112,13 @@ class Swift_MailerTest extends \SwiftMailerTestCase
 
     public function testRegisterPluginDelegatesToTransport()
     {
-        $plugin = $this->createPlugin();
+        $plugin    = $this->createPlugin();
         $transport = $this->createTransport();
-        $mailer = $this->createMailer($transport);
+        $mailer    = $this->createMailer($transport);
 
         $transport->shouldReceive('registerPlugin')
-                  ->once()
-                  ->with($plugin);
+            ->once()
+            ->with($plugin);
 
         $mailer->registerPlugin($plugin);
     }
