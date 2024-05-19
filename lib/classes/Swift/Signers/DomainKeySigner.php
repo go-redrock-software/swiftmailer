@@ -148,7 +148,7 @@ class Swift_Signers_DomainKeySigner implements Swift_Signers_HeaderSigner
      * This method returns the sequence ID of the write (i.e. 1 for first, 2 for
      * second, etc etc).
      *
-     * @param string $bytes
+     * @param string|array $bytes
      *
      * @return int
      * @return $this
@@ -157,6 +157,10 @@ class Swift_Signers_DomainKeySigner implements Swift_Signers_HeaderSigner
      */
     public function write($bytes)
     {
+        // Convert array to string
+        if (\is_array($bytes)) {
+            $bytes = \implode('', $bytes);
+        }
         $this->canonicalizeBody($bytes);
         foreach ($this->bound as $is) {
             $is->write($bytes);
