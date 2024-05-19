@@ -26,7 +26,8 @@
         "mockery/mockery": "^1.0",
         "symfony/phpunit-bridge": "^4.4|^5.4",
         "phpunit/phpunit": "9.6.19",
-        "friendsofphp/php-cs-fixer": "^3.57"
+        "friendsofphp/php-cs-fixer": "^3.57",
+        "rector/rector": "^1.1"
     },
     "suggest": {
         "ext-intl": "Needed to support internationalized email addresses"
