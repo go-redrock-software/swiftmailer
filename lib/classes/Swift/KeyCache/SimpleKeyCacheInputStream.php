@@ -46,11 +46,16 @@ class Swift_KeyCache_SimpleKeyCacheInputStream implements Swift_KeyCache_KeyCach
     /**
      * Writes $bytes to the end of the stream.
      *
-     * @param string                $bytes
+     * @param string|array          $bytes
      * @param Swift_InputByteStream $is    optional
      */
     public function write($bytes, ?Swift_InputByteStream $is = null)
     {
+        // Convert array to string
+        if (\is_array($bytes)) {
+            $bytes = \implode('', $bytes);
+        }
+
         $this->keyCache->setString(
             $this->nsKey,
             $this->itemKey,

@@ -74,7 +74,7 @@ abstract class Swift_ByteStream_AbstractFilterableInputStream implements Swift_I
     /**
      * Writes $bytes to the end of the stream.
      *
-     * @param string $bytes
+     * @param string|array $bytes
      *
      * @return int
      *
@@ -82,6 +82,10 @@ abstract class Swift_ByteStream_AbstractFilterableInputStream implements Swift_I
      */
     public function write($bytes)
     {
+        // Convert array to string
+        if (\is_array($bytes)) {
+            $bytes = \implode('', $bytes);
+        }
         $this->writeBuffer .= $bytes;
         foreach ($this->filters as $filter) {
             if ($filter->shouldBuffer($this->writeBuffer)) {

@@ -94,12 +94,15 @@ class Swift_ByteStream_ArrayByteStream implements Swift_InputByteStream, Swift_O
     /**
      * Writes $bytes to the end of the stream.
      *
-     * @param string $bytes
+     * @param string|array $bytes
      */
     public function write($bytes)
     {
-        $to_add = \str_split($bytes);
-        foreach ($to_add as $value) {
+        // Convert array to string
+        if (\is_array($bytes)) {
+            $bytes = \implode('', $bytes);
+        }
+        foreach (\str_split($bytes) as $value) {
             $this->array[] = $value;
         }
         $this->arraySize = \count($this->array);

@@ -69,10 +69,15 @@ class Swift_Plugins_BandwidthMonitorPlugin implements Swift_Events_SendListener,
     /**
      * Called when a message is sent so that the outgoing counter can be increased.
      *
-     * @param string $bytes
+     * @param string|array $bytes
      */
     public function write($bytes)
     {
+        // Convert array to string
+        if (\is_array($bytes)) {
+            $bytes = \implode('', $bytes);
+        }
+
         $this->out += \strlen($bytes);
         foreach ($this->mirrors as $stream) {
             $stream->write($bytes);
