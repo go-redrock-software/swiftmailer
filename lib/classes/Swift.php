@@ -15,9 +15,10 @@
  */
 abstract class Swift
 {
-    const VERSION = '6.3.0';
+    public const VERSION = '6.3.0';
 
     public static $initialized = false;
+
     public static $inits = [];
 
     /**
@@ -41,13 +42,13 @@ abstract class Swift
     public static function autoload($class)
     {
         // Don't interfere with other autoloaders
-        if (0 !== strpos($class, 'Swift_')) {
+        if (!\str_starts_with($class, 'Swift_')) {
             return;
         }
 
-        $path = __DIR__.'/'.str_replace('_', '/', $class).'.php';
+        $path = __DIR__.'/'.\str_replace('_', '/', $class).'.php';
 
-        if (!file_exists($path)) {
+        if (!\file_exists($path)) {
             return;
         }
 
@@ -73,6 +74,6 @@ abstract class Swift
         if (null !== $callable) {
             self::$inits[] = $callable;
         }
-        spl_autoload_register(['Swift', 'autoload']);
+        \spl_autoload_register(['Swift', 'autoload']);
     }
 }

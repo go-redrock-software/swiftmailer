@@ -39,9 +39,9 @@ class Swift_Mime_ContentEncoder_QpContentEncoderProxy implements Swift_Mime_Cont
      */
     public function __construct(Swift_Mime_ContentEncoder_QpContentEncoder $safeEncoder, Swift_Mime_ContentEncoder_NativeQpContentEncoder $nativeEncoder, $charset)
     {
-        $this->safeEncoder = $safeEncoder;
+        $this->safeEncoder   = $safeEncoder;
         $this->nativeEncoder = $nativeEncoder;
-        $this->charset = $charset;
+        $this->charset       = $charset;
     }
 
     /**
@@ -49,38 +49,26 @@ class Swift_Mime_ContentEncoder_QpContentEncoderProxy implements Swift_Mime_Cont
      */
     public function __clone()
     {
-        $this->safeEncoder = clone $this->safeEncoder;
+        $this->safeEncoder   = clone $this->safeEncoder;
         $this->nativeEncoder = clone $this->nativeEncoder;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function charsetChanged($charset)
     {
         $this->charset = $charset;
         $this->safeEncoder->charsetChanged($charset);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function encodeByteStream(Swift_OutputByteStream $os, Swift_InputByteStream $is, $firstLineOffset = 0, $maxLineLength = 0)
     {
         $this->getEncoder()->encodeByteStream($os, $is, $firstLineOffset, $maxLineLength);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getName()
     {
         return 'quoted-printable';
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function encodeString($string, $firstLineOffset = 0, $maxLineLength = 0)
     {
         return $this->getEncoder()->encodeString($string, $firstLineOffset, $maxLineLength);

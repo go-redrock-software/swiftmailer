@@ -1,6 +1,6 @@
 <?php
 
-class Swift_Mime_HeaderEncoder_Base64HeaderEncoderAcceptanceTest extends \PHPUnit\Framework\TestCase
+class Swift_Mime_HeaderEncoder_Base64HeaderEncoderAcceptanceTest extends PHPUnit\Framework\TestCase
 {
     private $encoder;
 
@@ -17,15 +17,16 @@ class Swift_Mime_HeaderEncoder_Base64HeaderEncoderAcceptanceTest extends \PHPUni
 
             $encodedWrapperLength = \strlen('=?iso-2022-jp?'.$this->encoder->getName().'??=');
 
-            $old = mb_internal_encoding();
-            mb_internal_encoding('utf-8');
-            $newstring = mb_encode_mimeheader($subject, 'iso-2022-jp', 'B', "\r\n");
-            mb_internal_encoding($old);
+            $old = \mb_internal_encoding();
+            \mb_internal_encoding('utf-8');
+            $newstring = \mb_encode_mimeheader($subject, 'iso-2022-jp', 'B', "\r\n");
+            \mb_internal_encoding($old);
 
             $encoded = $this->encoder->encodeString($subject, 0, 75 - $encodedWrapperLength, 'iso-2022-jp');
             $this->assertEquals(
-                $encoded, $newstring,
-                'Encoded string should decode back to original string for sample '
+                $encoded,
+                $newstring,
+                'Encoded string should decode back to original string for sample ',
             );
         }
     }

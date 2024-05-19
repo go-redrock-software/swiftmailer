@@ -76,7 +76,7 @@ class Swift_Mime_SimpleHeaderSet implements Swift_Mime_CharsetObserver
      *
      * @param string $name
      */
-    public function addDateHeader($name, DateTimeInterface $dateTime = null)
+    public function addDateHeader($name, ?DateTimeInterface $dateTime = null)
     {
         $this->storeHeader($name, $this->factory->createDateHeader($name, $dateTime));
     }
@@ -138,7 +138,7 @@ class Swift_Mime_SimpleHeaderSet implements Swift_Mime_CharsetObserver
      */
     public function has($name, $index = 0)
     {
-        $lowerName = strtolower($name ?? '');
+        $lowerName = \strtolower($name ?? '');
 
         if (!\array_key_exists($lowerName, $this->headers)) {
             return false;
@@ -181,13 +181,13 @@ class Swift_Mime_SimpleHeaderSet implements Swift_Mime_CharsetObserver
      */
     public function get($name, $index = 0)
     {
-        $name = strtolower($name ?? '');
+        $name = \strtolower($name ?? '');
 
         if (\func_num_args() < 2) {
             if ($this->has($name)) {
-                $values = array_values($this->headers[$name]);
+                $values = \array_values($this->headers[$name]);
 
-                return array_shift($values);
+                return \array_shift($values);
             }
         } else {
             if ($this->has($name, $index)) {
@@ -208,13 +208,13 @@ class Swift_Mime_SimpleHeaderSet implements Swift_Mime_CharsetObserver
         if (!isset($name)) {
             $headers = [];
             foreach ($this->headers as $collection) {
-                $headers = array_merge($headers, $collection);
+                $headers = \array_merge($headers, $collection);
             }
 
             return $headers;
         }
 
-        $lowerName = strtolower($name ?? '');
+        $lowerName = \strtolower($name ?? '');
         if (!\array_key_exists($lowerName, $this->headers)) {
             return [];
         }
@@ -231,10 +231,10 @@ class Swift_Mime_SimpleHeaderSet implements Swift_Mime_CharsetObserver
     {
         $headers = $this->headers;
         if ($this->canSort()) {
-            uksort($headers, [$this, 'sortHeaders']);
+            \uksort($headers, [$this, 'sortHeaders']);
         }
 
-        return array_keys($headers);
+        return \array_keys($headers);
     }
 
     /**
@@ -247,7 +247,7 @@ class Swift_Mime_SimpleHeaderSet implements Swift_Mime_CharsetObserver
      */
     public function remove($name, $index = 0)
     {
-        $lowerName = strtolower($name ?? '');
+        $lowerName = \strtolower($name ?? '');
         unset($this->headers[$lowerName][$index]);
     }
 
@@ -258,7 +258,7 @@ class Swift_Mime_SimpleHeaderSet implements Swift_Mime_CharsetObserver
      */
     public function removeAll($name)
     {
-        $lowerName = strtolower($name ?? '');
+        $lowerName = \strtolower($name ?? '');
         unset($this->headers[$lowerName]);
     }
 
@@ -269,7 +269,7 @@ class Swift_Mime_SimpleHeaderSet implements Swift_Mime_CharsetObserver
      */
     public function defineOrdering(array $sequence)
     {
-        $this->order = array_flip(array_map('strtolower', $sequence));
+        $this->order = \array_flip(\array_map('strtolower', $sequence));
     }
 
     /**
@@ -279,7 +279,7 @@ class Swift_Mime_SimpleHeaderSet implements Swift_Mime_CharsetObserver
      */
     public function setAlwaysDisplayed(array $names)
     {
-        $this->required = array_flip(array_map('strtolower', $names));
+        $this->required = \array_flip(\array_map('strtolower', $names));
     }
 
     /**
@@ -299,10 +299,10 @@ class Swift_Mime_SimpleHeaderSet implements Swift_Mime_CharsetObserver
      */
     public function toString()
     {
-        $string = '';
+        $string  = '';
         $headers = $this->headers;
         if ($this->canSort()) {
-            uksort($headers, [$this, 'sortHeaders']);
+            \uksort($headers, [$this, 'sortHeaders']);
         }
         foreach ($headers as $collection) {
             foreach ($collection as $header) {
@@ -330,13 +330,13 @@ class Swift_Mime_SimpleHeaderSet implements Swift_Mime_CharsetObserver
     /** Save a Header to the internal collection */
     private function storeHeader($name, Swift_Mime_Header $header, $offset = null)
     {
-        if (!isset($this->headers[strtolower($name ?? '')])) {
-            $this->headers[strtolower($name ?? '')] = [];
+        if (!isset($this->headers[\strtolower($name ?? '')])) {
+            $this->headers[\strtolower($name ?? '')] = [];
         }
         if (!isset($offset)) {
-            $this->headers[strtolower($name ?? '')][] = $header;
+            $this->headers[\strtolower($name ?? '')][] = $header;
         } else {
-            $this->headers[strtolower($name ?? '')][$offset] = $header;
+            $this->headers[\strtolower($name ?? '')][$offset] = $header;
         }
     }
 
@@ -349,10 +349,10 @@ class Swift_Mime_SimpleHeaderSet implements Swift_Mime_CharsetObserver
     /** uksort() algorithm for Header ordering */
     private function sortHeaders($a, $b)
     {
-        $lowerA = strtolower($a ?? '');
-        $lowerB = strtolower($b ?? '');
-        $aPos = \array_key_exists($lowerA, $this->order) ? $this->order[$lowerA] : -1;
-        $bPos = \array_key_exists($lowerB, $this->order) ? $this->order[$lowerB] : -1;
+        $lowerA = \strtolower($a ?? '');
+        $lowerB = \strtolower($b ?? '');
+        $aPos   = \array_key_exists($lowerA, $this->order) ? $this->order[$lowerA] : -1;
+        $bPos   = \array_key_exists($lowerB, $this->order) ? $this->order[$lowerB] : -1;
 
         if (-1 === $aPos && -1 === $bPos) {
             // just be sure to be determinist here
@@ -371,7 +371,7 @@ class Swift_Mime_SimpleHeaderSet implements Swift_Mime_CharsetObserver
     /** Test if the given Header is always displayed */
     private function isDisplayed(Swift_Mime_Header $header)
     {
-        return \array_key_exists(strtolower($header->getFieldName() ?? ''), $this->required);
+        return \array_key_exists(\strtolower($header->getFieldName() ?? ''), $this->required);
     }
 
     /** Notify all Headers of the new charset */

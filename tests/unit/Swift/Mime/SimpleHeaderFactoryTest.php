@@ -2,7 +2,7 @@
 
 use Egulias\EmailValidator\EmailValidator;
 
-class Swift_Mime_SimpleHeaderFactoryTest extends \PHPUnit\Framework\TestCase
+class Swift_Mime_SimpleHeaderFactoryTest extends PHPUnit\Framework\TestCase
 {
     private $factory;
 
@@ -25,9 +25,10 @@ class Swift_Mime_SimpleHeaderFactoryTest extends \PHPUnit\Framework\TestCase
 
     public function testMailboxHeaderHasCorrectModel()
     {
-        $header = $this->factory->createMailboxHeader('X-Foo',
-            ['foo@bar' => 'FooBar']
-            );
+        $header = $this->factory->createMailboxHeader(
+            'X-Foo',
+            ['foo@bar' => 'FooBar'],
+        );
         $this->assertEquals(['foo@bar' => 'FooBar'], $header->getFieldBodyModel());
     }
 
@@ -45,8 +46,8 @@ class Swift_Mime_SimpleHeaderFactoryTest extends \PHPUnit\Framework\TestCase
 
     public function testDateHeaderHasCorrectModel()
     {
-        $dateTime = new \DateTimeImmutable();
-        $header = $this->factory->createDateHeader('X-Date', $dateTime);
+        $dateTime = new DateTimeImmutable();
+        $header   = $this->factory->createDateHeader('X-Date', $dateTime);
         $this->assertEquals($dateTime, $header->getFieldBodyModel());
     }
 
@@ -88,9 +89,11 @@ class Swift_Mime_SimpleHeaderFactoryTest extends \PHPUnit\Framework\TestCase
 
     public function testParameterizedHeaderHasCorrectParams()
     {
-        $header = $this->factory->createParameterizedHeader('X-Foo', 'bar',
-            ['zip' => 'button']
-            );
+        $header = $this->factory->createParameterizedHeader(
+            'X-Foo',
+            'bar',
+            ['zip' => 'button'],
+        );
         $this->assertEquals(['zip' => 'button'], $header->getParameters());
     }
 
@@ -134,12 +137,12 @@ class Swift_Mime_SimpleHeaderFactoryTest extends \PHPUnit\Framework\TestCase
     {
         $encoder = $this->createHeaderEncoder();
         $encoder->expects($this->once())
-                ->method('charsetChanged')
-                ->with('utf-8');
+            ->method('charsetChanged')
+            ->with('utf-8');
         $paramEncoder = $this->createParamEncoder();
         $paramEncoder->expects($this->once())
-                     ->method('charsetChanged')
-                     ->with('utf-8');
+            ->method('charsetChanged')
+            ->with('utf-8');
 
         $factory = $this->createFactory($encoder, $paramEncoder);
 
@@ -153,8 +156,8 @@ class Swift_Mime_SimpleHeaderFactoryTest extends \PHPUnit\Framework\TestCase
                 ?: $this->createHeaderEncoder(),
             $paramEncoder
                 ?: $this->createParamEncoder(),
-            new EmailValidator()
-            );
+            new EmailValidator(),
+        );
     }
 
     private function createHeaderEncoder()

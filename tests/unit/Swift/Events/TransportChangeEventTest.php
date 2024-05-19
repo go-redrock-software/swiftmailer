@@ -1,20 +1,20 @@
 <?php
 
-class Swift_Events_TransportChangeEventTest extends \PHPUnit\Framework\TestCase
+class Swift_Events_TransportChangeEventTest extends PHPUnit\Framework\TestCase
 {
     public function testGetTransportReturnsTransport()
     {
         $transport = $this->createTransport();
-        $evt = $this->createEvent($transport);
-        $ref = $evt->getTransport();
+        $evt       = $this->createEvent($transport);
+        $ref       = $evt->getTransport();
         $this->assertEquals($transport, $ref);
     }
 
     public function testSourceIsTransport()
     {
         $transport = $this->createTransport();
-        $evt = $this->createEvent($transport);
-        $ref = $evt->getSource();
+        $evt       = $this->createEvent($transport);
+        $ref       = $evt->getSource();
         $this->assertEquals($transport, $ref);
     }
 

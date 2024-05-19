@@ -15,11 +15,15 @@
  */
 class Swift_Mime_SimpleMessage extends Swift_Mime_MimePart
 {
-    const PRIORITY_HIGHEST = 1;
-    const PRIORITY_HIGH = 2;
-    const PRIORITY_NORMAL = 3;
-    const PRIORITY_LOW = 4;
-    const PRIORITY_LOWEST = 5;
+    public const PRIORITY_HIGHEST = 1;
+
+    public const PRIORITY_HIGH = 2;
+
+    public const PRIORITY_NORMAL = 3;
+
+    public const PRIORITY_LOW = 4;
+
+    public const PRIORITY_LOWEST = 5;
 
     /**
      * Create a new SimpleMessage with $headers, $encoder and $cache.
@@ -46,7 +50,7 @@ class Swift_Mime_SimpleMessage extends Swift_Mime_MimePart
             'MIME-Version',
             'Content-Type',
             'Content-Transfer-Encoding',
-            ]);
+        ]);
         $this->getHeaders()->setAlwaysDisplayed(['Date', 'Message-ID', 'From']);
         $this->getHeaders()->addTextHeader('MIME-Version', '1.0');
         $this->setDate(new DateTimeImmutable());
@@ -185,7 +189,7 @@ class Swift_Mime_SimpleMessage extends Swift_Mime_MimePart
      */
     public function addFrom($address, $name = null)
     {
-        $current = $this->getFrom();
+        $current           = $this->getFrom();
         $current[$address] = $name;
 
         return $this->setFrom($current);
@@ -219,8 +223,6 @@ class Swift_Mime_SimpleMessage extends Swift_Mime_MimePart
 
     /**
      * Get the from address of this message.
-     *
-     * @return mixed
      */
     public function getFrom()
     {
@@ -239,7 +241,7 @@ class Swift_Mime_SimpleMessage extends Swift_Mime_MimePart
      */
     public function addReplyTo($address, $name = null)
     {
-        $current = $this->getReplyTo();
+        $current           = $this->getReplyTo();
         $current[$address] = $name;
 
         return $this->setReplyTo($current);
@@ -253,8 +255,7 @@ class Swift_Mime_SimpleMessage extends Swift_Mime_MimePart
      * If $name is passed and the first parameter is a string, this name will be
      * associated with the address.
      *
-     * @param mixed  $addresses
-     * @param string $name      optional
+     * @param string $name optional
      *
      * @return $this
      */
@@ -293,7 +294,7 @@ class Swift_Mime_SimpleMessage extends Swift_Mime_MimePart
      */
     public function addTo($address, $name = null)
     {
-        $current = $this->getTo();
+        $current           = $this->getTo();
         $current[$address] = $name;
 
         return $this->setTo($current);
@@ -308,8 +309,7 @@ class Swift_Mime_SimpleMessage extends Swift_Mime_MimePart
      * If $name is passed and the first parameter is a string, this name will be
      * associated with the address.
      *
-     * @param mixed  $addresses
-     * @param string $name      optional
+     * @param string $name optional
      *
      * @return $this
      */
@@ -348,7 +348,7 @@ class Swift_Mime_SimpleMessage extends Swift_Mime_MimePart
      */
     public function addCc($address, $name = null)
     {
-        $current = $this->getCc();
+        $current           = $this->getCc();
         $current[$address] = $name;
 
         return $this->setCc($current);
@@ -360,8 +360,7 @@ class Swift_Mime_SimpleMessage extends Swift_Mime_MimePart
      * If $name is passed and the first parameter is a string, this name will be
      * associated with the address.
      *
-     * @param mixed  $addresses
-     * @param string $name      optional
+     * @param string $name optional
      *
      * @return $this
      */
@@ -400,7 +399,7 @@ class Swift_Mime_SimpleMessage extends Swift_Mime_MimePart
      */
     public function addBcc($address, $name = null)
     {
-        $current = $this->getBcc();
+        $current           = $this->getBcc();
         $current[$address] = $name;
 
         return $this->setBcc($current);
@@ -412,8 +411,7 @@ class Swift_Mime_SimpleMessage extends Swift_Mime_MimePart
      * If $name is passed and the first parameter is a string, this name will be
      * associated with the address.
      *
-     * @param mixed  $addresses
-     * @param string $name      optional
+     * @param string $name optional
      *
      * @return $this
      */
@@ -453,21 +451,25 @@ class Swift_Mime_SimpleMessage extends Swift_Mime_MimePart
     {
         $priorityMap = [
             self::PRIORITY_HIGHEST => 'Highest',
-            self::PRIORITY_HIGH => 'High',
-            self::PRIORITY_NORMAL => 'Normal',
-            self::PRIORITY_LOW => 'Low',
-            self::PRIORITY_LOWEST => 'Lowest',
-            ];
-        $pMapKeys = array_keys($priorityMap);
-        if ($priority > max($pMapKeys)) {
-            $priority = max($pMapKeys);
-        } elseif ($priority < min($pMapKeys)) {
-            $priority = min($pMapKeys);
+            self::PRIORITY_HIGH    => 'High',
+            self::PRIORITY_NORMAL  => 'Normal',
+            self::PRIORITY_LOW     => 'Low',
+            self::PRIORITY_LOWEST  => 'Lowest',
+        ];
+        $pMapKeys = \array_keys($priorityMap);
+        if ($priority > \max($pMapKeys)) {
+            $priority = \max($pMapKeys);
+        } elseif ($priority < \min($pMapKeys)) {
+            $priority = \min($pMapKeys);
         }
-        if (!$this->setHeaderFieldModel('X-Priority',
-            sprintf('%d (%s)', $priority, $priorityMap[$priority]))) {
-            $this->getHeaders()->addTextHeader('X-Priority',
-                sprintf('%d (%s)', $priority, $priorityMap[$priority]));
+        if (!$this->setHeaderFieldModel(
+            'X-Priority',
+            \sprintf('%d (%s)', $priority, $priorityMap[$priority]),
+        )) {
+            $this->getHeaders()->addTextHeader(
+                'X-Priority',
+                \sprintf('%d (%s)', $priority, $priorityMap[$priority]),
+            );
         }
 
         return $this;
@@ -483,9 +485,10 @@ class Swift_Mime_SimpleMessage extends Swift_Mime_MimePart
      */
     public function getPriority()
     {
-        list($priority) = sscanf($this->getHeaderFieldModel('X-Priority'),
-            '%[1-5]'
-            );
+        list($priority) = \sscanf(
+            $this->getHeaderFieldModel('X-Priority'),
+            '%[1-5]',
+        );
 
         return $priority ?? 3;
     }
@@ -524,7 +527,7 @@ class Swift_Mime_SimpleMessage extends Swift_Mime_MimePart
      */
     public function attach(Swift_Mime_SimpleMimeEntity $entity)
     {
-        $this->setChildren(array_merge($this->getChildren(), [$entity]));
+        $this->setChildren(\array_merge($this->getChildren(), [$entity]));
 
         return $this;
     }
@@ -569,7 +572,7 @@ class Swift_Mime_SimpleMessage extends Swift_Mime_MimePart
     public function toString()
     {
         if (\count($children = $this->getChildren()) > 0 && '' != $this->getBody()) {
-            $this->setChildren(array_merge([$this->becomeMimePart()], $children));
+            $this->setChildren(\array_merge([$this->becomeMimePart()], $children));
             $string = parent::toString();
             $this->setChildren($children);
         } else {
@@ -597,7 +600,7 @@ class Swift_Mime_SimpleMessage extends Swift_Mime_MimePart
     public function toByteStream(Swift_InputByteStream $is)
     {
         if (\count($children = $this->getChildren()) > 0 && '' != $this->getBody()) {
-            $this->setChildren(array_merge([$this->becomeMimePart()], $children));
+            $this->setChildren(\array_merge([$this->becomeMimePart()], $children));
             parent::toByteStream($is);
             $this->setChildren($children);
         } else {
@@ -614,9 +617,13 @@ class Swift_Mime_SimpleMessage extends Swift_Mime_MimePart
     /** Turn the body of this message into a child of itself if needed */
     protected function becomeMimePart()
     {
-        $part = new parent($this->getHeaders()->newInstance(), $this->getEncoder(),
-            $this->getCache(), $this->getIdGenerator(), $this->userCharset
-            );
+        $part = new parent(
+            $this->getHeaders()->newInstance(),
+            $this->getEncoder(),
+            $this->getCache(),
+            $this->getIdGenerator(),
+            $this->userCharset,
+        );
         $part->setContentType($this->userContentType);
         $part->setBody($this->getBody());
         $part->setFormat($this->userFormat);

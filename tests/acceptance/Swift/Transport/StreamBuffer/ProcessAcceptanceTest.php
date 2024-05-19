@@ -9,7 +9,7 @@ class Swift_Transport_StreamBuffer_ProcessAcceptanceTest extends Swift_Transport
         if (!\defined('SWIFT_SENDMAIL_PATH')) {
             $this->markTestSkipped(
                 'Cannot run test without a path to sendmail (define '.
-                'SWIFT_SENDMAIL_PATH in tests/acceptance.conf.php if you wish to run this test)'
+                'SWIFT_SENDMAIL_PATH in tests/acceptance.conf.php if you wish to run this test)',
             );
         }
 
@@ -32,7 +32,6 @@ class Swift_Transport_StreamBuffer_ProcessAcceptanceTest extends Swift_Transport
 
         // Assert the line starts with a valid SMTP response code (e.g., "220")
         $this->assertMatchesRegularExpression('/^\d{3}/', $line);
-
     }
 
     public function testWrite()
@@ -52,18 +51,16 @@ class Swift_Transport_StreamBuffer_ProcessAcceptanceTest extends Swift_Transport
 
         // Assert the response starts with a valid SMTP response code (e.g., "220")
         $this->assertMatchesRegularExpression('/^\d{3}/', $response);
-
-
     }
 
     protected function initializeBuffer()
     {
-        /**
+        /*
          * This is suppressed because this would be set in a file (acceptance.conf.php)
          * @noinspection PhpUndefinedConstantInspection
          */
         $this->buffer->initialize([
-            'type' => Swift_Transport_IoBuffer::TYPE_PROCESS,
+            'type'    => Swift_Transport_IoBuffer::TYPE_PROCESS,
             'command' => SWIFT_SENDMAIL_PATH.' -bs',
         ]);
     }

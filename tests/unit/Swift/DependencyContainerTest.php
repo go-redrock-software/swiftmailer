@@ -3,6 +3,7 @@
 class One
 {
     public $arg1;
+
     public $arg2;
 
     public function __construct($arg1 = null, $arg2 = null)
@@ -12,7 +13,7 @@ class One
     }
 }
 
-class Swift_DependencyContainerTest extends \PHPUnit\Framework\TestCase
+class Swift_DependencyContainerTest extends PHPUnit\Framework\TestCase
 {
     private $container;
 
@@ -146,8 +147,9 @@ class Swift_DependencyContainerTest extends \PHPUnit\Framework\TestCase
             ->withDependencies(['one', 'foo']);
         $deps = $this->container->createDependenciesFor('two');
         $this->assertEquals(
-            [$this->container->lookup('one'), 'FOO'], $deps
-            );
+            [$this->container->lookup('one'), 'FOO'],
+            $deps,
+        );
     }
 
     public function testArrayOfDependenciesCanBeSpecified()

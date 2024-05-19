@@ -26,7 +26,7 @@ class Swift_Mime_ContentEncoder_Base64ContentEncoder extends Swift_Encoder_Base6
             $maxLineLength = 76;
         }
 
-        $remainder = 0;
+        $remainder                      = 0;
         $base64ReadBufferRemainderBytes = '';
 
         // To reduce memory usage, the output buffer is streamed to the input buffer like so:
@@ -38,7 +38,7 @@ class Swift_Mime_ContentEncoder_Base64ContentEncoder extends Swift_Encoder_Base6
         // When the OutputStream is empty, we must flush any remainder bytes.
         while (true) {
             $readBytes = $os->read(8192);
-            $atEOF = (false === $readBytes);
+            $atEOF     = (false === $readBytes);
 
             if ($atEOF) {
                 $streamTheseBytes = $base64ReadBufferRemainderBytes;
@@ -46,7 +46,7 @@ class Swift_Mime_ContentEncoder_Base64ContentEncoder extends Swift_Encoder_Base6
                 $streamTheseBytes = $base64ReadBufferRemainderBytes.$readBytes;
             }
             $base64ReadBufferRemainderBytes = '';
-            $bytesLength = \strlen($streamTheseBytes);
+            $bytesLength                    = \strlen($streamTheseBytes);
 
             if (0 === $bytesLength) { // no data left to encode
                 break;
@@ -57,21 +57,21 @@ class Swift_Mime_ContentEncoder_Base64ContentEncoder extends Swift_Encoder_Base6
             if (!$atEOF) {
                 $excessBytes = $bytesLength % 3;
                 if (0 !== $excessBytes) {
-                    $base64ReadBufferRemainderBytes = substr($streamTheseBytes, -$excessBytes);
-                    $streamTheseBytes = substr($streamTheseBytes, 0, $bytesLength - $excessBytes);
+                    $base64ReadBufferRemainderBytes = \substr($streamTheseBytes, -$excessBytes);
+                    $streamTheseBytes               = \substr($streamTheseBytes, 0, $bytesLength - $excessBytes);
                 }
             }
 
-            $encoded = base64_encode($streamTheseBytes);
+            $encoded            = \base64_encode($streamTheseBytes);
             $encodedTransformed = '';
-            $thisMaxLineLength = $maxLineLength - $remainder - $firstLineOffset;
+            $thisMaxLineLength  = $maxLineLength - $remainder - $firstLineOffset;
 
             while ($thisMaxLineLength < \strlen($encoded)) {
-                $encodedTransformed .= substr($encoded, 0, $thisMaxLineLength)."\r\n";
-                $firstLineOffset = 0;
-                $encoded = substr($encoded, $thisMaxLineLength);
+                $encodedTransformed .= \substr($encoded, 0, $thisMaxLineLength)."\r\n";
+                $firstLineOffset   = 0;
+                $encoded           = \substr($encoded, $thisMaxLineLength);
                 $thisMaxLineLength = $maxLineLength;
-                $remainder = 0;
+                $remainder         = 0;
             }
 
             if (0 < $remainingLength = \strlen($encoded)) {

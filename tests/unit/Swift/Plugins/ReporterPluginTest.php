@@ -1,11 +1,11 @@
 <?php
 
-class Swift_Plugins_ReporterPluginTest extends \SwiftMailerTestCase
+class Swift_Plugins_ReporterPluginTest extends SwiftMailerTestCase
 {
     public function testReportingPasses()
     {
-        $message = $this->createMessage();
-        $evt = $this->createSendEvent();
+        $message  = $this->createMessage();
+        $evt      = $this->createSendEvent();
         $reporter = $this->createReporter();
 
         $message->shouldReceive('getTo')->zeroOrMoreTimes()->andReturn(['foo@bar.tld' => 'Foo']);
@@ -19,8 +19,8 @@ class Swift_Plugins_ReporterPluginTest extends \SwiftMailerTestCase
 
     public function testReportingFailedTo()
     {
-        $message = $this->createMessage();
-        $evt = $this->createSendEvent();
+        $message  = $this->createMessage();
+        $evt      = $this->createSendEvent();
         $reporter = $this->createReporter();
 
         $message->shouldReceive('getTo')->zeroOrMoreTimes()->andReturn(['foo@bar.tld' => 'Foo', 'zip@button' => 'Zip']);
@@ -35,8 +35,8 @@ class Swift_Plugins_ReporterPluginTest extends \SwiftMailerTestCase
 
     public function testReportingFailedCc()
     {
-        $message = $this->createMessage();
-        $evt = $this->createSendEvent();
+        $message  = $this->createMessage();
+        $evt      = $this->createSendEvent();
         $reporter = $this->createReporter();
 
         $message->shouldReceive('getTo')->zeroOrMoreTimes()->andReturn(['foo@bar.tld' => 'Foo']);
@@ -53,8 +53,8 @@ class Swift_Plugins_ReporterPluginTest extends \SwiftMailerTestCase
 
     public function testReportingFailedBcc()
     {
-        $message = $this->createMessage();
-        $evt = $this->createSendEvent();
+        $message  = $this->createMessage();
+        $evt      = $this->createSendEvent();
         $reporter = $this->createReporter();
 
         $message->shouldReceive('getTo')->zeroOrMoreTimes()->andReturn(['foo@bar.tld' => 'Foo']);

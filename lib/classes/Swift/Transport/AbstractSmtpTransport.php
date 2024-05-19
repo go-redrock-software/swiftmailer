@@ -30,7 +30,7 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
     protected $addressEncoder;
 
     /** Whether the PIPELINING SMTP extension is enabled (RFC 2920) */
-    protected $pipelining = null;
+    protected $pipelining;
 
     /** The pipelined commands waiting for response */
     protected $pipeline = [];
@@ -46,11 +46,11 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
      *
      * @param string $localDomain
      */
-    public function __construct(Swift_Transport_IoBuffer $buf, Swift_Events_EventDispatcher $dispatcher, $localDomain = '127.0.0.1', Swift_AddressEncoder $addressEncoder = null)
+    public function __construct(Swift_Transport_IoBuffer $buf, Swift_Events_EventDispatcher $dispatcher, $localDomain = '127.0.0.1', ?Swift_AddressEncoder $addressEncoder = null)
     {
-        $this->buffer = $buf;
+        $this->buffer          = $buf;
         $this->eventDispatcher = $dispatcher;
-        $this->addressEncoder = $addressEncoder ?? new Swift_AddressEncoder_IdnAddressEncoder();
+        $this->addressEncoder  = $addressEncoder ?? new Swift_AddressEncoder_IdnAddressEncoder();
         $this->setLocalDomain($localDomain);
     }
 
@@ -70,10 +70,10 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
      */
     public function setLocalDomain($domain)
     {
-        if ('[' !== substr($domain, 0, 1)) {
-            if (filter_var($domain, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+        if ('[' !== \substr($domain, 0, 1)) {
+            if (\filter_var($domain, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
                 $domain = '['.$domain.']';
-            } elseif (filter_var($domain, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+            } elseif (\filter_var($domain, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
                 $domain = '[IPv6:'.$domain.']';
             }
         }
@@ -181,7 +181,7 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
             $this->start();
         }
 
-        $sent = 0;
+        $sent             = 0;
         $failedRecipients = (array) $failedRecipients;
 
         if ($evt = $this->eventDispatcher->createSendEvent($this, $message)) {
@@ -195,10 +195,10 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
             $this->throwException(new Swift_TransportException('Cannot send message without a sender address'));
         }
 
-        $to = (array) $message->getTo();
-        $cc = (array) $message->getCc();
+        $to  = (array) $message->getTo();
+        $cc  = (array) $message->getCc();
         $bcc = (array) $message->getBcc();
-        $tos = array_merge($to, $cc, $bcc);
+        $tos = \array_merge($to, $cc, $bcc);
 
         $message->setBcc([]);
 
@@ -220,7 +220,7 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
             $this->eventDispatcher->dispatchEvent($evt, 'sendPerformed');
         }
 
-        $message->generateId(); //Make sure a new Message ID is used
+        $message->generateId(); // Make sure a new Message ID is used
 
         return $sent;
     }
@@ -256,9 +256,6 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
         $this->started = false;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function ping()
     {
         try {
@@ -324,7 +321,7 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
     public function executeCommand($command, $codes = [], &$failures = null, $pipeline = false, $address = null)
     {
         $failures = (array) $failures;
-        $seq = $this->buffer->write($command);
+        $seq      = $this->buffer->write($command);
         if ($evt = $this->eventDispatcher->createCommandEvent($this, $command, $codes)) {
             $this->eventDispatcher->dispatchEvent($evt, 'commandSent');
         }
@@ -338,8 +335,8 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
         $response = null;
 
         while ($this->pipeline) {
-            list($command, $seq, $codes, $address) = array_shift($this->pipeline);
-            $response = $this->getFullResponse($seq);
+            list($command, $seq, $codes, $address) = \array_shift($this->pipeline);
+            $response                              = $this->getFullResponse($seq);
             try {
                 $this->assertResponseCode($response, $codes);
             } catch (Swift_TransportException $e) {
@@ -364,8 +361,9 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
     protected function doHeloCommand()
     {
         $this->executeCommand(
-            sprintf("HELO %s\r\n", $this->domain), [250]
-            );
+            \sprintf("HELO %s\r\n", $this->domain),
+            [250],
+        );
     }
 
     /** Send the MAIL FROM command */
@@ -373,8 +371,11 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
     {
         $address = $this->addressEncoder->encodeString($address);
         $this->executeCommand(
-            sprintf("MAIL FROM:<%s>\r\n", $address), [250], $failures, true
-            );
+            \sprintf("MAIL FROM:<%s>\r\n", $address),
+            [250],
+            $failures,
+            true,
+        );
     }
 
     /** Send the RCPT TO command */
@@ -382,8 +383,12 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
     {
         $address = $this->addressEncoder->encodeString($address);
         $this->executeCommand(
-            sprintf("RCPT TO:<%s>\r\n", $address), [250, 251, 252], $failures, true, $address
-            );
+            \sprintf("RCPT TO:<%s>\r\n", $address),
+            [250, 251, 252],
+            $failures,
+            true,
+            $address,
+        );
     }
 
     /** Send the DATA command */
@@ -411,17 +416,17 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
     {
         $return = $message->getReturnPath();
         $sender = $message->getSender();
-        $from = $message->getFrom();
-        $path = null;
+        $from   = $message->getFrom();
+        $path   = null;
         if (!empty($return)) {
             $path = $return;
         } elseif (!empty($sender)) {
             // Don't use array_keys
-            reset($sender); // Reset Pointer to first pos
-            $path = key($sender); // Get key
+            \reset($sender); // Reset Pointer to first pos
+            $path = \key($sender); // Get key
         } elseif (!empty($from)) {
-            reset($from); // Reset Pointer to first pos
-            $path = key($from); // Get key
+            \reset($from); // Reset Pointer to first pos
+            $path = \key($from); // Get key
         }
 
         return $path;
@@ -444,19 +449,22 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
     protected function assertResponseCode($response, $wanted)
     {
         if (!$response) {
-            $this->throwException(new Swift_TransportException('Expected response code '.implode('/', $wanted).' but got an empty response'));
+            $this->throwException(new Swift_TransportException('Expected response code '.\implode('/', $wanted).' but got an empty response'));
         }
 
-        list($code) = sscanf($response, '%3d');
-        $valid = (empty($wanted) || \in_array($code, $wanted));
+        list($code) = \sscanf($response, '%3d');
+        $valid      = (empty($wanted) || \in_array($code, $wanted));
 
-        if ($evt = $this->eventDispatcher->createResponseEvent($this, $response,
-            $valid)) {
+        if ($evt = $this->eventDispatcher->createResponseEvent(
+            $this,
+            $response,
+            $valid,
+        )) {
             $this->eventDispatcher->dispatchEvent($evt, 'responseReceived');
         }
 
         if (!$valid) {
-            $this->throwException(new Swift_TransportException('Expected response code '.implode('/', $wanted).' but got code "'.$code.'", with message "'.$response.'"', $code));
+            $this->throwException(new Swift_TransportException('Expected response code '.\implode('/', $wanted).' but got code "'.$code.'", with message "'.$response.'"', $code));
         }
     }
 
@@ -514,8 +522,12 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
             return 0;
         }
 
-        return $this->doMailTransaction($message, $reversePath, array_keys($to),
-            $failedRecipients);
+        return $this->doMailTransaction(
+            $message,
+            $reversePath,
+            \array_keys($to),
+            $failedRecipients,
+        );
     }
 
     /**
@@ -531,11 +543,11 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
 
     public function __sleep()
     {
-        throw new \BadMethodCallException('Cannot serialize '.__CLASS__);
+        throw new BadMethodCallException('Cannot serialize '.__CLASS__);
     }
 
     public function __wakeup()
     {
-        throw new \BadMethodCallException('Cannot unserialize '.__CLASS__);
+        throw new BadMethodCallException('Cannot unserialize '.__CLASS__);
     }
 }

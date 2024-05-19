@@ -7,7 +7,7 @@ use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
  *
  * @author Rouven Weßling
  */
-class SwiftMailerTestCase extends \PHPUnit\Framework\TestCase
+class SwiftMailerTestCase extends PHPUnit\Framework\TestCase
 {
     use MockeryPHPUnitIntegration;
 
@@ -15,13 +15,13 @@ class SwiftMailerTestCase extends \PHPUnit\Framework\TestCase
     {
         self::validatePattern($pattern);
 
-        return new \PHPUnit\Framework\Constraint\RegularExpression($pattern);
+        return new PHPUnit\Framework\Constraint\RegularExpression($pattern);
     }
 
     private static function validatePattern($pattern)
     {
         if (!\is_string($pattern)) {
-            throw new \InvalidArgumentException(sprintf('Argument 1 passed must be of the type string, %s given', gettype($pattern)));
+            throw new InvalidArgumentException(\sprintf('Argument 1 passed must be of the type string, %s given', \gettype($pattern)));
         }
     }
 
@@ -33,6 +33,6 @@ class SwiftMailerTestCase extends \PHPUnit\Framework\TestCase
 
     protected function getMockery($class)
     {
-        return \Mockery::mock($class);
+        return Mockery::mock($class);
     }
 }

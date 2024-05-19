@@ -15,7 +15,7 @@
  */
 abstract class Swift_Mime_Headers_AbstractHeader implements Swift_Mime_Header
 {
-    const PHRASE_PATTERN = '(?:(?:(?:(?:(?:(?:(?:[ \t]*(?:\r\n))?[ \t])?(\((?:(?:(?:[ \t]*(?:\r\n))?[ \t])|(?:(?:[\x01-\x08\x0B\x0C\x0E-\x19\x7F]|[\x21-\x27\x2A-\x5B\x5D-\x7E])|(?:\\[\x00-\x08\x0B\x0C\x0E-\x7F])|(?1)))*(?:(?:[ \t]*(?:\r\n))?[ \t])?\)))*(?:(?:(?:(?:[ \t]*(?:\r\n))?[ \t])?(\((?:(?:(?:[ \t]*(?:\r\n))?[ \t])|(?:(?:[\x01-\x08\x0B\x0C\x0E-\x19\x7F]|[\x21-\x27\x2A-\x5B\x5D-\x7E])|(?:\\[\x00-\x08\x0B\x0C\x0E-\x7F])|(?1)))*(?:(?:[ \t]*(?:\r\n))?[ \t])?\)))|(?:(?:[ \t]*(?:\r\n))?[ \t])))?[a-zA-Z0-9!#\$%&\'\*\+\-\/=\?\^_`\{\}\|~]+(?:(?:(?:(?:[ \t]*(?:\r\n))?[ \t])?(\((?:(?:(?:[ \t]*(?:\r\n))?[ \t])|(?:(?:[\x01-\x08\x0B\x0C\x0E-\x19\x7F]|[\x21-\x27\x2A-\x5B\x5D-\x7E])|(?:\\[\x00-\x08\x0B\x0C\x0E-\x7F])|(?1)))*(?:(?:[ \t]*(?:\r\n))?[ \t])?\)))*(?:(?:(?:(?:[ \t]*(?:\r\n))?[ \t])?(\((?:(?:(?:[ \t]*(?:\r\n))?[ \t])|(?:(?:[\x01-\x08\x0B\x0C\x0E-\x19\x7F]|[\x21-\x27\x2A-\x5B\x5D-\x7E])|(?:\\[\x00-\x08\x0B\x0C\x0E-\x7F])|(?1)))*(?:(?:[ \t]*(?:\r\n))?[ \t])?\)))|(?:(?:[ \t]*(?:\r\n))?[ \t])))?)|(?:(?:(?:(?:(?:[ \t]*(?:\r\n))?[ \t])?(\((?:(?:(?:[ \t]*(?:\r\n))?[ \t])|(?:(?:[\x01-\x08\x0B\x0C\x0E-\x19\x7F]|[\x21-\x27\x2A-\x5B\x5D-\x7E])|(?:\\[\x00-\x08\x0B\x0C\x0E-\x7F])|(?1)))*(?:(?:[ \t]*(?:\r\n))?[ \t])?\)))*(?:(?:(?:(?:[ \t]*(?:\r\n))?[ \t])?(\((?:(?:(?:[ \t]*(?:\r\n))?[ \t])|(?:(?:[\x01-\x08\x0B\x0C\x0E-\x19\x7F]|[\x21-\x27\x2A-\x5B\x5D-\x7E])|(?:\\[\x00-\x08\x0B\x0C\x0E-\x7F])|(?1)))*(?:(?:[ \t]*(?:\r\n))?[ \t])?\)))|(?:(?:[ \t]*(?:\r\n))?[ \t])))?"((?:(?:[ \t]*(?:\r\n))?[ \t])?(?:(?:[\x01-\x08\x0B\x0C\x0E-\x19\x7F]|[\x21\x23-\x5B\x5D-\x7E])|(?:\\[\x00-\x08\x0B\x0C\x0E-\x7F])))*(?:(?:[ \t]*(?:\r\n))?[ \t])?"(?:(?:(?:(?:[ \t]*(?:\r\n))?[ \t])?(\((?:(?:(?:[ \t]*(?:\r\n))?[ \t])|(?:(?:[\x01-\x08\x0B\x0C\x0E-\x19\x7F]|[\x21-\x27\x2A-\x5B\x5D-\x7E])|(?:\\[\x00-\x08\x0B\x0C\x0E-\x7F])|(?1)))*(?:(?:[ \t]*(?:\r\n))?[ \t])?\)))*(?:(?:(?:(?:[ \t]*(?:\r\n))?[ \t])?(\((?:(?:(?:[ \t]*(?:\r\n))?[ \t])|(?:(?:[\x01-\x08\x0B\x0C\x0E-\x19\x7F]|[\x21-\x27\x2A-\x5B\x5D-\x7E])|(?:\\[\x00-\x08\x0B\x0C\x0E-\x7F])|(?1)))*(?:(?:[ \t]*(?:\r\n))?[ \t])?\)))|(?:(?:[ \t]*(?:\r\n))?[ \t])))?))+?)';
+    public const PHRASE_PATTERN = '(?:(?:(?:(?:(?:(?:(?:[ \t]*(?:\r\n))?[ \t])?(\((?:(?:(?:[ \t]*(?:\r\n))?[ \t])|(?:(?:[\x01-\x08\x0B\x0C\x0E-\x19\x7F]|[\x21-\x27\x2A-\x5B\x5D-\x7E])|(?:\\[\x00-\x08\x0B\x0C\x0E-\x7F])|(?1)))*(?:(?:[ \t]*(?:\r\n))?[ \t])?\)))*(?:(?:(?:(?:[ \t]*(?:\r\n))?[ \t])?(\((?:(?:(?:[ \t]*(?:\r\n))?[ \t])|(?:(?:[\x01-\x08\x0B\x0C\x0E-\x19\x7F]|[\x21-\x27\x2A-\x5B\x5D-\x7E])|(?:\\[\x00-\x08\x0B\x0C\x0E-\x7F])|(?1)))*(?:(?:[ \t]*(?:\r\n))?[ \t])?\)))|(?:(?:[ \t]*(?:\r\n))?[ \t])))?[a-zA-Z0-9!#\$%&\'\*\+\-\/=\?\^_`\{\}\|~]+(?:(?:(?:(?:[ \t]*(?:\r\n))?[ \t])?(\((?:(?:(?:[ \t]*(?:\r\n))?[ \t])|(?:(?:[\x01-\x08\x0B\x0C\x0E-\x19\x7F]|[\x21-\x27\x2A-\x5B\x5D-\x7E])|(?:\\[\x00-\x08\x0B\x0C\x0E-\x7F])|(?1)))*(?:(?:[ \t]*(?:\r\n))?[ \t])?\)))*(?:(?:(?:(?:[ \t]*(?:\r\n))?[ \t])?(\((?:(?:(?:[ \t]*(?:\r\n))?[ \t])|(?:(?:[\x01-\x08\x0B\x0C\x0E-\x19\x7F]|[\x21-\x27\x2A-\x5B\x5D-\x7E])|(?:\\[\x00-\x08\x0B\x0C\x0E-\x7F])|(?1)))*(?:(?:[ \t]*(?:\r\n))?[ \t])?\)))|(?:(?:[ \t]*(?:\r\n))?[ \t])))?)|(?:(?:(?:(?:(?:[ \t]*(?:\r\n))?[ \t])?(\((?:(?:(?:[ \t]*(?:\r\n))?[ \t])|(?:(?:[\x01-\x08\x0B\x0C\x0E-\x19\x7F]|[\x21-\x27\x2A-\x5B\x5D-\x7E])|(?:\\[\x00-\x08\x0B\x0C\x0E-\x7F])|(?1)))*(?:(?:[ \t]*(?:\r\n))?[ \t])?\)))*(?:(?:(?:(?:[ \t]*(?:\r\n))?[ \t])?(\((?:(?:(?:[ \t]*(?:\r\n))?[ \t])|(?:(?:[\x01-\x08\x0B\x0C\x0E-\x19\x7F]|[\x21-\x27\x2A-\x5B\x5D-\x7E])|(?:\\[\x00-\x08\x0B\x0C\x0E-\x7F])|(?1)))*(?:(?:[ \t]*(?:\r\n))?[ \t])?\)))|(?:(?:[ \t]*(?:\r\n))?[ \t])))?"((?:(?:[ \t]*(?:\r\n))?[ \t])?(?:(?:[\x01-\x08\x0B\x0C\x0E-\x19\x7F]|[\x21\x23-\x5B\x5D-\x7E])|(?:\\[\x00-\x08\x0B\x0C\x0E-\x7F])))*(?:(?:[ \t]*(?:\r\n))?[ \t])?"(?:(?:(?:(?:[ \t]*(?:\r\n))?[ \t])?(\((?:(?:(?:[ \t]*(?:\r\n))?[ \t])|(?:(?:[\x01-\x08\x0B\x0C\x0E-\x19\x7F]|[\x21-\x27\x2A-\x5B\x5D-\x7E])|(?:\\[\x00-\x08\x0B\x0C\x0E-\x7F])|(?1)))*(?:(?:[ \t]*(?:\r\n))?[ \t])?\)))*(?:(?:(?:(?:[ \t]*(?:\r\n))?[ \t])?(\((?:(?:(?:[ \t]*(?:\r\n))?[ \t])|(?:(?:[\x01-\x08\x0B\x0C\x0E-\x19\x7F]|[\x21-\x27\x2A-\x5B\x5D-\x7E])|(?:\\[\x00-\x08\x0B\x0C\x0E-\x7F])|(?1)))*(?:(?:[ \t]*(?:\r\n))?[ \t])?\)))|(?:(?:[ \t]*(?:\r\n))?[ \t])))?))+?)';
 
     /**
      * The name of this Header.
@@ -57,7 +57,7 @@ abstract class Swift_Mime_Headers_AbstractHeader implements Swift_Mime_Header
      *
      * @var string
      */
-    private $cachedValue = null;
+    private $cachedValue;
 
     /**
      * Set the character set used in this Header.
@@ -200,16 +200,16 @@ abstract class Swift_Mime_Headers_AbstractHeader implements Swift_Mime_Header
      *
      * @return string
      */
-    protected function createPhrase(Swift_Mime_Header $header, $string, $charset, Swift_Mime_HeaderEncoder $encoder = null, $shorten = false)
+    protected function createPhrase(Swift_Mime_Header $header, $string, $charset, ?Swift_Mime_HeaderEncoder $encoder = null, $shorten = false)
     {
         // Treat token as exactly what was given
         $phraseStr = $string;
         // If it's not valid
 
-        if (!preg_match('/^'.self::PHRASE_PATTERN.'$/D', $phraseStr)) {
+        if (!\preg_match('/^'.self::PHRASE_PATTERN.'$/D', $phraseStr)) {
             // .. but it is just ascii text, try escaping some characters
             // and make it a quoted-string
-            if (preg_match('/^[\x00-\x08\x0B\x0C\x0E-\x7F]*$/D', $phraseStr)) {
+            if (\preg_match('/^[\x00-\x08\x0B\x0C\x0E-\x7F]*$/D', $phraseStr)) {
                 $phraseStr = $this->escapeSpecials($phraseStr, ['"']);
                 $phraseStr = '"'.$phraseStr.'"';
             } else {
@@ -237,8 +237,8 @@ abstract class Swift_Mime_Headers_AbstractHeader implements Swift_Mime_Header
      */
     private function escapeSpecials($token, $include = [])
     {
-        foreach (array_merge(['\\'], $include) as $char) {
-            $token = str_replace($char, '\\'.$char, $token);
+        foreach (\array_merge(['\\'], $include) as $char) {
+            $token = \str_replace($char, '\\'.$char, $token);
         }
 
         return $token;
@@ -262,12 +262,12 @@ abstract class Swift_Mime_Headers_AbstractHeader implements Swift_Mime_Header
             // See RFC 2822, Sect 2.2 (really 2.2 ??)
             if ($this->tokenNeedsEncoding($token)) {
                 // Don't encode starting WSP
-                $firstChar = substr($token, 0, 1);
+                $firstChar = \substr($token, 0, 1);
                 switch ($firstChar) {
                     case ' ':
                     case "\t":
                         $value .= $firstChar;
-                        $token = substr($token, 1);
+                        $token = \substr($token, 1);
                 }
 
                 if (-1 == $usedLength) {
@@ -293,7 +293,7 @@ abstract class Swift_Mime_Headers_AbstractHeader implements Swift_Mime_Header
      */
     protected function tokenNeedsEncoding($token)
     {
-        return preg_match('~[\x00-\x08\x10-\x19\x7F-\xFF\r\n]~', $token);
+        return \preg_match('~[\x00-\x08\x10-\x19\x7F-\xFF\r\n]~', $token);
     }
 
     /**
@@ -309,12 +309,12 @@ abstract class Swift_Mime_Headers_AbstractHeader implements Swift_Mime_Header
 
         $encodedToken = '';
         // Split at all whitespace boundaries
-        foreach (preg_split('~(?=[\t ])~', $string ?? '') as $token) {
+        foreach (\preg_split('~(?=[\t ])~', $string ?? '') as $token) {
             if ($this->tokenNeedsEncoding($token)) {
                 $encodedToken .= $token;
             } else {
                 if (\strlen($encodedToken) > 0) {
-                    $tokens[] = $encodedToken;
+                    $tokens[]     = $encodedToken;
                     $encodedToken = '';
                 }
                 $tokens[] = $token;
@@ -343,21 +343,25 @@ abstract class Swift_Mime_Headers_AbstractHeader implements Swift_Mime_Header
             $charsetDecl .= '*'.$this->lang;
         }
         $encodingWrapperLength = \strlen(
-            '=?'.$charsetDecl.'?'.$this->encoder->getName().'??='
-            );
+            '=?'.$charsetDecl.'?'.$this->encoder->getName().'??=',
+        );
 
         if ($firstLineOffset >= 75) {
-            //Does this logic need to be here?
+            // Does this logic need to be here?
             $firstLineOffset = 0;
         }
 
-        $encodedTextLines = explode("\r\n",
+        $encodedTextLines = \explode(
+            "\r\n",
             $this->encoder->encodeString(
-                $token, $firstLineOffset, 75 - $encodingWrapperLength, $this->charset
-            ) ?? ''
+                $token,
+                $firstLineOffset,
+                75 - $encodingWrapperLength,
+                $this->charset,
+            ) ?? '',
         );
 
-        if ('iso-2022-jp' !== strtolower($this->charset ?? '')) {
+        if ('iso-2022-jp' !== \strtolower($this->charset ?? '')) {
             // special encoding for iso-2022-jp using mb_encode_mimeheader
             foreach ($encodedTextLines as $lineNum => $line) {
                 $encodedTextLines[$lineNum] = '=?'.$charsetDecl.
@@ -366,7 +370,7 @@ abstract class Swift_Mime_Headers_AbstractHeader implements Swift_Mime_Header
             }
         }
 
-        return implode("\r\n ", $encodedTextLines);
+        return \implode("\r\n ", $encodedTextLines);
     }
 
     /**
@@ -378,7 +382,7 @@ abstract class Swift_Mime_Headers_AbstractHeader implements Swift_Mime_Header
      */
     protected function generateTokenLines($token)
     {
-        return preg_split('~(\r\n)~', $token ?? '', -1, PREG_SPLIT_DELIM_CAPTURE);
+        return \preg_split('~(\r\n)~', $token ?? '', -1, PREG_SPLIT_DELIM_CAPTURE);
     }
 
     /**
@@ -429,7 +433,7 @@ abstract class Swift_Mime_Headers_AbstractHeader implements Swift_Mime_Header
         $tokens = [];
 
         // Generate atoms; split at all invisible boundaries followed by WSP
-        foreach (preg_split('~(?=[ \t])~', $string ?? '') as $token) {
+        foreach (\preg_split('~(?=[ \t])~', $string ?? '') as $token) {
             $newTokens = $this->generateTokenLines($token);
             foreach ($newTokens as $newToken) {
                 $tokens[] = $newToken;
@@ -449,19 +453,19 @@ abstract class Swift_Mime_Headers_AbstractHeader implements Swift_Mime_Header
      */
     private function tokensToString(array $tokens)
     {
-        $lineCount = 0;
-        $headerLines = [];
+        $lineCount     = 0;
+        $headerLines   = [];
         $headerLines[] = $this->name.': ';
-        $currentLine = &$headerLines[$lineCount++];
+        $currentLine   = &$headerLines[$lineCount++];
 
         // Build all tokens back into compliant header
         foreach ($tokens as $i => $token) {
             // Line longer than specified maximum or token was just a new line
-            if (("\r\n" == $token) ||
-                ($i > 0 && \strlen($currentLine.$token) > $this->lineLength)
+            if (("\r\n" == $token)
+                || ($i > 0 && \strlen($currentLine.$token) > $this->lineLength)
                 && 0 < \strlen($currentLine)) {
                 $headerLines[] = '';
-                $currentLine = &$headerLines[$lineCount++];
+                $currentLine   = &$headerLines[$lineCount++];
             }
 
             // Append token to the line
@@ -471,7 +475,7 @@ abstract class Swift_Mime_Headers_AbstractHeader implements Swift_Mime_Header
         }
 
         // Implode with FWS (RFC 2822, 2.2.3)
-        return implode("\r\n", $headerLines)."\r\n";
+        return \implode("\r\n", $headerLines)."\r\n";
     }
 
     /**

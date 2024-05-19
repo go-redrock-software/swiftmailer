@@ -35,9 +35,6 @@ class Swift_Transport_Esmtp_Auth_XOAuth2Authenticator implements Swift_Transport
         return 'XOAUTH2';
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function authenticate(Swift_Transport_SmtpAgent $agent, $email, $token)
     {
         try {
@@ -59,6 +56,6 @@ class Swift_Transport_Esmtp_Auth_XOAuth2Authenticator implements Swift_Transport
      */
     protected function constructXOAuth2Params($email, $token)
     {
-        return base64_encode("user=$email\1auth=Bearer $token\1\1");
+        return \base64_encode("user=$email\1auth=Bearer $token\1\1");
     }
 }

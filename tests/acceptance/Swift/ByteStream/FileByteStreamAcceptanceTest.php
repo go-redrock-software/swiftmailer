@@ -1,24 +1,24 @@
 <?php
 
-class Swift_ByteStream_FileByteStreamAcceptanceTest extends \PHPUnit\Framework\TestCase
+class Swift_ByteStream_FileByteStreamAcceptanceTest extends PHPUnit\Framework\TestCase
 {
     private $testFile;
 
     protected function setUp(): void
     {
-        $this->testFile = sys_get_temp_dir().'/swift-test-file'.__CLASS__;
-        file_put_contents($this->testFile, 'abcdefghijklm');
+        $this->testFile = \sys_get_temp_dir().'/swift-test-file'.__CLASS__;
+        \file_put_contents($this->testFile, 'abcdefghijklm');
     }
 
     protected function tearDown(): void
     {
-        unlink($this->testFile);
+        \unlink($this->testFile);
     }
 
     public function testFileDataCanBeRead()
     {
         $file = $this->createFileStream($this->testFile);
-        $str = '';
+        $str  = '';
         while (false !== $bytes = $file->read(8192)) {
             $str .= $bytes;
         }
@@ -62,7 +62,7 @@ class Swift_ByteStream_FileByteStreamAcceptanceTest extends \PHPUnit\Framework\T
         $file->write("foo\r\nbar\r");
         $file->write("\nzip\r\ntest\r");
         $file->flushBuffers();
-        $this->assertEquals("foo\nbar\nzip\ntest\n", file_get_contents($this->testFile));
+        $this->assertEquals("foo\nbar\nzip\ntest\n", \file_get_contents($this->testFile));
     }
 
     public function testWritingWithFulleMessageLengthOfAMultipleOf8192()
@@ -71,26 +71,26 @@ class Swift_ByteStream_FileByteStreamAcceptanceTest extends \PHPUnit\Framework\T
         $file->addFilter($this->createFilter(["\r\n", "\r"], "\n"), 'allToLF');
         $file->write('');
         $file->flushBuffers();
-        $this->assertEquals('', file_get_contents($this->testFile));
+        $this->assertEquals('', \file_get_contents($this->testFile));
     }
 
     public function testBindingOtherStreamsMirrorsWriteOperations()
     {
         $file = $this->createFileStream($this->testFile, true);
-        $is1 = $this->createMockInputStream();
-        $is2 = $this->createMockInputStream();
+        $is1  = $this->createMockInputStream();
+        $is2  = $this->createMockInputStream();
 
         $is1->expects($this->exactly(2))
             ->method('write')
             ->withConsecutive(
                 ['x'],
-                ['y']
+                ['y'],
             );
         $is2->expects($this->exactly(2))
             ->method('write')
             ->withConsecutive(
                 ['x'],
-                ['y']
+                ['y'],
             );
 
         $file->bind($is1);
@@ -103,8 +103,9 @@ class Swift_ByteStream_FileByteStreamAcceptanceTest extends \PHPUnit\Framework\T
     public function testBindingOtherStreamsMirrorsFlushOperations()
     {
         $file = $this->createFileStream(
-            $this->testFile, true
-            );
+            $this->testFile,
+            true,
+        );
         $is1 = $this->createMockInputStream();
         $is2 = $this->createMockInputStream();
 
@@ -122,14 +123,14 @@ class Swift_ByteStream_FileByteStreamAcceptanceTest extends \PHPUnit\Framework\T
     public function testUnbindingStreamPreventsFurtherWrites()
     {
         $file = $this->createFileStream($this->testFile, true);
-        $is1 = $this->createMockInputStream();
-        $is2 = $this->createMockInputStream();
+        $is1  = $this->createMockInputStream();
+        $is2  = $this->createMockInputStream();
 
         $is1->expects($this->exactly(2))
             ->method('write')
             ->withConsecutive(
                 ['x'],
-                ['y']
+                ['y'],
             );
         $is2->expects($this->once())
             ->method('write')

@@ -39,7 +39,7 @@ class Swift_Events_ResponseEvent extends Swift_Events_EventObject
     {
         parent::__construct($source);
         $this->response = $response;
-        $this->valid = $valid;
+        $this->valid    = $valid;
     }
 
     /**

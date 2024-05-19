@@ -37,12 +37,12 @@ class Swift_Mime_SimpleHeaderFactory implements Swift_Mime_CharsetObserver
      *
      * @param string|null $charset
      */
-    public function __construct(Swift_Mime_HeaderEncoder $encoder, Swift_Encoder $paramEncoder, EmailValidator $emailValidator, $charset = null, Swift_AddressEncoder $addressEncoder = null)
+    public function __construct(Swift_Mime_HeaderEncoder $encoder, Swift_Encoder $paramEncoder, EmailValidator $emailValidator, $charset = null, ?Swift_AddressEncoder $addressEncoder = null)
     {
-        $this->encoder = $encoder;
-        $this->paramEncoder = $paramEncoder;
+        $this->encoder        = $encoder;
+        $this->paramEncoder   = $paramEncoder;
         $this->emailValidator = $emailValidator;
-        $this->charset = $charset;
+        $this->charset        = $charset;
         $this->addressEncoder = $addressEncoder ?? new Swift_AddressEncoder_IdnAddressEncoder();
     }
 
@@ -72,7 +72,7 @@ class Swift_Mime_SimpleHeaderFactory implements Swift_Mime_CharsetObserver
      *
      * @return Swift_Mime_Header
      */
-    public function createDateHeader($name, DateTimeInterface $dateTime = null)
+    public function createDateHeader($name, ?DateTimeInterface $dateTime = null)
     {
         $header = new Swift_Mime_Headers_DateHeader($name);
         if (isset($dateTime)) {
@@ -113,7 +113,7 @@ class Swift_Mime_SimpleHeaderFactory implements Swift_Mime_CharsetObserver
      */
     public function createParameterizedHeader($name, $value = null, $params = [])
     {
-        $header = new Swift_Mime_Headers_ParameterizedHeader($name, $this->encoder, ('content-disposition' == strtolower($name ?? '')) ? $this->paramEncoder : null);
+        $header = new Swift_Mime_Headers_ParameterizedHeader($name, $this->encoder, ('content-disposition' == \strtolower($name ?? '')) ? $this->paramEncoder : null);
         if (isset($value)) {
             $header->setFieldBodyModel($value);
         }
@@ -180,8 +180,8 @@ class Swift_Mime_SimpleHeaderFactory implements Swift_Mime_CharsetObserver
      */
     public function __clone()
     {
-        $this->encoder = clone $this->encoder;
-        $this->paramEncoder = clone $this->paramEncoder;
+        $this->encoder        = clone $this->encoder;
+        $this->paramEncoder   = clone $this->paramEncoder;
         $this->addressEncoder = clone $this->addressEncoder;
     }
 

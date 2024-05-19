@@ -1,6 +1,6 @@
 <?php
 
-class Swift_Mailer_ArrayRecipientIteratorTest extends \PHPUnit\Framework\TestCase
+class Swift_Mailer_ArrayRecipientIteratorTest extends PHPUnit\Framework\TestCase
 {
     public function testHasNextReturnsFalseForEmptyArray()
     {
@@ -31,10 +31,10 @@ class Swift_Mailer_ArrayRecipientIteratorTest extends \PHPUnit\Framework\TestCas
     public function testIteratorMovesNextAfterEachIteration()
     {
         $it = new Swift_Mailer_ArrayRecipientIterator([
-            'foo@bar' => 'Foo',
+            'foo@bar'    => 'Foo',
             'zip@button' => 'Zip thing',
-            'test@test' => null,
-            ]);
+            'test@test'  => null,
+        ]);
         $this->assertEquals(['foo@bar' => 'Foo'], $it->nextRecipient());
         $this->assertEquals(['zip@button' => 'Zip thing'], $it->nextRecipient());
         $this->assertEquals(['test@test' => null], $it->nextRecipient());

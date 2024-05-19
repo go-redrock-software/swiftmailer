@@ -41,7 +41,7 @@ class Swift_Mime_ContentEncoder_PlainContentEncoder implements Swift_Mime_Conten
      */
     public function __construct($name, $canonical = false)
     {
-        $this->name = $name;
+        $this->name      = $name;
         $this->canonical = $canonical;
     }
 
@@ -77,10 +77,10 @@ class Swift_Mime_ContentEncoder_PlainContentEncoder implements Swift_Mime_Conten
             if ($this->canonical) {
                 $toencode = $this->canonicalize($toencode);
             }
-            $wrapped = $this->safeWordwrap($toencode, $maxLineLength, "\r\n");
-            $lastLinePos = strrpos($wrapped, "\r\n");
-            $leftOver = substr($wrapped, $lastLinePos);
-            $wrapped = substr($wrapped, 0, $lastLinePos);
+            $wrapped     = $this->safeWordwrap($toencode, $maxLineLength, "\r\n");
+            $lastLinePos = \strrpos($wrapped, "\r\n");
+            $leftOver    = \substr($wrapped, $lastLinePos);
+            $wrapped     = \substr($wrapped, 0, $lastLinePos);
 
             $is->write($wrapped);
         }
@@ -121,29 +121,29 @@ class Swift_Mime_ContentEncoder_PlainContentEncoder implements Swift_Mime_Conten
             return $string;
         }
 
-        $originalLines = explode($le, $string);
+        $originalLines = \explode($le, $string);
 
-        $lines = [];
+        $lines     = [];
         $lineCount = 0;
 
         foreach ($originalLines as $originalLine) {
-            $lines[] = '';
+            $lines[]     = '';
             $currentLine = &$lines[$lineCount++];
 
-            //$chunks = preg_split('/(?<=[\ \t,\.!\?\-&\+\/])/', $originalLine);
-            $chunks = preg_split('/(?<=\s)/', $originalLine);
+            // $chunks = preg_split('/(?<=[\ \t,\.!\?\-&\+\/])/', $originalLine);
+            $chunks = \preg_split('/(?<=\s)/', $originalLine);
 
             foreach ($chunks as $chunk) {
                 if (0 != \strlen($currentLine)
                     && \strlen($currentLine.$chunk) > $length) {
-                    $lines[] = '';
+                    $lines[]     = '';
                     $currentLine = &$lines[$lineCount++];
                 }
                 $currentLine .= $chunk;
             }
         }
 
-        return implode("\r\n", $lines);
+        return \implode("\r\n", $lines);
     }
 
     /**
@@ -155,10 +155,10 @@ class Swift_Mime_ContentEncoder_PlainContentEncoder implements Swift_Mime_Conten
      */
     private function canonicalize($string)
     {
-        return str_replace(
+        return \str_replace(
             ["\r\n", "\r", "\n"],
             ["\n", "\n", "\r\n"],
-            $string
-            );
+            $string,
+        );
     }
 }

@@ -6,17 +6,17 @@ class Swift_Transport_StreamBuffer_SslSocketAcceptanceTest extends Swift_Transpo
 {
     protected function setUp(): void
     {
-        $streams = stream_get_transports();
+        $streams = \stream_get_transports();
         if (!\in_array(CONNECTION_ENCRYPTION_MODE_TLS, $streams)) {
             $this->markTestSkipped(
-                'SSL is not configured for your system.  It is not possible to run this test'
-             );
+                'SSL is not configured for your system.  It is not possible to run this test',
+            );
         }
         if (!\defined('SWIFT_SSL_HOST')) {
             $this->markTestSkipped(
                 'Cannot run test without an SSL enabled SMTP host to connect to (define '.
-                'SWIFT_SSL_HOST in tests/acceptance.conf.php if you wish to run this test)'
-             );
+                'SWIFT_SSL_HOST in tests/acceptance.conf.php if you wish to run this test)',
+            );
         }
 
         parent::setUp();
@@ -25,27 +25,28 @@ class Swift_Transport_StreamBuffer_SslSocketAcceptanceTest extends Swift_Transpo
     protected function initializeBuffer()
     {
         /**
-         * This is suppressed because this would be set in a file (acceptance.conf.php)
+         * This is suppressed because this would be set in a file (acceptance.conf.php).
+         *
          * @noinspection PhpUndefinedConstantInspection
          */
-        $parts = explode(':', SWIFT_SSL_HOST);
-        $host = $parts[0];
-        $port = $parts[1] ?? 25;
+        $parts = \explode(':', SWIFT_SSL_HOST);
+        $host  = $parts[0];
+        $port  = $parts[1] ?? 25;
 
         $this->buffer->initialize([
-            'type' => Swift_Transport_IoBuffer::TYPE_SOCKET,
-            'host' => $host,
-            'port' => $port,
-            'protocol' => CONNECTION_ENCRYPTION_MODE_TLS,
-            'blocking' => 1,
-            'timeout' => 15,
+            'type'                   => Swift_Transport_IoBuffer::TYPE_SOCKET,
+            'host'                   => $host,
+            'port'                   => $port,
+            'protocol'               => CONNECTION_ENCRYPTION_MODE_TLS,
+            'blocking'               => 1,
+            'timeout'                => 15,
             'stream_context_options' => [
                 CONNECTION_ENCRYPTION_MODE_TLS => [
-                    'verify_peer' => false,
-                    'verify_peer_name' => false,
+                    'verify_peer'       => false,
+                    'verify_peer_name'  => false,
                     'allow_self_signed' => true,
                 ],
-            ]
+            ],
         ]);
     }
 }

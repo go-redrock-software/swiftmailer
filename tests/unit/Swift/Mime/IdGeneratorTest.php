@@ -3,9 +3,10 @@
 use Egulias\EmailValidator\EmailValidator;
 use Egulias\EmailValidator\Validation\RFCValidation;
 
-class Swift_Mime_IdGeneratorTest extends \PHPUnit\Framework\TestCase
+class Swift_Mime_IdGeneratorTest extends PHPUnit\Framework\TestCase
 {
     protected $emailValidator;
+
     protected $originalServerName;
 
     public function testIdGeneratorSetRightId()
@@ -19,7 +20,7 @@ class Swift_Mime_IdGeneratorTest extends \PHPUnit\Framework\TestCase
 
     public function testIdGenerateId()
     {
-        $idGenerator = new Swift_Mime_IdGenerator('example.net');
+        $idGenerator    = new Swift_Mime_IdGenerator('example.net');
         $emailValidator = new EmailValidator();
 
         $id = $idGenerator->generateId();

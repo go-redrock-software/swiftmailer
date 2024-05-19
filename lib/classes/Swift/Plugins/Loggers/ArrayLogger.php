@@ -48,7 +48,7 @@ class Swift_Plugins_Loggers_ArrayLogger implements Swift_Plugins_Logger
     {
         $this->log[] = $entry;
         while (\count($this->log) > $this->size) {
-            array_shift($this->log);
+            \array_shift($this->log);
         }
     }
 
@@ -67,6 +67,6 @@ class Swift_Plugins_Loggers_ArrayLogger implements Swift_Plugins_Logger
      */
     public function dump()
     {
-        return implode(PHP_EOL, $this->log);
+        return \implode(PHP_EOL, $this->log);
     }
 }

@@ -3,13 +3,15 @@
 class MimeEntityFixture extends Swift_Mime_SimpleMimeEntity
 {
     private $level;
+
     private $string;
+
     private $contentType;
 
     public function __construct($level = null, $string = '', $contentType = null)
     {
-        $this->level = $level;
-        $this->string = $string;
+        $this->level       = $level;
+        $this->string      = $string;
         $this->contentType = $contentType;
     }
 

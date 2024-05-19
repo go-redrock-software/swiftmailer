@@ -1,6 +1,6 @@
 <?php
 
-class Swift_CharacterReader_UsAsciiReaderTest extends \PHPUnit\Framework\TestCase
+class Swift_CharacterReader_UsAsciiReaderTest extends PHPUnit\Framework\TestCase
 {
     /*
 
@@ -27,8 +27,9 @@ class Swift_CharacterReader_UsAsciiReaderTest extends \PHPUnit\Framework\TestCas
     {
         for ($ordinal = 0x00; $ordinal <= 0x7F; ++$ordinal) {
             $this->assertSame(
-                0, $this->reader->validateByteSequence([$ordinal], 1)
-                );
+                0,
+                $this->reader->validateByteSequence([$ordinal], 1),
+            );
         }
     }
 
@@ -36,8 +37,9 @@ class Swift_CharacterReader_UsAsciiReaderTest extends \PHPUnit\Framework\TestCas
     {
         for ($ordinal = 0x00; $ordinal <= 0x7F; $ordinal += 2) {
             $this->assertSame(
-                -1, $this->reader->validateByteSequence([$ordinal, $ordinal + 1], 2)
-                );
+                -1,
+                $this->reader->validateByteSequence([$ordinal, $ordinal + 1], 2),
+            );
         }
     }
 
@@ -45,8 +47,9 @@ class Swift_CharacterReader_UsAsciiReaderTest extends \PHPUnit\Framework\TestCas
     {
         for ($ordinal = 0x80; $ordinal <= 0xFF; ++$ordinal) {
             $this->assertSame(
-                -1, $this->reader->validateByteSequence([$ordinal], 1)
-                );
+                -1,
+                $this->reader->validateByteSequence([$ordinal], 1),
+            );
         }
     }
 }

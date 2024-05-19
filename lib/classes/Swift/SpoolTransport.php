@@ -27,7 +27,7 @@ class Swift_SpoolTransport extends Swift_Transport_SpoolTransport
 
         \call_user_func_array(
             [$this, 'Swift_Transport_SpoolTransport::__construct'],
-            $arguments
+            $arguments,
         );
     }
 }

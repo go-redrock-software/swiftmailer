@@ -28,13 +28,10 @@ class Swift_Transport_FailoverTransport extends Swift_Transport_LoadBalancedTran
         parent::__construct();
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function ping()
     {
         $maxTransports = \count($this->transports);
-        for ($i = 0; $i < $maxTransports
+        for ($i           = 0; $i < $maxTransports
             && $transport = $this->getNextTransport(); ++$i) {
             if ($transport->ping()) {
                 return true;
@@ -58,11 +55,11 @@ class Swift_Transport_FailoverTransport extends Swift_Transport_LoadBalancedTran
      */
     public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null)
     {
-        $maxTransports = \count($this->transports);
-        $sent = 0;
+        $maxTransports           = \count($this->transports);
+        $sent                    = 0;
         $this->lastUsedTransport = null;
 
-        for ($i = 0; $i < $maxTransports
+        for ($i           = 0; $i < $maxTransports
             && $transport = $this->getNextTransport(); ++$i) {
             try {
                 if (!$transport->isStarted()) {

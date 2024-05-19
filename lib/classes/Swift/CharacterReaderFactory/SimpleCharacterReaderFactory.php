@@ -51,43 +51,43 @@ class Swift_CharacterReaderFactory_SimpleCharacterReaderFactory implements Swift
         $prefix = 'Swift_CharacterReader_';
 
         $singleByte = [
-            'class' => $prefix.'GenericFixedWidthReader',
+            'class'       => $prefix.'GenericFixedWidthReader',
             'constructor' => [1],
-            ];
+        ];
 
         $doubleByte = [
-            'class' => $prefix.'GenericFixedWidthReader',
+            'class'       => $prefix.'GenericFixedWidthReader',
             'constructor' => [2],
-            ];
+        ];
 
         $fourBytes = [
-            'class' => $prefix.'GenericFixedWidthReader',
+            'class'       => $prefix.'GenericFixedWidthReader',
             'constructor' => [4],
-            ];
+        ];
 
         // Utf-8
         self::$map['utf-?8'] = [
-            'class' => $prefix.'Utf8Reader',
+            'class'       => $prefix.'Utf8Reader',
             'constructor' => [],
-            ];
+        ];
 
-        //7-8 bit charsets
-        self::$map['(us-)?ascii'] = $singleByte;
+        // 7-8 bit charsets
+        self::$map['(us-)?ascii']             = $singleByte;
         self::$map['(iso|iec)-?8859-?[0-9]+'] = $singleByte;
-        self::$map['windows-?125[0-9]'] = $singleByte;
-        self::$map['cp-?[0-9]+'] = $singleByte;
-        self::$map['ansi'] = $singleByte;
-        self::$map['macintosh'] = $singleByte;
-        self::$map['koi-?7'] = $singleByte;
-        self::$map['koi-?8-?.+'] = $singleByte;
-        self::$map['mik'] = $singleByte;
-        self::$map['(cork|t1)'] = $singleByte;
-        self::$map['v?iscii'] = $singleByte;
+        self::$map['windows-?125[0-9]']       = $singleByte;
+        self::$map['cp-?[0-9]+']              = $singleByte;
+        self::$map['ansi']                    = $singleByte;
+        self::$map['macintosh']               = $singleByte;
+        self::$map['koi-?7']                  = $singleByte;
+        self::$map['koi-?8-?.+']              = $singleByte;
+        self::$map['mik']                     = $singleByte;
+        self::$map['(cork|t1)']               = $singleByte;
+        self::$map['v?iscii']                 = $singleByte;
 
-        //16 bits
+        // 16 bits
         self::$map['(ucs-?2|utf-?16)'] = $doubleByte;
 
-        //32 bits
+        // 32 bits
         self::$map['(ucs-?4|utf-?32)'] = $fourBytes;
 
         // Fallback
@@ -103,10 +103,10 @@ class Swift_CharacterReaderFactory_SimpleCharacterReaderFactory implements Swift
      */
     public function getReaderFor($charset)
     {
-        $charset = strtolower(trim($charset ?? ''));
+        $charset = \strtolower(\trim($charset ?? ''));
         foreach (self::$map as $pattern => $spec) {
             $re = '/^'.$pattern.'$/D';
-            if (preg_match($re, $charset)) {
+            if (\preg_match($re, $charset)) {
                 if (!\array_key_exists($pattern, self::$loaded)) {
                     $reflector = new ReflectionClass($spec['class']);
                     if ($reflector->getConstructor()) {

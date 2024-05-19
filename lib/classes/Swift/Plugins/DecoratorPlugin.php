@@ -79,30 +79,32 @@ class Swift_Plugins_DecoratorPlugin implements Swift_Events_SendListener, Swift_
     {
         $message = $evt->getMessage();
         $this->restoreMessage($message);
-        $to = array_keys($message->getTo());
-        $address = array_shift($to);
+        $to      = \array_keys($message->getTo());
+        $address = \array_shift($to);
         if ($replacements = $this->getReplacementsFor($address)) {
-            $body = $message->getBody();
-            $search = array_keys($replacements);
-            $replace = array_values($replacements);
-            $bodyReplaced = str_replace(
-                $search, $replace, $body
-                );
+            $body         = $message->getBody();
+            $search       = \array_keys($replacements);
+            $replace      = \array_values($replacements);
+            $bodyReplaced = \str_replace(
+                $search,
+                $replace,
+                $body,
+            );
             if ($body != $bodyReplaced) {
                 $this->originalBody = $body;
                 $message->setBody($bodyReplaced);
             }
 
             foreach ($message->getHeaders()->getAll() as $header) {
-                $body = $header->getFieldBodyModel();
+                $body  = $header->getFieldBodyModel();
                 $count = 0;
                 if (\is_array($body)) {
                     $bodyReplaced = [];
                     foreach ($body as $key => $value) {
-                        $count1 = 0;
-                        $count2 = 0;
-                        $key = \is_string($key) ? str_replace($search, $replace, $key, $count1) : $key;
-                        $value = \is_string($value) ? str_replace($search, $replace, $value, $count2) : $value;
+                        $count1             = 0;
+                        $count2             = 0;
+                        $key                = \is_string($key) ? \str_replace($search, $replace, $key, $count1) : $key;
+                        $value              = \is_string($value) ? \str_replace($search, $replace, $value, $count2) : $value;
                         $bodyReplaced[$key] = $value;
 
                         if (!$count && ($count1 || $count2)) {
@@ -110,7 +112,7 @@ class Swift_Plugins_DecoratorPlugin implements Swift_Events_SendListener, Swift_
                         }
                     }
                 } elseif (\is_string($body)) {
-                    $bodyReplaced = str_replace($search, $replace, $body, $count);
+                    $bodyReplaced = \str_replace($search, $replace, $body, $count);
                 }
 
                 if ($count) {
@@ -121,12 +123,14 @@ class Swift_Plugins_DecoratorPlugin implements Swift_Events_SendListener, Swift_
 
             $children = (array) $message->getChildren();
             foreach ($children as $child) {
-                list($type) = sscanf($child->getContentType(), '%[^/]/%s');
+                list($type) = \sscanf($child->getContentType(), '%[^/]/%s');
                 if ('text' == $type) {
-                    $body = $child->getBody();
-                    $bodyReplaced = str_replace(
-                        $search, $replace, $body
-                        );
+                    $body         = $child->getBody();
+                    $bodyReplaced = \str_replace(
+                        $search,
+                        $replace,
+                        $body,
+                    );
                     if ($body != $bodyReplaced) {
                         $child->setBody($bodyReplaced);
                         $this->originalChildBodies[$child->getId()] = $body;

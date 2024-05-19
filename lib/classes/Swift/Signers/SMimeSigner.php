@@ -18,15 +18,25 @@
 class Swift_Signers_SMimeSigner implements Swift_Signers_BodySigner
 {
     protected $signCertificate;
+
     protected $signPrivateKey;
+
     protected $encryptCert;
+
     protected $signThenEncrypt = true;
+
     protected $signLevel;
+
     protected $encryptLevel;
+
     protected $signOptions;
+
     protected $encryptOptions;
+
     protected $encryptCipher;
-    protected $extraCerts = null;
+
+    protected $extraCerts;
+
     protected $wrapFullMessage = false;
 
     /**
@@ -59,7 +69,7 @@ class Swift_Signers_SMimeSigner implements Swift_Signers_BodySigner
         $this->replacementFactory = Swift_DependencyContainer::getInstance()
             ->lookup('transport.replacementfactory');
 
-        $this->signOptions = PKCS7_DETACHED;
+        $this->signOptions   = PKCS7_DETACHED;
         $this->encryptCipher = OPENSSL_CIPHER_AES_128_CBC;
     }
 
@@ -77,19 +87,19 @@ class Swift_Signers_SMimeSigner implements Swift_Signers_BodySigner
      */
     public function setSignCertificate($certificate, $privateKey = null, $signOptions = PKCS7_DETACHED, $extraCerts = null)
     {
-        $this->signCertificate = 'file://'.str_replace('\\', '/', realpath($certificate));
+        $this->signCertificate = 'file://'.\str_replace('\\', '/', \realpath($certificate));
 
         if (null !== $privateKey) {
             if (\is_array($privateKey)) {
-                $this->signPrivateKey = $privateKey;
-                $this->signPrivateKey[0] = 'file://'.str_replace('\\', '/', realpath($privateKey[0]));
+                $this->signPrivateKey    = $privateKey;
+                $this->signPrivateKey[0] = 'file://'.\str_replace('\\', '/', \realpath($privateKey[0]));
             } else {
-                $this->signPrivateKey = 'file://'.str_replace('\\', '/', realpath($privateKey));
+                $this->signPrivateKey = 'file://'.\str_replace('\\', '/', \realpath($privateKey));
             }
         }
 
         $this->signOptions = $signOptions;
-        $this->extraCerts = $extraCerts ? realpath($extraCerts) : null;
+        $this->extraCerts  = $extraCerts ? \realpath($extraCerts) : null;
 
         return $this;
     }
@@ -111,10 +121,10 @@ class Swift_Signers_SMimeSigner implements Swift_Signers_BodySigner
             $this->encryptCert = [];
 
             foreach ($recipientCerts as $cert) {
-                $this->encryptCert[] = 'file://'.str_replace('\\', '/', realpath($cert));
+                $this->encryptCert[] = 'file://'.\str_replace('\\', '/', \realpath($cert));
             }
         } else {
-            $this->encryptCert = 'file://'.str_replace('\\', '/', realpath($recipientCerts));
+            $this->encryptCert = 'file://'.\str_replace('\\', '/', \realpath($recipientCerts));
         }
 
         if (null !== $cipher) {
@@ -254,7 +264,7 @@ class Swift_Signers_SMimeSigner implements Swift_Signers_BodySigner
                     'Content-Type',
                     'Content-Transfer-Encoding',
                     'Content-Disposition',
-                ]
+                ],
             );
         }
 
@@ -265,17 +275,17 @@ class Swift_Signers_SMimeSigner implements Swift_Signers_BodySigner
         $signedMessageStream = new Swift_ByteStream_TemporaryFileByteStream();
 
         // Sign the message using openssl
-        if (!openssl_pkcs7_sign(
-                $messageStream->getPath(),
-                $signedMessageStream->getPath(),
-                $this->signCertificate,
-                $this->signPrivateKey,
-                [],
-                $this->signOptions,
-                $this->extraCerts
-            )
+        if (!\openssl_pkcs7_sign(
+            $messageStream->getPath(),
+            $signedMessageStream->getPath(),
+            $this->signCertificate,
+            $this->signPrivateKey,
+            [],
+            $this->signOptions,
+            $this->extraCerts,
+        )
         ) {
-            throw new Swift_IoException(sprintf('Failed to sign S/Mime message. Error: "%s".', openssl_error_string()));
+            throw new Swift_IoException(\sprintf('Failed to sign S/Mime message. Error: "%s".', \openssl_error_string()));
         }
 
         // Parse the resulting signed message content back into the Swift message
@@ -311,7 +321,7 @@ class Swift_Signers_SMimeSigner implements Swift_Signers_BodySigner
                     'Content-Type',
                     'Content-Transfer-Encoding',
                     'Content-Disposition',
-                ]
+                ],
             );
         }
 
@@ -323,16 +333,16 @@ class Swift_Signers_SMimeSigner implements Swift_Signers_BodySigner
         $encryptedMessageStream = new Swift_ByteStream_TemporaryFileByteStream();
 
         // Encrypt the message
-        if (!openssl_pkcs7_encrypt(
-                $messageStream->getPath(),
-                $encryptedMessageStream->getPath(),
-                $this->encryptCert,
-                [],
-                0,
-                $this->encryptCipher
-            )
+        if (!\openssl_pkcs7_encrypt(
+            $messageStream->getPath(),
+            $encryptedMessageStream->getPath(),
+            $this->encryptCert,
+            [],
+            0,
+            $this->encryptCipher,
+        )
         ) {
-            throw new Swift_IoException(sprintf('Failed to encrypt S/Mime message. Error: "%s".', openssl_error_string()));
+            throw new Swift_IoException(\sprintf('Failed to encrypt S/Mime message. Error: "%s".', \openssl_error_string()));
         }
 
         // Parse the resulting signed message content back into the Swift message
@@ -346,7 +356,7 @@ class Swift_Signers_SMimeSigner implements Swift_Signers_BodySigner
     protected function copyHeaders(
         Swift_Message $fromMessage,
         Swift_Message $toMessage,
-        array $headers = []
+        array $headers = [],
     ) {
         foreach ($headers as $header) {
             $this->copyHeader($fromMessage, $toMessage, $header);
@@ -373,7 +383,7 @@ class Swift_Signers_SMimeSigner implements Swift_Signers_BodySigner
                 $headers->addParameterizedHeader(
                     $header->getFieldName(),
                     $header->getValue(),
-                    $header->getParameters()
+                    $header->getParameters(),
                 );
                 break;
         }
@@ -466,8 +476,8 @@ class Swift_Signers_SMimeSigner implements Swift_Signers_BodySigner
      */
     protected function parseStream(Swift_OutputByteStream $emailStream)
     {
-        $bufferLength = 78;
-        $headerData = '';
+        $bufferLength        = 78;
+        $headerData          = '';
         $headerBodySeparator = "\r\n\r\n";
 
         $emailStream->setReadPointer(0);
@@ -476,7 +486,7 @@ class Swift_Signers_SMimeSigner implements Swift_Signers_BodySigner
         while (false !== ($buffer = $emailStream->read($bufferLength))) {
             $headerData .= $buffer;
 
-            $headersPosEnd = strpos($headerData, $headerBodySeparator);
+            $headersPosEnd = \strpos($headerData, $headerBodySeparator);
 
             // Stop reading if we found the end of the headers
             if (false !== $headersPosEnd) {
@@ -485,24 +495,24 @@ class Swift_Signers_SMimeSigner implements Swift_Signers_BodySigner
         }
 
         // Split the header data into lines
-        $headerData = trim(substr($headerData, 0, $headersPosEnd));
-        $headerLines = explode("\r\n", $headerData);
+        $headerData  = \trim(\substr($headerData, 0, $headersPosEnd));
+        $headerLines = \explode("\r\n", $headerData);
         unset($headerData);
 
-        $headers = [];
+        $headers           = [];
         $currentHeaderName = '';
 
         // Transform header lines into an associative array
         foreach ($headerLines as $headerLine) {
             // Handle headers that span multiple lines
-            if (false === strpos($headerLine, ':')) {
-                $headers[$currentHeaderName] .= ' '.trim($headerLine ?? '');
+            if (!\str_contains($headerLine, ':')) {
+                $headers[$currentHeaderName] .= ' '.\trim($headerLine ?? '');
                 continue;
             }
 
-            $header = explode(':', $headerLine, 2);
-            $currentHeaderName = strtolower($header[0] ?? '');
-            $headers[$currentHeaderName] = trim($header[1] ?? '');
+            $header                      = \explode(':', $headerLine, 2);
+            $currentHeaderName           = \strtolower($header[0] ?? '');
+            $headers[$currentHeaderName] = \trim($header[1] ?? '');
         }
 
         // Read the entire email body into a byte stream
@@ -522,7 +532,7 @@ class Swift_Signers_SMimeSigner implements Swift_Signers_BodySigner
 
     protected function copyFromOpenSSLOutput(Swift_OutputByteStream $fromStream, Swift_InputByteStream $toStream)
     {
-        $bufferLength = 4096;
+        $bufferLength   = 4096;
         $filteredStream = new Swift_ByteStream_TemporaryFileByteStream();
         $filteredStream->addFilter($this->replacementFactory->createFilter("\r\n", "\n"), 'CRLF to LF');
         $filteredStream->addFilter($this->replacementFactory->createFilter("\n", "\r\n"), 'LF to CRLF');

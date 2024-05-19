@@ -1,56 +1,62 @@
 <?php
 
-class Swift_Events_SendEventTest extends \PHPUnit\Framework\TestCase
+class Swift_Events_SendEventTest extends PHPUnit\Framework\TestCase
 {
     public function testMessageCanBeFetchedViaGetter()
     {
-        $message = $this->createMessage();
+        $message   = $this->createMessage();
         $transport = $this->createTransport();
 
         $evt = $this->createEvent($transport, $message);
 
         $ref = $evt->getMessage();
-        $this->assertEquals($message, $ref,
-            '%s: Message should be returned from getMessage()'
-            );
+        $this->assertEquals(
+            $message,
+            $ref,
+            '%s: Message should be returned from getMessage()',
+        );
     }
 
     public function testTransportCanBeFetchViaGetter()
     {
-        $message = $this->createMessage();
+        $message   = $this->createMessage();
         $transport = $this->createTransport();
 
         $evt = $this->createEvent($transport, $message);
 
         $ref = $evt->getTransport();
-        $this->assertEquals($transport, $ref,
-            '%s: Transport should be returned from getTransport()'
-            );
+        $this->assertEquals(
+            $transport,
+            $ref,
+            '%s: Transport should be returned from getTransport()',
+        );
     }
 
     public function testTransportCanBeFetchViaGetSource()
     {
-        $message = $this->createMessage();
+        $message   = $this->createMessage();
         $transport = $this->createTransport();
 
         $evt = $this->createEvent($transport, $message);
 
         $ref = $evt->getSource();
-        $this->assertEquals($transport, $ref,
-            '%s: Transport should be returned from getSource()'
-            );
+        $this->assertEquals(
+            $transport,
+            $ref,
+            '%s: Transport should be returned from getSource()',
+        );
     }
 
     public function testResultCanBeSetAndGet()
     {
-        $message = $this->createMessage();
+        $message   = $this->createMessage();
         $transport = $this->createTransport();
 
         $evt = $this->createEvent($transport, $message);
 
         $evt->setResult(
-            Swift_Events_SendEvent::RESULT_SUCCESS | Swift_Events_SendEvent::RESULT_TENTATIVE
-            );
+            Swift_Events_SendEvent::RESULT_SUCCESS | Swift_Events_SendEvent::RESULT_TENTATIVE,
+        );
 
         $this->assertTrue((bool) ($evt->getResult() & Swift_Events_SendEvent::RESULT_SUCCESS));
         $this->assertTrue((bool) ($evt->getResult() & Swift_Events_SendEvent::RESULT_TENTATIVE));
@@ -58,21 +64,23 @@ class Swift_Events_SendEventTest extends \PHPUnit\Framework\TestCase
 
     public function testFailedRecipientsCanBeSetAndGet()
     {
-        $message = $this->createMessage();
+        $message   = $this->createMessage();
         $transport = $this->createTransport();
 
         $evt = $this->createEvent($transport, $message);
 
         $evt->setFailedRecipients(['foo@bar', 'zip@button']);
 
-        $this->assertEquals(['foo@bar', 'zip@button'], $evt->getFailedRecipients(),
-            '%s: FailedRecipients should be returned from getter'
-            );
+        $this->assertEquals(
+            ['foo@bar', 'zip@button'],
+            $evt->getFailedRecipients(),
+            '%s: FailedRecipients should be returned from getter',
+        );
     }
 
     public function testFailedRecipientsGetsPickedUpCorrectly()
     {
-        $message = $this->createMessage();
+        $message   = $this->createMessage();
         $transport = $this->createTransport();
 
         $evt = $this->createEvent($transport, $message);

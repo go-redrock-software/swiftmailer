@@ -24,7 +24,7 @@ class Swift_Mime_ContentEncoder_QpContentEncoder extends Swift_Encoder_QpEncoder
      * @param Swift_StreamFilter    $filter     if canonicalization should occur
      * @param bool                  $dotEscape  if dot stuffing workaround must be enabled
      */
-    public function __construct(Swift_CharacterStream $charStream, Swift_StreamFilter $filter = null, $dotEscape = false)
+    public function __construct(Swift_CharacterStream $charStream, ?Swift_StreamFilter $filter = null, $dotEscape = false)
     {
         $this->dotEscape = $dotEscape;
         parent::__construct($charStream, $filter);
@@ -45,7 +45,7 @@ class Swift_Mime_ContentEncoder_QpContentEncoder extends Swift_Encoder_QpEncoder
         parent::initSafeMap();
         if ($this->dotEscape) {
             /* Encode . as =2e for buggy remote servers */
-            unset($this->safeMap[0x2e]);
+            unset($this->safeMap[0x2E]);
         }
     }
 
@@ -73,8 +73,8 @@ class Swift_Mime_ContentEncoder_QpContentEncoder extends Swift_Encoder_QpEncoder
         $this->charStream->importByteStream($os);
 
         $currentLine = '';
-        $prepend = '';
-        $size = $lineLen = 0;
+        $prepend     = '';
+        $size        = $lineLen = 0;
 
         while (false !== $bytes = $this->nextSequence()) {
             // If we're filtering the input
@@ -96,15 +96,15 @@ class Swift_Mime_ContentEncoder_QpContentEncoder extends Swift_Encoder_QpEncoder
 
             $enc = $this->encodeByteSequence($bytes, $size);
 
-            $i = strpos($enc, '=0D=0A');
+            $i             = \strpos($enc, '=0D=0A');
             $newLineLength = $lineLen + (false === $i ? $size : $i);
 
             if ($currentLine && $newLineLength >= $thisLineLength) {
                 $is->write($prepend.$this->standardize($currentLine));
-                $currentLine = '';
-                $prepend = "=\r\n";
+                $currentLine    = '';
+                $prepend        = "=\r\n";
                 $thisLineLength = $maxLineLength;
-                $lineLen = 0;
+                $lineLen        = 0;
             }
 
             $currentLine .= $enc;
@@ -113,7 +113,7 @@ class Swift_Mime_ContentEncoder_QpContentEncoder extends Swift_Encoder_QpEncoder
                 $lineLen += $size;
             } else {
                 // 6 is the length of '=0D=0A'.
-                $lineLen = $size - strrpos($enc, '=0D=0A') - 6;
+                $lineLen = $size - \strrpos($enc, '=0D=0A') - 6;
             }
         }
         if (\strlen($currentLine)) {

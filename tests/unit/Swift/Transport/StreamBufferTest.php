@@ -1,14 +1,14 @@
 <?php
 
-class Swift_Transport_StreamBufferTest extends \PHPUnit\Framework\TestCase
+class Swift_Transport_StreamBufferTest extends PHPUnit\Framework\TestCase
 {
     public function testSettingWriteTranslationsCreatesFilters()
     {
         $factory = $this->createFactory();
         $factory->expects($this->once())
-                ->method('createFilter')
-                ->with('a', 'b')
-                ->willReturnCallback([$this, 'createFilter']);
+            ->method('createFilter')
+            ->with('a', 'b')
+            ->willReturnCallback([$this, 'createFilter']);
 
         $buffer = $this->createBuffer($factory);
         $buffer->setWriteTranslations(['a' => 'b']);
@@ -18,8 +18,8 @@ class Swift_Transport_StreamBufferTest extends \PHPUnit\Framework\TestCase
     {
         $factory = $this->createFactory();
         $factory->expects($this->exactly(2))
-                ->method('createFilter')
-                ->willReturnCallback([$this, 'createFilter']);
+            ->method('createFilter')
+            ->willReturnCallback([$this, 'createFilter']);
 
         $buffer = $this->createBuffer($factory);
         $buffer->setWriteTranslations(['a' => 'b']);

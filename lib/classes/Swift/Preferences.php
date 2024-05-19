@@ -16,7 +16,7 @@
 class Swift_Preferences
 {
     /** Singleton instance */
-    private static $instance = null;
+    private static $instance;
 
     /** Constructor not to be used */
     private function __construct()
@@ -74,7 +74,7 @@ class Swift_Preferences
      */
     public function setCacheType($type)
     {
-        Swift_DependencyContainer::getInstance()->register('cache')->asAliasOf(sprintf('cache.%s', $type));
+        Swift_DependencyContainer::getInstance()->register('cache')->asAliasOf(\sprintf('cache.%s', $type));
 
         return $this;
     }

@@ -45,8 +45,8 @@ class Swift_Message extends Swift_Mime_SimpleMessage
         \call_user_func_array(
             [$this, 'Swift_Mime_SimpleMessage::__construct'],
             Swift_DependencyContainer::getInstance()
-                ->createDependenciesFor('mime.message')
-            );
+                ->createDependenciesFor('mime.message'),
+        );
 
         if (!isset($charset)) {
             $charset = Swift_DependencyContainer::getInstance()
@@ -126,7 +126,7 @@ class Swift_Message extends Swift_Mime_SimpleMessage
     public function clearSigners()
     {
         $this->headerSigners = [];
-        $this->bodySigners = [];
+        $this->bodySigners   = [];
 
         return $this;
     }
@@ -209,11 +209,11 @@ class Swift_Message extends Swift_Mime_SimpleMessage
      */
     protected function saveMessage()
     {
-        $this->savedMessage = ['headers' => []];
-        $this->savedMessage['body'] = $this->getBody();
+        $this->savedMessage             = ['headers' => []];
+        $this->savedMessage['body']     = $this->getBody();
         $this->savedMessage['children'] = $this->getChildren();
         if (\count($this->savedMessage['children']) > 0 && '' != $this->getBody()) {
-            $this->setChildren(array_merge([$this->becomeMimePart()], $this->savedMessage['children']));
+            $this->setChildren(\array_merge([$this->becomeMimePart()], $this->savedMessage['children']));
             $this->setBody('');
         }
     }
@@ -224,7 +224,7 @@ class Swift_Message extends Swift_Mime_SimpleMessage
     protected function saveHeaders(array $altered)
     {
         foreach ($altered as $head) {
-            $lc = strtolower($head ?? '');
+            $lc = \strtolower($head ?? '');
 
             if (!isset($this->savedMessage['headers'][$lc])) {
                 $this->savedMessage['headers'][$lc] = $this->getHeaders()->getAll($head);
