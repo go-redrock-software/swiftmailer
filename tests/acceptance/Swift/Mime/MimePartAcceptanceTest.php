@@ -12,6 +12,8 @@ class Swift_Mime_MimePartAcceptanceTest extends PHPUnit\Framework\TestCase
 
     private $emailValidator;
 
+    private Swift_Mime_IdGenerator $idGenerator;
+
     protected function setUp(): void
     {
         $this->cache = new Swift_KeyCache_ArrayKeyCache(

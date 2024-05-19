@@ -317,7 +317,7 @@ class Swift_Transport_EsmtpTransport extends Swift_Transport_AbstractSmtpTranspo
                 \strtolower($method),
                 \array_map('strtolower', (array) $handler->exposeMixinMethods()),
             )) {
-                $return = \call_user_func_array([$handler, $method], $args);
+                $return = $handler->$method(...$args);
                 // Allow fluid method calls
                 if (null === $return && 'set' == \substr($method, 0, 3)) {
                     return $this;

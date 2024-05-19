@@ -286,7 +286,8 @@ class Swift_CharacterStream_ArrayCharacterStreamTest extends SwiftMailerTestCase
         $stream = new Swift_CharacterStream_ArrayCharacterStream($factory, 'utf-8');
 
         $os->shouldReceive('setReadPointer')
-            ->between(0, 1)
+            ->atMost()
+            ->once()
             ->with(0);
         $os->shouldReceive('read')->once()->andReturn(\pack('C*', 0xD0));
         $os->shouldReceive('read')->once()->andReturn(\pack('C*', 0x94));
@@ -318,7 +319,8 @@ class Swift_CharacterStream_ArrayCharacterStreamTest extends SwiftMailerTestCase
         $stream = new Swift_CharacterStream_ArrayCharacterStream($factory, 'utf-8');
 
         $os->shouldReceive('setReadPointer')
-            ->between(0, 1)
+            ->atMost()
+            ->once()
             ->with(0);
         $os->shouldReceive('read')->once()->andReturn(\pack('C*', 0xD0));
         $os->shouldReceive('read')->once()->andReturn(\pack('C*', 0x94));
