@@ -144,9 +144,14 @@ class Swift_ByteStream_FileByteStream extends Swift_ByteStream_AbstractFilterabl
     private function getWriteHandle()
     {
         if (!isset($this->writer)) {
-            if (!$this->writer = \fopen($this->path, $this->mode)) {
-                throw new Swift_IoException('Unable to open file for writing ['.$this->path.']');
+            try {
+                if (!$this->writer = \fopen($this->path, $this->mode)) {
+                    throw new Swift_IoException('Unable to open file for writing ['.$this->path.']');
+                }
+            } catch (\Throwable $e) {
+                throw new Swift_IoException('Unable to open file for writing ['.$this->path.']', $e->getCode(), $e);
             }
+
         }
 
         return $this->writer;
