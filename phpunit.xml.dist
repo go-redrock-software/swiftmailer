@@ -16,6 +16,7 @@
         <ini name="intl.error_level" value="0"/>
         <ini name="memory_limit" value="-1"/>
         <ini name="error_reporting" value="-1" />
+        <ini name="xdebug.mode" value="coverage" />
     </php>
 
     <testsuites>
@@ -37,4 +38,10 @@
         <listener class="Symfony\Bridge\PhpUnit\SymfonyTestsListener" />
         <listener class="Mockery\Adapter\Phpunit\TestListener" />
     </listeners>
+
+    <coverage>
+        <include>
+            <directory suffix=".php">lib</directory>
+        </include>
+    </coverage>
 </phpunit>
