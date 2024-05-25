@@ -12,44 +12,37 @@ use Nyholm\Dsn\Exception\InvalidDsnException;
 
 class Swift_Dsn_Configuration
 {
-    /**
-     * @var array
-     */
     private array $dsnConfigurations;
+
     private string $function_name;
 
     /**
      * Swift_Dsn_Configuration constructor.
-     * @param string $dsnString
      */
     public function __construct(string $dsnString)
     {
         try {
-            $dsn = DSNParser::parseFunc($dsnString);
+            $dsn = DsnParser::parseFunc($dsnString);
         } catch (InvalidDsnException $e) {
             throw new InvalidArgumentException($e->getMessage(), $e->getCode(), $e);
         }
 
-        //if $dsn->getName() is "dsn" we dont have a function (failover, roundrobin, etc.)
-        if ($dsn->getName() === 'dsn') {
-            //this is just one configuration, one DSN
+        // if $dsn->getName() is "dsn" we dont have a function (failover, roundrobin, etc.)
+        if ('dsn' === $dsn->getName()) {
+            // this is just one configuration, one DSN
             $this->dsnConfigurations[] = new Swift_Dsn($dsn->first());
         } else {
-            //this is a function configuration, multiple DSNs
+            // this is a function configuration, multiple DSNs
             foreach ($dsn->getArguments() as $argument) {
                 $this->dsnConfigurations[] = new Swift_Dsn($argument);
             }
         }
 
         $this->function_name = $dsn->getName();
-
     }
 
     /**
-     * Get a specific DSN by index
-     *
-     * @param int $index
-     * @return Swift_Dsn|null
+     * Get a specific DSN by index.
      */
     public function getDsn(int $index): ?Swift_Dsn
     {
@@ -57,9 +50,7 @@ class Swift_Dsn_Configuration
     }
 
     /**
-     * Get all DSNs
-     *
-     * @return array
+     * Get all DSNs.
      */
     public function getAllDsn(): array
     {
@@ -67,13 +58,11 @@ class Swift_Dsn_Configuration
     }
 
     /**
-     * Count the configured DSNs
-     *
-     * @return int
+     * Count the configured DSNs.
      */
     public function countDsn(): int
     {
-        return count($this->dsnConfigurations);
+        return \count($this->dsnConfigurations);
     }
 
     public function getFunction(): string
@@ -90,5 +79,4 @@ class Swift_Dsn_Configuration
     {
         return $this->dsnConfigurations[0];
     }
-
 }

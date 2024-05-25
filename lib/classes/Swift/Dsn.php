@@ -11,35 +11,20 @@ use Nyholm\Dsn\Configuration\Dsn;
 use Nyholm\Dsn\Configuration\Url;
 
 /**
- * Object representation of a DSN (mail connection)
- *
+ * Object representation of a DSN (mail connection).
  */
 class Swift_Dsn
 {
-    /**
-     * @var string|null
-     */
     private ?string $scheme;
 
-    /**
-     * @var string|null
-     */
     private ?string $user;
 
-    /**
-     * @var string|null
-     */
     private ?string $password;
 
-    /**
-     * @var string|null
-     */
     private ?string $host;
 
-    /**
-     * @var int|null
-     */
     private ?int $port;
+
     private array $parameters;
 
     /**
@@ -49,12 +34,12 @@ class Swift_Dsn
      */
     public function __construct(Dsn $dsn)
     {
-        //turn the Nyholm DSN object into ours (wrap)
-        $this->scheme = $dsn->getScheme();
-        $this->user = $dsn->getUser();
-        $this->password = $dsn->getPassword();
-        $this->host = $dsn->getHost();
-        $this->port = $dsn->getPort();
+        // turn the Nyholm DSN object into ours (wrap)
+        $this->scheme     = $dsn->getScheme();
+        $this->user       = $dsn->getUser();
+        $this->password   = $dsn->getPassword();
+        $this->host       = $dsn->getHost();
+        $this->port       = $dsn->getPort();
         $this->parameters = $dsn->getParameters();
     }
 
@@ -92,6 +77,4 @@ class Swift_Dsn
     {
         return $this->parameters[$parameter] ?? null;
     }
-
-
 }
