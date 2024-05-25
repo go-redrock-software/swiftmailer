@@ -10,9 +10,6 @@ use PHPUnit\Framework\TestCase;
 
 class Swift_Dsn_ConfigurationTest extends TestCase
 {
-    /**
-     * @return void
-     */
     protected function tearDown(): void
     {
         Mockery::close();
@@ -20,7 +17,7 @@ class Swift_Dsn_ConfigurationTest extends TestCase
 
     public function testConstruct(): void
     {
-        $dsnConf = new \Swift_Dsn_Configuration('dsn://user:pwd@host:123/path');
+        $dsnConf = new Swift_Dsn_Configuration('dsn://user:pwd@host:123/path');
 
         $this->assertInstanceOf(Swift_Dsn_Configuration::class, $dsnConf);
         $this->assertCount(1, $dsnConf->getAllDsn());
@@ -45,7 +42,7 @@ class Swift_Dsn_ConfigurationTest extends TestCase
     public function testGetDsn(): void
     {
         $dsnConf = Swift_Dsn_Configuration::parse('dsn://user:pwd@host:123/path');
-        $dsn = $dsnConf->getDsn(0);
+        $dsn     = $dsnConf->getDsn(0);
 
         $this->assertInstanceOf(Swift_Dsn::class, $dsn);
     }
@@ -74,42 +71,42 @@ class Swift_Dsn_ConfigurationTest extends TestCase
 
     public function testConstructWithInvalidArguments(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
 
-        new \Swift_Dsn_Configuration('thisisbad');
+        new Swift_Dsn_Configuration('thisisbad');
     }
 
     public function testConstructWithInvalidArgumentType(): void
     {
-        $this->expectException(\TypeError::class);
+        $this->expectException(TypeError::class);
 
-        new \Swift_Dsn_Configuration(null);
+        new Swift_Dsn_Configuration(null);
     }
 
     public function testConstructWithEmptyString(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
 
-        new \Swift_Dsn_Configuration('');
+        new Swift_Dsn_Configuration('');
     }
 
     public function testParseWithInvalidArguments(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
 
         Swift_Dsn_Configuration::parse('thisisbad');
     }
 
     public function testParseWithInvalidArgumentType(): void
     {
-        $this->expectException(\TypeError::class);
+        $this->expectException(TypeError::class);
 
         Swift_Dsn_Configuration::parse(null);
     }
 
     public function testParseWithEmptyString(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
 
         Swift_Dsn_Configuration::parse('');
     }
@@ -118,7 +115,7 @@ class Swift_Dsn_ConfigurationTest extends TestCase
     {
         $dsnConf = Swift_Dsn_Configuration::parse('dsn://user:pwd@host:123/path');
 
-        $this->expectException(\OutOfRangeException::class);
+        $this->expectException(OutOfRangeException::class);
 
         $dsnConf->getDsn(100);
     }

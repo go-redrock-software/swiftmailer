@@ -12,6 +12,7 @@ use PHPUnit\Framework\TestCase;
 class Swift_DsnTest extends TestCase
 {
     private Swift_Dsn $swiftDsn;
+
     private $dsn;
 
     protected function setUp(): void
@@ -26,7 +27,7 @@ class Swift_DsnTest extends TestCase
         $this->dsn->method('getHost')->willReturn('localhost');
         $this->dsn->method('getPort')->willReturn(25);
 
-        $this->dsn->method('getParameters')->willReturn([ 'param1' => 'value1' ]);
+        $this->dsn->method('getParameters')->willReturn(['param1' => 'value1']);
 
         $this->swiftDsn = new Swift_Dsn($this->dsn);
     }
@@ -58,7 +59,7 @@ class Swift_DsnTest extends TestCase
 
     public function testGetParameters(): void
     {
-        $this->assertEquals([ 'param1' => 'value1' ], $this->swiftDsn->getParameters());
+        $this->assertEquals(['param1' => 'value1'], $this->swiftDsn->getParameters());
     }
 
     public function testGetParameter(): void

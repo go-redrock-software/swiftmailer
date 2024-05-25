@@ -6,19 +6,19 @@
  *
  */
 
-class Swift_ByteStream_FileByteStreamTest extends \PHPUnit\Framework\TestCase
+class Swift_ByteStream_FileByteStreamTest extends PHPUnit\Framework\TestCase
 {
     private $tmpFile;
 
     protected function setUp(): void
     {
-        $this->tmpFile = tempnam(sys_get_temp_dir(), 'swift_');
+        $this->tmpFile = \tempnam(\sys_get_temp_dir(), 'swift_');
     }
 
     protected function tearDown(): void
     {
-        if (file_exists($this->tmpFile)) {
-            unlink($this->tmpFile);
+        if (\file_exists($this->tmpFile)) {
+            \unlink($this->tmpFile);
         }
     }
 
@@ -39,13 +39,13 @@ class Swift_ByteStream_FileByteStreamTest extends \PHPUnit\Framework\TestCase
     {
         $bs = new Swift_ByteStream_FileByteStream($this->tmpFile, true);
         $bs->write('test');
-        $this->assertEquals('test', file_get_contents($this->tmpFile));
+        $this->assertEquals('test', \file_get_contents($this->tmpFile));
     }
 
     public function testReadFromNonReadableFileThrowsException()
     {
-        file_put_contents($this->tmpFile, 'test');
-        chmod($this->tmpFile, 0000);
+        \file_put_contents($this->tmpFile, 'test');
+        \chmod($this->tmpFile, 0000);
 
         $bs = new Swift_ByteStream_FileByteStream($this->tmpFile);
 
@@ -56,8 +56,8 @@ class Swift_ByteStream_FileByteStreamTest extends \PHPUnit\Framework\TestCase
 
     public function testWriteToNonWritableFileThrowsException()
     {
-        file_put_contents($this->tmpFile, 'test');
-        chmod($this->tmpFile, 0400);
+        \file_put_contents($this->tmpFile, 'test');
+        \chmod($this->tmpFile, 0400);
 
         $bs = new Swift_ByteStream_FileByteStream($this->tmpFile, true);
 
@@ -68,14 +68,14 @@ class Swift_ByteStream_FileByteStreamTest extends \PHPUnit\Framework\TestCase
 
     public function testCopyReadStream()
     {
-        file_put_contents($this->tmpFile, 'abcdef');
+        \file_put_contents($this->tmpFile, 'abcdef');
 
         // Create an instance of Swift_ByteStream_FileByteStream
         $bs = new Swift_ByteStream_FileByteStream($this->tmpFile);
         // Use reflection to call a private method
-        $reflection = new \ReflectionClass('Swift_ByteStream_FileByteStream');
-        $method = $reflection->getMethod('copyReadStream');
-        $method2 = $reflection->getMethod('getReadHandle');
+        $reflection = new ReflectionClass('Swift_ByteStream_FileByteStream');
+        $method     = $reflection->getMethod('copyReadStream');
+        $method2    = $reflection->getMethod('getReadHandle');
         $method2->setAccessible(true);
         $method2->invoke($bs);
         $method->setAccessible(true); // Allow access to the private method
