@@ -204,20 +204,34 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         return $recipient_count;
     }
 
-    private function convertSwiftEmailAddressToGraphRecipient(array $swift_email): Recipient
+    public function convertSwiftEmailAddressToGraphRecipient(array $swift_email, bool $strict = false): Recipient
     {
         $recipient    = new Recipient();
         $emailAddress = new EmailAddress();
 
         $emailAddress->setAddress(\array_key_first($swift_email));
-        $emailAddress->setName(\array_values($swift_email)[0]);
+
+        if ($strict && !isset(\array_values($swift_email)[0])) {
+            try {
+                $dec = \json_encode($swift_email, JSON_THROW_ON_ERROR);
+            } catch (JsonException $e) {
+                $dec = '[error parsing email array]';
+                throw new InvalidArgumentException("Invalid Swift EmailAddress given: {$dec}");
+            }
+        }
+
+        if (isset(\array_values($swift_email)[0])) {
+            $emailAddress->setName(\array_values($swift_email)[0]);
+        } elseif ($strict) {
+            throw new InvalidArgumentException("Invalid Swift EmailAddress given: {$dec}");
+        }
 
         $recipient->setEmailAddress($emailAddress);
 
         return $recipient;
     }
 
-    private function convertSwiftAttachmentToGraphAttachment(Swift_Attachment $swiftAttachment): Attachment
+    public function convertSwiftAttachmentToGraphAttachment(Swift_Attachment $swiftAttachment): Attachment
     {
         $graphAttachment = new FileAttachment();
         $graphAttachment->setName($swiftAttachment->getFilename());
