@@ -1,60 +1,56 @@
 <?php
 
 use Google\Client;
-use League\OAuth2\Client\Token\AccessTokenInterface;
+
+use function Swift\getRawMessage;
+
 
 class Swift_Transport_Api_GoogleTransport extends Swift_Transport_AbstractApiTransport
 {
-
     private Client $googleClient;
-
-    private AccessTokenInterface $accessToken;
 
     public function __construct(
         Client $googleClient,
-        Swift_Events_EventDispatcher $eventDispatcher = null,
-
-    ) {
-//        $this->accessToken = $accessToken;
-        $this->eventDispatcher = $eventDispatcher;
-
-
-    }
-
-    public static function fromRawCredentials(
-        AccessTokenInterface|string $accessToken,
-        #[SensitiveParameter] string $clientId,
-        #[SensitiveParameter] string $clientSecret,
-        #[SensitiveParameter] string $redirectUri,
-        string $accessType = 'offline',
         ?Swift_Events_EventDispatcher $eventDispatcher = null,
-
     ) {
-        $client = new Client();
-        $client->setAccessToken($accessToken->getToken());
-        $client->setClientId($clientId;
-        $client->setClientSecret($clientSecret);
-        $client->setRedirectUri($redirectUri);
-        $client->setAccessType('offline');
-
-//        return new self($client, );
-
+        $this->googleClient    = $googleClient;
+        $this->eventDispatcher = $eventDispatcher;
     }
 
-        /**
-     * @inheritDoc
-     */
     public function ping(): bool
     {
         return true;
     }
 
-    /**
-     * @inheritDoc
-     */
     public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null): int
     {
-        // TODO: Implement send() method.
+        // Get the Gmail Service from the Google Client
+        $service = new Google\Service\Gmail($this->getApiConnection());
+
+        $toRecipients  = \count($message->getTo() ?? []);
+        $ccRecipients  = \count($message->getCc() ?? []);
+        $bccRecipients = \count($message->getBcc() ?? []);
+
+        $totalRecipients = $toRecipients + $ccRecipients + $bccRecipients;
+
+        try {
+            // Create base64url encoded RFC 2822 formatted message and add to the Gmail service
+            $msg = new Google\Service\Gmail\Message();
+            $msg->setRaw(getRawMessage($message));
+            // Send the email
+            /** @noinspection CallableParameterUseCaseInTypeContextInspection */
+            $message = $service->users_messages->send('me', $msg);
+
+            return $totalRecipients;
+        } catch (Exception $e) {
+            // Replace this with your own logging or error handling
+            return 0;
+        }
+    }
+
+    protected function getApiConnection(): Client
+    {
+        return $this->googleClient;
     }
 
     public function start(): void
@@ -74,13 +70,5 @@ class Swift_Transport_Api_GoogleTransport extends Swift_Transport_AbstractApiTra
 
             $this->started = true;
         }
-    }
-
-    /**
-     * @inheritDoc
-     */
-    protected function getApiConnection(): Client
-    {
-        return $this->googleClient;
     }
 }

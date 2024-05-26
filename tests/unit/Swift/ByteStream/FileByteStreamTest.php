@@ -45,7 +45,11 @@ class Swift_ByteStream_FileByteStreamTest extends PHPUnit\Framework\TestCase
     public function testReadFromNonReadableFileThrowsException()
     {
         \file_put_contents($this->tmpFile, 'test');
-        \chmod($this->tmpFile, 0000);
+        $ret = \chmod($this->tmpFile, 0000);
+        if (!$ret) {
+            //we failed to set the permissions on the test file
+            $this->fail('Failed to set permissions on the test file');
+        }
 
         $bs = new Swift_ByteStream_FileByteStream($this->tmpFile);
 

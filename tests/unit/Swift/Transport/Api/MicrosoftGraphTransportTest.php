@@ -186,4 +186,26 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
 
         $object->convertSwiftAttachmentToGraphAttachment(null);
     }
+
+    /**
+     * Test the setSendingAccountUserId method.
+     */
+    public function testSetSendingAccountUserId(): void
+    {
+        $graphServiceClientMock = $this->createMock(GraphServiceClient::class);
+        $string                 = 'random_string';
+        $eventDispatcherMock    = $this->createMock(\Swift_Events_EventDispatcher::class);
+
+        $object = new \Swift_Transport_Api_MicrosoftGraphTransport(
+            $graphServiceClientMock,
+            $string,
+            $eventDispatcherMock,
+        );
+
+        $newId = 'new_random_string';
+        $object->setSendingAccountUserId($newId);
+
+        // Assert that the sendingAccountUserId is properly set.
+        $this->assertEquals($newId, $object->getSendingAccountUserId());
+    }
 }
