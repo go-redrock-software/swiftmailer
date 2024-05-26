@@ -86,7 +86,11 @@ class Swift_Transport_StreamBuffer extends Swift_ByteStream_AbstractFilterableIn
 
     public function startTLS()
     {
-        return \stream_socket_enable_crypto($this->stream, true, STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT | STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT);
+        return \stream_socket_enable_crypto(
+            $this->stream,
+            true,
+            STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT | STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT,
+        );
     }
 
     /**
@@ -261,7 +265,14 @@ class Swift_Transport_StreamBuffer extends Swift_ByteStream_AbstractFilterableIn
             throw new Swift_TransportException('Connection could not be established with host '.$this->params['host'].' :'.$msg);
         });
         try {
-            $this->stream = \stream_socket_client($host.':'.$this->params['port'], $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT, $streamContext);
+            $this->stream = \stream_socket_client(
+                $host.':'.$this->params['port'],
+                $errno,
+                $errstr,
+                $timeout,
+                STREAM_CLIENT_CONNECT,
+                $streamContext,
+            );
         } finally {
             \restore_error_handler();
         }

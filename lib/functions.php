@@ -2,9 +2,6 @@
 
 namespace Swift;
 
-use Swift_Mime_Attachment;
-use Swift_Mime_SimpleMessage;
-
 /**
  * Encodes a string into a URL-safe base64 format.
  */
@@ -43,16 +40,16 @@ function obfuscate(string $text, string $replaceWith = 'x'): array|string|null
 /**
  * Convert the Swift message to a raw base64url encoded message string.
  */
-function getRawMessage(Swift_Mime_SimpleMessage $message): string
+function getRawMessage(\Swift_Mime_SimpleMessage $message): string
 {
     $messageString = $message->toString();
     // Handle attachments
     foreach ($message->getChildren() ?? [] as $attachment) {
-        if ($attachment instanceof Swift_Mime_Attachment) {
+        if ($attachment instanceof \Swift_Mime_Attachment) {
             $attachmentString = $attachment->toString();
             $messageString .= "\r\n".$attachmentString;
         }
     }
 
-    return base64_encode($messageString);
+    return \base64_encode($messageString);
 }

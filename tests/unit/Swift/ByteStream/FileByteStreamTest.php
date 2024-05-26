@@ -47,7 +47,7 @@ class Swift_ByteStream_FileByteStreamTest extends PHPUnit\Framework\TestCase
         \file_put_contents($this->tmpFile, 'test');
         $ret = \chmod($this->tmpFile, 0000);
         if (!$ret) {
-            //we failed to set the permissions on the test file
+            // we failed to set the permissions on the test file
             $this->fail('Failed to set permissions on the test file');
         }
 

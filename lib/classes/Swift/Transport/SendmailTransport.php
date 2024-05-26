@@ -36,8 +36,12 @@ class Swift_Transport_SendmailTransport extends Swift_Transport_AbstractSmtpTran
      *
      * @param string $localDomain
      */
-    public function __construct(Swift_Transport_IoBuffer $buf, Swift_Events_EventDispatcher $dispatcher, $localDomain = '127.0.0.1', ?Swift_AddressEncoder $addressEncoder = null)
-    {
+    public function __construct(
+        Swift_Transport_IoBuffer $buf,
+        Swift_Events_EventDispatcher $dispatcher,
+        $localDomain = '127.0.0.1',
+        ?Swift_AddressEncoder $addressEncoder = null,
+    ) {
         parent::__construct($buf, $dispatcher, $localDomain, $addressEncoder);
     }
 
@@ -124,8 +128,7 @@ class Swift_Transport_SendmailTransport extends Swift_Transport_AbstractSmtpTran
 
             $count = \count((array) $message->getTo())
                 + \count((array) $message->getCc())
-                + \count((array) $message->getBcc())
-            ;
+                + \count((array) $message->getBcc());
             $message->toByteStream($buffer);
             $buffer->flushBuffers();
             $buffer->setWriteTranslations([]);
@@ -141,10 +144,12 @@ class Swift_Transport_SendmailTransport extends Swift_Transport_AbstractSmtpTran
         } elseif (\str_contains($command, ' -bs')) {
             $count = parent::send($message, $failedRecipients);
         } else {
-            $this->throwException(new Swift_TransportException(
-                'Unsupported sendmail command flags ['.$command.']. '.
-                'Must be one of "-bs" or "-t" but can include additional flags.',
-            ));
+            $this->throwException(
+                new Swift_TransportException(
+                    'Unsupported sendmail command flags ['.$command.']. '.
+                    'Must be one of "-bs" or "-t" but can include additional flags.',
+                ),
+            );
         }
 
         return $count;

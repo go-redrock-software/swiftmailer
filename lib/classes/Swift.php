@@ -76,4 +76,11 @@ abstract class Swift
         }
         \spl_autoload_register(['Swift', 'autoload']);
     }
+
+    public static function createTransportFromDsn(string $dsn)
+    {
+        $transport = (new Swift_Dsn_Configuration($dsn))->getTransportClass();
+
+        return new Swift_Mailer($transport);
+    }
 }

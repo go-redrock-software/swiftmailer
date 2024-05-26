@@ -15,6 +15,13 @@ use Nyholm\Dsn\Configuration\Url;
  */
 class Swift_Dsn
 {
+    private static array $transport_class_map = [
+        'microsoft-graph' => Swift_Transport_Api_MicrosoftGraphTransport::class,
+        'gmail+smtp'      => Swift_Transport_EsmtpTransport::class,
+        'gmail+api'       => Swift_Transport_Api_GoogleTransport::class,
+
+    ];
+
     private ?string $scheme;
 
     private ?string $user;
@@ -76,5 +83,10 @@ class Swift_Dsn
     public function getParameter(string $parameter): ?string
     {
         return $this->parameters[$parameter] ?? null;
+    }
+
+    public function getTransportClass(): string
+    {
+        return static::$transport_class_map[$this->scheme];
     }
 }

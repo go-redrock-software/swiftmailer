@@ -4,7 +4,6 @@ use Google\Client;
 
 use function Swift\getRawMessage;
 
-
 class Swift_Transport_Api_GoogleTransport extends Swift_Transport_AbstractApiTransport
 {
     private Client $googleClient;
