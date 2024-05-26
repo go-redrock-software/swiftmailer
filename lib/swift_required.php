@@ -13,15 +13,17 @@ const CONNECTION_ENCRYPTION_MODE_STARTTLS = 'tls';
 const CONNECTION_ENCRYPTION_MODE_TLS      = 'ssl';
 const CONNECTION_ENCRYPTION_MODE_NONE     = null;
 
-require __DIR__.'/classes/Swift.php';
+require_once __DIR__.'/classes/Swift.php';
 
-Swift::registerAutoload(function () {
+require_once __DIR__.'/functions.php';
+
+Swift::registerAutoload(static function () {
     // Load in dependency maps
-    require __DIR__.'/dependency_maps/cache_deps.php';
-    require __DIR__.'/dependency_maps/mime_deps.php';
-    require __DIR__.'/dependency_maps/message_deps.php';
-    require __DIR__.'/dependency_maps/transport_deps.php';
+    require_once __DIR__.'/dependency_maps/cache_deps.php';
+    require_once __DIR__.'/dependency_maps/mime_deps.php';
+    require_once __DIR__.'/dependency_maps/message_deps.php';
+    require_once __DIR__.'/dependency_maps/transport_deps.php';
 
     // Load in global library preferences
-    require __DIR__.'/preferences.php';
+    require_once __DIR__.'/preferences.php';
 });
