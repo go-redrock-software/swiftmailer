@@ -66,5 +66,5 @@ interface Swift_Events_EventDispatcher
      *
      * @param string $target method
      */
-    public function dispatchEvent(Swift_Events_EventObject $evt, $target);
+    public function dispatchEvent(Swift_Events_Event $evt, $target);
 }

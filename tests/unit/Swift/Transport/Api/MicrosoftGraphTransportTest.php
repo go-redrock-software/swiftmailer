@@ -8,7 +8,6 @@ use Microsoft\Graph\Generated\Models\FileAttachment;
 use Microsoft\Graph\Generated\Models\Recipient;
 use Microsoft\Graph\GraphServiceClient;
 use PHPUnit\Framework\TestCase;
-use Swift_Transport_Api_MicrosoftGraphTransport;
 
 /**
  * Class Swift_Transport_Api_MicrosoftGraphTransportTest.

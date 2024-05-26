@@ -110,14 +110,14 @@ class Swift_Events_SimpleEventDispatcher implements Swift_Events_EventDispatcher
      *
      * @param string $target method
      */
-    public function dispatchEvent(Swift_Events_EventObject $evt, $target)
+    public function dispatchEvent(Swift_Events_Event $evt, $target)
     {
         $bubbleQueue = $this->prepareBubbleQueue($evt);
         $this->bubble($bubbleQueue, $evt, $target);
     }
 
     /** Queue listeners on a stack ready for $evt to be bubbled up it */
-    private function prepareBubbleQueue(Swift_Events_EventObject $evt)
+    private function prepareBubbleQueue(Swift_Events_Event $evt)
     {
         $bubbleQueue = [];
         $evtClass    = \get_class($evt);
@@ -132,7 +132,7 @@ class Swift_Events_SimpleEventDispatcher implements Swift_Events_EventDispatcher
     }
 
     /** Bubble $evt up the stack calling $target() on each listener */
-    private function bubble(array &$bubbleQueue, Swift_Events_EventObject $evt, $target)
+    private function bubble(array &$bubbleQueue, Swift_Events_Event $evt, $target)
     {
         if (!$evt->bubbleCancelled() && $listener = \array_shift($bubbleQueue)) {
             $listener->$target($evt);

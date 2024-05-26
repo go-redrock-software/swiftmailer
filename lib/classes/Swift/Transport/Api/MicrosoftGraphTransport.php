@@ -15,8 +15,6 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
 {
     private GraphServiceClient $client;
 
-    private Swift_Events_EventDispatcher $dispatcher;
-
     private string $sendingAccountUserId;
 
     /**
@@ -30,7 +28,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         ?Swift_Events_EventDispatcher $dispatcher = null,
     ) {
         $this->client               = $client;
-        $this->dispatcher           = $dispatcher;
+        $this->eventDispatcher      = $dispatcher;
         $this->sendingAccountUserId = $sendingAccountUserId;
     }
 
@@ -64,7 +62,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
     public function start(): void
     {
         if (!$this->started) {
-            if ($evt = $this->eventDispatcher->createTransportChangeEvent($this)) {
+            if ($evt = $this->eventDispatcher?->createTransportChangeEvent($this)) {
                 $this->eventDispatcher->dispatchEvent($evt, 'beforeTransportStarted');
                 if ($evt->bubbleCancelled()) {
                     return;
@@ -94,15 +92,15 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
             $failedRecipients = [];
         }
 
-        if ($evt = $this->eventDispatcher->createSendEvent($this, $message)) {
+        if ($evt = $this->eventDispatcher?->createSendEvent($this, $message)) {
             $this->eventDispatcher->dispatchEvent($evt, 'beforeSendPerformed');
             if ($evt->bubbleCancelled()) {
                 return 0;
             }
         }
         // create and dispatch event before transport start
-        $event = $this->dispatcher->createTransportChangeEvent($this);
-        $this->dispatcher->dispatchEvent($event, 'beforeTransportStarted');
+        $event = $this->eventDispatcher->createTransportChangeEvent($this);
+        $this->eventDispatcher->dispatchEvent($event, 'beforeTransportStarted');
         if ($event->bubbleCancelled()) {
             return 0;
         }

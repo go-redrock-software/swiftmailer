@@ -19,7 +19,7 @@ abstract class Swift_Transport_AbstractApiTransport implements Swift_Transport
      */
     protected bool $started = false;
 
-    protected Swift_Events_EventDispatcher $eventDispatcher;
+    protected ?Swift_Events_EventDispatcher $eventDispatcher = null;
 
     public function isStarted(): bool
     {
