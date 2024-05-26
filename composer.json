@@ -1,63 +1,72 @@
 {
-    "name": "swiftmailer/swiftmailer",
-    "type": "library",
-    "description": "Swiftmailer, free feature-rich PHP mailer",
-    "keywords": ["mail","mailer","email"],
-    "homepage": "https://swiftmailer.symfony.com",
-    "license": "MIT",
-    "authors": [
-        {
-            "name": "Chris Corbyn"
-        },
-        {
-            "name": "Fabien Potencier",
-            "email": "fabien@symfony.com"
-        }
-    ],
-    "require": {
-        "php": ">=8.1.0",
-        "ext-iconv": "*",
-        "ext-mbstring": "*",
-        "ext-intl": "*",
-        "egulias/email-validator": "^2.0|^3.1|^4.0.2",
-        "phpseclib/phpseclib": "3.0.37",
-        "nyholm/dsn": "2.*",
-        "google/apiclient": "^2.16",
-        "microsoft/microsoft-graph": "^2.10",
-        "stevenmaguire/oauth2-microsoft": "^2.2",
-        "league/oauth2-client": "^2.7",
-        "league/oauth2-google": "^4.0"
+  "name": "swiftmailer/swiftmailer",
+  "type": "library",
+  "description": "Swiftmailer, free feature-rich PHP mailer",
+  "keywords": [
+    "mail",
+    "mailer",
+    "email"
+  ],
+  "homepage": "https://swiftmailer.symfony.com",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Chris Corbyn"
     },
-    "require-dev": {
-        "mockery/mockery": "^1.0",
-        "symfony/phpunit-bridge": "^4.4|^5.4",
-        "phpunit/phpunit": "9.6.19",
-        "friendsofphp/php-cs-fixer": "^3.57",
-        "rector/rector": "^1.1",
-        "roave/security-advisories": "dev-master"
-    },
-    "suggest": {
-        "ext-intl": "Needed to support internationalized email addresses"
-    },
-    "autoload": {
-        "files": ["lib/swift_required.php"]
-    },
-    "autoload-dev": {
-        "psr-0": { "Swift_": "tests/unit" }
-    },
-    "extra": {
-        "branch-alias": {
-            "dev-master": "6.3-dev"
-        }
-    },
-    "minimum-stability": "dev",
-    "prefer-stable": true,
-    "config": {
-        "allow-plugins": {
-            "php-http/discovery": true
-        }
-    },
-    "scripts": {
-        "php-cs-fixer": "php-cs-fixer --config=.php-cs-fixer.dist.php fix"
+    {
+      "name": "Fabien Potencier",
+      "email": "fabien@symfony.com"
     }
+  ],
+  "require": {
+    "php": ">=8.1.0",
+    "ext-iconv": "*",
+    "ext-mbstring": "*",
+    "ext-intl": "*",
+    "ext-openssl": "*",
+    "egulias/email-validator": "^2.0|^3.1|^4.0.2",
+    "phpseclib/phpseclib": "3.0.37",
+    "nyholm/dsn": "2.*",
+    "google/apiclient": "^2.16",
+    "microsoft/microsoft-graph": "^2.10",
+    "stevenmaguire/oauth2-microsoft": "^2.2",
+    "league/oauth2-client": "^2.7",
+    "league/oauth2-google": "^4.0"
+  },
+  "require-dev": {
+    "mockery/mockery": "^1.0",
+    "symfony/phpunit-bridge": "^4.4|^5.4",
+    "phpunit/phpunit": "9.6.19",
+    "friendsofphp/php-cs-fixer": "^3.57",
+    "rector/rector": "^1.1",
+    "roave/security-advisories": "dev-master"
+  },
+  "suggest": {
+    "ext-intl": "Needed to support internationalized email addresses"
+  },
+  "autoload": {
+    "files": [
+      "lib/swift_required.php"
+    ]
+  },
+  "autoload-dev": {
+    "psr-0": {
+      "Swift_": "tests/unit"
+    }
+  },
+  "extra": {
+    "branch-alias": {
+      "dev-master": "6.3-dev"
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "config": {
+    "allow-plugins": {
+      "php-http/discovery": true
+    }
+  },
+  "scripts": {
+    "php-cs-fixer": "php-cs-fixer --config=.php-cs-fixer.dist.php fix"
+  }
 }

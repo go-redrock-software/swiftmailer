@@ -669,10 +669,11 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
                 $algorithm = OPENSSL_ALGO_SHA1;
                 break;
             case 'rsa-sha256':
+            default:
                 $algorithm = OPENSSL_ALGO_SHA256;
                 break;
         }
-        $pkeyId = \openssl_get_privatekey($this->privateKey, $this->passphrase);
+        $pkeyId = \openssl_pkey_get_private($this->privateKey, $this->passphrase);
         if (!$pkeyId) {
             throw new Swift_SwiftException('Unable to load DKIM Private Key ['.\openssl_error_string().']');
         }

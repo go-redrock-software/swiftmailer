@@ -27,7 +27,6 @@ phpunit:
     reports:
       junit: phpunit-report.xml
     expire_in: 14 days
-    when: always
   tags:
     - t5-aws-docker
 
