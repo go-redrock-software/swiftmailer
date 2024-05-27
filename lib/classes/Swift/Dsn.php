@@ -21,7 +21,23 @@ class Swift_Dsn
         'gmail+api'       => Swift_Transport_Api_GoogleTransport::class,
 
     ];
+    /*
+     * todo:
+        'amazon' => Placeholder::class,
+        'azure' => Placeholder::class,
+        'brevo' => Placeholder::class,
+        'infobip' => Placeholder::class,
+        'mailpace' => Placeholder::class,
+        'mailchimp' => Placeholder::class,
+        'mailersend' => Placeholder::class,
+        'mailgun' => Placeholder::class,
+        'mailjet' => Placeholder::class,
+        'postmark' => Placeholder::class,
+        'resend' => Placeholder::class,
+        'scaleway' => Placeholder::class,
+        'sendgrid' => Placeholder::class,
 
+     */
     private ?string $scheme;
 
     private ?string $user;
