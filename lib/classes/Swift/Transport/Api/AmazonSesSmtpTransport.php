@@ -1,6 +1,6 @@
 <?php
 
-class Swift_Transport_Api_AmazonSesTransport extends Swift_Transport_AbstractApiTransport
+class Swift_Transport_Api_AmazonSesSmtpTransport extends Swift_Transport_AbstractApiTransport
 {
 
     public function start(): void
