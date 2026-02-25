@@ -2,24 +2,123 @@
 
 class Swift_Transport_Api_AmazonSesHttpTransport extends Swift_Transport_AbstractApiTransport
 {
+    private $sesClient;
+
+    public function __construct($sesClient, ?Swift_Events_EventDispatcher $eventDispatcher = null)
+    {
+        $this->sesClient = $sesClient;
+        $this->eventDispatcher = $eventDispatcher;
+    }
 
     public function start(): void
     {
-        // TODO: Implement start() method.
+        $this->started = true;
     }
 
     public function ping(): bool
     {
-        // TODO: Implement ping() method.
+        try {
+            // Perform a lightweight request to check if the connection is working
+            $this->sesClient->listIdentities();
+            return true;
+        } catch (Exception $e) {
+            return false;
+        }
     }
 
     public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null): int
     {
-        // TODO: Implement send() method.
+        try {
+            $request = $this->getRequest($message);
+            $messageId = $this->sesClient->sendEmail($request)->getMessageId();
+            $message->getHeaders()->addTextHeader('X-SES-Message-ID', $messageId);
+
+            return $this->getRecipientCount($message);
+        } catch (Exception $e) {
+            if ($failedRecipients !== null) {
+                $failedRecipients = array_merge($failedRecipients, $this->getFailedRecipients($message));
+            }
+            throw new Swift_TransportException('Failed to send email', 0, $e);
+        }
     }
 
     protected function getApiConnection(): mixed
     {
-        // TODO: Implement getApiConnection() method.
+        return $this->sesClient;
+    }
+
+    private function getRequest(Swift_Mime_SimpleMessage $message): array
+    {
+        $request = [
+            'Source' => $message->getSender() ?: $message->getFrom(),
+            'Destination' => [
+                'ToAddresses' => array_keys($message->getTo()),
+                'CcAddresses' => array_keys($message->getCc() ?? []),
+                'BccAddresses' => array_keys($message->getBcc() ?? []),
+            ],
+            'Message' => [
+                'Subject' => [
+                    'Data' => $message->getSubject(),
+                    'Charset' => 'UTF-8',
+                ],
+                'Body' => [
+                    'Text' => [
+                        'Data' => $message->getBody(),
+                        'Charset' => 'UTF-8',
+                    ],
+                    'Html' => [
+                        'Data' => $message->getBody(),
+                        'Charset' => 'UTF-8',
+                    ],
+                ],
+            ],
+        ];
+
+        if ($returnPath = $message->getReturnPath()) {
+            $request['ReturnPath'] = $returnPath;
+        }
+
+        foreach ($message->getHeaders()->getAll() as $header) {
+            if ($header instanceof Swift_Mime_Headers_UnstructuredHeader && $header->getFieldName(
+                ) === 'X-SES-CONFIGURATION-SET') {
+                $request['ConfigurationSetName'] = $header->getValue();
+            } elseif ($header instanceof Swift_Mime_Headers_UnstructuredHeader && $header->getFieldName(
+                ) === 'X-SES-SOURCE-ARN') {
+                $request['SourceArn'] = $header->getValue();
+            } elseif ($header instanceof Swift_Mime_Headers_UnstructuredHeader && $header->getFieldName(
+                ) === 'X-SES-LIST-MANAGEMENT-OPTIONS') {
+                if (preg_match(
+                    "/^(contactListName=)*(?<ContactListName>[^;]+)(;\s?topicName=(?<TopicName>.+))?$/ix",
+                    $header->getValue(),
+                    $listManagementOptions
+                )) {
+                    $request['ListManagementOptions'] = array_filter(
+                        $listManagementOptions,
+                        static fn($e) => \in_array($e, ['ContactListName', 'TopicName']),
+                        \ARRAY_FILTER_USE_KEY
+                    );
+                }
+            }
+        }
+
+        return $request;
+    }
+
+    private function getRecipientCount(Swift_Mime_SimpleMessage $message): int
+    {
+        return count($message->getTo() ?? []) + count($message->getCc() ?? []) + count($message->getBcc() ?? []);
+    }
+
+    private function getFailedRecipients(Swift_Mime_SimpleMessage $message): array
+    {
+        $failedRecipients = [];
+
+        foreach (['To', 'Cc', 'Bcc'] as $type) {
+            foreach ($message->{'get' . $type}() ?? [] as $address => $name) { //I hate this
+                $failedRecipients[] = $address;
+            }
+        }
+
+        return $failedRecipients;
     }
 }

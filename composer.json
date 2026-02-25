@@ -31,7 +31,8 @@
     "microsoft/microsoft-graph": "^2.10",
     "stevenmaguire/oauth2-microsoft": "^2.2",
     "league/oauth2-client": "^2.7",
-    "league/oauth2-google": "^4.0"
+    "league/oauth2-google": "^4.0",
+    "async-aws/ses": "^1.8"
   },
   "require-dev": {
     "mockery/mockery": "^1.0",
