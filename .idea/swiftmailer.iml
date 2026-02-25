@@ -114,6 +114,10 @@
       <excludeFolder url="file://$MODULE_DIR$/vendor/stduritemplate/stduritemplate" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/stevenmaguire/oauth2-microsoft" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/symfony/polyfill-php82" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/async-aws/core" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/async-aws/ses" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/symfony/http-client" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/symfony/http-client-contracts" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
