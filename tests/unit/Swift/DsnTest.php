@@ -67,4 +67,44 @@ class Swift_DsnTest extends TestCase
         $this->assertEquals('value1', $this->swiftDsn->getParameter('param1'));
         $this->assertNull($this->swiftDsn->getParameter('nonExistParam'));
     }
+
+    /**
+     * @dataProvider transportClassProvider
+     */
+    public function testGetTransportClass(string $scheme, string $expectedClass): void
+    {
+        $dsn = $this->createMock(Dsn::class);
+        $dsn->method('getScheme')->willReturn($scheme);
+        $dsn->method('getUser')->willReturn('user');
+        $dsn->method('getPassword')->willReturn('pass');
+        $dsn->method('getHost')->willReturn('host');
+        $dsn->method('getPort')->willReturn(443);
+        $dsn->method('getParameters')->willReturn([]);
+
+        $swiftDsn = new Swift_Dsn($dsn);
+        $this->assertEquals($expectedClass, $swiftDsn->getTransportClass());
+    }
+
+    public function transportClassProvider(): array
+    {
+        return [
+            ['microsoft-graph', Swift_Transport_Api_MicrosoftGraphTransport::class],
+            ['gmail+api', Swift_Transport_Api_GoogleTransport::class],
+            ['gmail+smtp', Swift_Transport_EsmtpTransport::class],
+            ['amazon+api', Swift_Transport_Api_AmazonSesApiTransport::class],
+            ['amazon+http', Swift_Transport_Api_AmazonSesHttpTransport::class],
+            ['azure', Swift_Transport_Api_AzureTransport::class],
+            ['brevo', Swift_Transport_Api_BrevoTransport::class],
+            ['infobip', Swift_Transport_Api_InfoBipTransport::class],
+            ['mailpace', Swift_Transport_Api_MailPaceTransport::class],
+            ['mailchimp', Swift_Transport_Api_MailChimpTransport::class],
+            ['mailersend', Swift_Transport_Api_MailerSendTransport::class],
+            ['mailgun', Swift_Transport_Api_MailGunTransport::class],
+            ['mailjet', Swift_Transport_Api_MailJetTransport::class],
+            ['postmark', Swift_Transport_Api_PostMarkTransport::class],
+            ['resend', Swift_Transport_Api_ResendTransport::class],
+            ['scaleway', Swift_Transport_Api_ScalewayTransport::class],
+            ['sendgrid', Swift_Transport_Api_SendgridTransport::class],
+        ];
+    }
 }

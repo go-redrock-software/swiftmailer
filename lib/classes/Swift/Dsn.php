@@ -19,25 +19,21 @@ class Swift_Dsn
         'microsoft-graph' => Swift_Transport_Api_MicrosoftGraphTransport::class,
         'gmail+smtp'      => Swift_Transport_EsmtpTransport::class,
         'gmail+api'       => Swift_Transport_Api_GoogleTransport::class,
-
+        'amazon+api'      => Swift_Transport_Api_AmazonSesApiTransport::class,
+        'amazon+http'     => Swift_Transport_Api_AmazonSesHttpTransport::class,
+        'azure'           => Swift_Transport_Api_AzureTransport::class,
+        'brevo'           => Swift_Transport_Api_BrevoTransport::class,
+        'infobip'         => Swift_Transport_Api_InfoBipTransport::class,
+        'mailpace'        => Swift_Transport_Api_MailPaceTransport::class,
+        'mailchimp'       => Swift_Transport_Api_MailChimpTransport::class,
+        'mailersend'      => Swift_Transport_Api_MailerSendTransport::class,
+        'mailgun'         => Swift_Transport_Api_MailGunTransport::class,
+        'mailjet'         => Swift_Transport_Api_MailJetTransport::class,
+        'postmark'        => Swift_Transport_Api_PostMarkTransport::class,
+        'resend'          => Swift_Transport_Api_ResendTransport::class,
+        'scaleway'        => Swift_Transport_Api_ScalewayTransport::class,
+        'sendgrid'        => Swift_Transport_Api_SendgridTransport::class,
     ];
-    /*
-     * todo:
-        'amazon' => Placeholder::class,
-        'azure' => Placeholder::class,
-        'brevo' => Placeholder::class,
-        'infobip' => Placeholder::class,
-        'mailpace' => Placeholder::class,
-        'mailchimp' => Placeholder::class,
-        'mailersend' => Placeholder::class,
-        'mailgun' => Placeholder::class,
-        'mailjet' => Placeholder::class,
-        'postmark' => Placeholder::class,
-        'resend' => Placeholder::class,
-        'scaleway' => Placeholder::class,
-        'sendgrid' => Placeholder::class,
-
-     */
     private ?string $scheme;
 
     private ?string $user;
