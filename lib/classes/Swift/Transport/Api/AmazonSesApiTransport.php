@@ -2,7 +2,7 @@
 
 use AsyncAws\Ses\SesClient;
 
-class Swift_Transport_Api_AmazonSesSmtpTransport extends Swift_Transport_AbstractApiTransport
+class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_AbstractApiTransport
 {
     private $sesClient;
 
