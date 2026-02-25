@@ -1,25 +1,156 @@
 <?php
 
-class Swift_Transport_Api_MailJetTransport extends Swift_Transport_AbstractApiTransport
+/*
+ * Copyright (c) 2024. Redrock Software Corporation
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+use GuzzleHttp\ClientInterface;
+use Psr\Http\Message\ResponseInterface;
+
+/**
+ * Mailjet HTTP API transport.
+ *
+ * Sends email via the Mailjet Send API v3.1.
+ *
+ * @see https://dev.mailjet.com/email/reference/send-emails/
+ */
+class Swift_Transport_Api_MailJetTransport extends Swift_Transport_AbstractHttpApiTransport
 {
+    private string $privateKey;
 
-    public function start(): void
-    {
-        // TODO: Implement start() method.
+    public function __construct(
+        string $publicKey,
+        string $privateKey,
+        ?ClientInterface $httpClient = null,
+        ?Swift_Events_EventDispatcher $eventDispatcher = null,
+    ) {
+        parent::__construct($publicKey, $httpClient, $eventDispatcher);
+        $this->privateKey = $privateKey;
     }
 
-    public function ping(): bool
+    protected function doSend(Swift_Mime_SimpleMessage $message): array
     {
-        // TODO: Implement ping() method.
+        $payload = $this->getPayload($message);
+
+        $response = $this->httpClient->request('POST', $this->getEndpoint(), [
+            'headers' => array_merge($this->getAuthHeaders(), [
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+            ]),
+            'json' => $payload,
+        ]);
+
+        $result = $this->parseResponse($response);
+
+        if (!isset($result['Messages'][0]['Status']) || $result['Messages'][0]['Status'] !== 'success') {
+            $errorMessage = $result['Messages'][0]['Errors'][0]['ErrorMessage'] ?? 'Unknown error';
+
+            throw new Swift_TransportException(
+                sprintf('Mailjet API error: %s', $errorMessage),
+            );
+        }
+
+        return [
+            'recipients' => $this->countRecipients($message),
+        ];
     }
 
-    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null): int
+    protected function getEndpoint(): string
     {
-        // TODO: Implement send() method.
+        return 'https://api.mailjet.com/v3.1/send';
     }
 
-    protected function getApiConnection(): mixed
+    protected function getAuthHeaders(): array
     {
-        // TODO: Implement getApiConnection() method.
+        return [
+            'Authorization' => 'Basic ' . base64_encode($this->apiKey . ':' . $this->privateKey),
+        ];
+    }
+
+    protected function parseResponse(ResponseInterface $response): array
+    {
+        return json_decode((string) $response->getBody(), true) ?? [];
+    }
+
+    protected function getPingEndpoint(): string
+    {
+        return 'https://api.mailjet.com/v3/REST/apikey';
+    }
+
+    private function getPayload(Swift_Mime_SimpleMessage $message): array
+    {
+        $from = $message->getFrom();
+        $fromAddress = array_key_first($from);
+        $fromName = $from[$fromAddress] ?? null;
+
+        $msg = [
+            'From' => $this->mapAddress($fromAddress, $fromName),
+            'To' => $this->mapAddresses($message->getTo() ?? []),
+            'Subject' => $message->getSubject(),
+        ];
+
+        if ($cc = $message->getCc()) {
+            $msg['Cc'] = $this->mapAddresses($cc);
+        }
+
+        if ($bcc = $message->getBcc()) {
+            $msg['Bcc'] = $this->mapAddresses($bcc);
+        }
+
+        if ($replyTo = $message->getReplyTo()) {
+            $replyToAddress = array_key_first($replyTo);
+            $replyToName = $replyTo[$replyToAddress] ?? null;
+            $msg['ReplyTo'] = $this->mapAddress($replyToAddress, $replyToName);
+        }
+
+        $body = $this->getMessageBody($message);
+
+        if ($body['text'] !== null) {
+            $msg['TextPart'] = $body['text'];
+        }
+
+        if ($body['html'] !== null) {
+            $msg['HTMLPart'] = $body['html'];
+        }
+
+        $attachments = $this->getMessageAttachments($message);
+        if (!empty($attachments)) {
+            $msg['Attachments'] = array_map(static function (array $attachment): array {
+                return [
+                    'ContentType' => $attachment['contentType'],
+                    'Filename' => $attachment['filename'],
+                    'Base64Content' => base64_encode($attachment['content']),
+                ];
+            }, $attachments);
+        }
+
+        return ['Messages' => [$msg]];
+    }
+
+    /**
+     * Map a single address to Mailjet's {Email, Name} format.
+     */
+    private function mapAddress(string $email, ?string $name = null): array
+    {
+        return array_filter([
+            'Email' => $email,
+            'Name' => $name,
+        ]);
+    }
+
+    /**
+     * Map a SwiftMailer address array to Mailjet's [{Email, Name}, ...] format.
+     */
+    private function mapAddresses(array $addresses): array
+    {
+        $mapped = [];
+        foreach ($addresses as $email => $name) {
+            $mapped[] = $this->mapAddress($email, $name);
+        }
+
+        return $mapped;
     }
 }
