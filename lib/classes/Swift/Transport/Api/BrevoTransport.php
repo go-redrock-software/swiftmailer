@@ -1,25 +1,136 @@
 <?php
 
-class Swift_Transport_Api_BrevoTransport extends Swift_Transport_AbstractApiTransport
+use Psr\Http\Message\ResponseInterface;
+
+class Swift_Transport_Api_BrevoTransport extends Swift_Transport_AbstractHttpApiTransport
 {
-
-    public function start(): void
+    protected function doSend(Swift_Mime_SimpleMessage $message): array
     {
-        // TODO: Implement start() method.
+        $payload = $this->getPayload($message);
+
+        $response = $this->httpClient->request('POST', $this->getEndpoint(), [
+            'headers' => array_merge($this->getAuthHeaders(), [
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+            ]),
+            'json' => $payload,
+        ]);
+
+        $statusCode = $response->getStatusCode();
+
+        if ($statusCode < 200 || $statusCode >= 300) {
+            $parsed = $this->parseResponse($response);
+            $errorMessage = $parsed['message'] ?? 'Unknown error';
+            $errorCode = $parsed['code'] ?? $statusCode;
+
+            throw new Swift_TransportException(
+                sprintf('Brevo API error (%s): %s', $errorCode, $errorMessage),
+            );
+        }
+
+        $parsed = $this->parseResponse($response);
+
+        return [
+            'message_id' => $parsed['messageId'] ?? null,
+            'recipients' => $this->countRecipients($message),
+        ];
     }
 
-    public function ping(): bool
+    protected function getEndpoint(): string
     {
-        // TODO: Implement ping() method.
+        return 'https://api.brevo.com/v3/smtp/email';
     }
 
-    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null): int
+    protected function getAuthHeaders(): array
     {
-        // TODO: Implement send() method.
+        return ['api-key' => $this->apiKey];
     }
 
-    protected function getApiConnection(): mixed
+    protected function parseResponse(ResponseInterface $response): array
     {
-        // TODO: Implement getApiConnection() method.
+        return json_decode($response->getBody()->getContents(), true) ?? [];
+    }
+
+    protected function getPingEndpoint(): string
+    {
+        return 'https://api.brevo.com/v3/account';
+    }
+
+    /**
+     * Build the Brevo API request payload from a Swift message.
+     */
+    private function getPayload(Swift_Mime_SimpleMessage $message): array
+    {
+        $from = $message->getFrom();
+        $fromEmail = array_key_first($from);
+        $fromName = $from[$fromEmail];
+
+        $payload = [
+            'sender' => array_filter([
+                'email' => $fromEmail,
+                'name' => $fromName,
+            ]),
+            'to' => $this->mapAddresses($message->getTo() ?? []),
+            'subject' => $message->getSubject(),
+        ];
+
+        $cc = $message->getCc();
+        if (!empty($cc)) {
+            $payload['cc'] = $this->mapAddresses($cc);
+        }
+
+        $bcc = $message->getBcc();
+        if (!empty($bcc)) {
+            $payload['bcc'] = $this->mapAddresses($bcc);
+        }
+
+        $replyTo = $message->getReplyTo();
+        if (!empty($replyTo)) {
+            $replyToEmail = array_key_first($replyTo);
+            $replyToName = $replyTo[$replyToEmail];
+            $payload['replyTo'] = array_filter([
+                'email' => $replyToEmail,
+                'name' => $replyToName,
+            ]);
+        }
+
+        $body = $this->getMessageBody($message);
+        if ($body['html'] !== null) {
+            $payload['htmlContent'] = $body['html'];
+        }
+        if ($body['text'] !== null) {
+            $payload['textContent'] = $body['text'];
+        }
+
+        $attachments = $this->getMessageAttachments($message);
+        if (!empty($attachments)) {
+            $payload['attachment'] = array_map(function (array $attachment) {
+                return [
+                    'name' => $attachment['filename'],
+                    'content' => base64_encode($attachment['content']),
+                ];
+            }, $attachments);
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Map a SwiftMailer address array to Brevo's address format.
+     *
+     * @param array<string, string|null> $addresses
+     * @return array<int, array{email: string, name?: string}>
+     */
+    private function mapAddresses(array $addresses): array
+    {
+        $mapped = [];
+        foreach ($addresses as $email => $name) {
+            $mapped[] = array_filter([
+                'email' => $email,
+                'name' => $name,
+            ]);
+        }
+
+        return $mapped;
     }
 }
