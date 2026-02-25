@@ -1,6 +1,6 @@
 <?php
 
-class Swift_Transport_ApiMailGunTransport extends Swift_Transport_AbstractApiTransport
+class Swift_Transport_Api_MailGunTransport extends Swift_Transport_AbstractApiTransport
 {
 
     public function start(): void
