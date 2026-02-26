@@ -23,6 +23,21 @@ class Swift_Transport_Api_GoogleTransport extends Swift_Transport_AbstractApiTra
 
     public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null): int
     {
+        if (!$this->isStarted()) {
+            $this->start();
+        }
+
+        if ($evt = $this->eventDispatcher?->createSendEvent($this, $message)) {
+            $this->eventDispatcher->dispatchEvent($evt, 'beforeSendPerformed');
+            if ($evt->bubbleCancelled()) {
+                $evt->setResult(Swift_Events_SendEvent::RESULT_FAILED);
+                $evt->cancelBubble(false);
+                $this->eventDispatcher->dispatchEvent($evt, 'sendPerformed');
+
+                return 0;
+            }
+        }
+
         // Get the Gmail Service from the Google Client
         $service = new Google\Service\Gmail($this->getApiConnection());
 
@@ -40,10 +55,21 @@ class Swift_Transport_Api_GoogleTransport extends Swift_Transport_AbstractApiTra
             /** @noinspection CallableParameterUseCaseInTypeContextInspection */
             $message = $service->users_messages->send('me', $msg);
 
+            if ($evt) {
+                $evt->setResult(Swift_Events_SendEvent::RESULT_SUCCESS);
+            }
+
             return $totalRecipients;
         } catch (Exception $e) {
-            // Replace this with your own logging or error handling
+            if ($evt) {
+                $evt->setResult(Swift_Events_SendEvent::RESULT_FAILED);
+            }
+
             return 0;
+        } finally {
+            if ($evt) {
+                $this->eventDispatcher->dispatchEvent($evt, 'sendPerformed');
+            }
         }
     }
 

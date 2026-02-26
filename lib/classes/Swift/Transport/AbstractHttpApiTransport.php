@@ -84,6 +84,10 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
         if ($evt = $this->eventDispatcher?->createSendEvent($this, $message)) {
             $this->eventDispatcher->dispatchEvent($evt, 'beforeSendPerformed');
             if ($evt->bubbleCancelled()) {
+                $evt->setResult(Swift_Events_SendEvent::RESULT_FAILED);
+                $evt->cancelBubble(false);
+                $this->eventDispatcher->dispatchEvent($evt, 'sendPerformed');
+
                 return 0;
             }
         }
