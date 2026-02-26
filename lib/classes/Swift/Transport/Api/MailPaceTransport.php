@@ -89,6 +89,9 @@ class Swift_Transport_Api_MailPaceTransport extends Swift_Transport_AbstractHttp
      */
     private function getPayload(Swift_Mime_SimpleMessage $message): array
     {
+        $tags = $this->extractTags($message);
+        $metadata = $this->extractMetadata($message);
+
         $from = $message->getFrom();
         $fromAddress = array_key_first($from);
         $fromName = $from[$fromAddress] ?? null;
@@ -130,6 +133,16 @@ class Swift_Transport_Api_MailPaceTransport extends Swift_Transport_AbstractHttp
                     'content' => base64_encode($attachment['content']),
                 ];
             }, $attachments);
+        }
+
+        // Tags → tags (array)
+        if (!empty($tags)) {
+            $payload['tags'] = $tags;
+        }
+
+        // Metadata → metadata (object)
+        if (!empty($metadata)) {
+            $payload['metadata'] = $metadata;
         }
 
         return $payload;

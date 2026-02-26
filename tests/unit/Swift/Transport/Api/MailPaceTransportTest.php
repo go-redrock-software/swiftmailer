@@ -250,6 +250,39 @@ class MailPaceTransportTest extends TestCase
         $this->assertEquals(1, $sent);
     }
 
+    public function testSendWithTagsAndMetadata(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['from@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'Recipient'])
+            ->setSubject('Tag test')
+            ->setBody('Body');
+        $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'billing');
+        $message->getHeaders()->addTextHeader('X-Mailer-Metadata-invoice', 'INV-100');
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    $this->assertEquals(['billing'], $payload['tags']);
+                    $this->assertEquals(['invoice' => 'INV-100'], $payload['metadata']);
+
+                    return true;
+                }),
+            )
+            ->willReturn(new Response(200, [], json_encode([
+                'id' => 300,
+                'status' => 'pending',
+            ])));
+
+        $this->transport->send($message);
+    }
+
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
     {
         return new \Swift_Mime_SimpleMessage(

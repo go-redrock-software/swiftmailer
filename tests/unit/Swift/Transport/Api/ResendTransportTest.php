@@ -280,6 +280,46 @@ class ResendTransportTest extends TestCase
         $this->transport->send($message);
     }
 
+    public function testSendWithTagsAndMetadata(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['from@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'Recipient'])
+            ->setSubject('Tag test')
+            ->setBody('Body');
+        $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'invite');
+        $message->getHeaders()->addTextHeader('X-Mailer-Metadata-ref', 'abc');
+
+        $response = $this->createMockResponse(200, ['id' => 'msg-tag']);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    // Tags → array of {name, value}
+                    $this->assertEquals([['name' => 'invite', 'value' => 'invite']], $payload['tags']);
+
+                    // Metadata → headers object
+                    $this->assertEquals(['ref' => 'abc'], $payload['headers']);
+
+                    return true;
+                }),
+            )
+            ->willReturn($response);
+
+        $evt = $this->createMock(\Swift_Events_TransportChangeEvent::class);
+        $this->eventDispatcherMock->method('createTransportChangeEvent')->willReturn($evt);
+        $sendEvt = $this->createMock(\Swift_Events_SendEvent::class);
+        $this->eventDispatcherMock->method('createSendEvent')->willReturn($sendEvt);
+
+        $this->transport->send($message);
+    }
+
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
     {
         return new \Swift_Mime_SimpleMessage(

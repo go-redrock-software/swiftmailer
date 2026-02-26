@@ -61,6 +61,9 @@ class Swift_Transport_Api_BrevoTransport extends Swift_Transport_AbstractHttpApi
      */
     private function getPayload(Swift_Mime_SimpleMessage $message): array
     {
+        $tags = $this->extractTags($message);
+        $metadata = $this->extractMetadata($message);
+
         $from = $message->getFrom();
         $fromEmail = array_key_first($from);
         $fromName = $from[$fromEmail];
@@ -110,6 +113,20 @@ class Swift_Transport_Api_BrevoTransport extends Swift_Transport_AbstractHttpApi
                     'content' => base64_encode($attachment['content']),
                 ];
             }, $attachments);
+        }
+
+        // Tags → tags (array of strings)
+        if (!empty($tags)) {
+            $payload['tags'] = $tags;
+        }
+
+        // Metadata → custom X- headers
+        if (!empty($metadata)) {
+            $headers = [];
+            foreach ($metadata as $key => $value) {
+                $headers['X-Metadata-' . $key] = $value;
+            }
+            $payload['headers'] = $headers;
         }
 
         return $payload;

@@ -246,6 +246,43 @@ class Swift_Transport_Api_BrevoTransportTest extends TestCase
         $this->transport->send($message);
     }
 
+    public function testSendWithTagsAndMetadata(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message->setFrom(['from@example.com' => 'Sender']);
+        $message->setTo(['to@example.com' => 'Recipient']);
+        $message->setSubject('Tag test');
+        $message->setBody('Hello');
+        $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'transactional');
+        $message->getHeaders()->addTextHeader('X-Mailer-Metadata-order_id', '999');
+
+        $capturedPayload = null;
+        $response = $this->createMockResponse(201, ['messageId' => '<tag@brevo.com>']);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options) use (&$capturedPayload) {
+                    $capturedPayload = $options['json'];
+
+                    return true;
+                }),
+            )
+            ->willReturn($response);
+
+        $evt = $this->createMock(\Swift_Events_TransportChangeEvent::class);
+        $this->eventDispatcherMock->method('createTransportChangeEvent')->willReturn($evt);
+        $sendEvt = $this->createMock(\Swift_Events_SendEvent::class);
+        $this->eventDispatcherMock->method('createSendEvent')->willReturn($sendEvt);
+
+        $this->transport->send($message);
+
+        $this->assertEquals(['transactional'], $capturedPayload['tags']);
+        $this->assertEquals(['X-Metadata-order_id' => '999'], $capturedPayload['headers']);
+    }
+
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
     {
         return new \Swift_Mime_SimpleMessage(

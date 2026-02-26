@@ -62,6 +62,9 @@ class Swift_Transport_Api_ResendTransport extends Swift_Transport_AbstractHttpAp
 
     private function getPayload(Swift_Mime_SimpleMessage $message): array
     {
+        $tags = $this->extractTags($message);
+        $metadata = $this->extractMetadata($message);
+
         $from = $message->getFrom();
         $fromEmail = array_key_first($from);
         $fromName = $from[$fromEmail] ?? null;
@@ -104,6 +107,18 @@ class Swift_Transport_Api_ResendTransport extends Swift_Transport_AbstractHttpAp
                     'content' => base64_encode($attachment['content']),
                 ];
             }, $attachments);
+        }
+
+        // Tags → array of {name, value} objects
+        if (!empty($tags)) {
+            $payload['tags'] = array_map(static function (string $tag): array {
+                return ['name' => $tag, 'value' => $tag];
+            }, $tags);
+        }
+
+        // Metadata → headers object
+        if (!empty($metadata)) {
+            $payload['headers'] = $metadata;
         }
 
         return $payload;
