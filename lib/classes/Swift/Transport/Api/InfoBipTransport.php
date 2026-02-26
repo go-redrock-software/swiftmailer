@@ -36,6 +36,7 @@ class Swift_Transport_Api_InfoBipTransport extends Swift_Transport_AbstractHttpA
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
             'headers' => $this->getAuthHeaders(),
             'multipart' => $this->getFormData($message),
+            'http_errors' => false,
         ]);
 
         $result = $this->parseResponse($response);

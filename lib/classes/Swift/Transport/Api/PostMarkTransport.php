@@ -28,6 +28,7 @@ class Swift_Transport_Api_PostMarkTransport extends Swift_Transport_AbstractHttp
                 'Accept' => 'application/json',
             ]),
             'json' => $payload,
+            'http_errors' => false,
         ]);
 
         $result = $this->parseResponse($response);

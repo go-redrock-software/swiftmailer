@@ -40,6 +40,7 @@ class Swift_Transport_Api_PostalTransport extends Swift_Transport_AbstractHttpAp
                 'Content-Type' => 'application/json',
             ]),
             'json' => $payload,
+            'http_errors' => false,
         ]);
 
         $result = $this->parseResponse($response);

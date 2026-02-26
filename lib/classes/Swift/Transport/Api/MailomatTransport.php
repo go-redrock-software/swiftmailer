@@ -25,6 +25,7 @@ class Swift_Transport_Api_MailomatTransport extends Swift_Transport_AbstractHttp
                 'Content-Type' => 'application/json',
             ]),
             'json' => $payload,
+            'http_errors' => false,
         ]);
 
         $statusCode = $response->getStatusCode();

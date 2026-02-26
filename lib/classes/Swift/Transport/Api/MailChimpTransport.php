@@ -28,6 +28,7 @@ class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHtt
                 'Accept' => 'application/json',
             ],
             'json' => $payload,
+            'http_errors' => false,
         ]);
 
         $result = $this->parseResponse($response);
@@ -67,6 +68,7 @@ class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHtt
                     'Accept' => 'application/json',
                 ],
                 'json' => ['key' => $this->apiKey],
+                'http_errors' => false,
             ]);
 
             $body = (string) $response->getBody();

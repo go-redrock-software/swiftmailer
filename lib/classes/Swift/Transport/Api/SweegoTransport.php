@@ -28,6 +28,7 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
                 'Accept' => 'application/json',
             ]),
             'json' => $payload,
+            'http_errors' => false,
         ]);
 
         $statusCode = $response->getStatusCode();

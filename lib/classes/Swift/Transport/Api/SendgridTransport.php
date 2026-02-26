@@ -15,6 +15,7 @@ class Swift_Transport_Api_SendgridTransport extends Swift_Transport_AbstractHttp
                 'Content-Type' => 'application/json',
             ]),
             'body' => \json_encode($payload),
+            'http_errors' => false,
         ]);
 
         $statusCode = $response->getStatusCode();

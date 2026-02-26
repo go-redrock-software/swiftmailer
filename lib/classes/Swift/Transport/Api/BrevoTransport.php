@@ -14,6 +14,7 @@ class Swift_Transport_Api_BrevoTransport extends Swift_Transport_AbstractHttpApi
                 'Accept' => 'application/json',
             ]),
             'json' => $payload,
+            'http_errors' => false,
         ]);
 
         $statusCode = $response->getStatusCode();

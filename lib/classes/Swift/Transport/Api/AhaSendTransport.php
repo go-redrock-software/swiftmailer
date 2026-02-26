@@ -28,6 +28,7 @@ class Swift_Transport_Api_AhaSendTransport extends Swift_Transport_AbstractHttpA
                 'Accept' => 'application/json',
             ]),
             'json' => $payload,
+            'http_errors' => false,
         ]);
 
         $result = $this->parseResponse($response);

@@ -44,6 +44,7 @@ class Swift_Transport_Api_MailtrapTransport extends Swift_Transport_AbstractHttp
                 'Content-Type' => 'application/json',
             ]),
             'json' => $payload,
+            'http_errors' => false,
         ]);
 
         $parsed = $this->parseResponse($response);

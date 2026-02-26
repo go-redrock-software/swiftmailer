@@ -18,6 +18,7 @@ class Swift_Transport_Api_ResendTransport extends Swift_Transport_AbstractHttpAp
                 'Content-Type' => 'application/json',
             ]),
             'json' => $payload,
+            'http_errors' => false,
         ]);
 
         $parsed = $this->parseResponse($response);
