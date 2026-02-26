@@ -51,6 +51,12 @@ class Swift_Events_SendEvent extends Swift_Events_EventObject
      */
     private $result;
 
+    /** Whether this message has been rejected by a listener. */
+    private bool $rejected = false;
+
+    /** Optional reason for rejection. */
+    private ?string $rejectionReason = null;
+
     /**
      * Create a new SendEvent for $source and $message.
      */
@@ -122,5 +128,37 @@ class Swift_Events_SendEvent extends Swift_Events_EventObject
     public function getResult()
     {
         return $this->result;
+    }
+
+    /**
+     * Reject this message, preventing it from being sent.
+     *
+     * Calling this in a beforeSendPerformed listener will prevent
+     * the transport from sending the message. Also cancels bubble
+     * to stop further listener processing.
+     *
+     * @param string|null $reason Optional human-readable reason for rejection
+     */
+    public function reject(?string $reason = null): void
+    {
+        $this->rejected = true;
+        $this->rejectionReason = $reason;
+        $this->cancelBubble(true);
+    }
+
+    /**
+     * Whether the message has been rejected.
+     */
+    public function isRejected(): bool
+    {
+        return $this->rejected;
+    }
+
+    /**
+     * Get the rejection reason, if any.
+     */
+    public function getRejectionReason(): ?string
+    {
+        return $this->rejectionReason;
     }
 }

@@ -87,6 +87,40 @@ class Swift_Events_SendEventTest extends PHPUnit\Framework\TestCase
         $this->assertEquals([], $evt->getFailedRecipients());
     }
 
+    public function testNotRejectedByDefault()
+    {
+        $evt = $this->createEvent($this->createTransport(), $this->createMessage());
+
+        $this->assertFalse($evt->isRejected());
+        $this->assertNull($evt->getRejectionReason());
+    }
+
+    public function testRejectWithReason()
+    {
+        $evt = $this->createEvent($this->createTransport(), $this->createMessage());
+        $evt->reject('Recipient is on suppression list');
+
+        $this->assertTrue($evt->isRejected());
+        $this->assertSame('Recipient is on suppression list', $evt->getRejectionReason());
+    }
+
+    public function testRejectWithoutReason()
+    {
+        $evt = $this->createEvent($this->createTransport(), $this->createMessage());
+        $evt->reject();
+
+        $this->assertTrue($evt->isRejected());
+        $this->assertNull($evt->getRejectionReason());
+    }
+
+    public function testRejectAlsoCancelsBubble()
+    {
+        $evt = $this->createEvent($this->createTransport(), $this->createMessage());
+        $evt->reject('Blocked');
+
+        $this->assertTrue($evt->bubbleCancelled());
+    }
+
     private function createEvent(Swift_Transport $source, Swift_Mime_SimpleMessage $message)
     {
         return new Swift_Events_SendEvent($source, $message);
