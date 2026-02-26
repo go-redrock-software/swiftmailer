@@ -57,6 +57,64 @@ class Swift_Events_SimpleEventDispatcherTest extends PHPUnit\Framework\TestCase
         $this->assertSame($ex, $evt->getException());
     }
 
+    public function testSentMessageEventCanBeCreated()
+    {
+        $transport = $this->getMockBuilder('Swift_Transport')->getMock();
+        $message   = $this->getMockBuilder('Swift_Mime_SimpleMessage')->disableOriginalConstructor()->getMock();
+        $sentMsg   = new Swift_SentMessage($message, $transport, ['message_id' => 'abc']);
+        $evt       = $this->dispatcher->createSentMessageEvent($transport, $sentMsg);
+        $this->assertInstanceOf('Swift_Events_SentMessageEvent', $evt);
+        $this->assertSame($transport, $evt->getSource());
+        $this->assertSame($sentMsg, $evt->getSentMessage());
+    }
+
+    public function testFailedMessageEventCanBeCreated()
+    {
+        $transport = $this->getMockBuilder('Swift_Transport')->getMock();
+        $message   = $this->getMockBuilder('Swift_Mime_SimpleMessage')->disableOriginalConstructor()->getMock();
+        $ex        = new Swift_TransportException('fail');
+        $evt       = $this->dispatcher->createFailedMessageEvent($transport, $message, $ex, ['a@b.com']);
+        $this->assertInstanceOf('Swift_Events_FailedMessageEvent', $evt);
+        $this->assertSame($transport, $evt->getSource());
+        $this->assertSame($message, $evt->getMessage());
+        $this->assertSame($ex, $evt->getException());
+        $this->assertEquals(['a@b.com'], $evt->getFailedRecipients());
+    }
+
+    public function testSentMessageListenersAreNotifiedOfDispatch()
+    {
+        $transport = $this->getMockBuilder('Swift_Transport')->getMock();
+        $message   = $this->getMockBuilder('Swift_Mime_SimpleMessage')->disableOriginalConstructor()->getMock();
+        $sentMsg   = new Swift_SentMessage($message, $transport);
+        $evt       = $this->dispatcher->createSentMessageEvent($transport, $sentMsg);
+
+        $listener = $this->getMockBuilder('Swift_Events_SentMessageListener')->getMock();
+        $this->dispatcher->bindEventListener($listener);
+
+        $listener->expects($this->once())
+            ->method('sentMessage')
+            ->with($evt);
+
+        $this->dispatcher->dispatchEvent($evt, 'sentMessage');
+    }
+
+    public function testFailedMessageListenersAreNotifiedOfDispatch()
+    {
+        $transport = $this->getMockBuilder('Swift_Transport')->getMock();
+        $message   = $this->getMockBuilder('Swift_Mime_SimpleMessage')->disableOriginalConstructor()->getMock();
+        $ex        = new Swift_TransportException('fail');
+        $evt       = $this->dispatcher->createFailedMessageEvent($transport, $message, $ex);
+
+        $listener = $this->getMockBuilder('Swift_Events_FailedMessageListener')->getMock();
+        $this->dispatcher->bindEventListener($listener);
+
+        $listener->expects($this->once())
+            ->method('failedMessage')
+            ->with($evt);
+
+        $this->dispatcher->dispatchEvent($evt, 'failedMessage');
+    }
+
     public function testListenersAreNotifiedOfDispatchedEvent()
     {
         $transport = $this->getMockBuilder('Swift_Transport')->getMock();

@@ -57,6 +57,20 @@ interface Swift_Events_EventDispatcher
     public function createTransportExceptionEvent(Swift_Transport $source, Swift_TransportException $ex);
 
     /**
+     * Create a new SentMessageEvent for $source and $sentMessage.
+     *
+     * @return Swift_Events_SentMessageEvent
+     */
+    public function createSentMessageEvent(Swift_Transport $source, Swift_SentMessage $sentMessage);
+
+    /**
+     * Create a new FailedMessageEvent for $source, $message, and $exception.
+     *
+     * @return Swift_Events_FailedMessageEvent
+     */
+    public function createFailedMessageEvent(Swift_Transport $source, Swift_Mime_SimpleMessage $message, Swift_TransportException $ex, array $failedRecipients = []);
+
+    /**
      * Bind an event listener to this dispatcher.
      */
     public function bindEventListener(Swift_Events_EventListener $listener);

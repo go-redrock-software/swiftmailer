@@ -32,6 +32,8 @@ class Swift_Events_SimpleEventDispatcher implements Swift_Events_EventDispatcher
             'Swift_Events_SendEvent'               => 'Swift_Events_SendListener',
             'Swift_Events_TransportChangeEvent'    => 'Swift_Events_TransportChangeListener',
             'Swift_Events_TransportExceptionEvent' => 'Swift_Events_TransportExceptionListener',
+            'Swift_Events_SentMessageEvent'        => 'Swift_Events_SentMessageListener',
+            'Swift_Events_FailedMessageEvent'      => 'Swift_Events_FailedMessageListener',
         ];
     }
 
@@ -89,6 +91,26 @@ class Swift_Events_SimpleEventDispatcher implements Swift_Events_EventDispatcher
     public function createTransportExceptionEvent(Swift_Transport $source, Swift_TransportException $ex)
     {
         return new Swift_Events_TransportExceptionEvent($source, $ex);
+    }
+
+    /**
+     * Create a new SentMessageEvent for $source and $sentMessage.
+     *
+     * @return Swift_Events_SentMessageEvent
+     */
+    public function createSentMessageEvent(Swift_Transport $source, Swift_SentMessage $sentMessage)
+    {
+        return new Swift_Events_SentMessageEvent($source, $sentMessage);
+    }
+
+    /**
+     * Create a new FailedMessageEvent for $source, $message, and $exception.
+     *
+     * @return Swift_Events_FailedMessageEvent
+     */
+    public function createFailedMessageEvent(Swift_Transport $source, Swift_Mime_SimpleMessage $message, Swift_TransportException $ex, array $failedRecipients = [])
+    {
+        return new Swift_Events_FailedMessageEvent($source, $message, $ex, $failedRecipients);
     }
 
     /**
