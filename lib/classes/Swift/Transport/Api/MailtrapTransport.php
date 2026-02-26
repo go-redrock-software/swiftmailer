@@ -24,7 +24,7 @@ class Swift_Transport_Api_MailtrapTransport extends Swift_Transport_AbstractHttp
     private ?string $inboxId;
 
     public function __construct(
-        string $apiKey,
+        #[\SensitiveParameter] string $apiKey,
         bool $sandbox = false,
         ?string $inboxId = null,
         ?ClientInterface $httpClient = null,

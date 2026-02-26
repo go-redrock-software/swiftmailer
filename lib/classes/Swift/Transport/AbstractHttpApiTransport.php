@@ -25,7 +25,7 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
     protected ClientInterface $httpClient;
 
     public function __construct(
-        string $apiKey,
+        #[\SensitiveParameter] string $apiKey,
         ?ClientInterface $httpClient = null,
         ?Swift_Events_EventDispatcher $eventDispatcher = null,
     ) {

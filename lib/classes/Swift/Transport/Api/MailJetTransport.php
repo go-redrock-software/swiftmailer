@@ -22,8 +22,8 @@ class Swift_Transport_Api_MailJetTransport extends Swift_Transport_AbstractHttpA
     private string $privateKey;
 
     public function __construct(
-        string $publicKey,
-        string $privateKey,
+        #[\SensitiveParameter] string $publicKey,
+        #[\SensitiveParameter] string $privateKey,
         ?ClientInterface $httpClient = null,
         ?Swift_Events_EventDispatcher $eventDispatcher = null,
     ) {

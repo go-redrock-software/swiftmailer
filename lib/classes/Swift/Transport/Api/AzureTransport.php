@@ -27,7 +27,7 @@ class Swift_Transport_Api_AzureTransport extends Swift_Transport_AbstractHttpApi
     private string $accessKey;
 
     public function __construct(
-        string $connectionString,
+        #[\SensitiveParameter] string $connectionString,
         ?ClientInterface $httpClient = null,
         ?Swift_Events_EventDispatcher $eventDispatcher = null,
     ) {

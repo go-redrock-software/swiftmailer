@@ -16,7 +16,7 @@ class Swift_Transport_Api_ScalewayTransport extends Swift_Transport_AbstractHttp
     private string $region;
 
     public function __construct(
-        string $apiKey,
+        #[\SensitiveParameter] string $apiKey,
         string $projectId,
         string $region = 'fr-par',
         ?GuzzleHttp\ClientInterface $httpClient = null,

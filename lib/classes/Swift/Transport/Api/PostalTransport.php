@@ -22,7 +22,7 @@ class Swift_Transport_Api_PostalTransport extends Swift_Transport_AbstractHttpAp
     private string $host;
 
     public function __construct(
-        string $apiKey,
+        #[\SensitiveParameter] string $apiKey,
         string $host,
         ?ClientInterface $httpClient = null,
         ?Swift_Events_EventDispatcher $eventDispatcher = null,

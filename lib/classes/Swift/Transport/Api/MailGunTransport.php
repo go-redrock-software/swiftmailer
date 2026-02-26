@@ -24,7 +24,7 @@ class Swift_Transport_Api_MailGunTransport extends Swift_Transport_AbstractHttpA
     private string $host;
 
     public function __construct(
-        string $apiKey,
+        #[\SensitiveParameter] string $apiKey,
         string $domain,
         string $host = 'https://api.mailgun.net',
         ?ClientInterface $httpClient = null,
