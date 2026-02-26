@@ -16,6 +16,10 @@ use Nyholm\Dsn\Configuration\Url;
 class Swift_Dsn
 {
     private static array $transport_class_map = [
+        'null'            => Swift_Transport_NullTransport::class,
+        'smtp'            => Swift_Transport_EsmtpTransport::class,
+        'smtp+tls'        => Swift_Transport_EsmtpTransport::class,
+        'smtp+ssl'        => Swift_Transport_EsmtpTransport::class,
         'microsoft-graph' => Swift_Transport_Api_MicrosoftGraphTransport::class,
         'gmail+smtp'      => Swift_Transport_EsmtpTransport::class,
         'gmail+api'       => Swift_Transport_Api_GoogleTransport::class,
@@ -67,22 +71,22 @@ class Swift_Dsn
         return $this->scheme;
     }
 
-    public function getUser(): string
+    public function getUser(): ?string
     {
         return $this->user;
     }
 
-    public function getPassword(): string
+    public function getPassword(): ?string
     {
         return $this->password;
     }
 
-    public function getHost(): string
+    public function getHost(): ?string
     {
         return $this->host;
     }
 
-    public function getPort(): int
+    public function getPort(): ?int
     {
         return $this->port;
     }
@@ -99,6 +103,14 @@ class Swift_Dsn
 
     public function getTransportClass(): string
     {
+        if (!isset(static::$transport_class_map[$this->scheme])) {
+            throw new \InvalidArgumentException(sprintf(
+                'Unsupported DSN scheme "%s". Supported: %s',
+                $this->scheme,
+                implode(', ', array_keys(static::$transport_class_map)),
+            ));
+        }
+
         return static::$transport_class_map[$this->scheme];
     }
 }

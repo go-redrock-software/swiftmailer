@@ -88,6 +88,10 @@ class Swift_DsnTest extends TestCase
     public function transportClassProvider(): array
     {
         return [
+            ['null', Swift_Transport_NullTransport::class],
+            ['smtp', Swift_Transport_EsmtpTransport::class],
+            ['smtp+tls', Swift_Transport_EsmtpTransport::class],
+            ['smtp+ssl', Swift_Transport_EsmtpTransport::class],
             ['microsoft-graph', Swift_Transport_Api_MicrosoftGraphTransport::class],
             ['gmail+api', Swift_Transport_Api_GoogleTransport::class],
             ['gmail+smtp', Swift_Transport_EsmtpTransport::class],
@@ -106,5 +110,22 @@ class Swift_DsnTest extends TestCase
             ['scaleway', Swift_Transport_Api_ScalewayTransport::class],
             ['sendgrid', Swift_Transport_Api_SendgridTransport::class],
         ];
+    }
+
+    public function testUnknownSchemeThrowsException(): void
+    {
+        $dsn = $this->createMock(Dsn::class);
+        $dsn->method('getScheme')->willReturn('unknown-scheme');
+        $dsn->method('getUser')->willReturn('user');
+        $dsn->method('getPassword')->willReturn('pass');
+        $dsn->method('getHost')->willReturn('host');
+        $dsn->method('getPort')->willReturn(443);
+        $dsn->method('getParameters')->willReturn([]);
+
+        $swiftDsn = new Swift_Dsn($dsn);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Unsupported DSN scheme "unknown-scheme"');
+        $swiftDsn->getTransportClass();
     }
 }
