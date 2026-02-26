@@ -37,6 +37,11 @@ class Swift_Dsn
         'resend'          => Swift_Transport_Api_ResendTransport::class,
         'scaleway'        => Swift_Transport_Api_ScalewayTransport::class,
         'sendgrid'        => Swift_Transport_Api_SendgridTransport::class,
+        'ahasend'         => Swift_Transport_Api_AhaSendTransport::class,
+        'mailomat'        => Swift_Transport_Api_MailomatTransport::class,
+        'mailtrap'        => Swift_Transport_Api_MailtrapTransport::class,
+        'postal'          => Swift_Transport_Api_PostalTransport::class,
+        'sweego'          => Swift_Transport_Api_SweegoTransport::class,
     ];
     private ?string $scheme;
 
