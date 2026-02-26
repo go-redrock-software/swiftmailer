@@ -221,6 +221,41 @@ class Swift_Transport_Api_MailJetTransportTest extends TestCase
         $this->transport->send($message);
     }
 
+    public function testSendWithTagsAndMetadata(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message->setFrom(['from@example.com' => 'Sender']);
+        $message->setTo(['to@example.com' => 'Recipient']);
+        $message->setSubject('Tag test');
+        $message->setBody('Hello');
+        $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'summer-sale');
+        $message->getHeaders()->addTextHeader('X-Mailer-Metadata-campaign', 'summer');
+
+        $capturedPayload = null;
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('POST', $this->anything(), $this->callback(function ($options) use (&$capturedPayload) {
+                $capturedPayload = $options['json'];
+
+                return true;
+            }))
+            ->willReturn(new Response(200, [], json_encode([
+                'Messages' => [['Status' => 'success']],
+            ])));
+
+        $evt = $this->createMock(\Swift_Events_SendEvent::class);
+        $this->eventDispatcherMock->method('createSendEvent')->willReturn($evt);
+        $this->eventDispatcherMock->method('createTransportChangeEvent')
+            ->willReturn($this->createMock(\Swift_Events_TransportChangeEvent::class));
+
+        $this->transport->send($message);
+
+        $msg = $capturedPayload['Messages'][0];
+        $this->assertEquals('summer-sale', $msg['CustomCampaign']);
+        $this->assertEquals(['campaign' => 'summer'], $msg['Properties']);
+    }
+
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
     {
         return new \Swift_Mime_SimpleMessage(

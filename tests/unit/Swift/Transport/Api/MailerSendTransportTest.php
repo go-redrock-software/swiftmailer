@@ -266,6 +266,35 @@ class MailerSendTransportTest extends TestCase
         $this->assertEquals(1, $sent);
     }
 
+    public function testSendWithTags(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['from@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'Recipient'])
+            ->setSubject('Tag test')
+            ->setBody('Body');
+        $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'alert');
+        $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'critical');
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    $this->assertEquals(['alert', 'critical'], $payload['tags']);
+
+                    return true;
+                }),
+            )
+            ->willReturn(new Response(202, ['x-message-id' => 'msg-tag']));
+
+        $this->transport->send($message);
+    }
+
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
     {
         return new \Swift_Mime_SimpleMessage(

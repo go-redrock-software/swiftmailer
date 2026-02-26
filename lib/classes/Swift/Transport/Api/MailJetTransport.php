@@ -82,6 +82,9 @@ class Swift_Transport_Api_MailJetTransport extends Swift_Transport_AbstractHttpA
 
     private function getPayload(Swift_Mime_SimpleMessage $message): array
     {
+        $tags = $this->extractTags($message);
+        $metadata = $this->extractMetadata($message);
+
         $from = $message->getFrom();
         $fromAddress = array_key_first($from);
         $fromName = $from[$fromAddress] ?? null;
@@ -125,6 +128,16 @@ class Swift_Transport_Api_MailJetTransport extends Swift_Transport_AbstractHttpA
                     'Base64Content' => base64_encode($attachment['content']),
                 ];
             }, $attachments);
+        }
+
+        // Tag → CustomCampaign (single string, first tag only)
+        if (!empty($tags)) {
+            $msg['CustomCampaign'] = $tags[0];
+        }
+
+        // Metadata → Properties (object)
+        if (!empty($metadata)) {
+            $msg['Properties'] = $metadata;
         }
 
         return ['Messages' => [$msg]];

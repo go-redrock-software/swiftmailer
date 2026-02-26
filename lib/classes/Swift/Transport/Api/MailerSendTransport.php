@@ -82,6 +82,8 @@ class Swift_Transport_Api_MailerSendTransport extends Swift_Transport_AbstractHt
 
     private function getPayload(Swift_Mime_SimpleMessage $message): array
     {
+        $tags = $this->extractTags($message);
+
         $from = $message->getFrom();
         $fromEmail = array_key_first($from);
         $fromName = $from[$fromEmail] ?? null;
@@ -127,6 +129,11 @@ class Swift_Transport_Api_MailerSendTransport extends Swift_Transport_AbstractHt
                     'disposition' => $attachment['disposition'],
                 ]);
             }, $attachments);
+        }
+
+        // Tags → tags (array of strings); metadata N/A for MailerSend
+        if (!empty($tags)) {
+            $payload['tags'] = $tags;
         }
 
         return $payload;

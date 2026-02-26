@@ -99,6 +99,9 @@ class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHtt
 
     private function getPayload(Swift_Mime_SimpleMessage $message): array
     {
+        $tags = $this->extractTags($message);
+        $metadata = $this->extractMetadata($message);
+
         $from = $message->getFrom();
         $fromAddress = array_key_first($from);
         $fromName = $from[$fromAddress] ?? null;
@@ -188,6 +191,16 @@ class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHtt
             if (!empty($inlineImages)) {
                 $messagePayload['images'] = $inlineImages;
             }
+        }
+
+        // Tags → tags (array of strings)
+        if (!empty($tags)) {
+            $messagePayload['tags'] = $tags;
+        }
+
+        // Metadata → metadata (object)
+        if (!empty($metadata)) {
+            $messagePayload['metadata'] = $metadata;
         }
 
         return [

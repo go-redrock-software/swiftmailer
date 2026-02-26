@@ -377,6 +377,39 @@ class MailChimpTransportTest extends TestCase
         $this->transport->send($message);
     }
 
+    public function testSendWithTagsAndMetadata(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['from@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'Recipient'])
+            ->setSubject('Tag test')
+            ->setBody('Body');
+        $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'drip');
+        $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'week1');
+        $message->getHeaders()->addTextHeader('X-Mailer-Metadata-user_id', '77');
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options): bool {
+                    $msg = $options['json']['message'];
+
+                    $this->assertEquals(['drip', 'week1'], $msg['tags']);
+                    $this->assertEquals(['user_id' => '77'], $msg['metadata']);
+
+                    return true;
+                }),
+            )
+            ->willReturn(new Response(200, [], json_encode([
+                ['email' => 'to@example.com', 'status' => 'sent', '_id' => 'tag1'],
+            ])));
+
+        $this->transport->send($message);
+    }
+
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
     {
         return new \Swift_Mime_SimpleMessage(
