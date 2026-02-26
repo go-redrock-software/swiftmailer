@@ -269,4 +269,53 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
 
         return ['text' => $text, 'html' => $html];
     }
+
+    /**
+     * Extract X-Mailer-Tag headers from message and remove them.
+     *
+     * @return string[]
+     */
+    protected function extractTags(Swift_Mime_SimpleMessage $message): array
+    {
+        $tags = [];
+        $headers = $message->getHeaders();
+
+        foreach ($headers->getAll('X-Mailer-Tag') as $header) {
+            $tags[] = $header->getFieldBody();
+        }
+
+        if ($tags) {
+            $headers->removeAll('X-Mailer-Tag');
+        }
+
+        return $tags;
+    }
+
+    /**
+     * Extract X-Mailer-Metadata-* headers from message and remove them.
+     *
+     * @return array<string, string>
+     */
+    protected function extractMetadata(Swift_Mime_SimpleMessage $message): array
+    {
+        $metadata = [];
+        $headers = $message->getHeaders();
+        $prefix = 'X-Mailer-Metadata-';
+
+        $toRemove = [];
+        foreach ($headers->getAll() as $header) {
+            $name = $header->getFieldName();
+            if (str_starts_with($name, $prefix)) {
+                $key = substr($name, strlen($prefix));
+                $metadata[$key] = $header->getFieldBody();
+                $toRemove[] = $name;
+            }
+        }
+
+        foreach ($toRemove as $name) {
+            $headers->removeAll($name);
+        }
+
+        return $metadata;
+    }
 }
