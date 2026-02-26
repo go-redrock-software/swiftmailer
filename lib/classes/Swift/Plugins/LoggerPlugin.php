@@ -13,7 +13,7 @@
  *
  * @author     Chris Corbyn
  */
-class Swift_Plugins_LoggerPlugin implements Swift_Events_CommandListener, Swift_Events_ResponseListener, Swift_Events_TransportChangeListener, Swift_Events_TransportExceptionListener, Swift_Plugins_Logger
+class Swift_Plugins_LoggerPlugin implements Swift_Events_CommandListener, Swift_Events_ResponseListener, Swift_Events_TransportChangeListener, Swift_Events_TransportExceptionListener, Swift_Events_SentMessageListener, Swift_Events_FailedMessageListener, Swift_Plugins_Logger
 {
     /** The logger which is delegated to */
     private $logger;
@@ -122,5 +122,33 @@ class Swift_Plugins_LoggerPlugin implements Swift_Events_CommandListener, Swift_
         $message .= $this->logger->dump();
         $evt->cancelBubble();
         throw new Swift_TransportException($message, $code, $e->getPrevious());
+    }
+
+    /**
+     * Log when a message has been sent successfully.
+     */
+    public function sentMessage(Swift_Events_SentMessageEvent $evt): void
+    {
+        $sm = $evt->getSentMessage();
+        $id = $sm->getMessageId() ?? '(no id)';
+        $this->logger->add(\sprintf(
+            '== Message sent via %s (id: %s, recipients: %d)',
+            \get_class($evt->getSource()),
+            $id,
+            $sm->getRecipientCount(),
+        ));
+    }
+
+    /**
+     * Log when a message fails to send.
+     */
+    public function failedMessage(Swift_Events_FailedMessageEvent $evt): void
+    {
+        $this->logger->add(\sprintf(
+            '!! Message failed via %s: %s (failed recipients: %s)',
+            \get_class($evt->getSource()),
+            $evt->getException()->getMessage(),
+            implode(', ', $evt->getFailedRecipients()),
+        ));
     }
 }

@@ -106,6 +106,40 @@ class Swift_Plugins_LoggerPluginTest extends SwiftMailerTestCase
         $plugin->beforeTransportStopped($evt);
     }
 
+    public function testSentMessageLogged()
+    {
+        $logger = $this->createMock(Swift_Plugins_Logger::class);
+        $logger->expects($this->once())
+            ->method('add')
+            ->with($this->stringContains('Message sent via'));
+
+        $plugin = new Swift_Plugins_LoggerPlugin($logger);
+
+        $transport = $this->createMock(Swift_Transport::class);
+        $message = (new Swift_Message())->setTo(['a@b.com' => 'A']);
+        $sentMessage = new Swift_SentMessage($message, $transport, ['message_id' => 'xyz']);
+
+        $event = new Swift_Events_SentMessageEvent($transport, $sentMessage);
+        $plugin->sentMessage($event);
+    }
+
+    public function testFailedMessageLogged()
+    {
+        $logger = $this->createMock(Swift_Plugins_Logger::class);
+        $logger->expects($this->once())
+            ->method('add')
+            ->with($this->stringContains('Message failed'));
+
+        $plugin = new Swift_Plugins_LoggerPlugin($logger);
+
+        $transport = $this->createMock(Swift_Transport::class);
+        $message = (new Swift_Message())->setTo(['a@b.com' => 'A']);
+        $exception = new Swift_TransportException('Timeout');
+
+        $event = new Swift_Events_FailedMessageEvent($transport, $message, $exception, ['a@b.com']);
+        $plugin->failedMessage($event);
+    }
+
     public function testExceptionsArePassedToDelegateAndLeftToBubbleUp()
     {
         $transport = $this->createTransport();
