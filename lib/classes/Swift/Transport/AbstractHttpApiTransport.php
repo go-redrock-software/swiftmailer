@@ -95,6 +95,16 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
 
             $recipientCount = $result['recipients'] ?? $this->countRecipients($message);
 
+            $sentMessage = new Swift_SentMessage($message, $this, [
+                'message_id' => $result['message_id'] ?? null,
+                'recipients' => $recipientCount,
+                'debug' => $result,
+            ]);
+
+            if ($sentEvt = $this->eventDispatcher?->createSentMessageEvent($this, $sentMessage)) {
+                $this->eventDispatcher->dispatchEvent($sentEvt, 'sentMessage');
+            }
+
             return $recipientCount;
         } catch (\Exception $e) {
             if ($evt) {
@@ -104,11 +114,17 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
 
             $failedRecipients = array_merge($failedRecipients, $this->collectRecipients($message));
 
-            $this->throwException(new Swift_TransportException(
+            $transportException = new Swift_TransportException(
                 'Failed to send email via ' . static::class . ': ' . $e->getMessage(),
                 0,
                 $e,
-            ));
+            );
+
+            if ($failedEvt = $this->eventDispatcher?->createFailedMessageEvent($this, $message, $transportException, $failedRecipients)) {
+                $this->eventDispatcher->dispatchEvent($failedEvt, 'failedMessage');
+            }
+
+            $this->throwException($transportException);
 
             return 0;
         } finally {

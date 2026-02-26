@@ -103,4 +103,138 @@ class Swift_Transport_AbstractHttpApiTransportTest extends TestCase
         $reflection->setAccessible(true);
         $this->assertSame($this->httpClientMock, $reflection->invoke($this->transport));
     }
+
+    private function createConcreteTransport(
+        string $apiKey,
+        ClientInterface $httpClient,
+        \Swift_Events_EventDispatcher $dispatcher,
+        ?callable $doSendCallback = null,
+    ): \Swift_Transport_AbstractHttpApiTransport {
+        return new class($apiKey, $httpClient, $dispatcher, $doSendCallback) extends \Swift_Transport_AbstractHttpApiTransport {
+            private $doSendCallback;
+
+            public function __construct(string $apiKey, ?ClientInterface $httpClient, ?\Swift_Events_EventDispatcher $dispatcher, ?callable $doSendCallback)
+            {
+                parent::__construct($apiKey, $httpClient, $dispatcher);
+                $this->doSendCallback = $doSendCallback;
+            }
+
+            protected function doSend(\Swift_Mime_SimpleMessage $message): array
+            {
+                if ($this->doSendCallback) {
+                    return ($this->doSendCallback)($message);
+                }
+
+                return ['message_id' => 'test-id-123', 'recipients' => 1];
+            }
+
+            protected function getEndpoint(): string
+            {
+                return 'https://api.example.com/send';
+            }
+
+            protected function getAuthHeaders(): array
+            {
+                return ['Authorization' => 'Bearer test'];
+            }
+
+            protected function parseResponse(\Psr\Http\Message\ResponseInterface $response): array
+            {
+                return [];
+            }
+
+            protected function getPingEndpoint(): string
+            {
+                return 'https://api.example.com/ping';
+            }
+        };
+    }
+
+    public function testSendDispatchesSentMessageEvent(): void
+    {
+        $dispatcher = new \Swift_Events_SimpleEventDispatcher();
+        $httpClient = $this->createMock(ClientInterface::class);
+
+        $transport = $this->createConcreteTransport('test-key', $httpClient, $dispatcher);
+
+        // Use a shared object to capture the event from the anonymous listener
+        $holder = new \stdClass();
+        $holder->event = null;
+        $listener = new class($holder) implements \Swift_Events_SentMessageListener {
+            private \stdClass $holder;
+
+            public function __construct(\stdClass $holder)
+            {
+                $this->holder = $holder;
+            }
+
+            public function sentMessage(\Swift_Events_SentMessageEvent $evt): void
+            {
+                $this->holder->event = $evt;
+            }
+        };
+        $dispatcher->bindEventListener($listener);
+
+        $message = (new \Swift_Message())
+            ->setFrom(['from@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'Recipient'])
+            ->setSubject('Test');
+
+        $transport->start();
+        $count = $transport->send($message);
+
+        $this->assertEquals(1, $count);
+        $this->assertNotNull($holder->event, 'SentMessageEvent should have been dispatched');
+        $this->assertEquals('test-id-123', $holder->event->getSentMessage()->getMessageId());
+        $this->assertEquals(1, $holder->event->getSentMessage()->getRecipientCount());
+        $this->assertSame($transport, $holder->event->getTransport());
+    }
+
+    public function testSendDispatchesFailedMessageEventOnException(): void
+    {
+        $dispatcher = new \Swift_Events_SimpleEventDispatcher();
+        $httpClient = $this->createMock(ClientInterface::class);
+
+        $transport = $this->createConcreteTransport('test-key', $httpClient, $dispatcher, function () {
+            throw new \RuntimeException('API unavailable');
+        });
+
+        // Use a shared object to capture the event from the anonymous listener
+        $holder = new \stdClass();
+        $holder->event = null;
+        $listener = new class($holder) implements \Swift_Events_FailedMessageListener {
+            private \stdClass $holder;
+
+            public function __construct(\stdClass $holder)
+            {
+                $this->holder = $holder;
+            }
+
+            public function failedMessage(\Swift_Events_FailedMessageEvent $evt): void
+            {
+                $this->holder->event = $evt;
+            }
+        };
+        $dispatcher->bindEventListener($listener);
+
+        $message = (new \Swift_Message())
+            ->setFrom(['from@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'Recipient'])
+            ->setSubject('Test');
+
+        $transport->start();
+
+        try {
+            $transport->send($message);
+            $this->fail('Should have thrown Swift_TransportException');
+        } catch (\Swift_TransportException $e) {
+            $this->assertStringContainsString('API unavailable', $e->getMessage());
+        }
+
+        $this->assertNotNull($holder->event, 'FailedMessageEvent should have been dispatched');
+        $this->assertSame($message, $holder->event->getMessage());
+        $this->assertInstanceOf(\Swift_TransportException::class, $holder->event->getException());
+        $this->assertEquals(['to@example.com'], $holder->event->getFailedRecipients());
+        $this->assertSame($transport, $holder->event->getTransport());
+    }
 }
