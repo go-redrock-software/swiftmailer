@@ -34,8 +34,9 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
         }
 
         try {
+            $tags = $this->extractSesTagsFromMessage($message);
             $email = $this->convertMessage($message);
-            $request = $this->getRequest($email);
+            $request = $this->getRequest($email, $tags);
 
             $result = $this->sesClient->sendEmail($request);
 
@@ -84,7 +85,7 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
         }, array_keys($addresses), $addresses);
     }
 
-    protected function getRequest(Email $email): SendEmailRequest
+    protected function getRequest(Email $email, array $tags = []): SendEmailRequest
     {
         $request = [
             'FromEmailAddress' => $this->stringifyAddress($email->getFrom()[0]),
@@ -144,7 +145,33 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
             }
         }
 
+        // Tags from X-Mailer-Tag headers → EmailTags (array of {Name, Value})
+        foreach ($tags as $tag) {
+            $request['EmailTags'][] = ['Name' => 'tag', 'Value' => $tag];
+        }
+
         return new SendEmailRequest($request);
+    }
+
+    /**
+     * Extract X-Mailer-Tag headers from message and remove them.
+     *
+     * @return string[]
+     */
+    private function extractSesTagsFromMessage(Swift_Mime_SimpleMessage $message): array
+    {
+        $tags = [];
+        $headers = $message->getHeaders();
+
+        foreach ($headers->getAll('X-Mailer-Tag') as $header) {
+            $tags[] = $header->getFieldBody();
+        }
+
+        if ($tags) {
+            $headers->removeAll('X-Mailer-Tag');
+        }
+
+        return $tags;
     }
 
     protected function stringifyAddresses(array $addresses): array

@@ -29,7 +29,8 @@ class Swift_Transport_Api_AmazonSesHttpTransport extends Swift_Transport_Abstrac
     public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null): int
     {
         try {
-            $request = $this->getRequest($message);
+            $tags = $this->extractSesTagsFromMessage($message);
+            $request = $this->getRequest($message, $tags);
             $messageId = $this->sesClient->sendEmail($request)->getMessageId();
             $message->getHeaders()->addTextHeader('X-SES-Message-ID', $messageId);
 
@@ -47,7 +48,7 @@ class Swift_Transport_Api_AmazonSesHttpTransport extends Swift_Transport_Abstrac
         return $this->sesClient;
     }
 
-    private function getRequest(Swift_Mime_SimpleMessage $message): array
+    private function getRequest(Swift_Mime_SimpleMessage $message, array $tags = []): array
     {
         $request = [
             'Source' => $message->getSender() ?: $message->getFrom(),
@@ -101,7 +102,33 @@ class Swift_Transport_Api_AmazonSesHttpTransport extends Swift_Transport_Abstrac
             }
         }
 
+        // Tags from X-Mailer-Tag headers → Tags (array of {Name, Value})
+        foreach ($tags as $tag) {
+            $request['Tags'][] = ['Name' => 'tag', 'Value' => $tag];
+        }
+
         return $request;
+    }
+
+    /**
+     * Extract X-Mailer-Tag headers from message and remove them.
+     *
+     * @return string[]
+     */
+    private function extractSesTagsFromMessage(Swift_Mime_SimpleMessage $message): array
+    {
+        $tags = [];
+        $headers = $message->getHeaders();
+
+        foreach ($headers->getAll('X-Mailer-Tag') as $header) {
+            $tags[] = $header->getFieldBody();
+        }
+
+        if ($tags) {
+            $headers->removeAll('X-Mailer-Tag');
+        }
+
+        return $tags;
     }
 
     private function getRecipientCount(Swift_Mime_SimpleMessage $message): int
