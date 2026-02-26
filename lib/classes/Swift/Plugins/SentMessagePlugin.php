@@ -26,7 +26,7 @@ class Swift_Plugins_SentMessagePlugin implements Swift_Events_SentMessageListene
             return null;
         }
 
-        return $this->sentMessages[array_key_last($this->sentMessages)];
+        return $this->sentMessages[\array_key_last($this->sentMessages)];
     }
 
     /** @return Swift_SentMessage[] */

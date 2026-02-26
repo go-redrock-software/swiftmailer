@@ -18,7 +18,7 @@ class AhaSendTransportTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->httpClientMock = $this->createMock(ClientInterface::class);
+        $this->httpClientMock      = $this->createMock(ClientInterface::class);
         $this->eventDispatcherMock = $this->createMock(\Swift_Events_EventDispatcher::class);
 
         $this->transport = new \Swift_Transport_Api_AhaSendTransport(
@@ -62,7 +62,7 @@ class AhaSendTransportTest extends TestCase
             )
             ->willReturn($this->createMockResponse(200, [
                 'object' => 'list',
-                'data' => [
+                'data'   => [
                     ['object' => 'message', 'id' => 'uuid-123', 'status' => 'queued'],
                 ],
             ]));
@@ -95,7 +95,7 @@ class AhaSendTransportTest extends TestCase
             )
             ->willReturn($this->createMockResponse(200, [
                 'object' => 'list',
-                'data' => [
+                'data'   => [
                     ['object' => 'message', 'id' => 'uuid-html', 'status' => 'queued'],
                 ],
             ]));
@@ -121,7 +121,7 @@ class AhaSendTransportTest extends TestCase
                 'POST',
                 $this->anything(),
                 $this->callback(function (array $options): bool {
-                    $payload = $options['json'];
+                    $payload    = $options['json'];
                     $recipients = $payload['recipients'];
 
                     $this->assertCount(4, $recipients);
@@ -139,7 +139,7 @@ class AhaSendTransportTest extends TestCase
             )
             ->willReturn($this->createMockResponse(200, [
                 'object' => 'list',
-                'data' => [
+                'data'   => [
                     ['object' => 'message', 'id' => 'uuid-multi', 'status' => 'queued'],
                 ],
             ]));
@@ -172,7 +172,7 @@ class AhaSendTransportTest extends TestCase
                     $attachment = $payload['attachments'][0];
                     $this->assertEquals('document.pdf', $attachment['file_name']);
                     $this->assertEquals('application/pdf', $attachment['content_type']);
-                    $this->assertEquals(base64_encode('file content'), $attachment['data']);
+                    $this->assertEquals(\base64_encode('file content'), $attachment['data']);
                     $this->assertArrayNotHasKey('content_id', $attachment);
 
                     return true;
@@ -180,7 +180,7 @@ class AhaSendTransportTest extends TestCase
             )
             ->willReturn($this->createMockResponse(200, [
                 'object' => 'list',
-                'data' => [
+                'data'   => [
                     ['object' => 'message', 'id' => 'uuid-attach', 'status' => 'queued'],
                 ],
             ]));
@@ -215,7 +215,7 @@ class AhaSendTransportTest extends TestCase
             )
             ->willReturn($this->createMockResponse(200, [
                 'object' => 'list',
-                'data' => [
+                'data'   => [
                     ['object' => 'message', 'id' => 'uuid', 'status' => 'queued'],
                 ],
             ]));
@@ -264,7 +264,7 @@ class AhaSendTransportTest extends TestCase
             ->method('request')
             ->willReturn($this->createMockResponse(422, [
                 'error' => [
-                    'type' => 'validation_error',
+                    'type'    => 'validation_error',
                     'message' => 'Invalid email address',
                 ],
             ]));
@@ -303,7 +303,7 @@ class AhaSendTransportTest extends TestCase
             )
             ->willReturn($this->createMockResponse(200, [
                 'object' => 'list',
-                'data' => [
+                'data'   => [
                     ['object' => 'message', 'id' => 'uuid-noname', 'status' => 'queued'],
                 ],
             ]));
@@ -330,7 +330,7 @@ class AhaSendTransportTest extends TestCase
     private function createMockResponse(int $statusCode, array $body): ResponseInterface
     {
         $stream = $this->createMock(StreamInterface::class);
-        $stream->method('__toString')->willReturn(json_encode($body));
+        $stream->method('__toString')->willReturn(\json_encode($body));
 
         $response = $this->createMock(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn($statusCode);

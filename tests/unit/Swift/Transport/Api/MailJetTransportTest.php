@@ -16,7 +16,7 @@ class Swift_Transport_Api_MailJetTransportTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->httpClientMock = $this->createMock(ClientInterface::class);
+        $this->httpClientMock      = $this->createMock(ClientInterface::class);
         $this->eventDispatcherMock = $this->createMock(\Swift_Events_EventDispatcher::class);
 
         $this->transport = new \Swift_Transport_Api_MailJetTransport(
@@ -44,15 +44,15 @@ class Swift_Transport_Api_MailJetTransportTest extends TestCase
                     $payload = $options['json'];
 
                     return isset($payload['Messages'][0])
-                        && $payload['Messages'][0]['From']['Email'] === 'from@example.com'
-                        && $payload['Messages'][0]['From']['Name'] === 'Sender'
-                        && $payload['Messages'][0]['To'][0]['Email'] === 'to@example.com'
-                        && $payload['Messages'][0]['To'][0]['Name'] === 'Recipient'
-                        && $payload['Messages'][0]['Subject'] === 'Test Subject'
-                        && $payload['Messages'][0]['TextPart'] === 'Hello World';
+                        && 'from@example.com' === $payload['Messages'][0]['From']['Email']
+                        && 'Sender'           === $payload['Messages'][0]['From']['Name']
+                        && 'to@example.com'   === $payload['Messages'][0]['To'][0]['Email']
+                        && 'Recipient'        === $payload['Messages'][0]['To'][0]['Name']
+                        && 'Test Subject'     === $payload['Messages'][0]['Subject']
+                        && 'Hello World'      === $payload['Messages'][0]['TextPart'];
                 }),
             )
-            ->willReturn(new Response(200, [], json_encode([
+            ->willReturn(new Response(200, [], \json_encode([
                 'Messages' => [['Status' => 'success', 'To' => [['Email' => 'to@example.com']]]],
             ])));
 
@@ -85,7 +85,7 @@ class Swift_Transport_Api_MailJetTransportTest extends TestCase
 
                 return true;
             }))
-            ->willReturn(new Response(200, [], json_encode([
+            ->willReturn(new Response(200, [], \json_encode([
                 'Messages' => [['Status' => 'success']],
             ])));
 
@@ -116,7 +116,7 @@ class Swift_Transport_Api_MailJetTransportTest extends TestCase
         $message->setSubject('Test');
         $message->setBody('Hello');
 
-        $expectedAuth = 'Basic ' . base64_encode('test-public-key:test-private-key');
+        $expectedAuth = 'Basic '.\base64_encode('test-public-key:test-private-key');
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
@@ -124,7 +124,7 @@ class Swift_Transport_Api_MailJetTransportTest extends TestCase
                 return isset($options['headers']['Authorization'])
                     && $options['headers']['Authorization'] === $expectedAuth;
             }))
-            ->willReturn(new Response(200, [], json_encode([
+            ->willReturn(new Response(200, [], \json_encode([
                 'Messages' => [['Status' => 'success']],
             ])));
 
@@ -173,7 +173,7 @@ class Swift_Transport_Api_MailJetTransportTest extends TestCase
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
-            ->willReturn(new Response(400, [], json_encode([
+            ->willReturn(new Response(400, [], \json_encode([
                 'Messages' => [[
                     'Status' => 'error',
                     'Errors' => [['ErrorMessage' => 'Invalid sender']],
@@ -206,10 +206,10 @@ class Swift_Transport_Api_MailJetTransportTest extends TestCase
                 $msg = $options['json']['Messages'][0];
 
                 return isset($msg['ReplyTo'])
-                    && $msg['ReplyTo']['Email'] === 'reply@example.com'
-                    && $msg['ReplyTo']['Name'] === 'Reply User';
+                    && 'reply@example.com' === $msg['ReplyTo']['Email']
+                    && 'Reply User'        === $msg['ReplyTo']['Name'];
             }))
-            ->willReturn(new Response(200, [], json_encode([
+            ->willReturn(new Response(200, [], \json_encode([
                 'Messages' => [['Status' => 'success']],
             ])));
 
@@ -240,7 +240,7 @@ class Swift_Transport_Api_MailJetTransportTest extends TestCase
 
                 return true;
             }))
-            ->willReturn(new Response(200, [], json_encode([
+            ->willReturn(new Response(200, [], \json_encode([
                 'Messages' => [['Status' => 'success']],
             ])));
 

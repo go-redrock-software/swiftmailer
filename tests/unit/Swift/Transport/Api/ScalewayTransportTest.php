@@ -17,7 +17,7 @@ class ScalewayTransportTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->httpClientMock = $this->createMock(ClientInterface::class);
+        $this->httpClientMock      = $this->createMock(ClientInterface::class);
         $this->eventDispatcherMock = $this->createMock(\Swift_Events_EventDispatcher::class);
 
         $this->transport = new \Swift_Transport_Api_ScalewayTransport(
@@ -294,7 +294,7 @@ class ScalewayTransportTest extends TestCase
                     $this->assertCount(1, $payload['attachments']);
                     $this->assertSame('document.txt', $payload['attachments'][0]['name']);
                     $this->assertSame('text/plain', $payload['attachments'][0]['type']);
-                    $this->assertSame(base64_encode('file contents'), $payload['attachments'][0]['content']);
+                    $this->assertSame(\base64_encode('file contents'), $payload['attachments'][0]['content']);
 
                     return true;
                 }),
@@ -507,7 +507,7 @@ class ScalewayTransportTest extends TestCase
     private function createMockResponse(int $statusCode, array $body): ResponseInterface
     {
         $stream = $this->createMock(StreamInterface::class);
-        $stream->method('__toString')->willReturn(json_encode($body));
+        $stream->method('__toString')->willReturn(\json_encode($body));
 
         $response = $this->createMock(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn($statusCode);

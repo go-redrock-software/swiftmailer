@@ -8,7 +8,7 @@ class DsnTransportFactoryIntegrationTest extends TestCase
 {
     public function testNullTransportFromDsn(): void
     {
-        $factory = new \Swift_Transport_DsnTransportFactory();
+        $factory   = new \Swift_Transport_DsnTransportFactory();
         $transport = $factory->fromDsnString('null://default');
 
         $this->assertInstanceOf(\Swift_Transport_NullTransport::class, $transport);
@@ -26,7 +26,7 @@ class DsnTransportFactoryIntegrationTest extends TestCase
 
     public function testFailoverFromDsn(): void
     {
-        $factory = new \Swift_Transport_DsnTransportFactory();
+        $factory   = new \Swift_Transport_DsnTransportFactory();
         $transport = $factory->fromDsnString('failover(null://default null://default)');
 
         $this->assertInstanceOf(\Swift_Transport_FailoverTransport::class, $transport);
@@ -43,7 +43,7 @@ class DsnTransportFactoryIntegrationTest extends TestCase
 
     public function testRoundRobinFromDsn(): void
     {
-        $factory = new \Swift_Transport_DsnTransportFactory();
+        $factory   = new \Swift_Transport_DsnTransportFactory();
         $transport = $factory->fromDsnString('roundrobin(null://default null://default)');
 
         $this->assertInstanceOf(\Swift_Transport_LoadBalancedTransport::class, $transport);

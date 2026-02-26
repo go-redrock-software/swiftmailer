@@ -1,6 +1,6 @@
 <?php
 
-class Swift_SentMessageTest extends \PHPUnit\Framework\TestCase
+class Swift_SentMessageTest extends PHPUnit\Framework\TestCase
 {
     public function testGetters()
     {
@@ -14,7 +14,7 @@ class Swift_SentMessageTest extends \PHPUnit\Framework\TestCase
         $sentMessage = new Swift_SentMessage($message, $transport, [
             'message_id' => 'abc-123',
             'recipients' => 1,
-            'debug' => ['status' => 200, 'response' => '{"ok":true}'],
+            'debug'      => ['status' => 200, 'response' => '{"ok":true}'],
         ]);
 
         $this->assertSame($message, $sentMessage->getOriginalMessage());
@@ -27,7 +27,7 @@ class Swift_SentMessageTest extends \PHPUnit\Framework\TestCase
 
     public function testWithFailedRecipients()
     {
-        $message = (new Swift_Message())->setTo(['a@b.com' => 'A', 'c@d.com' => 'C']);
+        $message   = (new Swift_Message())->setTo(['a@b.com' => 'A', 'c@d.com' => 'C']);
         $transport = $this->createMock(Swift_Transport::class);
 
         $sentMessage = new Swift_SentMessage($message, $transport, [
@@ -42,7 +42,7 @@ class Swift_SentMessageTest extends \PHPUnit\Framework\TestCase
 
     public function testDefaultsWithEmptyResult()
     {
-        $message = (new Swift_Message())->setTo(['a@b.com' => 'A']);
+        $message   = (new Swift_Message())->setTo(['a@b.com' => 'A']);
         $transport = $this->createMock(Swift_Transport::class);
 
         $sentMessage = new Swift_SentMessage($message, $transport);

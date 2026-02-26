@@ -1,16 +1,16 @@
 <?php
 
-class Swift_Plugins_CssInlinerPluginTest extends \PHPUnit\Framework\TestCase
+class Swift_Plugins_CssInlinerPluginTest extends PHPUnit\Framework\TestCase
 {
     public function testInlinesCssFromStyleBlock()
     {
-        if (!class_exists(\TijsVerkoyen\CssToInlineStyles\CssToInlineStyles::class)) {
+        if (!\class_exists(TijsVerkoyen\CssToInlineStyles\CssToInlineStyles::class)) {
             $this->markTestSkipped('tijsverkoyen/css-to-inline-styles not installed');
         }
 
         $plugin = new Swift_Plugins_CssInlinerPlugin();
 
-        $html = '<html><head><style>p { color: red; }</style></head><body><p>Hello</p></body></html>';
+        $html    = '<html><head><style>p { color: red; }</style></head><body><p>Hello</p></body></html>';
         $message = (new Swift_Message())
             ->setFrom(['a@b.com' => 'A'])
             ->setTo(['c@d.com' => 'C'])
@@ -18,7 +18,7 @@ class Swift_Plugins_CssInlinerPluginTest extends \PHPUnit\Framework\TestCase
             ->setBody($html, 'text/html');
 
         $transport = $this->createMock(Swift_Transport::class);
-        $event = new Swift_Events_SendEvent($transport, $message);
+        $event     = new Swift_Events_SendEvent($transport, $message);
 
         $plugin->beforeSendPerformed($event);
 
@@ -38,7 +38,7 @@ class Swift_Plugins_CssInlinerPluginTest extends \PHPUnit\Framework\TestCase
             ->setBody('Just plain text');
 
         $transport = $this->createMock(Swift_Transport::class);
-        $event = new Swift_Events_SendEvent($transport, $message);
+        $event     = new Swift_Events_SendEvent($transport, $message);
 
         $plugin->beforeSendPerformed($event);
 
@@ -47,12 +47,12 @@ class Swift_Plugins_CssInlinerPluginTest extends \PHPUnit\Framework\TestCase
 
     public function testInlinesHtmlMimePart()
     {
-        if (!class_exists(\TijsVerkoyen\CssToInlineStyles\CssToInlineStyles::class)) {
+        if (!\class_exists(TijsVerkoyen\CssToInlineStyles\CssToInlineStyles::class)) {
             $this->markTestSkipped('tijsverkoyen/css-to-inline-styles not installed');
         }
 
         $plugin = new Swift_Plugins_CssInlinerPlugin();
-        $html = '<html><head><style>h1 { font-size: 20px; }</style></head><body><h1>Hi</h1></body></html>';
+        $html   = '<html><head><style>h1 { font-size: 20px; }</style></head><body><h1>Hi</h1></body></html>';
 
         $message = (new Swift_Message())
             ->setFrom(['a@b.com' => 'A'])
@@ -62,7 +62,7 @@ class Swift_Plugins_CssInlinerPluginTest extends \PHPUnit\Framework\TestCase
             ->addPart($html, 'text/html');
 
         $transport = $this->createMock(Swift_Transport::class);
-        $event = new Swift_Events_SendEvent($transport, $message);
+        $event     = new Swift_Events_SendEvent($transport, $message);
 
         $plugin->beforeSendPerformed($event);
 

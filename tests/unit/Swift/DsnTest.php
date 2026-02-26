@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) 2024. Redrock Software Corporation
  *
@@ -85,7 +86,7 @@ class Swift_DsnTest extends TestCase
         $this->assertEquals($expectedClass, $swiftDsn->getTransportClass());
     }
 
-    public function transportClassProvider(): array
+    public static function transportClassProvider(): array
     {
         return [
             ['null', Swift_Transport_NullTransport::class],
@@ -124,7 +125,7 @@ class Swift_DsnTest extends TestCase
 
         $swiftDsn = new Swift_Dsn($dsn);
 
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Unsupported DSN scheme "unknown-scheme"');
         $swiftDsn->getTransportClass();
     }

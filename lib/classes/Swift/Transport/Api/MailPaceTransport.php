@@ -36,23 +36,21 @@ class Swift_Transport_Api_MailPaceTransport extends Swift_Transport_AbstractHttp
         $payload = $this->getPayload($message);
 
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
-            'headers' => array_merge($this->getAuthHeaders(), [
+            'headers' => \array_merge($this->getAuthHeaders(), [
                 'Content-Type' => 'application/json',
-                'Accept' => 'application/json',
+                'Accept'       => 'application/json',
             ]),
-            'json' => $payload,
+            'json'        => $payload,
             'http_errors' => false,
         ]);
 
         $statusCode = $response->getStatusCode();
 
         if ($statusCode < 200 || $statusCode >= 300) {
-            $parsed = $this->parseResponse($response);
+            $parsed       = $this->parseResponse($response);
             $errorMessage = $parsed['error'] ?? 'Unknown error';
 
-            throw new Swift_TransportException(
-                sprintf('MailPace API error (%d): %s', $statusCode, $errorMessage),
-            );
+            throw new Swift_TransportException(\sprintf('MailPace API error (%d): %s', $statusCode, $errorMessage));
         }
 
         $parsed = $this->parseResponse($response);
@@ -77,7 +75,7 @@ class Swift_Transport_Api_MailPaceTransport extends Swift_Transport_AbstractHttp
 
     protected function parseResponse(ResponseInterface $response): array
     {
-        return json_decode((string) $response->getBody(), true) ?? [];
+        return \json_decode((string) $response->getBody(), true) ?? [];
     }
 
     protected function getPingEndpoint(): string
@@ -90,48 +88,48 @@ class Swift_Transport_Api_MailPaceTransport extends Swift_Transport_AbstractHttp
      */
     private function getPayload(Swift_Mime_SimpleMessage $message): array
     {
-        $tags = $this->extractTags($message);
+        $tags     = $this->extractTags($message);
         $metadata = $this->extractMetadata($message);
 
-        $from = $message->getFrom();
-        $fromAddress = array_key_first($from);
-        $fromName = $from[$fromAddress] ?? null;
+        $from        = $message->getFrom();
+        $fromAddress = \array_key_first($from);
+        $fromName    = $from[$fromAddress] ?? null;
 
         $payload = [
-            'from' => $this->formatAddress($fromAddress, $fromName),
-            'to' => implode(', ', $this->formatAddresses($message->getTo() ?? [])),
+            'from'    => $this->formatAddress($fromAddress, $fromName),
+            'to'      => \implode(', ', $this->formatAddresses($message->getTo() ?? [])),
             'subject' => $message->getSubject(),
         ];
 
         if ($cc = $message->getCc()) {
-            $payload['cc'] = implode(', ', $this->formatAddresses($cc));
+            $payload['cc'] = \implode(', ', $this->formatAddresses($cc));
         }
 
         if ($bcc = $message->getBcc()) {
-            $payload['bcc'] = implode(', ', $this->formatAddresses($bcc));
+            $payload['bcc'] = \implode(', ', $this->formatAddresses($bcc));
         }
 
         if ($replyTo = $message->getReplyTo()) {
-            $payload['replyto'] = implode(', ', $this->formatAddresses($replyTo));
+            $payload['replyto'] = \implode(', ', $this->formatAddresses($replyTo));
         }
 
         $body = $this->getMessageBody($message);
 
-        if ($body['text'] !== null) {
+        if (null !== $body['text']) {
             $payload['textbody'] = $body['text'];
         }
 
-        if ($body['html'] !== null) {
+        if (null !== $body['html']) {
             $payload['htmlbody'] = $body['html'];
         }
 
         $attachments = $this->getMessageAttachments($message);
         if (!empty($attachments)) {
-            $payload['attachments'] = array_map(static function (array $attachment): array {
+            $payload['attachments'] = \array_map(static function (array $attachment): array {
                 return [
-                    'name' => $attachment['filename'],
+                    'name'         => $attachment['filename'],
                     'content_type' => $attachment['contentType'],
-                    'content' => base64_encode($attachment['content']),
+                    'content'      => \base64_encode($attachment['content']),
                 ];
             }, $attachments);
         }

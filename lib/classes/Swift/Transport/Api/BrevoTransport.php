@@ -9,24 +9,22 @@ class Swift_Transport_Api_BrevoTransport extends Swift_Transport_AbstractHttpApi
         $payload = $this->getPayload($message);
 
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
-            'headers' => array_merge($this->getAuthHeaders(), [
+            'headers' => \array_merge($this->getAuthHeaders(), [
                 'Content-Type' => 'application/json',
-                'Accept' => 'application/json',
+                'Accept'       => 'application/json',
             ]),
-            'json' => $payload,
+            'json'        => $payload,
             'http_errors' => false,
         ]);
 
         $statusCode = $response->getStatusCode();
 
         if ($statusCode < 200 || $statusCode >= 300) {
-            $parsed = $this->parseResponse($response);
+            $parsed       = $this->parseResponse($response);
             $errorMessage = $parsed['message'] ?? 'Unknown error';
-            $errorCode = $parsed['code'] ?? $statusCode;
+            $errorCode    = $parsed['code']    ?? $statusCode;
 
-            throw new Swift_TransportException(
-                sprintf('Brevo API error (%s): %s', $errorCode, $errorMessage),
-            );
+            throw new Swift_TransportException(\sprintf('Brevo API error (%s): %s', $errorCode, $errorMessage));
         }
 
         $parsed = $this->parseResponse($response);
@@ -49,7 +47,7 @@ class Swift_Transport_Api_BrevoTransport extends Swift_Transport_AbstractHttpApi
 
     protected function parseResponse(ResponseInterface $response): array
     {
-        return json_decode($response->getBody()->getContents(), true) ?? [];
+        return \json_decode($response->getBody()->getContents(), true) ?? [];
     }
 
     protected function getPingEndpoint(): string
@@ -62,19 +60,19 @@ class Swift_Transport_Api_BrevoTransport extends Swift_Transport_AbstractHttpApi
      */
     private function getPayload(Swift_Mime_SimpleMessage $message): array
     {
-        $tags = $this->extractTags($message);
+        $tags     = $this->extractTags($message);
         $metadata = $this->extractMetadata($message);
 
-        $from = $message->getFrom();
-        $fromEmail = array_key_first($from);
-        $fromName = $from[$fromEmail];
+        $from      = $message->getFrom();
+        $fromEmail = \array_key_first($from);
+        $fromName  = $from[$fromEmail];
 
         $payload = [
-            'sender' => array_filter([
+            'sender' => \array_filter([
                 'email' => $fromEmail,
-                'name' => $fromName,
+                'name'  => $fromName,
             ]),
-            'to' => $this->mapAddresses($message->getTo() ?? []),
+            'to'      => $this->mapAddresses($message->getTo() ?? []),
             'subject' => $message->getSubject(),
         ];
 
@@ -90,28 +88,28 @@ class Swift_Transport_Api_BrevoTransport extends Swift_Transport_AbstractHttpApi
 
         $replyTo = $message->getReplyTo();
         if (!empty($replyTo)) {
-            $replyToEmail = array_key_first($replyTo);
-            $replyToName = $replyTo[$replyToEmail];
-            $payload['replyTo'] = array_filter([
+            $replyToEmail       = \array_key_first($replyTo);
+            $replyToName        = $replyTo[$replyToEmail];
+            $payload['replyTo'] = \array_filter([
                 'email' => $replyToEmail,
-                'name' => $replyToName,
+                'name'  => $replyToName,
             ]);
         }
 
         $body = $this->getMessageBody($message);
-        if ($body['html'] !== null) {
+        if (null !== $body['html']) {
             $payload['htmlContent'] = $body['html'];
         }
-        if ($body['text'] !== null) {
+        if (null !== $body['text']) {
             $payload['textContent'] = $body['text'];
         }
 
         $attachments = $this->getMessageAttachments($message);
         if (!empty($attachments)) {
-            $payload['attachment'] = array_map(function (array $attachment) {
+            $payload['attachment'] = \array_map(function (array $attachment) {
                 return [
-                    'name' => $attachment['filename'],
-                    'content' => base64_encode($attachment['content']),
+                    'name'    => $attachment['filename'],
+                    'content' => \base64_encode($attachment['content']),
                 ];
             }, $attachments);
         }
@@ -125,7 +123,7 @@ class Swift_Transport_Api_BrevoTransport extends Swift_Transport_AbstractHttpApi
         if (!empty($metadata)) {
             $headers = [];
             foreach ($metadata as $key => $value) {
-                $headers['X-Metadata-' . $key] = $value;
+                $headers['X-Metadata-'.$key] = $value;
             }
             $payload['headers'] = $headers;
         }
@@ -137,15 +135,16 @@ class Swift_Transport_Api_BrevoTransport extends Swift_Transport_AbstractHttpApi
      * Map a SwiftMailer address array to Brevo's address format.
      *
      * @param array<string, string|null> $addresses
+     *
      * @return array<int, array{email: string, name?: string}>
      */
     private function mapAddresses(array $addresses): array
     {
         $mapped = [];
         foreach ($addresses as $email => $name) {
-            $mapped[] = array_filter([
+            $mapped[] = \array_filter([
                 'email' => $email,
-                'name' => $name,
+                'name'  => $name,
             ]);
         }
 

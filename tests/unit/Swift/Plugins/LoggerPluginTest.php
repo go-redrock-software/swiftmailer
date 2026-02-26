@@ -115,8 +115,8 @@ class Swift_Plugins_LoggerPluginTest extends SwiftMailerTestCase
 
         $plugin = new Swift_Plugins_LoggerPlugin($logger);
 
-        $transport = $this->createMock(Swift_Transport::class);
-        $message = (new Swift_Message())->setTo(['a@b.com' => 'A']);
+        $transport   = $this->createMock(Swift_Transport::class);
+        $message     = (new Swift_Message())->setTo(['a@b.com' => 'A']);
         $sentMessage = new Swift_SentMessage($message, $transport, ['message_id' => 'xyz']);
 
         $event = new Swift_Events_SentMessageEvent($transport, $sentMessage);
@@ -133,7 +133,7 @@ class Swift_Plugins_LoggerPluginTest extends SwiftMailerTestCase
         $plugin = new Swift_Plugins_LoggerPlugin($logger);
 
         $transport = $this->createMock(Swift_Transport::class);
-        $message = (new Swift_Message())->setTo(['a@b.com' => 'A']);
+        $message   = (new Swift_Message())->setTo(['a@b.com' => 'A']);
         $exception = new Swift_TransportException('Timeout');
 
         $event = new Swift_Events_FailedMessageEvent($transport, $message, $exception, ['a@b.com']);

@@ -1,11 +1,11 @@
 <?php
 
-class Swift_Events_SentMessageEventTest extends \PHPUnit\Framework\TestCase
+class Swift_Events_SentMessageEventTest extends PHPUnit\Framework\TestCase
 {
     public function testGetSentMessage()
     {
         $transport = $this->createMock(Swift_Transport::class);
-        $message = (new Swift_Message())
+        $message   = (new Swift_Message())
             ->setFrom(['a@b.com' => 'A'])
             ->setTo(['c@d.com' => 'C']);
         $sentMessage = new Swift_SentMessage($message, $transport, ['message_id' => 'x']);

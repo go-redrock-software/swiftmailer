@@ -21,21 +21,19 @@ class Swift_Transport_Api_MailomatTransport extends Swift_Transport_AbstractHttp
         $payload = $this->getPayload($message);
 
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
-            'headers' => array_merge($this->getAuthHeaders(), [
+            'headers' => \array_merge($this->getAuthHeaders(), [
                 'Content-Type' => 'application/json',
             ]),
-            'json' => $payload,
+            'json'        => $payload,
             'http_errors' => false,
         ]);
 
         $statusCode = $response->getStatusCode();
-        $parsed = $this->parseResponse($response);
+        $parsed     = $this->parseResponse($response);
 
         if ($statusCode < 200 || $statusCode >= 300) {
             $errorMessage = $parsed['message'] ?? $parsed['error'] ?? 'Unknown error';
-            throw new Swift_TransportException(
-                sprintf('Mailomat API error (%d): %s', $statusCode, $errorMessage),
-            );
+            throw new Swift_TransportException(\sprintf('Mailomat API error (%d): %s', $statusCode, $errorMessage));
         }
 
         return [
@@ -52,7 +50,7 @@ class Swift_Transport_Api_MailomatTransport extends Swift_Transport_AbstractHttp
     protected function getAuthHeaders(): array
     {
         return [
-            'Authorization' => 'Bearer ' . $this->apiKey,
+            'Authorization' => 'Bearer '.$this->apiKey,
         ];
     }
 
@@ -60,7 +58,7 @@ class Swift_Transport_Api_MailomatTransport extends Swift_Transport_AbstractHttp
     {
         $body = (string) $response->getBody();
 
-        return json_decode($body, true) ?? [];
+        return \json_decode($body, true) ?? [];
     }
 
     protected function getPingEndpoint(): string
@@ -73,16 +71,16 @@ class Swift_Transport_Api_MailomatTransport extends Swift_Transport_AbstractHttp
      */
     private function getPayload(Swift_Mime_SimpleMessage $message): array
     {
-        $from = $message->getFrom();
-        $fromEmail = array_key_first($from);
-        $fromName = $from[$fromEmail];
+        $from      = $message->getFrom();
+        $fromEmail = \array_key_first($from);
+        $fromName  = $from[$fromEmail];
 
         $payload = [
-            'from' => array_filter([
+            'from' => \array_filter([
                 'email' => $fromEmail,
-                'name' => $fromName,
+                'name'  => $fromName,
             ]),
-            'to' => $this->mapAddresses($message->getTo() ?? []),
+            'to'      => $this->mapAddresses($message->getTo() ?? []),
             'subject' => $message->getSubject(),
         ];
 
@@ -102,21 +100,21 @@ class Swift_Transport_Api_MailomatTransport extends Swift_Transport_AbstractHttp
         }
 
         $body = $this->getMessageBody($message);
-        if ($body['text'] !== null) {
+        if (null !== $body['text']) {
             $payload['text'] = $body['text'];
         }
-        if ($body['html'] !== null) {
+        if (null !== $body['html']) {
             $payload['html'] = $body['html'];
         }
 
         $attachments = $this->getMessageAttachments($message);
         if (!empty($attachments)) {
-            $payload['attachments'] = array_map(static function (array $attachment): array {
-                return array_filter([
-                    'filename' => $attachment['filename'],
-                    'contentBase64' => base64_encode($attachment['content']),
-                    'contentType' => $attachment['contentType'],
-                    'contentId' => $attachment['contentId'] ?? null,
+            $payload['attachments'] = \array_map(static function (array $attachment): array {
+                return \array_filter([
+                    'filename'      => $attachment['filename'],
+                    'contentBase64' => \base64_encode($attachment['content']),
+                    'contentType'   => $attachment['contentType'],
+                    'contentId'     => $attachment['contentId'] ?? null,
                 ]);
             }, $attachments);
         }
@@ -128,15 +126,16 @@ class Swift_Transport_Api_MailomatTransport extends Swift_Transport_AbstractHttp
      * Map a SwiftMailer address array to Mailomat's address format.
      *
      * @param array<string, string|null> $addresses
+     *
      * @return array<int, array{email: string, name?: string}>
      */
     private function mapAddresses(array $addresses): array
     {
         $mapped = [];
         foreach ($addresses as $email => $name) {
-            $mapped[] = array_filter([
+            $mapped[] = \array_filter([
                 'email' => $email,
-                'name' => $name,
+                'name'  => $name,
             ]);
         }
 

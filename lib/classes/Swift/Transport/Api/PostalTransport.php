@@ -22,13 +22,13 @@ class Swift_Transport_Api_PostalTransport extends Swift_Transport_AbstractHttpAp
     private string $host;
 
     public function __construct(
-        #[\SensitiveParameter] string $apiKey,
+        #[SensitiveParameter] string $apiKey,
         string $host,
         ?ClientInterface $httpClient = null,
         ?Swift_Events_EventDispatcher $eventDispatcher = null,
     ) {
         parent::__construct($apiKey, $httpClient, $eventDispatcher);
-        $this->host = rtrim($host, '/');
+        $this->host = \rtrim($host, '/');
     }
 
     protected function doSend(Swift_Mime_SimpleMessage $message): array
@@ -36,21 +36,19 @@ class Swift_Transport_Api_PostalTransport extends Swift_Transport_AbstractHttpAp
         $payload = $this->getPayload($message);
 
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
-            'headers' => array_merge($this->getAuthHeaders(), [
+            'headers' => \array_merge($this->getAuthHeaders(), [
                 'Content-Type' => 'application/json',
             ]),
-            'json' => $payload,
+            'json'        => $payload,
             'http_errors' => false,
         ]);
 
         $result = $this->parseResponse($response);
 
         if (($result['status'] ?? null) !== 'success') {
-            $errorCode = $result['data']['code'] ?? 'UnknownError';
+            $errorCode    = $result['data']['code']    ?? 'UnknownError';
             $errorMessage = $result['data']['message'] ?? 'Unknown error';
-            throw new Swift_TransportException(
-                sprintf('Postal API error (%s): %s', $errorCode, $errorMessage),
-            );
+            throw new Swift_TransportException(\sprintf('Postal API error (%s): %s', $errorCode, $errorMessage));
         }
 
         return [
@@ -61,7 +59,7 @@ class Swift_Transport_Api_PostalTransport extends Swift_Transport_AbstractHttpAp
 
     protected function getEndpoint(): string
     {
-        return 'https://' . $this->host . '/api/v1/send/message';
+        return 'https://'.$this->host.'/api/v1/send/message';
     }
 
     protected function getAuthHeaders(): array
@@ -73,24 +71,24 @@ class Swift_Transport_Api_PostalTransport extends Swift_Transport_AbstractHttpAp
 
     protected function parseResponse(ResponseInterface $response): array
     {
-        return json_decode((string) $response->getBody(), true) ?? [];
+        return \json_decode((string) $response->getBody(), true) ?? [];
     }
 
     protected function getPingEndpoint(): string
     {
-        return 'https://' . $this->host . '/api/v1/messages/deliveries';
+        return 'https://'.$this->host.'/api/v1/messages/deliveries';
     }
 
     private function getPayload(Swift_Mime_SimpleMessage $message): array
     {
-        $from = $message->getFrom();
-        $fromEmail = array_key_first($from);
-        $fromName = $from[$fromEmail] ?? null;
+        $from      = $message->getFrom();
+        $fromEmail = \array_key_first($from);
+        $fromName  = $from[$fromEmail] ?? null;
 
         $payload = [
-            'from' => $this->formatAddress($fromEmail, $fromName),
-            'sender' => $fromEmail,
-            'to' => $this->getPlainAddresses($message->getTo() ?? []),
+            'from'    => $this->formatAddress($fromEmail, $fromName),
+            'sender'  => $fromEmail,
+            'to'      => $this->getPlainAddresses($message->getTo() ?? []),
             'subject' => $message->getSubject(),
         ];
 
@@ -103,17 +101,17 @@ class Swift_Transport_Api_PostalTransport extends Swift_Transport_AbstractHttpAp
         }
 
         if ($replyTo = $message->getReplyTo()) {
-            $replyToEmail = array_key_first($replyTo);
+            $replyToEmail        = \array_key_first($replyTo);
             $payload['reply_to'] = $replyToEmail;
         }
 
         $body = $this->getMessageBody($message);
 
-        if ($body['text'] !== null) {
+        if (null !== $body['text']) {
             $payload['plain_body'] = $body['text'];
         }
 
-        if ($body['html'] !== null) {
+        if (null !== $body['html']) {
             $payload['html_body'] = $body['html'];
         }
 
@@ -126,11 +124,11 @@ class Swift_Transport_Api_PostalTransport extends Swift_Transport_AbstractHttpAp
         // Attachments
         $attachments = $this->getMessageAttachments($message);
         if (!empty($attachments)) {
-            $payload['attachments'] = array_map(static function (array $attachment): array {
+            $payload['attachments'] = \array_map(static function (array $attachment): array {
                 return [
-                    'name' => $attachment['filename'],
+                    'name'         => $attachment['filename'],
                     'content_type' => $attachment['contentType'],
-                    'data' => base64_encode($attachment['content']),
+                    'data'         => \base64_encode($attachment['content']),
                 ];
             }, $attachments);
         }
@@ -147,6 +145,6 @@ class Swift_Transport_Api_PostalTransport extends Swift_Transport_AbstractHttpAp
      */
     private function getPlainAddresses(array $addresses): array
     {
-        return array_keys($addresses);
+        return \array_keys($addresses);
     }
 }

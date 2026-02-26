@@ -10,12 +10,14 @@ use Psr\Http\Message\StreamInterface;
 class Swift_Transport_Api_InfoBipTransportTest extends TestCase
 {
     private $httpClientMock;
+
     private $eventDispatcherMock;
+
     private \Swift_Transport_Api_InfoBipTransport $transport;
 
     protected function setUp(): void
     {
-        $this->httpClientMock = $this->createMock(ClientInterface::class);
+        $this->httpClientMock      = $this->createMock(ClientInterface::class);
         $this->eventDispatcherMock = $this->createMock(\Swift_Events_EventDispatcher::class);
 
         $this->transport = new \Swift_Transport_Api_InfoBipTransport(
@@ -49,7 +51,7 @@ class Swift_Transport_Api_InfoBipTransportTest extends TestCase
                     $this->assertSame('App test-infobip-api-key', $options['headers']['Authorization']);
 
                     $multipart = $options['multipart'];
-                    $fields = $this->indexMultipart($multipart);
+                    $fields    = $this->indexMultipart($multipart);
 
                     $this->assertSame('Sender Name <sender@example.com>', $fields['from'][0]);
                     $this->assertSame('Recipient Name <recipient@example.com>', $fields['to'][0]);
@@ -146,7 +148,7 @@ class Swift_Transport_Api_InfoBipTransportTest extends TestCase
         $message = $this->createSwiftMessage();
         $message->setFrom(['sender@example.com' => 'Sender']);
         $message->setTo([
-            'first@example.com' => 'First',
+            'first@example.com'  => 'First',
             'second@example.com' => 'Second',
         ]);
         $message->setSubject('Multiple To Test');
@@ -329,7 +331,7 @@ class Swift_Transport_Api_InfoBipTransportTest extends TestCase
             'messages' => [
                 [
                     'status' => [
-                        'groupName' => 'REJECTED',
+                        'groupName'   => 'REJECTED',
                         'description' => 'Message rejected by server',
                     ],
                 ],
@@ -403,8 +405,8 @@ class Swift_Transport_Api_InfoBipTransportTest extends TestCase
     private function createMockResponse(int $statusCode, array $body): ResponseInterface
     {
         $stream = $this->createMock(StreamInterface::class);
-        $stream->method('getContents')->willReturn(json_encode($body));
-        $stream->method('__toString')->willReturn(json_encode($body));
+        $stream->method('getContents')->willReturn(\json_encode($body));
+        $stream->method('__toString')->willReturn(\json_encode($body));
 
         $response = $this->createMock(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn($statusCode);

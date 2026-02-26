@@ -25,30 +25,30 @@ class Swift_Transport_Api_MailerSendTransport extends Swift_Transport_AbstractHt
         $payload = $this->getPayload($message);
 
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
-            'headers' => array_merge($this->getAuthHeaders(), [
+            'headers' => \array_merge($this->getAuthHeaders(), [
                 'Content-Type' => 'application/json',
-                'Accept' => 'application/json',
+                'Accept'       => 'application/json',
             ]),
-            'json' => $payload,
+            'json'        => $payload,
             'http_errors' => false,
         ]);
 
         $statusCode = $response->getStatusCode();
-        if ($statusCode !== 202) {
-            $result = $this->parseResponse($response);
+        if (202 !== $statusCode) {
+            $result   = $this->parseResponse($response);
             $errorMsg = $result['message'] ?? 'Unknown MailerSend error';
 
             if (!empty($result['errors'])) {
                 $details = [];
                 foreach ($result['errors'] as $field => $messages) {
                     foreach ((array) $messages as $msg) {
-                        $details[] = sprintf('%s: %s', $field, $msg);
+                        $details[] = \sprintf('%s: %s', $field, $msg);
                     }
                 }
-                $errorMsg .= ' (' . implode('; ', $details) . ')';
+                $errorMsg .= ' ('.\implode('; ', $details).')';
             }
 
-            throw new Swift_TransportException('MailerSend API error: ' . $errorMsg);
+            throw new Swift_TransportException('MailerSend API error: '.$errorMsg);
         }
 
         $messageId = $response->getHeaderLine('x-message-id');
@@ -61,37 +61,37 @@ class Swift_Transport_Api_MailerSendTransport extends Swift_Transport_AbstractHt
 
     protected function getEndpoint(): string
     {
-        return self::HOST . '/v1/email';
+        return self::HOST.'/v1/email';
     }
 
     protected function getAuthHeaders(): array
     {
         return [
-            'Authorization' => 'Bearer ' . $this->apiKey,
+            'Authorization' => 'Bearer '.$this->apiKey,
         ];
     }
 
     protected function parseResponse(ResponseInterface $response): array
     {
-        return json_decode((string) $response->getBody(), true) ?? [];
+        return \json_decode((string) $response->getBody(), true) ?? [];
     }
 
     protected function getPingEndpoint(): string
     {
-        return self::HOST . '/v1/api-quota';
+        return self::HOST.'/v1/api-quota';
     }
 
     private function getPayload(Swift_Mime_SimpleMessage $message): array
     {
         $tags = $this->extractTags($message);
 
-        $from = $message->getFrom();
-        $fromEmail = array_key_first($from);
-        $fromName = $from[$fromEmail] ?? null;
+        $from      = $message->getFrom();
+        $fromEmail = \array_key_first($from);
+        $fromName  = $from[$fromEmail] ?? null;
 
         $payload = [
-            'from' => array_filter(['email' => $fromEmail, 'name' => $fromName]),
-            'to' => $this->formatAddressObjects($message->getTo() ?? []),
+            'from'    => \array_filter(['email' => $fromEmail, 'name' => $fromName]),
+            'to'      => $this->formatAddressObjects($message->getTo() ?? []),
             'subject' => $message->getSubject(),
         ];
 
@@ -104,29 +104,29 @@ class Swift_Transport_Api_MailerSendTransport extends Swift_Transport_AbstractHt
         }
 
         if ($replyTo = $message->getReplyTo()) {
-            $replyEmail = array_key_first($replyTo);
-            $payload['reply_to'] = array_filter([
+            $replyEmail          = \array_key_first($replyTo);
+            $payload['reply_to'] = \array_filter([
                 'email' => $replyEmail,
-                'name' => $replyTo[$replyEmail],
+                'name'  => $replyTo[$replyEmail],
             ]);
         }
 
         $body = $this->getMessageBody($message);
 
-        if ($body['text'] !== null) {
+        if (null !== $body['text']) {
             $payload['text'] = $body['text'];
         }
 
-        if ($body['html'] !== null) {
+        if (null !== $body['html']) {
             $payload['html'] = $body['html'];
         }
 
         $attachments = $this->getMessageAttachments($message);
         if (!empty($attachments)) {
-            $payload['attachments'] = array_map(static function (array $attachment): array {
-                return array_filter([
-                    'content' => base64_encode($attachment['content']),
-                    'filename' => $attachment['filename'],
+            $payload['attachments'] = \array_map(static function (array $attachment): array {
+                return \array_filter([
+                    'content'     => \base64_encode($attachment['content']),
+                    'filename'    => $attachment['filename'],
                     'disposition' => $attachment['disposition'],
                 ]);
             }, $attachments);
@@ -151,7 +151,7 @@ class Swift_Transport_Api_MailerSendTransport extends Swift_Transport_AbstractHt
     {
         $formatted = [];
         foreach ($addresses as $email => $name) {
-            $formatted[] = array_filter(['email' => $email, 'name' => $name]);
+            $formatted[] = \array_filter(['email' => $email, 'name' => $name]);
         }
 
         return $formatted;

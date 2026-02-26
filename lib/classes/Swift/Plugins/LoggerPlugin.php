@@ -148,7 +148,7 @@ class Swift_Plugins_LoggerPlugin implements Swift_Events_CommandListener, Swift_
             '!! Message failed via %s: %s (failed recipients: %s)',
             \get_class($evt->getSource()),
             $evt->getException()->getMessage(),
-            implode(', ', $evt->getFailedRecipients()),
+            \implode(', ', $evt->getFailedRecipients()),
         ));
     }
 }

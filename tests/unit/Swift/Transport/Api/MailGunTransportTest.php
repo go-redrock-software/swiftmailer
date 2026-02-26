@@ -43,16 +43,16 @@ class Swift_Transport_Api_MailGunTransportTest extends TestCase
                 $this->anything(),
                 $this->callback(function ($options) {
                     // Must use multipart key (not body/json)
-                    if (!isset($options['multipart']) || !is_array($options['multipart'])) {
+                    if (!isset($options['multipart']) || !\is_array($options['multipart'])) {
                         return false;
                     }
 
                     $fields = $this->indexMultipart($options['multipart']);
 
-                    return 'Sender <from@example.com>' === $fields['from']
+                    return 'Sender <from@example.com>'  === $fields['from']
                         && 'Recipient <to@example.com>' === $fields['to']
-                        && 'Test Subject' === $fields['subject']
-                        && 'Hello world' === $fields['text'];
+                        && 'Test Subject'               === $fields['subject']
+                        && 'Hello world'                === $fields['text'];
                 }),
             )
             ->willReturn(new Response(200, [], '{"id":"<abc@mailgun.org>","message":"Queued."}'));
@@ -93,7 +93,7 @@ class Swift_Transport_Api_MailGunTransportTest extends TestCase
         $message->setSubject('Test');
         $message->setBody('Hello');
 
-        $expectedAuth = 'Basic ' . base64_encode('api:test-mailgun-key');
+        $expectedAuth = 'Basic '.\base64_encode('api:test-mailgun-key');
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
@@ -123,8 +123,8 @@ class Swift_Transport_Api_MailGunTransportTest extends TestCase
             ->with('POST', $this->anything(), $this->callback(function ($options) {
                 $fields = $this->indexMultipart($options['multipart']);
 
-                return isset($fields['cc']) && str_contains($fields['cc'], 'cc@example.com')
-                    && isset($fields['bcc']) && str_contains($fields['bcc'], 'bcc@example.com');
+                return isset($fields['cc']) && \str_contains($fields['cc'], 'cc@example.com')
+                                            && isset($fields['bcc']) && \str_contains($fields['bcc'], 'bcc@example.com');
             }))
             ->willReturn(new Response(200, [], '{"id":"<abc@mailgun.org>","message":"Queued."}'));
 
@@ -148,7 +148,7 @@ class Swift_Transport_Api_MailGunTransportTest extends TestCase
             ->with('POST', $this->anything(), $this->callback(function ($options) {
                 $fields = $this->indexMultipart($options['multipart']);
 
-                return isset($fields['h:Reply-To']) && str_contains($fields['h:Reply-To'], 'reply@example.com');
+                return isset($fields['h:Reply-To']) && \str_contains($fields['h:Reply-To'], 'reply@example.com');
             }))
             ->willReturn(new Response(200, [], '{"id":"<abc@mailgun.org>","message":"Queued."}'));
 
@@ -193,8 +193,8 @@ class Swift_Transport_Api_MailGunTransportTest extends TestCase
             ->with('POST', $this->anything(), $this->callback(function ($options) {
                 foreach ($options['multipart'] as $part) {
                     if ('attachment' === $part['name']) {
-                        return 'file contents' === $part['contents']
-                            && 'report.pdf' === $part['filename']
+                        return 'file contents'   === $part['contents']
+                            && 'report.pdf'      === $part['filename']
                             && 'application/pdf' === $part['headers']['Content-Type'];
                     }
                 }
@@ -284,20 +284,20 @@ class Swift_Transport_Api_MailGunTransportTest extends TestCase
                 $multipart = $options['multipart'];
 
                 // Collect all o:tag values
-                $tags = [];
+                $tags     = [];
                 $metaKeys = [];
                 foreach ($multipart as $part) {
-                    if ($part['name'] === 'o:tag') {
+                    if ('o:tag' === $part['name']) {
                         $tags[] = $part['contents'];
                     }
-                    if (str_starts_with($part['name'], 'v:')) {
+                    if (\str_starts_with($part['name'], 'v:')) {
                         $metaKeys[$part['name']] = $part['contents'];
                     }
                 }
 
                 return $tags === ['promo', 'newsletter']
                     && isset($metaKeys['v:user_id'])
-                    && $metaKeys['v:user_id'] === '42';
+                    && '42' === $metaKeys['v:user_id'];
             }))
             ->willReturn(new Response(200, [], '{"id":"<abc@mailgun.org>","message":"Queued."}'));
 

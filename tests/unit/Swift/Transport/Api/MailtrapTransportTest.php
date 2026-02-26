@@ -17,7 +17,7 @@ class MailtrapTransportTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->httpClientMock = $this->createMock(ClientInterface::class);
+        $this->httpClientMock      = $this->createMock(ClientInterface::class);
         $this->eventDispatcherMock = $this->createMock(\Swift_Events_EventDispatcher::class);
 
         $this->transport = new \Swift_Transport_Api_MailtrapTransport(
@@ -39,7 +39,7 @@ class MailtrapTransportTest extends TestCase
             ->setBody('Hello plain text');
 
         $response = $this->createMockResponse(200, [
-            'success' => true,
+            'success'     => true,
             'message_ids' => ['msg-uuid-1'],
         ]);
 
@@ -89,7 +89,7 @@ class MailtrapTransportTest extends TestCase
             ->setBody('Sandbox body');
 
         $response = $this->createMockResponse(200, [
-            'success' => true,
+            'success'     => true,
             'message_ids' => ['msg-uuid-sandbox'],
         ]);
 
@@ -127,7 +127,7 @@ class MailtrapTransportTest extends TestCase
             ->setBody('<h1>Hello HTML</h1>', 'text/html');
 
         $response = $this->createMockResponse(200, [
-            'success' => true,
+            'success'     => true,
             'message_ids' => ['msg-uuid-html'],
         ]);
 
@@ -164,7 +164,7 @@ class MailtrapTransportTest extends TestCase
             ->setBody('Body text');
 
         $response = $this->createMockResponse(200, [
-            'success' => true,
+            'success'     => true,
             'message_ids' => ['msg-uuid-ccbcc'],
         ]);
 
@@ -201,7 +201,7 @@ class MailtrapTransportTest extends TestCase
             ->attach(new \Swift_Attachment('file contents', 'document.txt', 'text/plain'));
 
         $response = $this->createMockResponse(200, [
-            'success' => true,
+            'success'     => true,
             'message_ids' => ['msg-uuid-attach'],
         ]);
 
@@ -217,7 +217,7 @@ class MailtrapTransportTest extends TestCase
                     $this->assertCount(1, $payload['attachments']);
                     $this->assertSame('document.txt', $payload['attachments'][0]['filename']);
                     $this->assertSame('text/plain', $payload['attachments'][0]['type']);
-                    $this->assertSame(base64_encode('file contents'), $payload['attachments'][0]['content']);
+                    $this->assertSame(\base64_encode('file contents'), $payload['attachments'][0]['content']);
                     $this->assertSame('attachment', $payload['attachments'][0]['disposition']);
 
                     return true;
@@ -243,7 +243,7 @@ class MailtrapTransportTest extends TestCase
         $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'onboarding');
 
         $response = $this->createMockResponse(200, [
-            'success' => true,
+            'success'     => true,
             'message_ids' => ['msg-uuid-tags'],
         ]);
 
@@ -281,7 +281,7 @@ class MailtrapTransportTest extends TestCase
         $message->getHeaders()->addTextHeader('X-Mailer-Metadata-campaign', 'spring-sale');
 
         $response = $this->createMockResponse(200, [
-            'success' => true,
+            'success'     => true,
             'message_ids' => ['msg-uuid-meta'],
         ]);
 
@@ -317,7 +317,7 @@ class MailtrapTransportTest extends TestCase
             ->setBody('Body');
 
         $response = $this->createMockResponse(200, [
-            'success' => true,
+            'success'     => true,
             'message_ids' => ['msg-uuid-auth'],
         ]);
 
@@ -406,7 +406,7 @@ class MailtrapTransportTest extends TestCase
 
         $response = $this->createMockResponse(422, [
             'success' => false,
-            'errors' => ['Invalid email address', 'Missing required field'],
+            'errors'  => ['Invalid email address', 'Missing required field'],
         ]);
 
         $this->httpClientMock->expects($this->once())
@@ -435,7 +435,7 @@ class MailtrapTransportTest extends TestCase
 
         $response = $this->createMockResponse(200, [
             'success' => false,
-            'errors' => ['Rate limit exceeded'],
+            'errors'  => ['Rate limit exceeded'],
         ]);
 
         $this->httpClientMock->expects($this->once())
@@ -463,7 +463,7 @@ class MailtrapTransportTest extends TestCase
             ->setBody('Body');
 
         $response = $this->createMockResponse(200, [
-            'success' => true,
+            'success'     => true,
             'message_ids' => ['msg-uuid-noname'],
         ]);
 
@@ -507,8 +507,8 @@ class MailtrapTransportTest extends TestCase
     private function createMockResponse(int $statusCode, array $body): ResponseInterface
     {
         $stream = $this->createMock(StreamInterface::class);
-        $stream->method('getContents')->willReturn(json_encode($body));
-        $stream->method('__toString')->willReturn(json_encode($body));
+        $stream->method('getContents')->willReturn(\json_encode($body));
+        $stream->method('__toString')->willReturn(\json_encode($body));
 
         $response = $this->createMock(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn($statusCode);

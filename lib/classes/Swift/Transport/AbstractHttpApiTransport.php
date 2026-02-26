@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) 2024. Redrock Software Corporation
  *
@@ -25,12 +26,12 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
     protected ClientInterface $httpClient;
 
     public function __construct(
-        #[\SensitiveParameter] string $apiKey,
+        #[SensitiveParameter] string $apiKey,
         ?ClientInterface $httpClient = null,
         ?Swift_Events_EventDispatcher $eventDispatcher = null,
     ) {
-        $this->apiKey = $apiKey;
-        $this->httpClient = $httpClient ?? new Client();
+        $this->apiKey          = $apiKey;
+        $this->httpClient      = $httpClient ?? new Client();
         $this->eventDispatcher = $eventDispatcher;
     }
 
@@ -60,12 +61,12 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
 
         try {
             $response = $this->httpClient->request('GET', $this->getPingEndpoint(), [
-                'headers' => $this->getAuthHeaders(),
+                'headers'     => $this->getAuthHeaders(),
                 'http_errors' => false,
             ]);
 
             return $response->getStatusCode() >= 200 && $response->getStatusCode() < 300;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return false;
         }
     }
@@ -99,7 +100,7 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
             $sentMessage = new Swift_SentMessage($message, $this, [
                 'message_id' => $result['message_id'] ?? null,
                 'recipients' => $recipientCount,
-                'debug' => $result,
+                'debug'      => $result,
             ]);
 
             if ($sentEvt = $this->eventDispatcher?->createSentMessageEvent($this, $sentMessage)) {
@@ -107,16 +108,16 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
             }
 
             return $recipientCount;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             if ($evt) {
                 $evt->setResult(Swift_Events_SendEvent::RESULT_FAILED);
                 $evt->setFailedRecipients($this->collectRecipients($message));
             }
 
-            $failedRecipients = array_merge($failedRecipients, $this->collectRecipients($message));
+            $failedRecipients = \array_merge($failedRecipients, $this->collectRecipients($message));
 
             $transportException = new Swift_TransportException(
-                'Failed to send email via ' . static::class . ': ' . $e->getMessage(),
+                'Failed to send email via '.static::class.': '.$e->getMessage(),
                 0,
                 $e,
             );
@@ -172,9 +173,9 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
      */
     protected function countRecipients(Swift_Mime_SimpleMessage $message): int
     {
-        return count($message->getTo() ?? [])
-            + count($message->getCc() ?? [])
-            + count($message->getBcc() ?? []);
+        return \count($message->getTo() ?? [])
+            + \count($message->getCc() ?? [])
+            + \count($message->getBcc() ?? []);
     }
 
     /**
@@ -198,7 +199,7 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
     protected function formatAddress(string $email, ?string $name = null): string
     {
         if ($name) {
-            return sprintf('%s <%s>', $name, $email);
+            return \sprintf('%s <%s>', $name, $email);
         }
 
         return $email;
@@ -227,11 +228,11 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
         foreach ($message->getChildren() ?? [] as $child) {
             if ($child instanceof Swift_Attachment || $child instanceof Swift_Image) {
                 $attachments[] = [
-                    'filename' => $child->getFilename(),
-                    'content' => $child->getBody(),
+                    'filename'    => $child->getFilename(),
+                    'content'     => $child->getBody(),
                     'contentType' => $child->getContentType(),
                     'disposition' => $child->getDisposition(),
-                    'contentId' => $child->getId(),
+                    'contentId'   => $child->getId(),
                 ];
             }
         }
@@ -246,10 +247,10 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
      */
     protected function getMessageBody(Swift_Mime_SimpleMessage $message): array
     {
-        $body = $message->getBody();
+        $body        = $message->getBody();
         $contentType = $message->getBodyContentType();
-        $text = null;
-        $html = null;
+        $text        = null;
+        $html        = null;
 
         if ('text/html' === $contentType) {
             $html = $body;
@@ -278,7 +279,7 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
      */
     protected function extractTags(Swift_Mime_SimpleMessage $message): array
     {
-        $tags = [];
+        $tags    = [];
         $headers = $message->getHeaders();
 
         foreach ($headers->getAll('X-Mailer-Tag') as $header) {
@@ -300,16 +301,16 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
     protected function extractMetadata(Swift_Mime_SimpleMessage $message): array
     {
         $metadata = [];
-        $headers = $message->getHeaders();
-        $prefix = 'X-Mailer-Metadata-';
+        $headers  = $message->getHeaders();
+        $prefix   = 'X-Mailer-Metadata-';
 
         $toRemove = [];
         foreach ($headers->getAll() as $header) {
             $name = $header->getFieldName();
-            if (str_starts_with($name, $prefix)) {
-                $key = substr($name, strlen($prefix));
+            if (\str_starts_with($name, $prefix)) {
+                $key            = \substr($name, \strlen($prefix));
                 $metadata[$key] = $header->getFieldBody();
-                $toRemove[] = $name;
+                $toRemove[]     = $name;
             }
         }
 

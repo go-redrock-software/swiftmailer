@@ -8,19 +8,17 @@ use PHPUnit\Framework\TestCase;
 class Swift_Transport_AbstractHttpApiTransportTest extends TestCase
 {
     private $httpClientMock;
+
     private $eventDispatcherMock;
+
     private $transport;
 
     protected function setUp(): void
     {
-        $this->httpClientMock = $this->createMock(ClientInterface::class);
+        $this->httpClientMock      = $this->createMock(ClientInterface::class);
         $this->eventDispatcherMock = $this->createMock(\Swift_Events_EventDispatcher::class);
 
-        $this->transport = new class(
-            'test-api-key',
-            $this->httpClientMock,
-            $this->eventDispatcherMock,
-        ) extends \Swift_Transport_AbstractHttpApiTransport {
+        $this->transport = new class('test-api-key', $this->httpClientMock, $this->eventDispatcherMock) extends \Swift_Transport_AbstractHttpApiTransport {
             protected function doSend(\Swift_Mime_SimpleMessage $message): array
             {
                 return ['message_id' => 'test-123', 'recipients' => 1];
@@ -33,12 +31,12 @@ class Swift_Transport_AbstractHttpApiTransportTest extends TestCase
 
             protected function getAuthHeaders(): array
             {
-                return ['Authorization' => 'Bearer ' . $this->apiKey];
+                return ['Authorization' => 'Bearer '.$this->apiKey];
             }
 
             protected function parseResponse(\Psr\Http\Message\ResponseInterface $response): array
             {
-                return json_decode($response->getBody()->getContents(), true);
+                return \json_decode($response->getBody()->getContents(), true);
             }
 
             protected function getPingEndpoint(): string
@@ -158,9 +156,9 @@ class Swift_Transport_AbstractHttpApiTransportTest extends TestCase
         $transport = $this->createConcreteTransport('test-key', $httpClient, $dispatcher);
 
         // Use a shared object to capture the event from the anonymous listener
-        $holder = new \stdClass();
+        $holder        = new \stdClass();
         $holder->event = null;
-        $listener = new class($holder) implements \Swift_Events_SentMessageListener {
+        $listener      = new class($holder) implements \Swift_Events_SentMessageListener {
             private \stdClass $holder;
 
             public function __construct(\stdClass $holder)
@@ -200,9 +198,9 @@ class Swift_Transport_AbstractHttpApiTransportTest extends TestCase
         });
 
         // Use a shared object to capture the event from the anonymous listener
-        $holder = new \stdClass();
+        $holder        = new \stdClass();
         $holder->event = null;
-        $listener = new class($holder) implements \Swift_Events_FailedMessageListener {
+        $listener      = new class($holder) implements \Swift_Events_FailedMessageListener {
             private \stdClass $holder;
 
             public function __construct(\stdClass $holder)

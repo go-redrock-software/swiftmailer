@@ -24,7 +24,7 @@ class Swift_Transport_Api_MailGunTransport extends Swift_Transport_AbstractHttpA
     private string $host;
 
     public function __construct(
-        #[\SensitiveParameter] string $apiKey,
+        #[SensitiveParameter] string $apiKey,
         string $domain,
         string $host = 'https://api.mailgun.net',
         ?ClientInterface $httpClient = null,
@@ -32,14 +32,14 @@ class Swift_Transport_Api_MailGunTransport extends Swift_Transport_AbstractHttpA
     ) {
         parent::__construct($apiKey, $httpClient, $eventDispatcher);
         $this->domain = $domain;
-        $this->host = $host;
+        $this->host   = $host;
     }
 
     protected function doSend(Swift_Mime_SimpleMessage $message): array
     {
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
-            'headers' => $this->getAuthHeaders(),
-            'multipart' => $this->getFormData($message),
+            'headers'     => $this->getAuthHeaders(),
+            'multipart'   => $this->getFormData($message),
             'http_errors' => false,
         ]);
 
@@ -48,7 +48,7 @@ class Swift_Transport_Api_MailGunTransport extends Swift_Transport_AbstractHttpA
         $statusCode = $response->getStatusCode();
         if ($statusCode < 200 || $statusCode >= 300) {
             $errorMsg = $result['message'] ?? 'Unknown Mailgun error';
-            throw new Swift_TransportException('Mailgun API error: ' . $errorMsg);
+            throw new Swift_TransportException('Mailgun API error: '.$errorMsg);
         }
 
         return [
@@ -59,24 +59,24 @@ class Swift_Transport_Api_MailGunTransport extends Swift_Transport_AbstractHttpA
 
     protected function getEndpoint(): string
     {
-        return rtrim($this->host, '/') . '/v3/' . urlencode($this->domain) . '/messages';
+        return \rtrim($this->host, '/').'/v3/'.\urlencode($this->domain).'/messages';
     }
 
     protected function getAuthHeaders(): array
     {
         return [
-            'Authorization' => 'Basic ' . base64_encode('api:' . $this->apiKey),
+            'Authorization' => 'Basic '.\base64_encode('api:'.$this->apiKey),
         ];
     }
 
     protected function parseResponse(ResponseInterface $response): array
     {
-        return json_decode((string) $response->getBody(), true) ?? [];
+        return \json_decode((string) $response->getBody(), true) ?? [];
     }
 
     protected function getPingEndpoint(): string
     {
-        return rtrim($this->host, '/') . '/v3/domains/' . urlencode($this->domain);
+        return \rtrim($this->host, '/').'/v3/domains/'.\urlencode($this->domain);
     }
 
     /**
@@ -86,48 +86,48 @@ class Swift_Transport_Api_MailGunTransport extends Swift_Transport_AbstractHttpA
      */
     private function getFormData(Swift_Mime_SimpleMessage $message): array
     {
-        $tags = $this->extractTags($message);
+        $tags     = $this->extractTags($message);
         $metadata = $this->extractMetadata($message);
 
-        $from = $message->getFrom();
-        $fromEmail = array_key_first($from);
-        $fromName = $from[$fromEmail] ?? null;
+        $from      = $message->getFrom();
+        $fromEmail = \array_key_first($from);
+        $fromName  = $from[$fromEmail] ?? null;
 
         $fields = [
             ['name' => 'from', 'contents' => $this->formatAddress($fromEmail, $fromName)],
-            ['name' => 'to', 'contents' => implode(', ', $this->formatAddresses($message->getTo() ?? []))],
+            ['name' => 'to', 'contents' => \implode(', ', $this->formatAddresses($message->getTo() ?? []))],
             ['name' => 'subject', 'contents' => $message->getSubject()],
         ];
 
         if ($cc = $message->getCc()) {
-            $fields[] = ['name' => 'cc', 'contents' => implode(', ', $this->formatAddresses($cc))];
+            $fields[] = ['name' => 'cc', 'contents' => \implode(', ', $this->formatAddresses($cc))];
         }
 
         if ($bcc = $message->getBcc()) {
-            $fields[] = ['name' => 'bcc', 'contents' => implode(', ', $this->formatAddresses($bcc))];
+            $fields[] = ['name' => 'bcc', 'contents' => \implode(', ', $this->formatAddresses($bcc))];
         }
 
         if ($replyTo = $message->getReplyTo()) {
-            $fields[] = ['name' => 'h:Reply-To', 'contents' => implode(', ', $this->formatAddresses($replyTo))];
+            $fields[] = ['name' => 'h:Reply-To', 'contents' => \implode(', ', $this->formatAddresses($replyTo))];
         }
 
         $body = $this->getMessageBody($message);
 
-        if ($body['text'] !== null) {
+        if (null !== $body['text']) {
             $fields[] = ['name' => 'text', 'contents' => $body['text']];
         }
 
-        if ($body['html'] !== null) {
+        if (null !== $body['html']) {
             $fields[] = ['name' => 'html', 'contents' => $body['html']];
         }
 
         $attachments = $this->getMessageAttachments($message);
         foreach ($attachments as $attachment) {
             $fields[] = [
-                'name' => 'attachment',
+                'name'     => 'attachment',
                 'contents' => $attachment['content'],
                 'filename' => $attachment['filename'],
-                'headers' => ['Content-Type' => $attachment['contentType']],
+                'headers'  => ['Content-Type' => $attachment['contentType']],
             ];
         }
 
@@ -138,7 +138,7 @@ class Swift_Transport_Api_MailGunTransport extends Swift_Transport_AbstractHttpA
 
         // Metadata → v:key=value (prefixed params)
         foreach ($metadata as $key => $value) {
-            $fields[] = ['name' => 'v:' . $key, 'contents' => $value];
+            $fields[] = ['name' => 'v:'.$key, 'contents' => $value];
         }
 
         return $fields;

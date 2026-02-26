@@ -8,7 +8,7 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
 
     public function __construct(SesClient $sesClient, ?Swift_Events_EventDispatcher $eventDispatcher = null)
     {
-        $this->sesClient = $sesClient;
+        $this->sesClient       = $sesClient;
         $this->eventDispatcher = $eventDispatcher;
     }
 
@@ -21,8 +21,9 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
     {
         try {
             $this->sesClient->getAccountSendingEnabled();
+
             return true;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return false;
         }
     }
@@ -34,15 +35,15 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
         }
 
         try {
-            $tags = $this->extractSesTagsFromMessage($message);
-            $email = $this->convertMessage($message);
+            $tags    = $this->extractSesTagsFromMessage($message);
+            $email   = $this->convertMessage($message);
             $request = $this->getRequest($email, $tags);
 
             $result = $this->sesClient->sendEmail($request);
 
             return $result->get('MessageId') ? 1 : 0;
-        } catch (\Exception $e) {
-            $this->throwException(new Swift_TransportException('Unable to send email: ' . $e->getMessage(), 0, $e));
+        } catch (Exception $e) {
+            $this->throwException(new Swift_TransportException('Unable to send email: '.$e->getMessage(), 0, $e));
         }
 
         return 0;
@@ -71,7 +72,7 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
 
         $email->text($message->getBody());
 
-        if ($message->getContentType() === 'text/html') {
+        if ('text/html' === $message->getContentType()) {
             $email->html($message->getBody());
         }
 
@@ -80,22 +81,22 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
 
     private function convertAddresses(array $addresses): array
     {
-        return array_map(function ($address, $name) {
+        return \array_map(function ($address, $name) {
             return new Address($address, $name);
-        }, array_keys($addresses), $addresses);
+        }, \array_keys($addresses), $addresses);
     }
 
     protected function getRequest(Email $email, array $tags = []): SendEmailRequest
     {
         $request = [
             'FromEmailAddress' => $this->stringifyAddress($email->getFrom()[0]),
-            'Destination' => [
+            'Destination'      => [
                 'ToAddresses' => $this->stringifyAddresses($email->getTo()),
             ],
             'Content' => [
                 'Simple' => [
                     'Subject' => [
-                        'Data' => $email->getSubject(),
+                        'Data'    => $email->getSubject(),
                         'Charset' => 'utf-8',
                     ],
                     'Body' => [],
@@ -111,13 +112,13 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
         }
         if ($email->getTextBody()) {
             $request['Content']['Simple']['Body']['Text'] = new Content([
-                'Data' => $email->getTextBody(),
+                'Data'    => $email->getTextBody(),
                 'Charset' => 'utf-8',
             ]);
         }
         if ($email->getHtmlBody()) {
             $request['Content']['Simple']['Body']['Html'] = new Content([
-                'Data' => $email->getHtmlBody(),
+                'Data'    => $email->getHtmlBody(),
                 'Charset' => 'utf-8',
             ]);
         }
@@ -131,8 +132,8 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
             $request['FromEmailAddressIdentityArn'] = $header->getBodyAsString();
         }
         if ($header = $email->getHeaders()->get('X-SES-LIST-MANAGEMENT-OPTIONS')) {
-            if (preg_match("/^(contactListName=)*(?<ContactListName>[^;]+)(;\s?topicName=(?<TopicName>.+))?$/ix", $header->getBodyAsString(), $listManagementOptions)) {
-                $request['ListManagementOptions'] = array_filter($listManagementOptions, fn ($e) => \in_array($e, ['ContactListName', 'TopicName']), \ARRAY_FILTER_USE_KEY);
+            if (\preg_match("/^(contactListName=)*(?<ContactListName>[^;]+)(;\s?topicName=(?<TopicName>.+))?$/ix", $header->getBodyAsString(), $listManagementOptions)) {
+                $request['ListManagementOptions'] = \array_filter($listManagementOptions, fn ($e) => \in_array($e, ['ContactListName', 'TopicName']), \ARRAY_FILTER_USE_KEY);
             }
         }
         if ($email->getReturnPath()) {
@@ -160,7 +161,7 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
      */
     private function extractSesTagsFromMessage(Swift_Mime_SimpleMessage $message): array
     {
-        $tags = [];
+        $tags    = [];
         $headers = $message->getHeaders();
 
         foreach ($headers->getAll('X-Mailer-Tag') as $header) {
@@ -176,16 +177,17 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
 
     protected function stringifyAddresses(array $addresses): array
     {
-        return array_map(fn (Address $a) => $this->stringifyAddress($a), $addresses);
+        return \array_map(fn (Address $a) => $this->stringifyAddress($a), $addresses);
     }
 
     protected function stringifyAddress(Address $a): string
     {
         // AWS does not support UTF-8 address
-        if (preg_match('~[\x00-\x08\x10-\x19\x7F-\xFF\r\n]~', $name = $a->getName())) {
-            return sprintf('=?UTF-8?B?%s?= <%s>',
-                base64_encode($name),
-                $a->getEncodedAddress()
+        if (\preg_match('~[\x00-\x08\x10-\x19\x7F-\xFF\r\n]~', $name = $a->getName())) {
+            return \sprintf(
+                '=?UTF-8?B?%s?= <%s>',
+                \base64_encode($name),
+                $a->getEncodedAddress(),
             );
         }
 

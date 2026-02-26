@@ -23,11 +23,11 @@ class Swift_Transport_Api_AhaSendTransport extends Swift_Transport_AbstractHttpA
         $payload = $this->getPayload($message);
 
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
-            'headers' => array_merge($this->getAuthHeaders(), [
+            'headers' => \array_merge($this->getAuthHeaders(), [
                 'Content-Type' => 'application/json',
-                'Accept' => 'application/json',
+                'Accept'       => 'application/json',
             ]),
-            'json' => $payload,
+            'json'        => $payload,
             'http_errors' => false,
         ]);
 
@@ -35,13 +35,7 @@ class Swift_Transport_Api_AhaSendTransport extends Swift_Transport_AbstractHttpA
 
         if ($response->getStatusCode() >= 400) {
             $error = $result['error'] ?? [];
-            throw new Swift_TransportException(
-                sprintf(
-                    'AhaSend API error [%s]: %s',
-                    $error['type'] ?? 'unknown',
-                    $error['message'] ?? 'Unknown error',
-                ),
-            );
+            throw new Swift_TransportException(\sprintf('AhaSend API error [%s]: %s', $error['type'] ?? 'unknown', $error['message'] ?? 'Unknown error'));
         }
 
         $messageId = null;
@@ -69,7 +63,7 @@ class Swift_Transport_Api_AhaSendTransport extends Swift_Transport_AbstractHttpA
 
     protected function parseResponse(ResponseInterface $response): array
     {
-        return json_decode((string) $response->getBody(), true) ?? [];
+        return \json_decode((string) $response->getBody(), true) ?? [];
     }
 
     protected function getPingEndpoint(): string
@@ -79,9 +73,9 @@ class Swift_Transport_Api_AhaSendTransport extends Swift_Transport_AbstractHttpA
 
     private function getPayload(Swift_Mime_SimpleMessage $message): array
     {
-        $from = $message->getFrom();
-        $fromAddress = array_key_first($from);
-        $fromName = $from[$fromAddress] ?? null;
+        $from        = $message->getFrom();
+        $fromAddress = \array_key_first($from);
+        $fromName    = $from[$fromAddress] ?? null;
 
         $fromField = ['email' => $fromAddress];
         if ($fromName) {
@@ -91,19 +85,19 @@ class Swift_Transport_Api_AhaSendTransport extends Swift_Transport_AbstractHttpA
         $recipients = $this->buildRecipients($message);
 
         $payload = [
-            'from' => $fromField,
+            'from'       => $fromField,
             'recipients' => $recipients,
-            'subject' => $message->getSubject(),
+            'subject'    => $message->getSubject(),
         ];
 
-        $body = $this->getMessageBody($message);
+        $body    = $this->getMessageBody($message);
         $content = [];
 
-        if ($body['text'] !== null) {
+        if (null !== $body['text']) {
             $content['text_body'] = $body['text'];
         }
 
-        if ($body['html'] !== null) {
+        if (null !== $body['html']) {
             $content['html_body'] = $body['html'];
         }
 
@@ -113,14 +107,14 @@ class Swift_Transport_Api_AhaSendTransport extends Swift_Transport_AbstractHttpA
 
         $attachments = $this->getMessageAttachments($message);
         if (!empty($attachments)) {
-            $payload['attachments'] = array_map(static function (array $attachment): array {
+            $payload['attachments'] = \array_map(static function (array $attachment): array {
                 $item = [
-                    'file_name' => $attachment['filename'],
+                    'file_name'    => $attachment['filename'],
                     'content_type' => $attachment['contentType'],
-                    'data' => base64_encode($attachment['content']),
+                    'data'         => \base64_encode($attachment['content']),
                 ];
 
-                if ($attachment['disposition'] === 'inline' && $attachment['contentId']) {
+                if ('inline' === $attachment['disposition'] && $attachment['contentId']) {
                     $item['content_id'] = $attachment['contentId'];
                 }
 

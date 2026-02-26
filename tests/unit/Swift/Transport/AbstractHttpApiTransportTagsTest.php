@@ -3,7 +3,7 @@
 use GuzzleHttp\ClientInterface;
 use Psr\Http\Message\ResponseInterface;
 
-class Swift_Transport_AbstractHttpApiTransportTagsTest extends \PHPUnit\Framework\TestCase
+class Swift_Transport_AbstractHttpApiTransportTagsTest extends PHPUnit\Framework\TestCase
 {
     private function createTransport(): Swift_Transport_AbstractHttpApiTransport
     {
@@ -11,16 +11,36 @@ class Swift_Transport_AbstractHttpApiTransportTagsTest extends \PHPUnit\Framewor
         $httpClient = $this->createMock(ClientInterface::class);
 
         return new class('key', $httpClient, $dispatcher) extends Swift_Transport_AbstractHttpApiTransport {
-            protected function doSend(Swift_Mime_SimpleMessage $message): array { return []; }
-            protected function getEndpoint(): string { return ''; }
-            protected function getAuthHeaders(): array { return []; }
-            protected function parseResponse(ResponseInterface $response): array { return []; }
-            protected function getPingEndpoint(): string { return ''; }
+            protected function doSend(Swift_Mime_SimpleMessage $message): array
+            {
+                return [];
+            }
+
+            protected function getEndpoint(): string
+            {
+                return '';
+            }
+
+            protected function getAuthHeaders(): array
+            {
+                return [];
+            }
+
+            protected function parseResponse(ResponseInterface $response): array
+            {
+                return [];
+            }
+
+            protected function getPingEndpoint(): string
+            {
+                return '';
+            }
 
             public function testExtractTags(Swift_Mime_SimpleMessage $msg): array
             {
                 return $this->extractTags($msg);
             }
+
             public function testExtractMetadata(Swift_Mime_SimpleMessage $msg): array
             {
                 return $this->extractMetadata($msg);
@@ -35,7 +55,7 @@ class Swift_Transport_AbstractHttpApiTransportTagsTest extends \PHPUnit\Framewor
         $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'transactional');
 
         $transport = $this->createTransport();
-        $tags = $transport->testExtractTags($message);
+        $tags      = $transport->testExtractTags($message);
 
         $this->assertEquals(['password-reset', 'transactional'], $tags);
         $this->assertNull($message->getHeaders()->get('X-Mailer-Tag'));
@@ -48,7 +68,7 @@ class Swift_Transport_AbstractHttpApiTransportTagsTest extends \PHPUnit\Framewor
         $message->getHeaders()->addTextHeader('X-Mailer-Metadata-campaign', 'onboarding');
 
         $transport = $this->createTransport();
-        $metadata = $transport->testExtractMetadata($message);
+        $metadata  = $transport->testExtractMetadata($message);
 
         $this->assertEquals(['user_id' => '12345', 'campaign' => 'onboarding'], $metadata);
         $this->assertNull($message->getHeaders()->get('X-Mailer-Metadata-user_id'));
@@ -57,7 +77,7 @@ class Swift_Transport_AbstractHttpApiTransportTagsTest extends \PHPUnit\Framewor
 
     public function testExtractTagsReturnsEmptyWhenNone(): void
     {
-        $message = new Swift_Message();
+        $message   = new Swift_Message();
         $transport = $this->createTransport();
 
         $this->assertEquals([], $transport->testExtractTags($message));

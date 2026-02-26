@@ -18,7 +18,7 @@ class AzureTransportTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->httpClientMock = $this->createMock(ClientInterface::class);
+        $this->httpClientMock      = $this->createMock(ClientInterface::class);
         $this->eventDispatcherMock = $this->createMock(\Swift_Events_EventDispatcher::class);
 
         $this->transport = new \Swift_Transport_Api_AzureTransport(
@@ -45,8 +45,8 @@ class AzureTransportTest extends TestCase
                 $this->stringContains('my-resource.communication.azure.com'),
                 $this->anything(),
             )
-            ->willReturn(new Response(202, [], json_encode([
-                'id' => 'test-uuid',
+            ->willReturn(new Response(202, [], \json_encode([
+                'id'     => 'test-uuid',
                 'status' => 'Running',
             ])));
 
@@ -105,7 +105,7 @@ class AzureTransportTest extends TestCase
                     $this->assertEquals('application/json', $options['headers']['Content-Type']);
 
                     // Verify payload structure
-                    $payload = json_decode($options['body'], true);
+                    $payload = \json_decode($options['body'], true);
                     $this->assertEquals('sender@example.com', $payload['senderAddress']);
                     $this->assertEquals('Test Subject', $payload['content']['subject']);
                     $this->assertEquals('Plain text body', $payload['content']['plainText']);
@@ -122,8 +122,8 @@ class AzureTransportTest extends TestCase
                     return true;
                 }),
             )
-            ->willReturn(new Response(202, [], json_encode([
-                'id' => 'test-message-id',
+            ->willReturn(new Response(202, [], \json_encode([
+                'id'     => 'test-message-id',
                 'status' => 'Running',
             ])));
 
@@ -149,7 +149,7 @@ class AzureTransportTest extends TestCase
                 'POST',
                 $this->anything(),
                 $this->callback(function (array $options): bool {
-                    $payload = json_decode($options['body'], true);
+                    $payload = \json_decode($options['body'], true);
 
                     // To recipients
                     $this->assertCount(2, $payload['recipients']['to']);
@@ -178,8 +178,8 @@ class AzureTransportTest extends TestCase
                     return true;
                 }),
             )
-            ->willReturn(new Response(202, [], json_encode([
-                'id' => 'uuid-123',
+            ->willReturn(new Response(202, [], \json_encode([
+                'id'     => 'uuid-123',
                 'status' => 'Running',
             ])));
 
@@ -203,7 +203,7 @@ class AzureTransportTest extends TestCase
                 'POST',
                 $this->anything(),
                 $this->callback(function (array $options): bool {
-                    $payload = json_decode($options['body'], true);
+                    $payload = \json_decode($options['body'], true);
 
                     $this->assertArrayHasKey('attachments', $payload);
                     $this->assertCount(1, $payload['attachments']);
@@ -211,13 +211,13 @@ class AzureTransportTest extends TestCase
                     $attachment = $payload['attachments'][0];
                     $this->assertEquals('document.pdf', $attachment['name']);
                     $this->assertEquals('application/pdf', $attachment['contentType']);
-                    $this->assertEquals(base64_encode('file content'), $attachment['contentInBase64']);
+                    $this->assertEquals(\base64_encode('file content'), $attachment['contentInBase64']);
 
                     return true;
                 }),
             )
-            ->willReturn(new Response(202, [], json_encode([
-                'id' => 'uuid-attach',
+            ->willReturn(new Response(202, [], \json_encode([
+                'id'     => 'uuid-attach',
                 'status' => 'Running',
             ])));
 
@@ -240,7 +240,7 @@ class AzureTransportTest extends TestCase
                 'POST',
                 $this->anything(),
                 $this->callback(function (array $options): bool {
-                    $payload = json_decode($options['body'], true);
+                    $payload = \json_decode($options['body'], true);
 
                     $this->assertEquals('to@example.com', $payload['recipients']['to'][0]['address']);
                     $this->assertArrayNotHasKey('displayName', $payload['recipients']['to'][0]);
@@ -248,8 +248,8 @@ class AzureTransportTest extends TestCase
                     return true;
                 }),
             )
-            ->willReturn(new Response(202, [], json_encode([
-                'id' => 'uuid',
+            ->willReturn(new Response(202, [], \json_encode([
+                'id'     => 'uuid',
                 'status' => 'Running',
             ])));
 
@@ -267,9 +267,9 @@ class AzureTransportTest extends TestCase
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
-            ->willReturn(new Response(400, [], json_encode([
+            ->willReturn(new Response(400, [], \json_encode([
                 'error' => [
-                    'code' => 'InvalidPayload',
+                    'code'    => 'InvalidPayload',
                     'message' => 'The request payload is invalid.',
                 ],
             ])));
@@ -294,9 +294,9 @@ class AzureTransportTest extends TestCase
                     return true;
                 }),
             )
-            ->willReturn(new Response(404, [], json_encode([
+            ->willReturn(new Response(404, [], \json_encode([
                 'error' => [
-                    'code' => 'NotFound',
+                    'code'    => 'NotFound',
                     'message' => 'Operation not found.',
                 ],
             ])));
@@ -308,9 +308,9 @@ class AzureTransportTest extends TestCase
     {
         $this->httpClientMock->expects($this->once())
             ->method('request')
-            ->willReturn(new Response(401, [], json_encode([
+            ->willReturn(new Response(401, [], \json_encode([
                 'error' => [
-                    'code' => 'Unauthorized',
+                    'code'    => 'Unauthorized',
                     'message' => 'Invalid credentials.',
                 ],
             ])));
@@ -354,11 +354,11 @@ class AzureTransportTest extends TestCase
                     );
 
                     // Signature should be valid base64
-                    $signaturePart = substr($auth, strpos($auth, 'Signature=') + 10);
-                    $this->assertNotFalse(base64_decode($signaturePart, true));
+                    $signaturePart = \substr($auth, \strpos($auth, 'Signature=') + 10);
+                    $this->assertNotFalse(\base64_decode($signaturePart, true));
 
                     // Content hash should be valid base64
-                    $this->assertNotFalse(base64_decode($options['headers']['x-ms-content-sha256'], true));
+                    $this->assertNotFalse(\base64_decode($options['headers']['x-ms-content-sha256'], true));
 
                     // Host should match the endpoint
                     $this->assertEquals('my-resource.communication.azure.com', $options['headers']['host']);
@@ -366,8 +366,8 @@ class AzureTransportTest extends TestCase
                     return true;
                 }),
             )
-            ->willReturn(new Response(202, [], json_encode([
-                'id' => 'uuid',
+            ->willReturn(new Response(202, [], \json_encode([
+                'id'     => 'uuid',
                 'status' => 'Running',
             ])));
 

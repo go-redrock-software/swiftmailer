@@ -16,10 +16,15 @@
 class Swift_SentMessage
 {
     private Swift_Mime_SimpleMessage $originalMessage;
+
     private Swift_Transport $transport;
+
     private ?string $messageId;
+
     private int $recipientCount;
+
     private array $debug;
+
     private array $failedRecipients;
 
     /**
@@ -37,11 +42,11 @@ class Swift_SentMessage
         Swift_Transport $transport,
         array $result = [],
     ) {
-        $this->originalMessage = $originalMessage;
-        $this->transport = $transport;
-        $this->messageId = $result['message_id'] ?? null;
-        $this->recipientCount = $result['recipients'] ?? 0;
-        $this->debug = $result['debug'] ?? [];
+        $this->originalMessage  = $originalMessage;
+        $this->transport        = $transport;
+        $this->messageId        = $result['message_id']        ?? null;
+        $this->recipientCount   = $result['recipients']        ?? 0;
+        $this->debug            = $result['debug']             ?? [];
         $this->failedRecipients = $result['failed_recipients'] ?? [];
     }
 

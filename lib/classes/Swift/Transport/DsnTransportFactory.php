@@ -21,9 +21,9 @@ class Swift_Transport_DsnTransportFactory
     public function fromDsnString(string $dsnString): Swift_Transport
     {
         // Check for meta-transport wrappers
-        if (preg_match('/^(failover|roundrobin)\((.+)\)$/', $dsnString, $matches)) {
-            $wrapper = $matches[1];
-            $innerDsns = preg_split('/\s+/', trim($matches[2]));
+        if (\preg_match('/^(failover|roundrobin)\((.+)\)$/', $dsnString, $matches)) {
+            $wrapper   = $matches[1];
+            $innerDsns = \preg_split('/\s+/', \trim($matches[2]));
 
             $transports = [];
             foreach ($innerDsns as $innerDsn) {
@@ -46,13 +46,13 @@ class Swift_Transport_DsnTransportFactory
     private function createTransport(string $dsnString): Swift_Transport
     {
         $nyholmDsn = DsnParser::parseUrl($dsnString);
-        $dsn = new Swift_Dsn($nyholmDsn);
-        $class = $dsn->getTransportClass();
+        $dsn       = new Swift_Dsn($nyholmDsn);
+        $class     = $dsn->getTransportClass();
 
         // NullTransport needs an event dispatcher
         if (Swift_Transport_NullTransport::class === $class) {
             return new Swift_Transport_NullTransport(
-                new Swift_Events_SimpleEventDispatcher()
+                new Swift_Events_SimpleEventDispatcher(),
             );
         }
 
@@ -62,7 +62,7 @@ class Swift_Transport_DsnTransportFactory
         }
 
         // HTTP API transports: all extend AbstractHttpApiTransport(apiKey, ?httpClient, ?eventDispatcher)
-        $apiKey = $dsn->getUser() ?: $dsn->getPassword() ?: '';
+        $apiKey     = $dsn->getUser() ?: $dsn->getPassword() ?: '';
         $dispatcher = new Swift_Events_SimpleEventDispatcher();
 
         return new $class($apiKey, null, $dispatcher);
@@ -70,12 +70,12 @@ class Swift_Transport_DsnTransportFactory
 
     private function createSmtpTransport(Swift_Dsn $dsn): Swift_Transport
     {
-        $host = $dsn->getHost() ?: 'localhost';
-        $port = $dsn->getPort() ?: ('smtp+ssl' === $dsn->getScheme() ? 465 : 587);
+        $host       = $dsn->getHost() ?: 'localhost';
+        $port       = $dsn->getPort() ?: ('smtp+ssl' === $dsn->getScheme() ? 465 : 587);
         $encryption = match ($dsn->getScheme()) {
             'smtp+ssl' => 'ssl',
             'smtp+tls' => 'tls',
-            default => null,
+            default    => null,
         };
 
         // Use Swift_SmtpTransport convenience class
@@ -89,12 +89,12 @@ class Swift_Transport_DsnTransportFactory
         }
 
         // TLS DSN parameters
-        $params = $dsn->getParameters();
+        $params        = $dsn->getParameters();
         $streamOptions = [];
 
         if (isset($params['verify_peer'])) {
-            $val = filter_var($params['verify_peer'], FILTER_VALIDATE_BOOLEAN);
-            $streamOptions['ssl']['verify_peer'] = $val;
+            $val                                      = \filter_var($params['verify_peer'], FILTER_VALIDATE_BOOLEAN);
+            $streamOptions['ssl']['verify_peer']      = $val;
             $streamOptions['ssl']['verify_peer_name'] = $val;
         }
         if (isset($params['peer_fingerprint'])) {

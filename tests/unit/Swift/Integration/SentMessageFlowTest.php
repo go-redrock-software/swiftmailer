@@ -17,10 +17,26 @@ class SentMessageFlowTest extends TestCase
             {
                 return ['message_id' => 'integration-test-id', 'recipients' => 1];
             }
-            protected function getEndpoint(): string { return 'https://test.example.com/send'; }
-            protected function getAuthHeaders(): array { return ['Authorization' => 'Bearer test']; }
-            protected function parseResponse(\Psr\Http\Message\ResponseInterface $response): array { return []; }
-            protected function getPingEndpoint(): string { return 'https://test.example.com/ping'; }
+
+            protected function getEndpoint(): string
+            {
+                return 'https://test.example.com/send';
+            }
+
+            protected function getAuthHeaders(): array
+            {
+                return ['Authorization' => 'Bearer test'];
+            }
+
+            protected function parseResponse(\Psr\Http\Message\ResponseInterface $response): array
+            {
+                return [];
+            }
+
+            protected function getPingEndpoint(): string
+            {
+                return 'https://test.example.com/ping';
+            }
         };
 
         // Register SentMessagePlugin
@@ -55,18 +71,39 @@ class SentMessageFlowTest extends TestCase
             {
                 throw new \RuntimeException('API down');
             }
-            protected function getEndpoint(): string { return 'https://test.example.com/send'; }
-            protected function getAuthHeaders(): array { return []; }
-            protected function parseResponse(\Psr\Http\Message\ResponseInterface $response): array { return []; }
-            protected function getPingEndpoint(): string { return 'https://test.example.com/ping'; }
+
+            protected function getEndpoint(): string
+            {
+                return 'https://test.example.com/send';
+            }
+
+            protected function getAuthHeaders(): array
+            {
+                return [];
+            }
+
+            protected function parseResponse(\Psr\Http\Message\ResponseInterface $response): array
+            {
+                return [];
+            }
+
+            protected function getPingEndpoint(): string
+            {
+                return 'https://test.example.com/ping';
+            }
         };
 
         // Register a FailedMessageListener using a shared holder object
-        $holder = new \stdClass();
+        $holder        = new \stdClass();
         $holder->event = null;
-        $listener = new class($holder) implements \Swift_Events_FailedMessageListener {
+        $listener      = new class($holder) implements \Swift_Events_FailedMessageListener {
             private \stdClass $holder;
-            public function __construct(\stdClass $holder) { $this->holder = $holder; }
+
+            public function __construct(\stdClass $holder)
+            {
+                $this->holder = $holder;
+            }
+
             public function failedMessage(\Swift_Events_FailedMessageEvent $evt): void
             {
                 $this->holder->event = $evt;
@@ -99,24 +136,43 @@ class SentMessageFlowTest extends TestCase
         $dispatcher = new \Swift_Events_SimpleEventDispatcher();
         $httpClient = $this->createMock(\GuzzleHttp\ClientInterface::class);
 
-        $tagHolder = new \stdClass();
+        $tagHolder       = new \stdClass();
         $tagHolder->tags = null;
-        $transport = new class('test-key', $httpClient, $dispatcher, $tagHolder) extends \Swift_Transport_AbstractHttpApiTransport {
+        $transport       = new class('test-key', $httpClient, $dispatcher, $tagHolder) extends \Swift_Transport_AbstractHttpApiTransport {
             private \stdClass $tagHolder;
+
             public function __construct(string $apiKey, $httpClient, $dispatcher, \stdClass $tagHolder)
             {
                 parent::__construct($apiKey, $httpClient, $dispatcher);
                 $this->tagHolder = $tagHolder;
             }
+
             protected function doSend(\Swift_Mime_SimpleMessage $message): array
             {
                 $this->tagHolder->tags = $this->extractTags($message);
+
                 return ['message_id' => 'tag-test', 'recipients' => 1];
             }
-            protected function getEndpoint(): string { return 'https://test.example.com/send'; }
-            protected function getAuthHeaders(): array { return []; }
-            protected function parseResponse(\Psr\Http\Message\ResponseInterface $response): array { return []; }
-            protected function getPingEndpoint(): string { return 'https://test.example.com/ping'; }
+
+            protected function getEndpoint(): string
+            {
+                return 'https://test.example.com/send';
+            }
+
+            protected function getAuthHeaders(): array
+            {
+                return [];
+            }
+
+            protected function parseResponse(\Psr\Http\Message\ResponseInterface $response): array
+            {
+                return [];
+            }
+
+            protected function getPingEndpoint(): string
+            {
+                return 'https://test.example.com/ping';
+            }
         };
 
         $message = (new \Swift_Message())
@@ -142,24 +198,43 @@ class SentMessageFlowTest extends TestCase
         $dispatcher = new \Swift_Events_SimpleEventDispatcher();
         $httpClient = $this->createMock(\GuzzleHttp\ClientInterface::class);
 
-        $metaHolder = new \stdClass();
+        $metaHolder       = new \stdClass();
         $metaHolder->meta = null;
-        $transport = new class('test-key', $httpClient, $dispatcher, $metaHolder) extends \Swift_Transport_AbstractHttpApiTransport {
+        $transport        = new class('test-key', $httpClient, $dispatcher, $metaHolder) extends \Swift_Transport_AbstractHttpApiTransport {
             private \stdClass $metaHolder;
+
             public function __construct(string $apiKey, $httpClient, $dispatcher, \stdClass $metaHolder)
             {
                 parent::__construct($apiKey, $httpClient, $dispatcher);
                 $this->metaHolder = $metaHolder;
             }
+
             protected function doSend(\Swift_Mime_SimpleMessage $message): array
             {
                 $this->metaHolder->meta = $this->extractMetadata($message);
+
                 return ['message_id' => 'meta-test', 'recipients' => 1];
             }
-            protected function getEndpoint(): string { return 'https://test.example.com/send'; }
-            protected function getAuthHeaders(): array { return []; }
-            protected function parseResponse(\Psr\Http\Message\ResponseInterface $response): array { return []; }
-            protected function getPingEndpoint(): string { return 'https://test.example.com/ping'; }
+
+            protected function getEndpoint(): string
+            {
+                return 'https://test.example.com/send';
+            }
+
+            protected function getAuthHeaders(): array
+            {
+                return [];
+            }
+
+            protected function parseResponse(\Psr\Http\Message\ResponseInterface $response): array
+            {
+                return [];
+            }
+
+            protected function getPingEndpoint(): string
+            {
+                return 'https://test.example.com/ping';
+            }
         };
 
         $message = (new \Swift_Message())

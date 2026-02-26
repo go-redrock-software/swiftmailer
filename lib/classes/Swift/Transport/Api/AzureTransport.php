@@ -27,13 +27,13 @@ class Swift_Transport_Api_AzureTransport extends Swift_Transport_AbstractHttpApi
     private string $accessKey;
 
     public function __construct(
-        #[\SensitiveParameter] string $connectionString,
+        #[SensitiveParameter] string $connectionString,
         ?ClientInterface $httpClient = null,
         ?Swift_Events_EventDispatcher $eventDispatcher = null,
     ) {
         $params = $this->parseConnectionString($connectionString);
 
-        $this->endpoint = rtrim($params['endpoint'], '/');
+        $this->endpoint  = \rtrim($params['endpoint'], '/');
         $this->accessKey = $params['accesskey'];
 
         parent::__construct($this->accessKey, $httpClient, $eventDispatcher);
@@ -47,19 +47,19 @@ class Swift_Transport_Api_AzureTransport extends Swift_Transport_AbstractHttpApi
 
         try {
             $fakeOperationId = '00000000-0000-0000-0000-000000000000';
-            $url = $this->endpoint . '/emails/operations/' . $fakeOperationId . '?api-version=' . self::API_VERSION;
+            $url             = $this->endpoint.'/emails/operations/'.$fakeOperationId.'?api-version='.self::API_VERSION;
 
             $signedHeaders = $this->signRequest('GET', $url, '');
 
             $response = $this->httpClient->request('GET', $url, [
-                'headers' => $signedHeaders,
+                'headers'     => $signedHeaders,
                 'http_errors' => false,
             ]);
 
             // 404 means auth succeeded but operation not found (expected).
             // 401 means bad credentials.
-            return $response->getStatusCode() !== 401;
-        } catch (\Exception $e) {
+            return 401 !== $response->getStatusCode();
+        } catch (Exception $e) {
             return false;
         }
     }
@@ -67,27 +67,25 @@ class Swift_Transport_Api_AzureTransport extends Swift_Transport_AbstractHttpApi
     protected function doSend(Swift_Mime_SimpleMessage $message): array
     {
         $payload = $this->buildPayload($message);
-        $url = $this->getEndpoint();
-        $body = json_encode($payload, JSON_THROW_ON_ERROR);
+        $url     = $this->getEndpoint();
+        $body    = \json_encode($payload, JSON_THROW_ON_ERROR);
 
-        $signedHeaders = $this->signRequest('POST', $url, $body);
+        $signedHeaders                 = $this->signRequest('POST', $url, $body);
         $signedHeaders['Content-Type'] = 'application/json';
 
         $response = $this->httpClient->request('POST', $url, [
-            'headers' => $signedHeaders,
-            'body' => $body,
+            'headers'     => $signedHeaders,
+            'body'        => $body,
             'http_errors' => false,
         ]);
 
         $result = $this->parseResponse($response);
 
         if ($response->getStatusCode() >= 400) {
-            $errorCode = $result['error']['code'] ?? 'Unknown';
+            $errorCode    = $result['error']['code']    ?? 'Unknown';
             $errorMessage = $result['error']['message'] ?? 'Unknown error';
 
-            throw new Swift_TransportException(
-                sprintf('Azure Communication Services API error %s: %s', $errorCode, $errorMessage),
-            );
+            throw new Swift_TransportException(\sprintf('Azure Communication Services API error %s: %s', $errorCode, $errorMessage));
         }
 
         return [
@@ -98,7 +96,7 @@ class Swift_Transport_Api_AzureTransport extends Swift_Transport_AbstractHttpApi
 
     protected function getEndpoint(): string
     {
-        return $this->endpoint . '/emails:send?api-version=' . self::API_VERSION;
+        return $this->endpoint.'/emails:send?api-version='.self::API_VERSION;
     }
 
     protected function getAuthHeaders(): array
@@ -109,13 +107,13 @@ class Swift_Transport_Api_AzureTransport extends Swift_Transport_AbstractHttpApi
 
     protected function parseResponse(ResponseInterface $response): array
     {
-        return json_decode((string) $response->getBody(), true) ?? [];
+        return \json_decode((string) $response->getBody(), true) ?? [];
     }
 
     protected function getPingEndpoint(): string
     {
         // Not used — ping() is overridden entirely.
-        return $this->endpoint . '/emails/operations/00000000-0000-0000-0000-000000000000?api-version=' . self::API_VERSION;
+        return $this->endpoint.'/emails/operations/00000000-0000-0000-0000-000000000000?api-version='.self::API_VERSION;
     }
 
     /**
@@ -125,19 +123,19 @@ class Swift_Transport_Api_AzureTransport extends Swift_Transport_AbstractHttpApi
      */
     private function signRequest(string $method, string $url, string $body): array
     {
-        $contentHash = base64_encode(hash('sha256', $body, true));
-        $date = gmdate('D, d M Y H:i:s T');
-        $host = parse_url($url, PHP_URL_HOST);
-        $pathAndQuery = parse_url($url, PHP_URL_PATH) . '?' . parse_url($url, PHP_URL_QUERY);
+        $contentHash  = \base64_encode(\hash('sha256', $body, true));
+        $date         = \gmdate('D, d M Y H:i:s T');
+        $host         = \parse_url($url, PHP_URL_HOST);
+        $pathAndQuery = \parse_url($url, PHP_URL_PATH).'?'.\parse_url($url, PHP_URL_QUERY);
 
         $stringToSign = "{$method}\n{$pathAndQuery}\n{$date};{$host};{$contentHash}";
-        $signature = base64_encode(hash_hmac('sha256', $stringToSign, base64_decode($this->accessKey), true));
+        $signature    = \base64_encode(\hash_hmac('sha256', $stringToSign, \base64_decode($this->accessKey), true));
 
         return [
-            'x-ms-date' => $date,
+            'x-ms-date'           => $date,
             'x-ms-content-sha256' => $contentHash,
-            'host' => $host,
-            'Authorization' => "HMAC-SHA256 SignedHeaders=x-ms-date;host;x-ms-content-sha256&Signature={$signature}",
+            'host'                => $host,
+            'Authorization'       => "HMAC-SHA256 SignedHeaders=x-ms-date;host;x-ms-content-sha256&Signature={$signature}",
         ];
     }
 
@@ -150,28 +148,28 @@ class Swift_Transport_Api_AzureTransport extends Swift_Transport_AbstractHttpApi
     {
         $params = [];
 
-        foreach (explode(';', $connectionString) as $part) {
-            $part = trim($part);
+        foreach (\explode(';', $connectionString) as $part) {
+            $part = \trim($part);
             if ('' === $part) {
                 continue;
             }
 
-            $equalsPos = strpos($part, '=');
+            $equalsPos = \strpos($part, '=');
             if (false === $equalsPos) {
                 continue;
             }
 
-            $key = strtolower(substr($part, 0, $equalsPos));
-            $value = substr($part, $equalsPos + 1);
+            $key          = \strtolower(\substr($part, 0, $equalsPos));
+            $value        = \substr($part, $equalsPos + 1);
             $params[$key] = $value;
         }
 
         if (!isset($params['endpoint'])) {
-            throw new \InvalidArgumentException('Connection string must contain an "endpoint" parameter.');
+            throw new InvalidArgumentException('Connection string must contain an "endpoint" parameter.');
         }
 
         if (!isset($params['accesskey'])) {
-            throw new \InvalidArgumentException('Connection string must contain an "accesskey" parameter.');
+            throw new InvalidArgumentException('Connection string must contain an "accesskey" parameter.');
         }
 
         return $params;
@@ -182,12 +180,12 @@ class Swift_Transport_Api_AzureTransport extends Swift_Transport_AbstractHttpApi
      */
     private function buildPayload(Swift_Mime_SimpleMessage $message): array
     {
-        $from = $message->getFrom();
-        $senderAddress = array_key_first($from);
+        $from          = $message->getFrom();
+        $senderAddress = \array_key_first($from);
 
         $payload = [
             'senderAddress' => $senderAddress,
-            'content' => [
+            'content'       => [
                 'subject' => $message->getSubject(),
             ],
             'recipients' => [
@@ -197,11 +195,11 @@ class Swift_Transport_Api_AzureTransport extends Swift_Transport_AbstractHttpApi
 
         $body = $this->getMessageBody($message);
 
-        if ($body['text'] !== null) {
+        if (null !== $body['text']) {
             $payload['content']['plainText'] = $body['text'];
         }
 
-        if ($body['html'] !== null) {
+        if (null !== $body['html']) {
             $payload['content']['html'] = $body['html'];
         }
 
@@ -219,11 +217,11 @@ class Swift_Transport_Api_AzureTransport extends Swift_Transport_AbstractHttpApi
 
         $attachments = $this->getMessageAttachments($message);
         if (!empty($attachments)) {
-            $payload['attachments'] = array_map(static function (array $attachment): array {
+            $payload['attachments'] = \array_map(static function (array $attachment): array {
                 return [
-                    'name' => $attachment['filename'],
-                    'contentType' => $attachment['contentType'],
-                    'contentInBase64' => base64_encode($attachment['content']),
+                    'name'            => $attachment['filename'],
+                    'contentType'     => $attachment['contentType'],
+                    'contentInBase64' => \base64_encode($attachment['content']),
                 ];
             }, $attachments);
         }
@@ -245,7 +243,7 @@ class Swift_Transport_Api_AzureTransport extends Swift_Transport_AbstractHttpApi
         foreach ($addresses as $email => $name) {
             $entry = ['address' => $email];
 
-            if ($name !== null && $name !== '') {
+            if (null !== $name && '' !== $name) {
                 $entry['displayName'] = $name;
             }
 

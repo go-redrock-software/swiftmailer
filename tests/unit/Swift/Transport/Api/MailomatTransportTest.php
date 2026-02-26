@@ -17,7 +17,7 @@ class MailomatTransportTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->httpClientMock = $this->createMock(ClientInterface::class);
+        $this->httpClientMock      = $this->createMock(ClientInterface::class);
         $this->eventDispatcherMock = $this->createMock(\Swift_Events_EventDispatcher::class);
 
         $this->transport = new \Swift_Transport_Api_MailomatTransport(
@@ -187,7 +187,7 @@ class MailomatTransportTest extends TestCase
                     $this->assertArrayHasKey('attachments', $payload);
                     $this->assertCount(1, $payload['attachments']);
                     $this->assertSame('document.txt', $payload['attachments'][0]['filename']);
-                    $this->assertSame(base64_encode('file contents'), $payload['attachments'][0]['contentBase64']);
+                    $this->assertSame(\base64_encode('file contents'), $payload['attachments'][0]['contentBase64']);
                     $this->assertSame('text/plain', $payload['attachments'][0]['contentType']);
 
                     return true;
@@ -323,7 +323,7 @@ class MailomatTransportTest extends TestCase
     private function createMockResponse(int $statusCode, array $body): ResponseInterface
     {
         $stream = $this->createMock(StreamInterface::class);
-        $stream->method('__toString')->willReturn(json_encode($body));
+        $stream->method('__toString')->willReturn(\json_encode($body));
 
         $response = $this->createMock(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn($statusCode);

@@ -14,21 +14,19 @@ class Swift_Transport_Api_ResendTransport extends Swift_Transport_AbstractHttpAp
         $payload = $this->getPayload($message);
 
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
-            'headers' => array_merge($this->getAuthHeaders(), [
+            'headers' => \array_merge($this->getAuthHeaders(), [
                 'Content-Type' => 'application/json',
             ]),
-            'json' => $payload,
+            'json'        => $payload,
             'http_errors' => false,
         ]);
 
-        $parsed = $this->parseResponse($response);
+        $parsed     = $this->parseResponse($response);
         $statusCode = $response->getStatusCode();
 
         if ($statusCode < 200 || $statusCode >= 300) {
             $errorMessage = $parsed['message'] ?? 'Unknown error';
-            throw new Swift_TransportException(
-                sprintf('Resend API error (%d): %s', $statusCode, $errorMessage)
-            );
+            throw new Swift_TransportException(\sprintf('Resend API error (%d): %s', $statusCode, $errorMessage));
         }
 
         return [
@@ -45,7 +43,7 @@ class Swift_Transport_Api_ResendTransport extends Swift_Transport_AbstractHttpAp
     protected function getAuthHeaders(): array
     {
         return [
-            'Authorization' => 'Bearer ' . $this->apiKey,
+            'Authorization' => 'Bearer '.$this->apiKey,
         ];
     }
 
@@ -53,7 +51,7 @@ class Swift_Transport_Api_ResendTransport extends Swift_Transport_AbstractHttpAp
     {
         $body = (string) $response->getBody();
 
-        return json_decode($body, true) ?? [];
+        return \json_decode($body, true) ?? [];
     }
 
     protected function getPingEndpoint(): string
@@ -63,16 +61,16 @@ class Swift_Transport_Api_ResendTransport extends Swift_Transport_AbstractHttpAp
 
     private function getPayload(Swift_Mime_SimpleMessage $message): array
     {
-        $tags = $this->extractTags($message);
+        $tags     = $this->extractTags($message);
         $metadata = $this->extractMetadata($message);
 
-        $from = $message->getFrom();
-        $fromEmail = array_key_first($from);
-        $fromName = $from[$fromEmail] ?? null;
+        $from      = $message->getFrom();
+        $fromEmail = \array_key_first($from);
+        $fromName  = $from[$fromEmail] ?? null;
 
         $payload = [
-            'from' => $this->formatAddress($fromEmail, $fromName),
-            'to' => $this->formatAddresses($message->getTo()),
+            'from'    => $this->formatAddress($fromEmail, $fromName),
+            'to'      => $this->formatAddresses($message->getTo()),
             'subject' => $message->getSubject(),
         ];
 
@@ -85,34 +83,34 @@ class Swift_Transport_Api_ResendTransport extends Swift_Transport_AbstractHttpAp
         }
 
         if ($replyTo = $message->getReplyTo()) {
-            $replyToEmail = array_key_first($replyTo);
-            $replyToName = $replyTo[$replyToEmail] ?? null;
+            $replyToEmail        = \array_key_first($replyTo);
+            $replyToName         = $replyTo[$replyToEmail] ?? null;
             $payload['reply_to'] = $this->formatAddress($replyToEmail, $replyToName);
         }
 
         $body = $this->getMessageBody($message);
 
-        if ($body['text'] !== null) {
+        if (null !== $body['text']) {
             $payload['text'] = $body['text'];
         }
 
-        if ($body['html'] !== null) {
+        if (null !== $body['html']) {
             $payload['html'] = $body['html'];
         }
 
         $attachments = $this->getMessageAttachments($message);
         if (!empty($attachments)) {
-            $payload['attachments'] = array_map(static function (array $attachment): array {
+            $payload['attachments'] = \array_map(static function (array $attachment): array {
                 return [
                     'filename' => $attachment['filename'],
-                    'content' => base64_encode($attachment['content']),
+                    'content'  => \base64_encode($attachment['content']),
                 ];
             }, $attachments);
         }
 
         // Tags → array of {name, value} objects
         if (!empty($tags)) {
-            $payload['tags'] = array_map(static function (string $tag): array {
+            $payload['tags'] = \array_map(static function (string $tag): array {
                 return ['name' => $tag, 'value' => $tag];
             }, $tags);
         }

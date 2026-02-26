@@ -13,7 +13,9 @@
 class Swift_Events_FailedMessageEvent extends Swift_Events_EventObject
 {
     private Swift_Mime_SimpleMessage $message;
+
     private Swift_TransportException $exception;
+
     private array $failedRecipients;
 
     public function __construct(
@@ -23,8 +25,8 @@ class Swift_Events_FailedMessageEvent extends Swift_Events_EventObject
         array $failedRecipients = [],
     ) {
         parent::__construct($source);
-        $this->message = $message;
-        $this->exception = $exception;
+        $this->message          = $message;
+        $this->exception        = $exception;
         $this->failedRecipients = $failedRecipients;
     }
 

@@ -17,7 +17,7 @@ class Swift_Plugins_CssInlinerPlugin implements Swift_Events_SendListener
 {
     public function beforeSendPerformed(Swift_Events_SendEvent $evt): void
     {
-        if (!class_exists(\TijsVerkoyen\CssToInlineStyles\CssToInlineStyles::class)) {
+        if (!\class_exists(TijsVerkoyen\CssToInlineStyles\CssToInlineStyles::class)) {
             return;
         }
 
@@ -43,7 +43,7 @@ class Swift_Plugins_CssInlinerPlugin implements Swift_Events_SendListener
 
     private function inlineCss(string $html): string
     {
-        $inliner = new \TijsVerkoyen\CssToInlineStyles\CssToInlineStyles();
+        $inliner = new TijsVerkoyen\CssToInlineStyles\CssToInlineStyles();
 
         return $inliner->convert($html);
     }

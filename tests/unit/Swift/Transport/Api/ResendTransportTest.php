@@ -17,7 +17,7 @@ class ResendTransportTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->httpClientMock = $this->createMock(ClientInterface::class);
+        $this->httpClientMock      = $this->createMock(ClientInterface::class);
         $this->eventDispatcherMock = $this->createMock(\Swift_Events_EventDispatcher::class);
 
         $this->transport = new \Swift_Transport_Api_ResendTransport(
@@ -231,8 +231,8 @@ class ResendTransportTest extends TestCase
 
         $response = $this->createMockResponse(422, [
             'statusCode' => 422,
-            'name' => 'validation_error',
-            'message' => 'Invalid email address',
+            'name'       => 'validation_error',
+            'message'    => 'Invalid email address',
         ]);
 
         $this->httpClientMock->expects($this->once())
@@ -269,7 +269,7 @@ class ResendTransportTest extends TestCase
                     $this->assertArrayHasKey('attachments', $payload);
                     $this->assertCount(1, $payload['attachments']);
                     $this->assertSame('document.txt', $payload['attachments'][0]['filename']);
-                    $this->assertSame(base64_encode('file contents'), $payload['attachments'][0]['content']);
+                    $this->assertSame(\base64_encode('file contents'), $payload['attachments'][0]['content']);
 
                     return true;
                 }),
@@ -339,7 +339,7 @@ class ResendTransportTest extends TestCase
     private function createMockResponse(int $statusCode, array $body): ResponseInterface
     {
         $stream = $this->createMock(StreamInterface::class);
-        $stream->method('__toString')->willReturn(json_encode($body));
+        $stream->method('__toString')->willReturn(\json_encode($body));
 
         $response = $this->createMock(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn($statusCode);

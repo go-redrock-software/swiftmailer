@@ -16,7 +16,7 @@ class MailChimpTransportTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->httpClientMock = $this->createMock(ClientInterface::class);
+        $this->httpClientMock      = $this->createMock(ClientInterface::class);
         $this->eventDispatcherMock = $this->createMock(\Swift_Events_EventDispatcher::class);
 
         $this->transport = new \Swift_Transport_Api_MailChimpTransport(
@@ -69,7 +69,7 @@ class MailChimpTransportTest extends TestCase
                     return true;
                 }),
             )
-            ->willReturn(new Response(200, [], json_encode([
+            ->willReturn(new Response(200, [], \json_encode([
                 ['email' => 'recipient@example.com', 'status' => 'sent', '_id' => 'abc123'],
             ])));
 
@@ -127,7 +127,7 @@ class MailChimpTransportTest extends TestCase
                     return true;
                 }),
             )
-            ->willReturn(new Response(200, [], json_encode([
+            ->willReturn(new Response(200, [], \json_encode([
                 ['email' => 'to1@example.com', 'status' => 'sent', '_id' => 'a1'],
                 ['email' => 'to2@example.com', 'status' => 'sent', '_id' => 'a2'],
                 ['email' => 'cc@example.com', 'status' => 'sent', '_id' => 'a3'],
@@ -163,7 +163,7 @@ class MailChimpTransportTest extends TestCase
                     return true;
                 }),
             )
-            ->willReturn(new Response(200, [], json_encode([
+            ->willReturn(new Response(200, [], \json_encode([
                 ['email' => 'to@example.com', 'status' => 'sent', '_id' => 'x'],
             ])));
 
@@ -217,8 +217,8 @@ class MailChimpTransportTest extends TestCase
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
-            ->willReturn(new Response(500, [], json_encode([
-                'status' => 'error',
+            ->willReturn(new Response(500, [], \json_encode([
+                'status'  => 'error',
                 'message' => 'Invalid API key',
             ])));
 
@@ -239,7 +239,7 @@ class MailChimpTransportTest extends TestCase
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
-            ->willReturn(new Response(200, [], json_encode([
+            ->willReturn(new Response(200, [], \json_encode([
                 ['email' => 'a@example.com', 'status' => 'sent', '_id' => 'x1'],
                 ['email' => 'b@example.com', 'status' => 'queued', '_id' => 'x2'],
             ])));
@@ -259,7 +259,7 @@ class MailChimpTransportTest extends TestCase
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
-            ->willReturn(new Response(200, [], json_encode([
+            ->willReturn(new Response(200, [], \json_encode([
                 ['email' => 'a@example.com', 'status' => 'sent', '_id' => 'x1'],
                 ['email' => 'b@example.com', 'status' => 'rejected', '_id' => 'x2'],
             ])));
@@ -292,7 +292,7 @@ class MailChimpTransportTest extends TestCase
                     $attachment = $msg['attachments'][0];
                     $this->assertEquals('application/pdf', $attachment['type']);
                     $this->assertEquals('document.pdf', $attachment['name']);
-                    $this->assertEquals(base64_encode('file content'), $attachment['content']);
+                    $this->assertEquals(\base64_encode('file content'), $attachment['content']);
 
                     // No inline images
                     $this->assertArrayNotHasKey('images', $msg);
@@ -300,7 +300,7 @@ class MailChimpTransportTest extends TestCase
                     return true;
                 }),
             )
-            ->willReturn(new Response(200, [], json_encode([
+            ->willReturn(new Response(200, [], \json_encode([
                 ['email' => 'to@example.com', 'status' => 'sent', '_id' => 'att1'],
             ])));
 
@@ -335,12 +335,12 @@ class MailChimpTransportTest extends TestCase
 
                     $img = $msg['images'][0];
                     $this->assertEquals('image/png', $img['type']);
-                    $this->assertEquals(base64_encode('image-data'), $img['content']);
+                    $this->assertEquals(\base64_encode('image-data'), $img['content']);
 
                     return true;
                 }),
             )
-            ->willReturn(new Response(200, [], json_encode([
+            ->willReturn(new Response(200, [], \json_encode([
                 ['email' => 'to@example.com', 'status' => 'sent', '_id' => 'img1'],
             ])));
 
@@ -370,7 +370,7 @@ class MailChimpTransportTest extends TestCase
                     return true;
                 }),
             )
-            ->willReturn(new Response(200, [], json_encode([
+            ->willReturn(new Response(200, [], \json_encode([
                 ['email' => 'to@example.com', 'status' => 'sent', '_id' => 'nn1'],
             ])));
 
@@ -403,7 +403,7 @@ class MailChimpTransportTest extends TestCase
                     return true;
                 }),
             )
-            ->willReturn(new Response(200, [], json_encode([
+            ->willReturn(new Response(200, [], \json_encode([
                 ['email' => 'to@example.com', 'status' => 'sent', '_id' => 'tag1'],
             ])));
 

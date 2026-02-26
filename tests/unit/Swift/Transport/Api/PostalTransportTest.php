@@ -17,7 +17,7 @@ class PostalTransportTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->httpClientMock = $this->createMock(ClientInterface::class);
+        $this->httpClientMock      = $this->createMock(ClientInterface::class);
         $this->eventDispatcherMock = $this->createMock(\Swift_Events_EventDispatcher::class);
 
         $this->transport = new \Swift_Transport_Api_PostalTransport(
@@ -38,9 +38,9 @@ class PostalTransportTest extends TestCase
 
         $response = $this->createMockResponse(200, [
             'status' => 'success',
-            'data' => [
+            'data'   => [
                 'message_id' => 'uuid@rp.postal.example.com',
-                'messages' => ['recipient@example.com' => ['id' => 123]],
+                'messages'   => ['recipient@example.com' => ['id' => 123]],
             ],
         ]);
 
@@ -83,7 +83,7 @@ class PostalTransportTest extends TestCase
 
         $response = $this->createMockResponse(200, [
             'status' => 'success',
-            'data' => ['message_id' => 'html-uuid'],
+            'data'   => ['message_id' => 'html-uuid'],
         ]);
 
         $this->httpClientMock->expects($this->once())
@@ -119,7 +119,7 @@ class PostalTransportTest extends TestCase
 
         $response = $this->createMockResponse(200, [
             'status' => 'success',
-            'data' => ['message_id' => 'cc-bcc-uuid'],
+            'data'   => ['message_id' => 'cc-bcc-uuid'],
         ]);
 
         $this->httpClientMock->expects($this->once())
@@ -157,7 +157,7 @@ class PostalTransportTest extends TestCase
 
         $response = $this->createMockResponse(200, [
             'status' => 'success',
-            'data' => ['message_id' => 'reply-uuid'],
+            'data'   => ['message_id' => 'reply-uuid'],
         ]);
 
         $this->httpClientMock->expects($this->once())
@@ -191,7 +191,7 @@ class PostalTransportTest extends TestCase
 
         $response = $this->createMockResponse(200, [
             'status' => 'success',
-            'data' => ['message_id' => 'attach-uuid'],
+            'data'   => ['message_id' => 'attach-uuid'],
         ]);
 
         $this->httpClientMock->expects($this->once())
@@ -208,7 +208,7 @@ class PostalTransportTest extends TestCase
                     $attachment = $payload['attachments'][0];
                     $this->assertSame('document.pdf', $attachment['name']);
                     $this->assertSame('application/pdf', $attachment['content_type']);
-                    $this->assertSame(base64_encode('file content'), $attachment['data']);
+                    $this->assertSame(\base64_encode('file content'), $attachment['data']);
 
                     return true;
                 }),
@@ -234,7 +234,7 @@ class PostalTransportTest extends TestCase
 
         $response = $this->createMockResponse(200, [
             'status' => 'success',
-            'data' => ['message_id' => 'tag-uuid'],
+            'data'   => ['message_id' => 'tag-uuid'],
         ]);
 
         $this->httpClientMock->expects($this->once())
@@ -268,7 +268,7 @@ class PostalTransportTest extends TestCase
 
         $response = $this->createMockResponse(200, [
             'status' => 'success',
-            'data' => ['message_id' => 'auth-uuid'],
+            'data'   => ['message_id' => 'auth-uuid'],
         ]);
 
         $this->httpClientMock->expects($this->once())
@@ -341,8 +341,8 @@ class PostalTransportTest extends TestCase
 
         $response = $this->createMockResponse(200, [
             'status' => 'error',
-            'data' => [
-                'code' => 'ValidationError',
+            'data'   => [
+                'code'    => 'ValidationError',
                 'message' => 'The from address is not valid',
             ],
         ]);
@@ -377,7 +377,7 @@ class PostalTransportTest extends TestCase
 
         $response = $this->createMockResponse(200, [
             'status' => 'success',
-            'data' => ['message_id' => 'custom-uuid'],
+            'data'   => ['message_id' => 'custom-uuid'],
         ]);
 
         $this->httpClientMock->expects($this->once())
@@ -411,7 +411,7 @@ class PostalTransportTest extends TestCase
 
         $response = $this->createMockResponse(200, [
             'status' => 'success',
-            'data' => ['message_id' => 'trim-uuid'],
+            'data'   => ['message_id' => 'trim-uuid'],
         ]);
 
         $this->httpClientMock->expects($this->once())
@@ -447,8 +447,8 @@ class PostalTransportTest extends TestCase
     private function createMockResponse(int $statusCode, array $body): ResponseInterface
     {
         $stream = $this->createMock(StreamInterface::class);
-        $stream->method('getContents')->willReturn(json_encode($body));
-        $stream->method('__toString')->willReturn(json_encode($body));
+        $stream->method('getContents')->willReturn(\json_encode($body));
+        $stream->method('__toString')->willReturn(\json_encode($body));
 
         $response = $this->createMock(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn($statusCode);

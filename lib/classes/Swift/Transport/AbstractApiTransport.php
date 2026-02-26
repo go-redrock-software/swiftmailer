@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) 2024. Redrock Software Corporation
  *

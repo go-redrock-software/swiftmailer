@@ -16,7 +16,7 @@ class MailerSendTransportTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->httpClientMock = $this->createMock(ClientInterface::class);
+        $this->httpClientMock      = $this->createMock(ClientInterface::class);
         $this->eventDispatcherMock = $this->createMock(\Swift_Events_EventDispatcher::class);
 
         $this->transport = new \Swift_Transport_Api_MailerSendTransport(
@@ -193,7 +193,7 @@ class MailerSendTransportTest extends TestCase
                     return true;
                 }),
             )
-            ->willReturn(new Response(200, [], json_encode(['remaining' => 100])));
+            ->willReturn(new Response(200, [], \json_encode(['remaining' => 100])));
 
         $this->assertTrue($this->transport->ping());
     }
@@ -218,9 +218,9 @@ class MailerSendTransportTest extends TestCase
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
-            ->willReturn(new Response(422, [], json_encode([
+            ->willReturn(new Response(422, [], \json_encode([
                 'message' => 'The given data was invalid.',
-                'errors' => [
+                'errors'  => [
                     'from.email' => ['The from.email must be a verified domain.'],
                 ],
             ])));
@@ -254,7 +254,7 @@ class MailerSendTransportTest extends TestCase
 
                     $attachment = $payload['attachments'][0];
                     $this->assertEquals('document.pdf', $attachment['filename']);
-                    $this->assertEquals(base64_encode('file content'), $attachment['content']);
+                    $this->assertEquals(\base64_encode('file content'), $attachment['content']);
                     $this->assertEquals('attachment', $attachment['disposition']);
 
                     return true;

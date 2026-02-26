@@ -25,27 +25,22 @@ class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHtt
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
             'headers' => [
                 'Content-Type' => 'application/json',
-                'Accept' => 'application/json',
+                'Accept'       => 'application/json',
             ],
-            'json' => $payload,
+            'json'        => $payload,
             'http_errors' => false,
         ]);
 
         $result = $this->parseResponse($response);
 
-        if (isset($result['status']) && $result['status'] === 'error') {
-            throw new Swift_TransportException(
-                sprintf(
-                    'Mandrill API error: %s',
-                    $result['message'] ?? 'Unknown error',
-                ),
-            );
+        if (isset($result['status']) && 'error' === $result['status']) {
+            throw new Swift_TransportException(\sprintf('Mandrill API error: %s', $result['message'] ?? 'Unknown error'));
         }
 
         // Result is an array of per-recipient statuses
         $successCount = 0;
         foreach ($result as $recipientResult) {
-            if (isset($recipientResult['status']) && in_array($recipientResult['status'], ['sent', 'queued'], true)) {
+            if (isset($recipientResult['status']) && \in_array($recipientResult['status'], ['sent', 'queued'], true)) {
                 ++$successCount;
             }
         }
@@ -65,16 +60,16 @@ class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHtt
             $response = $this->httpClient->request('POST', $this->getPingEndpoint(), [
                 'headers' => [
                     'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
+                    'Accept'       => 'application/json',
                 ],
-                'json' => ['key' => $this->apiKey],
+                'json'        => ['key' => $this->apiKey],
                 'http_errors' => false,
             ]);
 
             $body = (string) $response->getBody();
 
-            return $response->getStatusCode() === 200 && trim($body, '"') === 'PONG!';
-        } catch (\Exception $e) {
+            return 200 === $response->getStatusCode() && 'PONG!' === \trim($body, '"');
+        } catch (Exception $e) {
             return false;
         }
     }
@@ -91,7 +86,7 @@ class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHtt
 
     protected function parseResponse(ResponseInterface $response): array
     {
-        return json_decode((string) $response->getBody(), true) ?? [];
+        return \json_decode((string) $response->getBody(), true) ?? [];
     }
 
     protected function getPingEndpoint(): string
@@ -101,16 +96,16 @@ class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHtt
 
     private function getPayload(Swift_Mime_SimpleMessage $message): array
     {
-        $tags = $this->extractTags($message);
+        $tags     = $this->extractTags($message);
         $metadata = $this->extractMetadata($message);
 
-        $from = $message->getFrom();
-        $fromAddress = array_key_first($from);
-        $fromName = $from[$fromAddress] ?? null;
+        $from        = $message->getFrom();
+        $fromAddress = \array_key_first($from);
+        $fromName    = $from[$fromAddress] ?? null;
 
         $messagePayload = [
             'from_email' => $fromAddress,
-            'subject' => $message->getSubject(),
+            'subject'    => $message->getSubject(),
         ];
 
         if ($fromName) {
@@ -148,20 +143,20 @@ class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHtt
 
         // Reply-To goes in headers
         if ($replyTo = $message->getReplyTo()) {
-            $formatted = $this->formatAddresses($replyTo);
+            $formatted                 = $this->formatAddresses($replyTo);
             $messagePayload['headers'] = [
-                'Reply-To' => implode(', ', $formatted),
+                'Reply-To' => \implode(', ', $formatted),
             ];
         }
 
         // Body
         $body = $this->getMessageBody($message);
 
-        if ($body['text'] !== null) {
+        if (null !== $body['text']) {
             $messagePayload['text'] = $body['text'];
         }
 
-        if ($body['html'] !== null) {
+        if (null !== $body['html']) {
             $messagePayload['html'] = $body['html'];
         }
 
@@ -169,17 +164,17 @@ class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHtt
         $attachments = $this->getMessageAttachments($message);
         if (!empty($attachments)) {
             $regularAttachments = [];
-            $inlineImages = [];
+            $inlineImages       = [];
 
             foreach ($attachments as $attachment) {
                 $item = [
-                    'type' => $attachment['contentType'],
-                    'name' => $attachment['filename'],
-                    'content' => base64_encode($attachment['content']),
+                    'type'    => $attachment['contentType'],
+                    'name'    => $attachment['filename'],
+                    'content' => \base64_encode($attachment['content']),
                 ];
 
-                if ($attachment['disposition'] === 'inline' && $attachment['contentId']) {
-                    $item['name'] = $attachment['contentId'];
+                if ('inline' === $attachment['disposition'] && $attachment['contentId']) {
+                    $item['name']   = $attachment['contentId'];
                     $inlineImages[] = $item;
                 } else {
                     $regularAttachments[] = $item;
@@ -206,7 +201,7 @@ class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHtt
         }
 
         return [
-            'key' => $this->apiKey,
+            'key'     => $this->apiKey,
             'message' => $messagePayload,
         ];
     }

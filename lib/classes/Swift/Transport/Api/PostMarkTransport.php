@@ -23,24 +23,18 @@ class Swift_Transport_Api_PostMarkTransport extends Swift_Transport_AbstractHttp
         $payload = $this->getPayload($message);
 
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
-            'headers' => array_merge($this->getAuthHeaders(), [
+            'headers' => \array_merge($this->getAuthHeaders(), [
                 'Content-Type' => 'application/json',
-                'Accept' => 'application/json',
+                'Accept'       => 'application/json',
             ]),
-            'json' => $payload,
+            'json'        => $payload,
             'http_errors' => false,
         ]);
 
         $result = $this->parseResponse($response);
 
-        if (!isset($result['ErrorCode']) || $result['ErrorCode'] !== 0) {
-            throw new Swift_TransportException(
-                sprintf(
-                    'Postmark API error %d: %s',
-                    $result['ErrorCode'] ?? -1,
-                    $result['Message'] ?? 'Unknown error',
-                ),
-            );
+        if (!isset($result['ErrorCode']) || 0 !== $result['ErrorCode']) {
+            throw new Swift_TransportException(\sprintf('Postmark API error %d: %s', $result['ErrorCode'] ?? -1, $result['Message'] ?? 'Unknown error'));
         }
 
         return [
@@ -63,7 +57,7 @@ class Swift_Transport_Api_PostMarkTransport extends Swift_Transport_AbstractHttp
 
     protected function parseResponse(ResponseInterface $response): array
     {
-        return json_decode((string) $response->getBody(), true) ?? [];
+        return \json_decode((string) $response->getBody(), true) ?? [];
     }
 
     protected function getPingEndpoint(): string
@@ -73,52 +67,52 @@ class Swift_Transport_Api_PostMarkTransport extends Swift_Transport_AbstractHttp
 
     private function getPayload(Swift_Mime_SimpleMessage $message): array
     {
-        $tags = $this->extractTags($message);
+        $tags     = $this->extractTags($message);
         $metadata = $this->extractMetadata($message);
 
-        $from = $message->getFrom();
-        $fromAddress = array_key_first($from);
-        $fromName = $from[$fromAddress] ?? null;
+        $from        = $message->getFrom();
+        $fromAddress = \array_key_first($from);
+        $fromName    = $from[$fromAddress] ?? null;
 
         $payload = [
-            'From' => $this->formatAddress($fromAddress, $fromName),
-            'To' => implode(', ', $this->formatAddresses($message->getTo() ?? [])),
+            'From'    => $this->formatAddress($fromAddress, $fromName),
+            'To'      => \implode(', ', $this->formatAddresses($message->getTo() ?? [])),
             'Subject' => $message->getSubject(),
         ];
 
         if ($cc = $message->getCc()) {
-            $payload['Cc'] = implode(', ', $this->formatAddresses($cc));
+            $payload['Cc'] = \implode(', ', $this->formatAddresses($cc));
         }
 
         if ($bcc = $message->getBcc()) {
-            $payload['Bcc'] = implode(', ', $this->formatAddresses($bcc));
+            $payload['Bcc'] = \implode(', ', $this->formatAddresses($bcc));
         }
 
         if ($replyTo = $message->getReplyTo()) {
-            $payload['ReplyTo'] = implode(', ', $this->formatAddresses($replyTo));
+            $payload['ReplyTo'] = \implode(', ', $this->formatAddresses($replyTo));
         }
 
         $body = $this->getMessageBody($message);
 
-        if ($body['text'] !== null) {
+        if (null !== $body['text']) {
             $payload['TextBody'] = $body['text'];
         }
 
-        if ($body['html'] !== null) {
+        if (null !== $body['html']) {
             $payload['HtmlBody'] = $body['html'];
         }
 
         $attachments = $this->getMessageAttachments($message);
         if (!empty($attachments)) {
-            $payload['Attachments'] = array_map(static function (array $attachment): array {
+            $payload['Attachments'] = \array_map(static function (array $attachment): array {
                 $item = [
-                    'Name' => $attachment['filename'],
-                    'Content' => base64_encode($attachment['content']),
+                    'Name'        => $attachment['filename'],
+                    'Content'     => \base64_encode($attachment['content']),
                     'ContentType' => $attachment['contentType'],
                 ];
 
-                if ($attachment['disposition'] === 'inline' && $attachment['contentId']) {
-                    $item['ContentID'] = 'cid:' . $attachment['contentId'];
+                if ('inline' === $attachment['disposition'] && $attachment['contentId']) {
+                    $item['ContentID'] = 'cid:'.$attachment['contentId'];
                 }
 
                 return $item;

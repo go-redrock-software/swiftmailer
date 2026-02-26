@@ -22,20 +22,20 @@ class Swift_Transport_Api_InfoBipTransport extends Swift_Transport_AbstractHttpA
     private string $baseUrl;
 
     public function __construct(
-        #[\SensitiveParameter] string $apiKey,
+        #[SensitiveParameter] string $apiKey,
         string $baseUrl,
         ?ClientInterface $httpClient = null,
         ?Swift_Events_EventDispatcher $eventDispatcher = null,
     ) {
         parent::__construct($apiKey, $httpClient, $eventDispatcher);
-        $this->baseUrl = rtrim($baseUrl, '/');
+        $this->baseUrl = \rtrim($baseUrl, '/');
     }
 
     protected function doSend(Swift_Mime_SimpleMessage $message): array
     {
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
-            'headers' => $this->getAuthHeaders(),
-            'multipart' => $this->getFormData($message),
+            'headers'     => $this->getAuthHeaders(),
+            'multipart'   => $this->getFormData($message),
             'http_errors' => false,
         ]);
 
@@ -44,13 +44,13 @@ class Swift_Transport_Api_InfoBipTransport extends Swift_Transport_AbstractHttpA
         $statusCode = $response->getStatusCode();
         if ($statusCode < 200 || $statusCode >= 300) {
             $errorMsg = $result['requestError']['serviceException']['text'] ?? 'Unknown Infobip error';
-            throw new Swift_TransportException('Infobip API error: ' . $errorMsg);
+            throw new Swift_TransportException('Infobip API error: '.$errorMsg);
         }
 
         $groupName = $result['messages'][0]['status']['groupName'] ?? null;
         if ('PENDING' !== $groupName) {
             $description = $result['messages'][0]['status']['description'] ?? 'Unknown error';
-            throw new Swift_TransportException('Infobip API error: ' . $description);
+            throw new Swift_TransportException('Infobip API error: '.$description);
         }
 
         return [
@@ -61,24 +61,24 @@ class Swift_Transport_Api_InfoBipTransport extends Swift_Transport_AbstractHttpA
 
     protected function getEndpoint(): string
     {
-        return 'https://' . $this->baseUrl . '/email/3/send';
+        return 'https://'.$this->baseUrl.'/email/3/send';
     }
 
     protected function getAuthHeaders(): array
     {
         return [
-            'Authorization' => 'App ' . $this->apiKey,
+            'Authorization' => 'App '.$this->apiKey,
         ];
     }
 
     protected function parseResponse(ResponseInterface $response): array
     {
-        return json_decode((string) $response->getBody(), true) ?? [];
+        return \json_decode((string) $response->getBody(), true) ?? [];
     }
 
     protected function getPingEndpoint(): string
     {
-        return 'https://' . $this->baseUrl . '/email/1/domains';
+        return 'https://'.$this->baseUrl.'/email/1/domains';
     }
 
     /**
@@ -88,9 +88,9 @@ class Swift_Transport_Api_InfoBipTransport extends Swift_Transport_AbstractHttpA
      */
     private function getFormData(Swift_Mime_SimpleMessage $message): array
     {
-        $from = $message->getFrom();
-        $fromEmail = array_key_first($from);
-        $fromName = $from[$fromEmail] ?? null;
+        $from      = $message->getFrom();
+        $fromEmail = \array_key_first($from);
+        $fromName  = $from[$fromEmail] ?? null;
 
         $fields = [
             ['name' => 'from', 'contents' => $this->formatAddress($fromEmail, $fromName)],
@@ -118,18 +118,18 @@ class Swift_Transport_Api_InfoBipTransport extends Swift_Transport_AbstractHttpA
 
         // Reply-To
         if ($replyTo = $message->getReplyTo()) {
-            $replyToEmail = array_key_first($replyTo);
-            $fields[] = ['name' => 'replyTo', 'contents' => $replyToEmail];
+            $replyToEmail = \array_key_first($replyTo);
+            $fields[]     = ['name' => 'replyTo', 'contents' => $replyToEmail];
         }
 
         // Body parts
         $body = $this->getMessageBody($message);
 
-        if ($body['text'] !== null) {
+        if (null !== $body['text']) {
             $fields[] = ['name' => 'text', 'contents' => $body['text']];
         }
 
-        if ($body['html'] !== null) {
+        if (null !== $body['html']) {
             $fields[] = ['name' => 'html', 'contents' => $body['html']];
         }
 
@@ -137,11 +137,11 @@ class Swift_Transport_Api_InfoBipTransport extends Swift_Transport_AbstractHttpA
         $attachments = $this->getMessageAttachments($message);
         foreach ($attachments as $attachment) {
             $fieldName = 'inline' === $attachment['disposition'] ? 'inlineImage' : 'attachment';
-            $fields[] = [
-                'name' => $fieldName,
+            $fields[]  = [
+                'name'     => $fieldName,
                 'contents' => $attachment['content'],
                 'filename' => $attachment['filename'],
-                'headers' => ['Content-Type' => $attachment['contentType']],
+                'headers'  => ['Content-Type' => $attachment['contentType']],
             ];
         }
 

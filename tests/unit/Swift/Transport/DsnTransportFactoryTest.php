@@ -1,6 +1,6 @@
 <?php
 
-class Swift_Transport_DsnTransportFactoryTest extends \PHPUnit\Framework\TestCase
+class Swift_Transport_DsnTransportFactoryTest extends PHPUnit\Framework\TestCase
 {
     private Swift_Transport_DsnTransportFactory $factory;
 
@@ -29,7 +29,7 @@ class Swift_Transport_DsnTransportFactoryTest extends \PHPUnit\Framework\TestCas
 
     public function testInvalidSchemeThrows(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Unsupported DSN scheme');
         $this->factory->fromDsnString('unknown://default');
     }

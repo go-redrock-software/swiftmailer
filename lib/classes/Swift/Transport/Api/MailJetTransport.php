@@ -22,8 +22,8 @@ class Swift_Transport_Api_MailJetTransport extends Swift_Transport_AbstractHttpA
     private string $privateKey;
 
     public function __construct(
-        #[\SensitiveParameter] string $publicKey,
-        #[\SensitiveParameter] string $privateKey,
+        #[SensitiveParameter] string $publicKey,
+        #[SensitiveParameter] string $privateKey,
         ?ClientInterface $httpClient = null,
         ?Swift_Events_EventDispatcher $eventDispatcher = null,
     ) {
@@ -36,22 +36,20 @@ class Swift_Transport_Api_MailJetTransport extends Swift_Transport_AbstractHttpA
         $payload = $this->getPayload($message);
 
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
-            'headers' => array_merge($this->getAuthHeaders(), [
+            'headers' => \array_merge($this->getAuthHeaders(), [
                 'Content-Type' => 'application/json',
-                'Accept' => 'application/json',
+                'Accept'       => 'application/json',
             ]),
-            'json' => $payload,
+            'json'        => $payload,
             'http_errors' => false,
         ]);
 
         $result = $this->parseResponse($response);
 
-        if (!isset($result['Messages'][0]['Status']) || $result['Messages'][0]['Status'] !== 'success') {
+        if (!isset($result['Messages'][0]['Status']) || 'success' !== $result['Messages'][0]['Status']) {
             $errorMessage = $result['Messages'][0]['Errors'][0]['ErrorMessage'] ?? 'Unknown error';
 
-            throw new Swift_TransportException(
-                sprintf('Mailjet API error: %s', $errorMessage),
-            );
+            throw new Swift_TransportException(\sprintf('Mailjet API error: %s', $errorMessage));
         }
 
         return [
@@ -67,13 +65,13 @@ class Swift_Transport_Api_MailJetTransport extends Swift_Transport_AbstractHttpA
     protected function getAuthHeaders(): array
     {
         return [
-            'Authorization' => 'Basic ' . base64_encode($this->apiKey . ':' . $this->privateKey),
+            'Authorization' => 'Basic '.\base64_encode($this->apiKey.':'.$this->privateKey),
         ];
     }
 
     protected function parseResponse(ResponseInterface $response): array
     {
-        return json_decode((string) $response->getBody(), true) ?? [];
+        return \json_decode((string) $response->getBody(), true) ?? [];
     }
 
     protected function getPingEndpoint(): string
@@ -83,16 +81,16 @@ class Swift_Transport_Api_MailJetTransport extends Swift_Transport_AbstractHttpA
 
     private function getPayload(Swift_Mime_SimpleMessage $message): array
     {
-        $tags = $this->extractTags($message);
+        $tags     = $this->extractTags($message);
         $metadata = $this->extractMetadata($message);
 
-        $from = $message->getFrom();
-        $fromAddress = array_key_first($from);
-        $fromName = $from[$fromAddress] ?? null;
+        $from        = $message->getFrom();
+        $fromAddress = \array_key_first($from);
+        $fromName    = $from[$fromAddress] ?? null;
 
         $msg = [
-            'From' => $this->mapAddress($fromAddress, $fromName),
-            'To' => $this->mapAddresses($message->getTo() ?? []),
+            'From'    => $this->mapAddress($fromAddress, $fromName),
+            'To'      => $this->mapAddresses($message->getTo() ?? []),
             'Subject' => $message->getSubject(),
         ];
 
@@ -105,28 +103,28 @@ class Swift_Transport_Api_MailJetTransport extends Swift_Transport_AbstractHttpA
         }
 
         if ($replyTo = $message->getReplyTo()) {
-            $replyToAddress = array_key_first($replyTo);
-            $replyToName = $replyTo[$replyToAddress] ?? null;
+            $replyToAddress = \array_key_first($replyTo);
+            $replyToName    = $replyTo[$replyToAddress] ?? null;
             $msg['ReplyTo'] = $this->mapAddress($replyToAddress, $replyToName);
         }
 
         $body = $this->getMessageBody($message);
 
-        if ($body['text'] !== null) {
+        if (null !== $body['text']) {
             $msg['TextPart'] = $body['text'];
         }
 
-        if ($body['html'] !== null) {
+        if (null !== $body['html']) {
             $msg['HTMLPart'] = $body['html'];
         }
 
         $attachments = $this->getMessageAttachments($message);
         if (!empty($attachments)) {
-            $msg['Attachments'] = array_map(static function (array $attachment): array {
+            $msg['Attachments'] = \array_map(static function (array $attachment): array {
                 return [
-                    'ContentType' => $attachment['contentType'],
-                    'Filename' => $attachment['filename'],
-                    'Base64Content' => base64_encode($attachment['content']),
+                    'ContentType'   => $attachment['contentType'],
+                    'Filename'      => $attachment['filename'],
+                    'Base64Content' => \base64_encode($attachment['content']),
                 ];
             }, $attachments);
         }
@@ -149,9 +147,9 @@ class Swift_Transport_Api_MailJetTransport extends Swift_Transport_AbstractHttpA
      */
     private function mapAddress(string $email, ?string $name = null): array
     {
-        return array_filter([
+        return \array_filter([
             'Email' => $email,
-            'Name' => $name,
+            'Name'  => $name,
         ]);
     }
 

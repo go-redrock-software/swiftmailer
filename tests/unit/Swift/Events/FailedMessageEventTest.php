@@ -1,11 +1,11 @@
 <?php
 
-class Swift_Events_FailedMessageEventTest extends \PHPUnit\Framework\TestCase
+class Swift_Events_FailedMessageEventTest extends PHPUnit\Framework\TestCase
 {
     public function testGetters()
     {
         $transport = $this->createMock(Swift_Transport::class);
-        $message = (new Swift_Message())
+        $message   = (new Swift_Message())
             ->setFrom(['a@b.com' => 'A'])
             ->setTo(['c@d.com' => 'C']);
         $exception = new Swift_TransportException('API error');
@@ -22,7 +22,7 @@ class Swift_Events_FailedMessageEventTest extends \PHPUnit\Framework\TestCase
     public function testDefaultEmptyFailedRecipients()
     {
         $transport = $this->createMock(Swift_Transport::class);
-        $message = (new Swift_Message())->setTo(['a@b.com' => 'A']);
+        $message   = (new Swift_Message())->setTo(['a@b.com' => 'A']);
         $exception = new Swift_TransportException('fail');
 
         $event = new Swift_Events_FailedMessageEvent($transport, $message, $exception);

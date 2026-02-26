@@ -10,12 +10,14 @@ use Psr\Http\Message\StreamInterface;
 class Swift_Transport_Api_BrevoTransportTest extends TestCase
 {
     private $httpClientMock;
+
     private $eventDispatcherMock;
+
     private \Swift_Transport_Api_BrevoTransport $transport;
 
     protected function setUp(): void
     {
-        $this->httpClientMock = $this->createMock(ClientInterface::class);
+        $this->httpClientMock      = $this->createMock(ClientInterface::class);
         $this->eventDispatcherMock = $this->createMock(\Swift_Events_EventDispatcher::class);
 
         $this->transport = new \Swift_Transport_Api_BrevoTransport(
@@ -225,7 +227,7 @@ class Swift_Transport_Api_BrevoTransportTest extends TestCase
         $message->setBody('Body');
 
         $response = $this->createMockResponse(400, [
-            'code' => 'invalid_parameter',
+            'code'    => 'invalid_parameter',
             'message' => 'Invalid email address',
         ]);
 
@@ -257,7 +259,7 @@ class Swift_Transport_Api_BrevoTransportTest extends TestCase
         $message->getHeaders()->addTextHeader('X-Mailer-Metadata-order_id', '999');
 
         $capturedPayload = null;
-        $response = $this->createMockResponse(201, ['messageId' => '<tag@brevo.com>']);
+        $response        = $this->createMockResponse(201, ['messageId' => '<tag@brevo.com>']);
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
@@ -302,7 +304,7 @@ class Swift_Transport_Api_BrevoTransportTest extends TestCase
     private function createMockResponse(int $statusCode, array $body): ResponseInterface
     {
         $stream = $this->createMock(StreamInterface::class);
-        $stream->method('getContents')->willReturn(json_encode($body));
+        $stream->method('getContents')->willReturn(\json_encode($body));
 
         $response = $this->createMock(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn($statusCode);

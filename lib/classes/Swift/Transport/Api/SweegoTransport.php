@@ -23,23 +23,21 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
         $payload = $this->buildPayload($message);
 
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
-            'headers' => array_merge($this->getAuthHeaders(), [
+            'headers' => \array_merge($this->getAuthHeaders(), [
                 'Content-Type' => 'application/json',
-                'Accept' => 'application/json',
+                'Accept'       => 'application/json',
             ]),
-            'json' => $payload,
+            'json'        => $payload,
             'http_errors' => false,
         ]);
 
         $statusCode = $response->getStatusCode();
 
         if ($statusCode < 200 || $statusCode >= 300) {
-            $parsed = $this->parseResponse($response);
+            $parsed       = $this->parseResponse($response);
             $errorMessage = $parsed['message'] ?? $parsed['error'] ?? 'Unknown error';
 
-            throw new Swift_TransportException(
-                sprintf('Sweego API error (%d): %s', $statusCode, $errorMessage),
-            );
+            throw new Swift_TransportException(\sprintf('Sweego API error (%d): %s', $statusCode, $errorMessage));
         }
 
         $parsed = $this->parseResponse($response);
@@ -64,7 +62,7 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
 
     protected function parseResponse(ResponseInterface $response): array
     {
-        return json_decode((string) $response->getBody(), true) ?? [];
+        return \json_decode((string) $response->getBody(), true) ?? [];
     }
 
     protected function getPingEndpoint(): string
@@ -77,9 +75,9 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
      */
     private function buildPayload(Swift_Mime_SimpleMessage $message): array
     {
-        $from = $message->getFrom();
-        $fromEmail = array_key_first($from);
-        $fromName = $from[$fromEmail] ?? null;
+        $from      = $message->getFrom();
+        $fromEmail = \array_key_first($from);
+        $fromName  = $from[$fromEmail] ?? null;
 
         $recipients = [];
         foreach ($message->getTo() ?? [] as $email => $name) {
@@ -99,7 +97,7 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
             foreach ($cc as $email => $name) {
                 $ccParts[] = $this->formatAddress($email, $name);
             }
-            $headers['Cc'] = implode(', ', $ccParts);
+            $headers['Cc'] = \implode(', ', $ccParts);
         }
 
         // BCC recipients are merged into recipients — no header
@@ -117,37 +115,37 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
             foreach ($replyTo as $email => $name) {
                 $replyToParts[] = $this->formatAddress($email, $name);
             }
-            $headers['Reply-To'] = implode(', ', $replyToParts);
+            $headers['Reply-To'] = \implode(', ', $replyToParts);
         }
 
         $payload = [
-            'channel' => 'email',
-            'provider' => 'sweego',
+            'channel'       => 'email',
+            'provider'      => 'sweego',
             'campaign-type' => 'transac',
-            'from' => array_filter([
+            'from'          => \array_filter([
                 'email' => $fromEmail,
-                'name' => $fromName,
+                'name'  => $fromName,
             ]),
             'recipients' => $recipients,
-            'subject' => $message->getSubject(),
+            'subject'    => $message->getSubject(),
         ];
 
         $body = $this->getMessageBody($message);
-        if ($body['text'] !== null) {
+        if (null !== $body['text']) {
             $payload['message-txt'] = $body['text'];
         }
-        if ($body['html'] !== null) {
+        if (null !== $body['html']) {
             $payload['message-html'] = $body['html'];
         }
 
         $attachments = $this->getMessageAttachments($message);
         if (!empty($attachments)) {
-            $payload['attachments'] = array_map(static function (array $attachment): array {
-                return array_filter([
-                    'content' => $attachment['content'],
-                    'filename' => $attachment['filename'],
+            $payload['attachments'] = \array_map(static function (array $attachment): array {
+                return \array_filter([
+                    'content'     => $attachment['content'],
+                    'filename'    => $attachment['filename'],
                     'disposition' => $attachment['disposition'],
-                    'content_id' => $attachment['contentId'],
+                    'content_id'  => $attachment['contentId'],
                 ]);
             }, $attachments);
         }

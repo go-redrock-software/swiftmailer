@@ -16,7 +16,7 @@ class PostMarkTransportTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->httpClientMock = $this->createMock(ClientInterface::class);
+        $this->httpClientMock      = $this->createMock(ClientInterface::class);
         $this->eventDispatcherMock = $this->createMock(\Swift_Events_EventDispatcher::class);
 
         $this->transport = new \Swift_Transport_Api_PostMarkTransport(
@@ -62,9 +62,9 @@ class PostMarkTransportTest extends TestCase
                     return true;
                 }),
             )
-            ->willReturn(new Response(200, [], json_encode([
+            ->willReturn(new Response(200, [], \json_encode([
                 'ErrorCode' => 0,
-                'Message' => 'OK',
+                'Message'   => 'OK',
                 'MessageID' => 'test-message-id',
             ])));
 
@@ -102,9 +102,9 @@ class PostMarkTransportTest extends TestCase
                     return true;
                 }),
             )
-            ->willReturn(new Response(200, [], json_encode([
+            ->willReturn(new Response(200, [], \json_encode([
                 'ErrorCode' => 0,
-                'Message' => 'OK',
+                'Message'   => 'OK',
                 'MessageID' => 'uuid-123',
             ])));
 
@@ -136,9 +136,9 @@ class PostMarkTransportTest extends TestCase
                     return true;
                 }),
             )
-            ->willReturn(new Response(200, [], json_encode([
+            ->willReturn(new Response(200, [], \json_encode([
                 'ErrorCode' => 0,
-                'Message' => 'OK',
+                'Message'   => 'OK',
                 'MessageID' => 'uuid',
             ])));
 
@@ -158,7 +158,7 @@ class PostMarkTransportTest extends TestCase
                     return true;
                 }),
             )
-            ->willReturn(new Response(200, [], json_encode(['Name' => 'My Server'])));
+            ->willReturn(new Response(200, [], \json_encode(['Name' => 'My Server'])));
 
         $this->assertTrue($this->transport->ping());
     }
@@ -183,9 +183,9 @@ class PostMarkTransportTest extends TestCase
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
-            ->willReturn(new Response(422, [], json_encode([
+            ->willReturn(new Response(422, [], \json_encode([
                 'ErrorCode' => 300,
-                'Message' => 'Invalid email request',
+                'Message'   => 'Invalid email request',
             ])));
 
         $this->expectException(\Swift_TransportException::class);
@@ -217,15 +217,15 @@ class PostMarkTransportTest extends TestCase
 
                     $attachment = $payload['Attachments'][0];
                     $this->assertEquals('document.pdf', $attachment['Name']);
-                    $this->assertEquals(base64_encode('file content'), $attachment['Content']);
+                    $this->assertEquals(\base64_encode('file content'), $attachment['Content']);
                     $this->assertEquals('application/pdf', $attachment['ContentType']);
 
                     return true;
                 }),
             )
-            ->willReturn(new Response(200, [], json_encode([
+            ->willReturn(new Response(200, [], \json_encode([
                 'ErrorCode' => 0,
-                'Message' => 'OK',
+                'Message'   => 'OK',
                 'MessageID' => 'uuid-attach',
             ])));
 
@@ -262,9 +262,9 @@ class PostMarkTransportTest extends TestCase
                     return true;
                 }),
             )
-            ->willReturn(new Response(200, [], json_encode([
+            ->willReturn(new Response(200, [], \json_encode([
                 'ErrorCode' => 0,
-                'Message' => 'OK',
+                'Message'   => 'OK',
                 'MessageID' => 'uuid-tag',
             ])));
 

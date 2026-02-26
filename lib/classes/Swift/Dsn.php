@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright (c) 2024. Redrock Software Corporation
  *
@@ -43,6 +44,7 @@ class Swift_Dsn
         'postal'          => Swift_Transport_Api_PostalTransport::class,
         'sweego'          => Swift_Transport_Api_SweegoTransport::class,
     ];
+
     private ?string $scheme;
 
     private ?string $user;
@@ -109,11 +111,7 @@ class Swift_Dsn
     public function getTransportClass(): string
     {
         if (!isset(static::$transport_class_map[$this->scheme])) {
-            throw new \InvalidArgumentException(sprintf(
-                'Unsupported DSN scheme "%s". Supported: %s',
-                $this->scheme,
-                implode(', ', array_keys(static::$transport_class_map)),
-            ));
+            throw new InvalidArgumentException(\sprintf('Unsupported DSN scheme "%s". Supported: %s', $this->scheme, \implode(', ', \array_keys(static::$transport_class_map))));
         }
 
         return static::$transport_class_map[$this->scheme];
