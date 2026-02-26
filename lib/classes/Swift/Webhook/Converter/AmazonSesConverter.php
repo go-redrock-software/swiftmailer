@@ -26,7 +26,7 @@ class Swift_Webhook_Converter_AmazonSesConverter extends Swift_Webhook_AbstractP
         return 'amazon-ses';
     }
 
-    public function verify(string $rawBody, array $headers, #[\SensitiveParameter] string $secret): bool
+    public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
         // Basic validation: ensure this comes from SNS
         return isset($headers['x-amz-sns-message-type']);
@@ -41,25 +41,25 @@ class Swift_Webhook_Converter_AmazonSesConverter extends Swift_Webhook_AbstractP
             return [];
         }
 
-        $message = json_decode($payload['Message'] ?? '{}', true);
-        $notificationType = $message['notificationType'] ?? null;
-        $messageId = $message['mail']['messageId'] ?? '';
+        $message          = \json_decode($payload['Message'] ?? '{}', true);
+        $notificationType = $message['notificationType']  ?? null;
+        $messageId        = $message['mail']['messageId'] ?? '';
 
         return match ($notificationType) {
-            'Bounce' => $this->convertBounce($message, $messageId),
-            'Delivery' => $this->convertDelivery($message, $messageId),
+            'Bounce'    => $this->convertBounce($message, $messageId),
+            'Delivery'  => $this->convertDelivery($message, $messageId),
             'Complaint' => $this->convertComplaint($message, $messageId),
-            default => [],
+            default     => [],
         };
     }
 
     /** @return Swift_Webhook_Event[] */
     private function convertBounce(array $message, string $messageId): array
     {
-        $bounce = $message['bounce'] ?? [];
-        $timestamp = $this->parseTimestamp($bounce['timestamp'] ?? 'now');
+        $bounce     = $message['bounce'] ?? [];
+        $timestamp  = $this->parseTimestamp($bounce['timestamp'] ?? 'now');
         $bounceType = $bounce['bounceType'] ?? 'Permanent';
-        $name = 'Transient' === $bounceType ? 'deferred' : 'bounced';
+        $name       = 'Transient' === $bounceType ? 'deferred' : 'bounced';
 
         $events = [];
         foreach ($bounce['bouncedRecipients'] ?? [] as $recipient) {
@@ -84,7 +84,7 @@ class Swift_Webhook_Converter_AmazonSesConverter extends Swift_Webhook_AbstractP
     /** @return Swift_Webhook_Event[] */
     private function convertDelivery(array $message, string $messageId): array
     {
-        $delivery = $message['delivery'] ?? [];
+        $delivery  = $message['delivery'] ?? [];
         $timestamp = $this->parseTimestamp($delivery['timestamp'] ?? 'now');
 
         $events = [];

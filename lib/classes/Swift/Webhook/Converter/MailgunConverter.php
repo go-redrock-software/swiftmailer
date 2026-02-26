@@ -30,40 +30,40 @@ class Swift_Webhook_Converter_MailgunConverter extends Swift_Webhook_AbstractPay
         return 'mailgun';
     }
 
-    public function verify(string $rawBody, array $headers, #[\SensitiveParameter] string $secret): bool
+    public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
-        $decoded = json_decode($rawBody, true);
-        $sig = $decoded['signature'] ?? [];
+        $decoded = \json_decode($rawBody, true);
+        $sig     = $decoded['signature'] ?? [];
 
         $timestamp = $sig['timestamp'] ?? null;
-        $token = $sig['token'] ?? null;
+        $token     = $sig['token']     ?? null;
         $signature = $sig['signature'] ?? null;
 
         if (null === $timestamp || null === $token || null === $signature) {
             return false;
         }
 
-        return $this->verifyHmac($timestamp . $token, $signature, $secret, 'sha256');
+        return $this->verifyHmac($timestamp.$token, $signature, $secret, 'sha256');
     }
 
     public function convert(array $payload, array $headers): array
     {
         $eventData = $payload['event-data'] ?? [];
-        $eventName = $eventData['event'] ?? null;
+        $eventName = $eventData['event']    ?? null;
 
         if (null === $eventName) {
             return [];
         }
 
-        $recipient = $eventData['recipient'] ?? '';
+        $recipient = $eventData['recipient']                        ?? '';
         $messageId = $eventData['message']['headers']['message-id'] ?? '';
-        $timestamp = $this->parseTimestamp((int) ($eventData['timestamp'] ?? time()));
-        $metadata = $this->extractMailgunMetadata($eventData);
+        $timestamp = $this->parseTimestamp((int) ($eventData['timestamp'] ?? \time()));
+        $metadata  = $this->extractMailgunMetadata($eventData);
 
         // Handle 'failed' event which maps to bounced or deferred based on severity
         if ('failed' === $eventName) {
             $severity = $eventData['severity'] ?? 'permanent';
-            $name = 'permanent' === $severity ? 'bounced' : 'deferred';
+            $name     = 'permanent' === $severity ? 'bounced' : 'deferred';
 
             return [$this->createDeliveryEvent($name, $messageId, $recipient, $metadata, $timestamp, $eventData)];
         }

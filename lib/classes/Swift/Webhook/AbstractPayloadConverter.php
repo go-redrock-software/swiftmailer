@@ -18,12 +18,12 @@ abstract class Swift_Webhook_AbstractPayloadConverter implements Swift_Webhook_P
     protected function verifyHmac(
         string $data,
         string $signature,
-        #[\SensitiveParameter] string $secret,
+        #[SensitiveParameter] string $secret,
         string $algo = 'sha256',
     ): bool {
-        $expected = hash_hmac($algo, $data, $secret);
+        $expected = \hash_hmac($algo, $data, $secret);
 
-        return hash_equals($expected, $signature);
+        return \hash_equals($expected, $signature);
     }
 
     /**
@@ -34,7 +34,7 @@ abstract class Swift_Webhook_AbstractPayloadConverter implements Swift_Webhook_P
         string $messageId,
         string $recipient,
         array $metadata,
-        \DateTimeImmutable $timestamp,
+        DateTimeImmutable $timestamp,
         array $rawPayload,
     ): Swift_Webhook_Event {
         return new Swift_Webhook_Event('delivery', $name, $messageId, $recipient, $metadata, $timestamp, $rawPayload);
@@ -48,7 +48,7 @@ abstract class Swift_Webhook_AbstractPayloadConverter implements Swift_Webhook_P
         string $messageId,
         string $recipient,
         array $metadata,
-        \DateTimeImmutable $timestamp,
+        DateTimeImmutable $timestamp,
         array $rawPayload,
     ): Swift_Webhook_Event {
         return new Swift_Webhook_Event('engagement', $name, $messageId, $recipient, $metadata, $timestamp, $rawPayload);
@@ -57,15 +57,15 @@ abstract class Swift_Webhook_AbstractPayloadConverter implements Swift_Webhook_P
     /**
      * Parse a timestamp from various formats providers use.
      */
-    protected function parseTimestamp(int|string $timestamp): \DateTimeImmutable
+    protected function parseTimestamp(int|string $timestamp): DateTimeImmutable
     {
         if (\is_int($timestamp)) {
-            return (new \DateTimeImmutable())->setTimestamp($timestamp);
+            return (new DateTimeImmutable())->setTimestamp($timestamp);
         }
 
-        $parsed = \DateTimeImmutable::createFromFormat(\DateTimeInterface::ATOM, $timestamp)
-            ?: \DateTimeImmutable::createFromFormat('U', $timestamp)
-            ?: new \DateTimeImmutable($timestamp);
+        $parsed = DateTimeImmutable::createFromFormat(DateTimeInterface::ATOM, $timestamp)
+            ?: DateTimeImmutable::createFromFormat('U', $timestamp)
+            ?: new DateTimeImmutable($timestamp);
 
         return $parsed;
     }

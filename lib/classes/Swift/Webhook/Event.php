@@ -23,13 +23,11 @@ class Swift_Webhook_Event
         private readonly string $messageId,
         private readonly string $recipient,
         private readonly array $metadata,
-        private readonly \DateTimeImmutable $timestamp,
+        private readonly DateTimeImmutable $timestamp,
         private readonly array $rawPayload,
     ) {
         if (!\in_array($type, self::VALID_TYPES, true)) {
-            throw new \InvalidArgumentException(
-                \sprintf('Invalid event type "%s". Valid types: %s', $type, implode(', ', self::VALID_TYPES))
-            );
+            throw new InvalidArgumentException(\sprintf('Invalid event type "%s". Valid types: %s', $type, \implode(', ', self::VALID_TYPES)));
         }
     }
 
@@ -58,7 +56,7 @@ class Swift_Webhook_Event
         return $this->metadata;
     }
 
-    public function getTimestamp(): \DateTimeImmutable
+    public function getTimestamp(): DateTimeImmutable
     {
         return $this->timestamp;
     }

@@ -1,6 +1,6 @@
 <?php
 
-class Swift_Webhook_Converter_SendgridConverterTest extends \PHPUnit\Framework\TestCase
+class Swift_Webhook_Converter_SendgridConverterTest extends PHPUnit\Framework\TestCase
 {
     private Swift_Webhook_Converter_SendgridConverter $converter;
 
@@ -18,12 +18,12 @@ class Swift_Webhook_Converter_SendgridConverterTest extends \PHPUnit\Framework\T
     {
         $payload = [
             [
-                'event' => 'bounce',
-                'email' => 'user@example.com',
+                'event'         => 'bounce',
+                'email'         => 'user@example.com',
                 'sg_message_id' => 'msg-001.filter0001',
-                'timestamp' => 1706000000,
-                'reason' => '550 User unknown',
-                'type' => 'bounce',
+                'timestamp'     => 1706000000,
+                'reason'        => '550 User unknown',
+                'type'          => 'bounce',
             ],
         ];
 
@@ -40,10 +40,10 @@ class Swift_Webhook_Converter_SendgridConverterTest extends \PHPUnit\Framework\T
     {
         $payload = [
             [
-                'event' => 'delivered',
-                'email' => 'user@example.com',
+                'event'         => 'delivered',
+                'email'         => 'user@example.com',
                 'sg_message_id' => 'msg-002',
-                'timestamp' => 1706000000,
+                'timestamp'     => 1706000000,
             ],
         ];
 
@@ -57,10 +57,10 @@ class Swift_Webhook_Converter_SendgridConverterTest extends \PHPUnit\Framework\T
     {
         $payload = [
             [
-                'event' => 'open',
-                'email' => 'user@example.com',
+                'event'         => 'open',
+                'email'         => 'user@example.com',
                 'sg_message_id' => 'msg-003',
-                'timestamp' => 1706000000,
+                'timestamp'     => 1706000000,
             ],
         ];
 
@@ -74,11 +74,11 @@ class Swift_Webhook_Converter_SendgridConverterTest extends \PHPUnit\Framework\T
     {
         $payload = [
             [
-                'event' => 'click',
-                'email' => 'user@example.com',
+                'event'         => 'click',
+                'email'         => 'user@example.com',
                 'sg_message_id' => 'msg-004',
-                'timestamp' => 1706000000,
-                'url' => 'https://example.com/link',
+                'timestamp'     => 1706000000,
+                'url'           => 'https://example.com/link',
             ],
         ];
 
@@ -93,10 +93,10 @@ class Swift_Webhook_Converter_SendgridConverterTest extends \PHPUnit\Framework\T
     {
         $payload = [
             [
-                'event' => 'spamreport',
-                'email' => 'user@example.com',
+                'event'         => 'spamreport',
+                'email'         => 'user@example.com',
                 'sg_message_id' => 'msg-005',
-                'timestamp' => 1706000000,
+                'timestamp'     => 1706000000,
             ],
         ];
 
@@ -110,16 +110,16 @@ class Swift_Webhook_Converter_SendgridConverterTest extends \PHPUnit\Framework\T
     {
         $payload = [
             [
-                'event' => 'delivered',
-                'email' => 'a@example.com',
+                'event'         => 'delivered',
+                'email'         => 'a@example.com',
                 'sg_message_id' => 'msg-a',
-                'timestamp' => 1706000000,
+                'timestamp'     => 1706000000,
             ],
             [
-                'event' => 'open',
-                'email' => 'b@example.com',
+                'event'         => 'open',
+                'email'         => 'b@example.com',
                 'sg_message_id' => 'msg-b',
-                'timestamp' => 1706000001,
+                'timestamp'     => 1706000001,
             ],
         ];
 
@@ -132,10 +132,10 @@ class Swift_Webhook_Converter_SendgridConverterTest extends \PHPUnit\Framework\T
     {
         $payload = [
             [
-                'event' => 'some_future_event',
-                'email' => 'user@example.com',
+                'event'         => 'some_future_event',
+                'email'         => 'user@example.com',
                 'sg_message_id' => 'msg-x',
-                'timestamp' => 1706000000,
+                'timestamp'     => 1706000000,
             ],
         ];
 
@@ -150,7 +150,7 @@ class Swift_Webhook_Converter_SendgridConverterTest extends \PHPUnit\Framework\T
         // When verify is called, it validates the signature header.
         // For basic test: verify with empty headers should return false.
         $this->assertFalse(
-            $this->converter->verify('{}', [], 'some-key')
+            $this->converter->verify('{}', [], 'some-key'),
         );
     }
 }

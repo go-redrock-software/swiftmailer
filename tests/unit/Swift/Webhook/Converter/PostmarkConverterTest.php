@@ -1,6 +1,6 @@
 <?php
 
-class Swift_Webhook_Converter_PostmarkConverterTest extends \PHPUnit\Framework\TestCase
+class Swift_Webhook_Converter_PostmarkConverterTest extends PHPUnit\Framework\TestCase
 {
     private Swift_Webhook_Converter_PostmarkConverter $converter;
 
@@ -17,11 +17,11 @@ class Swift_Webhook_Converter_PostmarkConverterTest extends \PHPUnit\Framework\T
     public function testConvertBounceEvent()
     {
         $payload = [
-            'RecordType' => 'Bounce',
-            'MessageID' => 'msg-200',
-            'Email' => 'user@example.com',
-            'BouncedAt' => '2026-01-15T10:30:00Z',
-            'Type' => 'HardBounce',
+            'RecordType'  => 'Bounce',
+            'MessageID'   => 'msg-200',
+            'Email'       => 'user@example.com',
+            'BouncedAt'   => '2026-01-15T10:30:00Z',
+            'Type'        => 'HardBounce',
             'Description' => 'The server was unable to deliver',
         ];
 
@@ -38,9 +38,9 @@ class Swift_Webhook_Converter_PostmarkConverterTest extends \PHPUnit\Framework\T
     public function testConvertDeliveryEvent()
     {
         $payload = [
-            'RecordType' => 'Delivery',
-            'MessageID' => 'msg-201',
-            'Recipient' => 'user@example.com',
+            'RecordType'  => 'Delivery',
+            'MessageID'   => 'msg-201',
+            'Recipient'   => 'user@example.com',
             'DeliveredAt' => '2026-01-15T10:30:00Z',
         ];
 
@@ -53,10 +53,10 @@ class Swift_Webhook_Converter_PostmarkConverterTest extends \PHPUnit\Framework\T
     {
         $payload = [
             'RecordType' => 'Open',
-            'MessageID' => 'msg-202',
-            'Recipient' => 'user@example.com',
+            'MessageID'  => 'msg-202',
+            'Recipient'  => 'user@example.com',
             'ReceivedAt' => '2026-01-15T10:30:00Z',
-            'UserAgent' => 'Mozilla/5.0',
+            'UserAgent'  => 'Mozilla/5.0',
         ];
 
         $events = $this->converter->convert($payload, []);
@@ -68,10 +68,10 @@ class Swift_Webhook_Converter_PostmarkConverterTest extends \PHPUnit\Framework\T
     public function testConvertClickEvent()
     {
         $payload = [
-            'RecordType' => 'Click',
-            'MessageID' => 'msg-203',
-            'Recipient' => 'user@example.com',
-            'ReceivedAt' => '2026-01-15T10:30:00Z',
+            'RecordType'   => 'Click',
+            'MessageID'    => 'msg-203',
+            'Recipient'    => 'user@example.com',
+            'ReceivedAt'   => '2026-01-15T10:30:00Z',
             'OriginalLink' => 'https://example.com/page',
         ];
 
@@ -85,9 +85,9 @@ class Swift_Webhook_Converter_PostmarkConverterTest extends \PHPUnit\Framework\T
     {
         $payload = [
             'RecordType' => 'SpamComplaint',
-            'MessageID' => 'msg-204',
-            'Email' => 'user@example.com',
-            'BouncedAt' => '2026-01-15T10:30:00Z',
+            'MessageID'  => 'msg-204',
+            'Email'      => 'user@example.com',
+            'BouncedAt'  => '2026-01-15T10:30:00Z',
         ];
 
         $events = $this->converter->convert($payload, []);
@@ -98,10 +98,10 @@ class Swift_Webhook_Converter_PostmarkConverterTest extends \PHPUnit\Framework\T
     public function testConvertSubscriptionChangeEvent()
     {
         $payload = [
-            'RecordType' => 'SubscriptionChange',
-            'MessageID' => 'msg-205',
-            'Recipient' => 'user@example.com',
-            'ChangedAt' => '2026-01-15T10:30:00Z',
+            'RecordType'      => 'SubscriptionChange',
+            'MessageID'       => 'msg-205',
+            'Recipient'       => 'user@example.com',
+            'ChangedAt'       => '2026-01-15T10:30:00Z',
             'SuppressSending' => true,
         ];
 
@@ -112,7 +112,7 @@ class Swift_Webhook_Converter_PostmarkConverterTest extends \PHPUnit\Framework\T
 
     public function testVerifyWithWebhookToken()
     {
-        $token = 'my-postmark-webhook-token';
+        $token   = 'my-postmark-webhook-token';
         $headers = ['x-postmark-webhook-token' => $token];
 
         $this->assertTrue($this->converter->verify('{}', $headers, $token));

@@ -10,12 +10,12 @@
 /**
  * Thrown when a webhook signature fails verification.
  */
-class Swift_Webhook_SignatureVerificationException extends \RuntimeException
+class Swift_Webhook_SignatureVerificationException extends RuntimeException
 {
     public function __construct(string $providerName)
     {
         parent::__construct(
-            \sprintf('Webhook signature verification failed for provider "%s".', $providerName)
+            \sprintf('Webhook signature verification failed for provider "%s".', $providerName),
         );
     }
 }

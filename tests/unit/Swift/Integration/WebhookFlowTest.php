@@ -1,25 +1,25 @@
 <?php
 
-class Swift_Integration_WebhookFlowTest extends \PHPUnit\Framework\TestCase
+class Swift_Integration_WebhookFlowTest extends PHPUnit\Framework\TestCase
 {
     public function testFullSendgridWebhookFlow()
     {
-        $handler = new Swift_Webhook_RequestHandler();
+        $handler   = new Swift_Webhook_RequestHandler();
         $converter = new Swift_Webhook_Converter_SendgridConverter();
 
-        $rawBody = json_encode([
+        $rawBody = \json_encode([
             [
-                'event' => 'bounce',
-                'email' => 'bounce@example.com',
+                'event'         => 'bounce',
+                'email'         => 'bounce@example.com',
                 'sg_message_id' => 'test-msg-001.filter',
-                'timestamp' => 1706000000,
-                'reason' => '550 No such user',
+                'timestamp'     => 1706000000,
+                'reason'        => '550 No such user',
             ],
             [
-                'event' => 'open',
-                'email' => 'reader@example.com',
+                'event'         => 'open',
+                'email'         => 'reader@example.com',
                 'sg_message_id' => 'test-msg-002',
-                'timestamp' => 1706000001,
+                'timestamp'     => 1706000001,
             ],
         ]);
 
@@ -41,25 +41,25 @@ class Swift_Integration_WebhookFlowTest extends \PHPUnit\Framework\TestCase
 
     public function testFullMailgunWebhookFlow()
     {
-        $handler = new Swift_Webhook_RequestHandler();
+        $handler   = new Swift_Webhook_RequestHandler();
         $converter = new Swift_Webhook_Converter_MailgunConverter();
 
-        $secret = 'test-key';
+        $secret    = 'test-key';
         $timestamp = '1706000000';
-        $token = 'random-token';
-        $signature = hash_hmac('sha256', $timestamp . $token, $secret);
+        $token     = 'random-token';
+        $signature = \hash_hmac('sha256', $timestamp.$token, $secret);
 
-        $rawBody = json_encode([
+        $rawBody = \json_encode([
             'signature' => [
                 'timestamp' => $timestamp,
-                'token' => $token,
+                'token'     => $token,
                 'signature' => $signature,
             ],
             'event-data' => [
-                'event' => 'failed',
-                'severity' => 'permanent',
+                'event'     => 'failed',
+                'severity'  => 'permanent',
                 'recipient' => 'bad@example.com',
-                'message' => ['headers' => ['message-id' => 'mg-msg-001']],
+                'message'   => ['headers' => ['message-id' => 'mg-msg-001']],
                 'timestamp' => 1706000000.0,
             ],
         ]);
@@ -73,13 +73,13 @@ class Swift_Integration_WebhookFlowTest extends \PHPUnit\Framework\TestCase
 
     public function testSignatureVerificationFailure()
     {
-        $handler = new Swift_Webhook_RequestHandler();
+        $handler   = new Swift_Webhook_RequestHandler();
         $converter = new Swift_Webhook_Converter_MailgunConverter();
 
-        $rawBody = json_encode([
+        $rawBody = \json_encode([
             'signature' => [
                 'timestamp' => '123',
-                'token' => 'abc',
+                'token'     => 'abc',
                 'signature' => 'tampered',
             ],
             'event-data' => [],

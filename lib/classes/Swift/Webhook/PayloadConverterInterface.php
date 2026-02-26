@@ -29,13 +29,13 @@ interface Swift_Webhook_PayloadConverterInterface
     /**
      * Verify the webhook signature.
      *
-     * @param string $rawBody  The raw request body string (before JSON decoding)
-     * @param array  $headers  HTTP request headers (keys lowercased)
-     * @param string $secret   The signing secret configured with the provider
+     * @param string $rawBody The raw request body string (before JSON decoding)
+     * @param array  $headers HTTP request headers (keys lowercased)
+     * @param string $secret  The signing secret configured with the provider
      *
      * @return bool True if signature is valid
      */
-    public function verify(string $rawBody, array $headers, #[\SensitiveParameter] string $secret): bool;
+    public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool;
 
     /**
      * Get the provider name (e.g. 'sendgrid', 'mailgun').

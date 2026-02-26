@@ -1,6 +1,6 @@
 <?php
 
-class Swift_Webhook_Converter_MailgunConverterTest extends \PHPUnit\Framework\TestCase
+class Swift_Webhook_Converter_MailgunConverterTest extends PHPUnit\Framework\TestCase
 {
     private Swift_Webhook_Converter_MailgunConverter $converter;
 
@@ -18,11 +18,11 @@ class Swift_Webhook_Converter_MailgunConverterTest extends \PHPUnit\Framework\Te
     {
         $payload = [
             'event-data' => [
-                'event' => 'failed',
-                'severity' => 'permanent',
-                'recipient' => 'user@example.com',
-                'message' => ['headers' => ['message-id' => 'msg-100']],
-                'timestamp' => 1706000000.0,
+                'event'           => 'failed',
+                'severity'        => 'permanent',
+                'recipient'       => 'user@example.com',
+                'message'         => ['headers' => ['message-id' => 'msg-100']],
+                'timestamp'       => 1706000000.0,
                 'delivery-status' => ['message' => '550 User not found'],
             ],
         ];
@@ -40,10 +40,10 @@ class Swift_Webhook_Converter_MailgunConverterTest extends \PHPUnit\Framework\Te
     {
         $payload = [
             'event-data' => [
-                'event' => 'failed',
-                'severity' => 'temporary',
+                'event'     => 'failed',
+                'severity'  => 'temporary',
                 'recipient' => 'user@example.com',
-                'message' => ['headers' => ['message-id' => 'msg-101']],
+                'message'   => ['headers' => ['message-id' => 'msg-101']],
                 'timestamp' => 1706000000.0,
             ],
         ];
@@ -57,9 +57,9 @@ class Swift_Webhook_Converter_MailgunConverterTest extends \PHPUnit\Framework\Te
     {
         $payload = [
             'event-data' => [
-                'event' => 'delivered',
+                'event'     => 'delivered',
                 'recipient' => 'user@example.com',
-                'message' => ['headers' => ['message-id' => 'msg-102']],
+                'message'   => ['headers' => ['message-id' => 'msg-102']],
                 'timestamp' => 1706000000.0,
             ],
         ];
@@ -74,9 +74,9 @@ class Swift_Webhook_Converter_MailgunConverterTest extends \PHPUnit\Framework\Te
     {
         $payload = [
             'event-data' => [
-                'event' => 'opened',
+                'event'     => 'opened',
                 'recipient' => 'user@example.com',
-                'message' => ['headers' => ['message-id' => 'msg-103']],
+                'message'   => ['headers' => ['message-id' => 'msg-103']],
                 'timestamp' => 1706000000.0,
             ],
         ];
@@ -91,11 +91,11 @@ class Swift_Webhook_Converter_MailgunConverterTest extends \PHPUnit\Framework\Te
     {
         $payload = [
             'event-data' => [
-                'event' => 'clicked',
+                'event'     => 'clicked',
                 'recipient' => 'user@example.com',
-                'message' => ['headers' => ['message-id' => 'msg-104']],
+                'message'   => ['headers' => ['message-id' => 'msg-104']],
                 'timestamp' => 1706000000.0,
-                'url' => 'https://example.com/tracked',
+                'url'       => 'https://example.com/tracked',
             ],
         ];
 
@@ -109,9 +109,9 @@ class Swift_Webhook_Converter_MailgunConverterTest extends \PHPUnit\Framework\Te
     {
         $payload = [
             'event-data' => [
-                'event' => 'complained',
+                'event'     => 'complained',
                 'recipient' => 'user@example.com',
-                'message' => ['headers' => ['message-id' => 'msg-105']],
+                'message'   => ['headers' => ['message-id' => 'msg-105']],
                 'timestamp' => 1706000000.0,
             ],
         ];
@@ -124,15 +124,15 @@ class Swift_Webhook_Converter_MailgunConverterTest extends \PHPUnit\Framework\Te
 
     public function testVerifyValidSignature()
     {
-        $secret = 'test-api-key';
-        $timestamp = '1706000000';
-        $token = 'random-token-abc';
-        $expectedSig = hash_hmac('sha256', $timestamp . $token, $secret);
+        $secret      = 'test-api-key';
+        $timestamp   = '1706000000';
+        $token       = 'random-token-abc';
+        $expectedSig = \hash_hmac('sha256', $timestamp.$token, $secret);
 
-        $rawBody = json_encode([
+        $rawBody = \json_encode([
             'signature' => [
                 'timestamp' => $timestamp,
-                'token' => $token,
+                'token'     => $token,
                 'signature' => $expectedSig,
             ],
             'event-data' => [],
@@ -143,10 +143,10 @@ class Swift_Webhook_Converter_MailgunConverterTest extends \PHPUnit\Framework\Te
 
     public function testVerifyInvalidSignature()
     {
-        $rawBody = json_encode([
+        $rawBody = \json_encode([
             'signature' => [
                 'timestamp' => '1706000000',
-                'token' => 'random-token',
+                'token'     => 'random-token',
                 'signature' => 'invalid',
             ],
             'event-data' => [],

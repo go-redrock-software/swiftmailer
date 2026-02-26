@@ -22,7 +22,7 @@ class Swift_Webhook_Converter_PostmarkConverter extends Swift_Webhook_AbstractPa
         return 'postmark';
     }
 
-    public function verify(string $rawBody, array $headers, #[\SensitiveParameter] string $secret): bool
+    public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
         $token = $headers['x-postmark-webhook-token'] ?? null;
 
@@ -30,7 +30,7 @@ class Swift_Webhook_Converter_PostmarkConverter extends Swift_Webhook_AbstractPa
             return false;
         }
 
-        return hash_equals($secret, $token);
+        return \hash_equals($secret, $token);
     }
 
     public function convert(array $payload, array $headers): array
@@ -42,13 +42,13 @@ class Swift_Webhook_Converter_PostmarkConverter extends Swift_Webhook_AbstractPa
         }
 
         return match ($recordType) {
-            'Bounce' => [$this->convertBounce($payload)],
-            'Delivery' => [$this->convertDelivery($payload)],
-            'Open' => [$this->convertOpen($payload)],
-            'Click' => [$this->convertClick($payload)],
-            'SpamComplaint' => [$this->convertSpamComplaint($payload)],
+            'Bounce'             => [$this->convertBounce($payload)],
+            'Delivery'           => [$this->convertDelivery($payload)],
+            'Open'               => [$this->convertOpen($payload)],
+            'Click'              => [$this->convertClick($payload)],
+            'SpamComplaint'      => [$this->convertSpamComplaint($payload)],
             'SubscriptionChange' => [$this->convertSubscriptionChange($payload)],
-            default => [],
+            default              => [],
         };
     }
 
@@ -65,7 +65,7 @@ class Swift_Webhook_Converter_PostmarkConverter extends Swift_Webhook_AbstractPa
         return $this->createDeliveryEvent(
             'bounced',
             $payload['MessageID'] ?? '',
-            $payload['Email'] ?? '',
+            $payload['Email']     ?? '',
             $metadata,
             $this->parseTimestamp($payload['BouncedAt'] ?? 'now'),
             $payload,
@@ -123,7 +123,7 @@ class Swift_Webhook_Converter_PostmarkConverter extends Swift_Webhook_AbstractPa
         return $this->createEngagementEvent(
             'complained',
             $payload['MessageID'] ?? '',
-            $payload['Email'] ?? '',
+            $payload['Email']     ?? '',
             [],
             $this->parseTimestamp($payload['BouncedAt'] ?? 'now'),
             $payload,

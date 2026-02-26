@@ -37,7 +37,7 @@ class Swift_Webhook_Converter_SendgridConverter extends Swift_Webhook_AbstractPa
         return 'sendgrid';
     }
 
-    public function verify(string $rawBody, array $headers, #[\SensitiveParameter] string $secret): bool
+    public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
         $signature = $headers['x-twilio-email-event-webhook-signature'] ?? null;
         $timestamp = $headers['x-twilio-email-event-webhook-timestamp'] ?? null;
@@ -47,19 +47,19 @@ class Swift_Webhook_Converter_SendgridConverter extends Swift_Webhook_AbstractPa
         }
 
         // SendGrid uses ECDSA with the public verification key
-        $payload = $timestamp . $rawBody;
-        $decodedSig = base64_decode($signature, true);
+        $payload    = $timestamp.$rawBody;
+        $decodedSig = \base64_decode($signature, true);
 
         if (false === $decodedSig) {
             return false;
         }
 
-        $publicKey = openssl_pkey_get_public($secret);
+        $publicKey = \openssl_pkey_get_public($secret);
         if (false === $publicKey) {
             return false;
         }
 
-        return 1 === openssl_verify($payload, $decodedSig, $publicKey, OPENSSL_ALGO_SHA256);
+        return 1 === \openssl_verify($payload, $decodedSig, $publicKey, OPENSSL_ALGO_SHA256);
     }
 
     public function convert(array $payload, array $headers): array
@@ -73,10 +73,10 @@ class Swift_Webhook_Converter_SendgridConverter extends Swift_Webhook_AbstractPa
             }
 
             [$type, $name] = self::EVENT_MAP[$sgEvent];
-            $messageId = $this->extractMessageId($entry);
-            $recipient = $entry['email'] ?? '';
-            $timestamp = $this->parseTimestamp($entry['timestamp'] ?? time());
-            $metadata = $this->extractMetadata($entry);
+            $messageId     = $this->extractMessageId($entry);
+            $recipient     = $entry['email'] ?? '';
+            $timestamp     = $this->parseTimestamp($entry['timestamp'] ?? \time());
+            $metadata      = $this->extractMetadata($entry);
 
             if ('delivery' === $type) {
                 $events[] = $this->createDeliveryEvent($name, $messageId, $recipient, $metadata, $timestamp, $entry);
@@ -93,8 +93,8 @@ class Swift_Webhook_Converter_SendgridConverter extends Swift_Webhook_AbstractPa
         $id = $entry['sg_message_id'] ?? '';
 
         // SendGrid appends filter IDs like "msg-001.filter0001" — strip the suffix
-        if (false !== $pos = strpos($id, '.')) {
-            $id = substr($id, 0, $pos);
+        if (false !== $pos = \strpos($id, '.')) {
+            $id = \substr($id, 0, $pos);
         }
 
         return $id;

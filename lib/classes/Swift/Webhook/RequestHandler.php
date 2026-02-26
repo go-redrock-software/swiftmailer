@@ -31,16 +31,16 @@ class Swift_Webhook_RequestHandler
      * @return Swift_Webhook_Event[]
      *
      * @throws Swift_Webhook_SignatureVerificationException If signature is invalid
-     * @throws \InvalidArgumentException                    If body is not valid JSON
+     * @throws InvalidArgumentException                     If body is not valid JSON
      */
     public function handle(
         Swift_Webhook_PayloadConverterInterface $converter,
         string $rawBody,
         array $headers,
-        #[\SensitiveParameter] ?string $secret,
+        #[SensitiveParameter] ?string $secret,
     ): array {
         // Normalize header keys to lowercase
-        $headers = array_change_key_case($headers, CASE_LOWER);
+        $headers = \array_change_key_case($headers, CASE_LOWER);
 
         // Verify signature if secret provided
         if (null !== $secret) {
@@ -50,11 +50,9 @@ class Swift_Webhook_RequestHandler
         }
 
         // Decode JSON
-        $payload = json_decode($rawBody, true);
-        if (JSON_ERROR_NONE !== json_last_error()) {
-            throw new \InvalidArgumentException(
-                \sprintf('Invalid JSON in webhook body: %s', json_last_error_msg())
-            );
+        $payload = \json_decode($rawBody, true);
+        if (JSON_ERROR_NONE !== \json_last_error()) {
+            throw new InvalidArgumentException(\sprintf('Invalid JSON in webhook body: %s', \json_last_error_msg()));
         }
 
         return $converter->convert($payload, $headers);

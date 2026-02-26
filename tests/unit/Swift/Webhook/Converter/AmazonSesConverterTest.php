@@ -1,6 +1,6 @@
 <?php
 
-class Swift_Webhook_Converter_AmazonSesConverterTest extends \PHPUnit\Framework\TestCase
+class Swift_Webhook_Converter_AmazonSesConverterTest extends PHPUnit\Framework\TestCase
 {
     private Swift_Webhook_Converter_AmazonSesConverter $converter;
 
@@ -17,11 +17,11 @@ class Swift_Webhook_Converter_AmazonSesConverterTest extends \PHPUnit\Framework\
     public function testConvertBounceNotification()
     {
         $payload = [
-            'Type' => 'Notification',
-            'Message' => json_encode([
+            'Type'    => 'Notification',
+            'Message' => \json_encode([
                 'notificationType' => 'Bounce',
-                'bounce' => [
-                    'bounceType' => 'Permanent',
+                'bounce'           => [
+                    'bounceType'        => 'Permanent',
                     'bouncedRecipients' => [
                         ['emailAddress' => 'user@example.com'],
                         ['emailAddress' => 'other@example.com'],
@@ -47,12 +47,12 @@ class Swift_Webhook_Converter_AmazonSesConverterTest extends \PHPUnit\Framework\
     public function testConvertDeliveryNotification()
     {
         $payload = [
-            'Type' => 'Notification',
-            'Message' => json_encode([
+            'Type'    => 'Notification',
+            'Message' => \json_encode([
                 'notificationType' => 'Delivery',
-                'delivery' => [
+                'delivery'         => [
                     'recipients' => ['user@example.com'],
-                    'timestamp' => '2026-01-15T10:30:00.000Z',
+                    'timestamp'  => '2026-01-15T10:30:00.000Z',
                 ],
                 'mail' => [
                     'messageId' => 'ses-msg-301',
@@ -69,14 +69,14 @@ class Swift_Webhook_Converter_AmazonSesConverterTest extends \PHPUnit\Framework\
     public function testConvertComplaintNotification()
     {
         $payload = [
-            'Type' => 'Notification',
-            'Message' => json_encode([
+            'Type'    => 'Notification',
+            'Message' => \json_encode([
                 'notificationType' => 'Complaint',
-                'complaint' => [
+                'complaint'        => [
                     'complainedRecipients' => [
                         ['emailAddress' => 'user@example.com'],
                     ],
-                    'timestamp' => '2026-01-15T10:30:00.000Z',
+                    'timestamp'             => '2026-01-15T10:30:00.000Z',
                     'complaintFeedbackType' => 'abuse',
                 ],
                 'mail' => [
@@ -95,7 +95,7 @@ class Swift_Webhook_Converter_AmazonSesConverterTest extends \PHPUnit\Framework\
     public function testConvertSnsSubscriptionConfirmationIsSkipped()
     {
         $payload = [
-            'Type' => 'SubscriptionConfirmation',
+            'Type'         => 'SubscriptionConfirmation',
             'SubscribeURL' => 'https://sns.amazonaws.com/confirm?...',
         ];
 

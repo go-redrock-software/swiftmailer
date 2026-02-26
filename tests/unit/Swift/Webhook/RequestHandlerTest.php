@@ -1,6 +1,6 @@
 <?php
 
-class Swift_Webhook_RequestHandlerTest extends \PHPUnit\Framework\TestCase
+class Swift_Webhook_RequestHandlerTest extends PHPUnit\Framework\TestCase
 {
     public function testHandleWithValidSignature()
     {
@@ -10,8 +10,8 @@ class Swift_Webhook_RequestHandlerTest extends \PHPUnit\Framework\TestCase
             'msg-1',
             'user@example.com',
             [],
-            new \DateTimeImmutable(),
-            []
+            new DateTimeImmutable(),
+            [],
         );
 
         $converter = $this->createMock(Swift_Webhook_PayloadConverterInterface::class);
@@ -20,11 +20,11 @@ class Swift_Webhook_RequestHandlerTest extends \PHPUnit\Framework\TestCase
         $converter->method('getProviderName')->willReturn('test');
 
         $handler = new Swift_Webhook_RequestHandler();
-        $result = $handler->handle(
+        $result  = $handler->handle(
             $converter,
             '{"event":"bounce"}',
             ['x-signature' => 'valid'],
-            'my-secret'
+            'my-secret',
         );
 
         $this->assertCount(1, $result);
@@ -46,7 +46,7 @@ class Swift_Webhook_RequestHandlerTest extends \PHPUnit\Framework\TestCase
             $converter,
             '{"event":"bounce"}',
             ['x-signature' => 'invalid'],
-            'my-secret'
+            'my-secret',
         );
     }
 
@@ -58,7 +58,7 @@ class Swift_Webhook_RequestHandlerTest extends \PHPUnit\Framework\TestCase
 
         $handler = new Swift_Webhook_RequestHandler();
 
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Invalid JSON');
 
         $handler->handle($converter, 'not-json{', [], 'secret');
@@ -72,8 +72,8 @@ class Swift_Webhook_RequestHandlerTest extends \PHPUnit\Framework\TestCase
             'msg-2',
             'user@example.com',
             [],
-            new \DateTimeImmutable(),
-            []
+            new DateTimeImmutable(),
+            [],
         );
 
         $converter = $this->createMock(Swift_Webhook_PayloadConverterInterface::class);
@@ -82,7 +82,7 @@ class Swift_Webhook_RequestHandlerTest extends \PHPUnit\Framework\TestCase
         $converter->method('getProviderName')->willReturn('test');
 
         $handler = new Swift_Webhook_RequestHandler();
-        $result = $handler->handle($converter, '{}', [], null);
+        $result  = $handler->handle($converter, '{}', [], null);
 
         $this->assertCount(1, $result);
     }
