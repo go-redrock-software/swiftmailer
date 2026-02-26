@@ -147,6 +147,48 @@ class Swift_Transport_Api_SendgridTransportTest extends TestCase
         $this->transport->send($message);
     }
 
+    public function testSendWithTagsAndMetadata(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message->setFrom(['from@example.com' => 'Sender']);
+        $message->setTo(['to@example.com' => 'Recipient']);
+        $message->setSubject('Test');
+        $message->setBody('Hello', 'text/plain');
+        $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'campaign-1');
+        $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'campaign-2');
+        $message->getHeaders()->addTextHeader('X-Mailer-Metadata-user_id', '123');
+        $message->getHeaders()->addTextHeader('X-Mailer-Metadata-env', 'prod');
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function ($options) {
+                    $payload = \json_decode($options['body'], true);
+
+                    // Tags → categories
+                    $this->assertEquals(['campaign-1', 'campaign-2'], $payload['categories']);
+
+                    // Metadata → custom_args in personalizations
+                    $this->assertEquals(
+                        ['user_id' => '123', 'env' => 'prod'],
+                        $payload['personalizations'][0]['custom_args'],
+                    );
+
+                    return true;
+                }),
+            )
+            ->willReturn(new Response(202));
+
+        $evt = $this->createMock(\Swift_Events_SendEvent::class);
+        $this->eventDispatcherMock->method('createSendEvent')->willReturn($evt);
+        $this->eventDispatcherMock->method('createTransportChangeEvent')
+            ->willReturn($this->createMock(\Swift_Events_TransportChangeEvent::class));
+
+        $this->transport->send($message);
+    }
+
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
     {
         return new \Swift_Mime_SimpleMessage(

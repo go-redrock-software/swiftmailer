@@ -85,6 +85,9 @@ class Swift_Transport_Api_MailGunTransport extends Swift_Transport_AbstractHttpA
      */
     private function getFormData(Swift_Mime_SimpleMessage $message): array
     {
+        $tags = $this->extractTags($message);
+        $metadata = $this->extractMetadata($message);
+
         $from = $message->getFrom();
         $fromEmail = array_key_first($from);
         $fromName = $from[$fromEmail] ?? null;
@@ -125,6 +128,16 @@ class Swift_Transport_Api_MailGunTransport extends Swift_Transport_AbstractHttpA
                 'filename' => $attachment['filename'],
                 'headers' => ['Content-Type' => $attachment['contentType']],
             ];
+        }
+
+        // Tags → o:tag (multiple values)
+        foreach ($tags as $tag) {
+            $fields[] = ['name' => 'o:tag', 'contents' => $tag];
+        }
+
+        // Metadata → v:key=value (prefixed params)
+        foreach ($metadata as $key => $value) {
+            $fields[] = ['name' => 'v:' . $key, 'contents' => $value];
         }
 
         return $fields;

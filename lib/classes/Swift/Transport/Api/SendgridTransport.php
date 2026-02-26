@@ -49,6 +49,9 @@ class Swift_Transport_Api_SendgridTransport extends Swift_Transport_AbstractHttp
 
     private function getPayload(Swift_Mime_SimpleMessage $message): array
     {
+        $tags = $this->extractTags($message);
+        $metadata = $this->extractMetadata($message);
+
         $from      = $message->getFrom();
         $fromEmail = \array_key_first($from);
         $fromName  = $from[$fromEmail];
@@ -112,6 +115,16 @@ class Swift_Transport_Api_SendgridTransport extends Swift_Transport_AbstractHttp
                     'content_id'  => 'inline' === $att['disposition'] ? $att['contentId'] : null,
                 ]);
             }
+        }
+
+        // Tags → categories (array of strings)
+        if (!empty($tags)) {
+            $payload['categories'] = $tags;
+        }
+
+        // Metadata → custom_args (object in personalizations)
+        if (!empty($metadata)) {
+            $payload['personalizations'][0]['custom_args'] = $metadata;
         }
 
         return $payload;

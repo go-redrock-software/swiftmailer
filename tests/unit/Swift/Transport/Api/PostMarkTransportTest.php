@@ -233,6 +233,44 @@ class PostMarkTransportTest extends TestCase
         $this->assertEquals(1, $sent);
     }
 
+    public function testSendWithTagsAndMetadata(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['from@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'Recipient'])
+            ->setSubject('Tag test')
+            ->setBody('Hello');
+        $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'welcome');
+        $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'onboarding');
+        $message->getHeaders()->addTextHeader('X-Mailer-Metadata-user_id', '55');
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    // PostMark only supports single tag
+                    $this->assertEquals('welcome', $payload['Tag']);
+
+                    // Metadata object
+                    $this->assertEquals(['user_id' => '55'], $payload['Metadata']);
+
+                    return true;
+                }),
+            )
+            ->willReturn(new Response(200, [], json_encode([
+                'ErrorCode' => 0,
+                'Message' => 'OK',
+                'MessageID' => 'uuid-tag',
+            ])));
+
+        $this->transport->send($message);
+    }
+
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
     {
         return new \Swift_Mime_SimpleMessage(

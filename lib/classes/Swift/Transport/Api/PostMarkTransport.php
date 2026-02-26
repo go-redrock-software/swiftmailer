@@ -72,6 +72,9 @@ class Swift_Transport_Api_PostMarkTransport extends Swift_Transport_AbstractHttp
 
     private function getPayload(Swift_Mime_SimpleMessage $message): array
     {
+        $tags = $this->extractTags($message);
+        $metadata = $this->extractMetadata($message);
+
         $from = $message->getFrom();
         $fromAddress = array_key_first($from);
         $fromName = $from[$fromAddress] ?? null;
@@ -119,6 +122,16 @@ class Swift_Transport_Api_PostMarkTransport extends Swift_Transport_AbstractHttp
 
                 return $item;
             }, $attachments);
+        }
+
+        // Tag → single string (first tag only)
+        if (!empty($tags)) {
+            $payload['Tag'] = $tags[0];
+        }
+
+        // Metadata → object
+        if (!empty($metadata)) {
+            $payload['Metadata'] = $metadata;
         }
 
         return $payload;

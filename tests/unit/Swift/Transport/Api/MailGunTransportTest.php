@@ -267,6 +267,45 @@ class Swift_Transport_Api_MailGunTransportTest extends TestCase
         $transport->send($message);
     }
 
+    public function testSendWithTagsAndMetadata(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message->setFrom(['from@example.com' => 'Sender']);
+        $message->setTo(['to@example.com' => 'Recipient']);
+        $message->setSubject('Test');
+        $message->setBody('Hello');
+        $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'promo');
+        $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'newsletter');
+        $message->getHeaders()->addTextHeader('X-Mailer-Metadata-user_id', '42');
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('POST', $this->anything(), $this->callback(function ($options) {
+                $multipart = $options['multipart'];
+
+                // Collect all o:tag values
+                $tags = [];
+                $metaKeys = [];
+                foreach ($multipart as $part) {
+                    if ($part['name'] === 'o:tag') {
+                        $tags[] = $part['contents'];
+                    }
+                    if (str_starts_with($part['name'], 'v:')) {
+                        $metaKeys[$part['name']] = $part['contents'];
+                    }
+                }
+
+                return $tags === ['promo', 'newsletter']
+                    && isset($metaKeys['v:user_id'])
+                    && $metaKeys['v:user_id'] === '42';
+            }))
+            ->willReturn(new Response(200, [], '{"id":"<abc@mailgun.org>","message":"Queued."}'));
+
+        $this->stubEventDispatcher();
+
+        $this->transport->send($message);
+    }
+
     /**
      * Index multipart form fields by name for easy assertion.
      */
