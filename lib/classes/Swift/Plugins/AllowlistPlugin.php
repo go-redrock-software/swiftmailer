@@ -27,15 +27,19 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
     /** @var string[] Lowercased allowlist patterns */
     private array $patterns;
 
+    private ?string $redirectTo;
+
     /** @var array|null Stored original recipients for restoration */
     private ?array $originalRecipients = null;
 
     /**
      * @param string[] $allowedPatterns Exact addresses or '*@domain' wildcards
+     * @param string|null $redirectTo   Optional catch-all address for non-allowed recipients
      */
-    public function __construct(array $allowedPatterns)
+    public function __construct(array $allowedPatterns, ?string $redirectTo = null)
     {
         $this->patterns = array_map('strtolower', $allowedPatterns);
+        $this->redirectTo = $redirectTo;
     }
 
     public function beforeSendPerformed(Swift_Events_SendEvent $evt): void
@@ -48,6 +52,12 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
             'cc' => $message->getCc(),
             'bcc' => $message->getBcc(),
         ];
+
+        if (null !== $this->redirectTo) {
+            $this->applyRedirect($message);
+
+            return;
+        }
 
         // Filter each recipient field
         $filteredTo = $this->filterRecipients($this->originalRecipients['to'] ?? []);
@@ -80,6 +90,11 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
 
         $message = $evt->getMessage();
 
+        // Remove temporary header
+        if ($message->getHeaders()->has('X-Original-To')) {
+            $message->getHeaders()->removeAll('X-Original-To');
+        }
+
         // Restore original recipients
         $message->setTo($this->originalRecipients['to'] ?? []);
 
@@ -91,6 +106,34 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
         }
 
         $this->originalRecipients = null;
+    }
+
+    private function applyRedirect(Swift_Mime_SimpleMessage $message): void
+    {
+        $allOriginal = array_merge(
+            $this->originalRecipients['to'] ?? [],
+            $this->originalRecipients['cc'] ?? [],
+            $this->originalRecipients['bcc'] ?? [],
+        );
+
+        $filteredTo = $this->filterRecipients($this->originalRecipients['to'] ?? []);
+        $needsRedirect = \count($filteredTo) < \count($allOriginal);
+
+        if ($needsRedirect) {
+            // Store original recipients in X-Original-To header
+            $originalAddresses = implode(', ', array_keys($allOriginal));
+            $message->getHeaders()->addTextHeader('X-Original-To', $originalAddresses);
+        }
+
+        // Allowed recipients go through, add catch-all for any non-allowed
+        $newTo = $filteredTo;
+        if (\count($filteredTo) < \count($this->originalRecipients['to'] ?? [])) {
+            $newTo[$this->redirectTo] = $this->redirectTo;
+        }
+
+        $message->setTo($newTo);
+        $message->setCc([]);
+        $message->setBcc([]);
     }
 
     /**

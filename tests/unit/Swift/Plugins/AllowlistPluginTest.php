@@ -174,4 +174,87 @@ class Swift_Plugins_AllowlistPluginTest extends \PHPUnit\Framework\TestCase
 
         $this->assertFalse($event->bubbleCancelled());
     }
+
+    public function testRedirectModeReplacesAllRecipients()
+    {
+        $plugin = new Swift_Plugins_AllowlistPlugin([], 'catchall@dev.example.com');
+
+        $message = (new Swift_Message())
+            ->setFrom(['sender@example.com'])
+            ->setTo([
+                'real-user@external.com' => 'Real User',
+                'another@external.com' => 'Another',
+            ])
+            ->setCc(['cc@external.com' => 'CC'])
+            ->setSubject('Test');
+
+        $event = $this->createSendEvent($message);
+        $plugin->beforeSendPerformed($event);
+
+        // All recipients should be replaced with the catch-all
+        $to = $message->getTo();
+        $this->assertCount(1, $to);
+        $this->assertArrayHasKey('catchall@dev.example.com', $to);
+
+        // Cc and Bcc should be cleared
+        $this->assertEmpty($message->getCc());
+        $this->assertEmpty($message->getBcc());
+
+        // Original To should be preserved as X-Original-To header
+        $header = $message->getHeaders()->get('X-Original-To');
+        $this->assertNotNull($header);
+        $this->assertStringContainsString('real-user@external.com', $header->getFieldBody());
+
+        // Send should NOT be cancelled
+        $this->assertFalse($event->bubbleCancelled());
+    }
+
+    public function testRedirectModeRestoresOriginalRecipients()
+    {
+        $plugin = new Swift_Plugins_AllowlistPlugin([], 'catchall@dev.example.com');
+
+        $message = (new Swift_Message())
+            ->setFrom(['sender@example.com'])
+            ->setTo(['real@external.com' => 'Real'])
+            ->setSubject('Test');
+
+        $event = $this->createSendEvent($message);
+        $plugin->beforeSendPerformed($event);
+
+        // After send, originals should be restored
+        $plugin->sendPerformed($event);
+
+        $to = $message->getTo();
+        $this->assertArrayHasKey('real@external.com', $to);
+        $this->assertArrayNotHasKey('catchall@dev.example.com', $to);
+
+        // X-Original-To header should be removed
+        $this->assertFalse($message->getHeaders()->has('X-Original-To'));
+    }
+
+    public function testRedirectWithAllowlistCombined()
+    {
+        // Allowed recipients go through normally, non-allowed get redirected
+        $plugin = new Swift_Plugins_AllowlistPlugin(
+            ['dev@example.com'],
+            'catchall@dev.example.com'
+        );
+
+        $message = (new Swift_Message())
+            ->setFrom(['sender@example.com'])
+            ->setTo([
+                'dev@example.com' => 'Dev',
+                'real@external.com' => 'Real',
+            ])
+            ->setSubject('Test');
+
+        $event = $this->createSendEvent($message);
+        $plugin->beforeSendPerformed($event);
+
+        $to = $message->getTo();
+        // dev@example.com passes through, real@external.com gets redirected to catch-all
+        $this->assertArrayHasKey('dev@example.com', $to);
+        $this->assertArrayHasKey('catchall@dev.example.com', $to);
+        $this->assertArrayNotHasKey('real@external.com', $to);
+    }
 }
