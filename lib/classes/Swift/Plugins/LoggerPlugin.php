@@ -13,7 +13,7 @@
  *
  * @author     Chris Corbyn
  */
-class Swift_Plugins_LoggerPlugin implements Swift_Events_CommandListener, Swift_Events_ResponseListener, Swift_Events_TransportChangeListener, Swift_Events_TransportExceptionListener, Swift_Events_SentMessageListener, Swift_Events_FailedMessageListener, Swift_Plugins_Logger
+class Swift_Plugins_LoggerPlugin implements Swift_Events_CommandListener, Swift_Events_ResponseListener, Swift_Events_TransportChangeListener, Swift_Events_TransportExceptionListener, Swift_Events_SendListener, Swift_Events_SentMessageListener, Swift_Events_FailedMessageListener, Swift_Plugins_Logger
 {
     /** The logger which is delegated to */
     private $logger;
@@ -122,6 +122,29 @@ class Swift_Plugins_LoggerPlugin implements Swift_Events_CommandListener, Swift_
         $message .= $this->logger->dump();
         $evt->cancelBubble();
         throw new Swift_TransportException($message, $code, $e->getPrevious());
+    }
+
+    /**
+     * Invoked immediately before the Message is sent.
+     */
+    public function beforeSendPerformed(Swift_Events_SendEvent $evt)
+    {
+    }
+
+    /**
+     * Invoked immediately after the Message is sent.
+     */
+    public function sendPerformed(Swift_Events_SendEvent $evt)
+    {
+        if ($evt->isRejected()) {
+            $reason = $evt->getRejectionReason() ?? 'no reason given';
+            $this->logger->add(\sprintf(
+                ">> Message rejected before sending: %s\n",
+                $reason,
+            ));
+
+            return;
+        }
     }
 
     /**

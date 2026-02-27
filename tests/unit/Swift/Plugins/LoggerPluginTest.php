@@ -140,6 +140,27 @@ class Swift_Plugins_LoggerPluginTest extends SwiftMailerTestCase
         $plugin->failedMessage($event);
     }
 
+    public function testRejectionIsLogged()
+    {
+        $logger = $this->createMock(Swift_Plugins_Logger::class);
+        $plugin = new Swift_Plugins_LoggerPlugin($logger);
+
+        $transport = $this->createMock(Swift_Transport::class);
+        $message = (new Swift_Message())
+            ->setFrom(['from@example.com'])
+            ->setTo(['to@example.com'])
+            ->setSubject('Test');
+
+        $event = new Swift_Events_SendEvent($transport, $message);
+        $event->reject('Recipient on suppression list');
+
+        $logger->expects($this->once())
+            ->method('add')
+            ->with($this->stringContains('Rejected'));
+
+        $plugin->sendPerformed($event);
+    }
+
     public function testExceptionsArePassedToDelegateAndLeftToBubbleUp()
     {
         $transport = $this->createTransport();
