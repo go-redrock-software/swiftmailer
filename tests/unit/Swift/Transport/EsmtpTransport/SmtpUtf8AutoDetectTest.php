@@ -1,14 +1,14 @@
 <?php
 
-class Swift_Transport_EsmtpTransport_SmtpUtf8AutoDetectTest extends \PHPUnit\Framework\TestCase
+class Swift_Transport_EsmtpTransport_SmtpUtf8AutoDetectTest extends PHPUnit\Framework\TestCase
 {
     public function testAutoEncoderIsSetAfterCapabilityParsing()
     {
         // This test verifies that after doHeloCommand() parses capabilities
         // containing SMTPUTF8, the AutoAddressEncoder is switched to UTF-8 mode.
 
-        $buf = $this->createMock(Swift_Transport_IoBuffer::class);
-        $dispatcher = $this->createMock(Swift_Events_EventDispatcher::class);
+        $buf         = $this->createMock(Swift_Transport_IoBuffer::class);
+        $dispatcher  = $this->createMock(Swift_Events_EventDispatcher::class);
         $autoEncoder = new Swift_AddressEncoder_AutoAddressEncoder();
 
         // Pass the auto encoder to the transport
@@ -26,8 +26,8 @@ class Swift_Transport_EsmtpTransport_SmtpUtf8AutoDetectTest extends \PHPUnit\Fra
 
     public function testAutoEncoderDefaultsToIdn()
     {
-        $buf = $this->createMock(Swift_Transport_IoBuffer::class);
-        $dispatcher = $this->createMock(Swift_Events_EventDispatcher::class);
+        $buf         = $this->createMock(Swift_Transport_IoBuffer::class);
+        $dispatcher  = $this->createMock(Swift_Events_EventDispatcher::class);
         $autoEncoder = new Swift_AddressEncoder_AutoAddressEncoder();
 
         $transport = new Swift_Transport_EsmtpTransport(

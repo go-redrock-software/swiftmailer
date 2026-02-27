@@ -21,14 +21,16 @@
 class Swift_AddressEncoder_AutoAddressEncoder implements Swift_AddressEncoder
 {
     private Swift_AddressEncoder_IdnAddressEncoder $idnEncoder;
+
     private Swift_AddressEncoder_Utf8AddressEncoder $utf8Encoder;
+
     private bool $smtpUtf8Available = false;
 
     public function __construct(
         ?Swift_AddressEncoder_IdnAddressEncoder $idnEncoder = null,
         ?Swift_AddressEncoder_Utf8AddressEncoder $utf8Encoder = null,
     ) {
-        $this->idnEncoder = $idnEncoder ?? new Swift_AddressEncoder_IdnAddressEncoder();
+        $this->idnEncoder  = $idnEncoder  ?? new Swift_AddressEncoder_IdnAddressEncoder();
         $this->utf8Encoder = $utf8Encoder ?? new Swift_AddressEncoder_Utf8AddressEncoder();
     }
 

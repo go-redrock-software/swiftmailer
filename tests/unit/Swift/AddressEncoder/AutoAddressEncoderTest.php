@@ -1,6 +1,6 @@
 <?php
 
-class Swift_AddressEncoder_AutoAddressEncoderTest extends \PHPUnit\Framework\TestCase
+class Swift_AddressEncoder_AutoAddressEncoderTest extends PHPUnit\Framework\TestCase
 {
     public function testDelegatestoIdnByDefault()
     {
