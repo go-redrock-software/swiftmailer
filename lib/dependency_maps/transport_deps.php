@@ -14,7 +14,7 @@ Swift_DependencyContainer::getInstance()
         'transport.smtphandlers',
         'transport.eventdispatcher',
         'transport.localdomain',
-        'address.idnaddressencoder',
+        'address.autoaddressencoder',
     ])
 
     ->register('transport.sendmail')
@@ -45,7 +45,7 @@ Swift_DependencyContainer::getInstance()
 
     ->register('transport.smtphandlers')
     ->asArray()
-    ->withDependencies(['transport.authhandler'])
+    ->withDependencies(['transport.authhandler', 'transport.smtputf8handler'])
 
     ->register('transport.authhandler')
     ->asNewInstanceOf('Swift_Transport_Esmtp_AuthHandler')
@@ -94,4 +94,7 @@ Swift_DependencyContainer::getInstance()
 
     ->register('address.utf8addressencoder')
     ->asNewInstanceOf('Swift_AddressEncoder_Utf8AddressEncoder')
+
+    ->register('address.autoaddressencoder')
+    ->asNewInstanceOf('Swift_AddressEncoder_AutoAddressEncoder')
 ;
