@@ -141,7 +141,7 @@ class Swift_Events_SendEvent extends Swift_Events_EventObject
      */
     public function reject(?string $reason = null): void
     {
-        $this->rejected = true;
+        $this->rejected        = true;
         $this->rejectionReason = $reason;
         $this->cancelBubble(true);
     }

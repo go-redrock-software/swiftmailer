@@ -1,12 +1,12 @@
 <?php
 
-class Swift_Transport_RejectionBehaviorTest extends \PHPUnit\Framework\TestCase
+class Swift_Transport_RejectionBehaviorTest extends PHPUnit\Framework\TestCase
 {
     public function testHttpApiTransportReturnsZeroOnRejection()
     {
         $dispatcher = new Swift_Events_SimpleEventDispatcher();
 
-        $transport = new class ('test-key', new \GuzzleHttp\Client(), $dispatcher) extends Swift_Transport_AbstractHttpApiTransport {
+        $transport = new class('test-key', new GuzzleHttp\Client(), $dispatcher) extends Swift_Transport_AbstractHttpApiTransport {
             protected function doSend(Swift_Mime_SimpleMessage $message): array
             {
                 return ['message_id' => 'test', 'recipients' => 1];
@@ -22,7 +22,7 @@ class Swift_Transport_RejectionBehaviorTest extends \PHPUnit\Framework\TestCase
                 return ['Authorization' => 'Bearer test-key'];
             }
 
-            protected function parseResponse(\Psr\Http\Message\ResponseInterface $response): array
+            protected function parseResponse(Psr\Http\Message\ResponseInterface $response): array
             {
                 return [];
             }
@@ -34,7 +34,7 @@ class Swift_Transport_RejectionBehaviorTest extends \PHPUnit\Framework\TestCase
         };
 
         // Register a plugin that rejects all messages
-        $rejecter = new class () implements Swift_Events_SendListener {
+        $rejecter = new class() implements Swift_Events_SendListener {
             public function beforeSendPerformed(Swift_Events_SendEvent $evt): void
             {
                 $evt->reject('Test rejection');
@@ -61,7 +61,7 @@ class Swift_Transport_RejectionBehaviorTest extends \PHPUnit\Framework\TestCase
     {
         $dispatcher = new Swift_Events_SimpleEventDispatcher();
 
-        $transport = new class ('test-key', new \GuzzleHttp\Client(), $dispatcher) extends Swift_Transport_AbstractHttpApiTransport {
+        $transport = new class('test-key', new GuzzleHttp\Client(), $dispatcher) extends Swift_Transport_AbstractHttpApiTransport {
             protected function doSend(Swift_Mime_SimpleMessage $message): array
             {
                 return ['message_id' => 'test', 'recipients' => 1];
@@ -77,7 +77,7 @@ class Swift_Transport_RejectionBehaviorTest extends \PHPUnit\Framework\TestCase
                 return [];
             }
 
-            protected function parseResponse(\Psr\Http\Message\ResponseInterface $response): array
+            protected function parseResponse(Psr\Http\Message\ResponseInterface $response): array
             {
                 return [];
             }
@@ -89,7 +89,7 @@ class Swift_Transport_RejectionBehaviorTest extends \PHPUnit\Framework\TestCase
         };
 
         // Register rejecting plugin
-        $transport->registerPlugin(new class () implements Swift_Events_SendListener {
+        $transport->registerPlugin(new class() implements Swift_Events_SendListener {
             public function beforeSendPerformed(Swift_Events_SendEvent $evt): void
             {
                 $evt->reject('Suppression list match');
@@ -101,15 +101,16 @@ class Swift_Transport_RejectionBehaviorTest extends \PHPUnit\Framework\TestCase
         });
 
         // Register observer plugin that captures the sendPerformed event
-        $capturedReason = null;
+        $capturedReason   = null;
         $capturedRejected = null;
-        $transport->registerPlugin(new class ($capturedReason, $capturedRejected) implements Swift_Events_SendListener {
+        $transport->registerPlugin(new class($capturedReason, $capturedRejected) implements Swift_Events_SendListener {
             private mixed $reasonRef;
+
             private mixed $rejectedRef;
 
             public function __construct(&$reason, &$rejected)
             {
-                $this->reasonRef = &$reason;
+                $this->reasonRef   = &$reason;
                 $this->rejectedRef = &$rejected;
             }
 
@@ -120,7 +121,7 @@ class Swift_Transport_RejectionBehaviorTest extends \PHPUnit\Framework\TestCase
             public function sendPerformed(Swift_Events_SendEvent $evt): void
             {
                 $this->rejectedRef = $evt->isRejected();
-                $this->reasonRef = $evt->getRejectionReason();
+                $this->reasonRef   = $evt->getRejectionReason();
             }
         });
 

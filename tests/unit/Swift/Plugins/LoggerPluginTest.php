@@ -146,7 +146,7 @@ class Swift_Plugins_LoggerPluginTest extends SwiftMailerTestCase
         $plugin = new Swift_Plugins_LoggerPlugin($logger);
 
         $transport = $this->createMock(Swift_Transport::class);
-        $message = (new Swift_Message())
+        $message   = (new Swift_Message())
             ->setFrom(['from@example.com'])
             ->setTo(['to@example.com'])
             ->setSubject('Test');
