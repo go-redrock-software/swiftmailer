@@ -1,6 +1,6 @@
 <?php
 
-class Swift_Plugins_AllowlistPluginTest extends \PHPUnit\Framework\TestCase
+class Swift_Plugins_AllowlistPluginTest extends PHPUnit\Framework\TestCase
 {
     private function createSendEvent(Swift_Message $message): Swift_Events_SendEvent
     {
@@ -32,7 +32,7 @@ class Swift_Plugins_AllowlistPluginTest extends \PHPUnit\Framework\TestCase
         $message = (new Swift_Message())
             ->setFrom(['sender@example.com'])
             ->setTo([
-                'dev@example.com' => 'Dev User',
+                'dev@example.com'        => 'Dev User',
                 'real-user@external.com' => 'Real User',
             ])
             ->setSubject('Test');
@@ -53,7 +53,7 @@ class Swift_Plugins_AllowlistPluginTest extends \PHPUnit\Framework\TestCase
             ->setFrom(['sender@example.com'])
             ->setTo([
                 'anyone@example.com' => 'Internal',
-                'user@external.com' => 'External',
+                'user@external.com'  => 'External',
             ])
             ->setSubject('Test');
 
@@ -88,11 +88,11 @@ class Swift_Plugins_AllowlistPluginTest extends \PHPUnit\Framework\TestCase
             ->setFrom(['sender@safe.com'])
             ->setTo(['to@safe.com' => 'Safe To'])
             ->setCc([
-                'cc-safe@safe.com' => 'Safe CC',
+                'cc-safe@safe.com'    => 'Safe CC',
                 'cc-unsafe@other.com' => 'Unsafe CC',
             ])
             ->setBcc([
-                'bcc-safe@safe.com' => 'Safe BCC',
+                'bcc-safe@safe.com'    => 'Safe BCC',
                 'bcc-unsafe@other.com' => 'Unsafe BCC',
             ])
             ->setSubject('Test');
@@ -116,7 +116,7 @@ class Swift_Plugins_AllowlistPluginTest extends \PHPUnit\Framework\TestCase
         $message = (new Swift_Message())
             ->setFrom(['sender@example.com'])
             ->setTo([
-                'dev@example.com' => 'Dev',
+                'dev@example.com'   => 'Dev',
                 'real@external.com' => 'Real',
             ])
             ->setSubject('Test');
@@ -183,7 +183,7 @@ class Swift_Plugins_AllowlistPluginTest extends \PHPUnit\Framework\TestCase
             ->setFrom(['sender@example.com'])
             ->setTo([
                 'real-user@external.com' => 'Real User',
-                'another@external.com' => 'Another',
+                'another@external.com'   => 'Another',
             ])
             ->setCc(['cc@external.com' => 'CC'])
             ->setSubject('Test');
@@ -237,13 +237,13 @@ class Swift_Plugins_AllowlistPluginTest extends \PHPUnit\Framework\TestCase
         // Allowed recipients go through normally, non-allowed get redirected
         $plugin = new Swift_Plugins_AllowlistPlugin(
             ['dev@example.com'],
-            'catchall@dev.example.com'
+            'catchall@dev.example.com',
         );
 
         $message = (new Swift_Message())
             ->setFrom(['sender@example.com'])
             ->setTo([
-                'dev@example.com' => 'Dev',
+                'dev@example.com'   => 'Dev',
                 'real@external.com' => 'Real',
             ])
             ->setSubject('Test');

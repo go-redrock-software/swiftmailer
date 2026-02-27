@@ -10,7 +10,7 @@ class AllowlistPluginIntegrationTest extends TestCase
     {
         $dispatcher = new \Swift_Events_SimpleEventDispatcher();
         $httpClient = $this->createMock(\GuzzleHttp\ClientInterface::class);
-        $sent = false;
+        $sent       = false;
 
         $transport = new class('test-key', $httpClient, $dispatcher, $sent) extends \Swift_Transport_AbstractHttpApiTransport {
             private bool $sentRef;
@@ -73,7 +73,7 @@ class AllowlistPluginIntegrationTest extends TestCase
     {
         $dispatcher = new \Swift_Events_SimpleEventDispatcher();
         $httpClient = $this->createMock(\GuzzleHttp\ClientInterface::class);
-        $sentTo = null;
+        $sentTo     = null;
 
         $transport = new class('test-key', $httpClient, $dispatcher, $sentTo) extends \Swift_Transport_AbstractHttpApiTransport {
             private mixed $sentToRef;
@@ -118,7 +118,7 @@ class AllowlistPluginIntegrationTest extends TestCase
         $message = (new \Swift_Message())
             ->setFrom(['sender@safe.com'])
             ->setTo([
-                'dev@safe.com' => 'Dev',
+                'dev@safe.com'         => 'Dev',
                 'anyone@internal.corp' => 'Internal',
                 'blocked@external.com' => 'Blocked',
             ])

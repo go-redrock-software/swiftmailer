@@ -11,9 +11,11 @@
  * Restricts email delivery to a configured allowlist of recipients.
  *
  * Intended for dev/staging environments to prevent accidental sends to real users.
+ *
  * Supports exact email addresses and domain wildcards (e.g., '*@example.com').
  *
  * Usage:
+ *
  *     $plugin = new Swift_Plugins_AllowlistPlugin(['*@mycompany.com', 'tester@gmail.com']);
  *     $mailer->registerPlugin($plugin);
  *
@@ -33,12 +35,12 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
     private ?array $originalRecipients = null;
 
     /**
-     * @param string[] $allowedPatterns Exact addresses or '*@domain' wildcards
-     * @param string|null $redirectTo   Optional catch-all address for non-allowed recipients
+     * @param string[]    $allowedPatterns Exact addresses or '*@domain' wildcards
+     * @param string|null $redirectTo      Optional catch-all address for non-allowed recipients
      */
     public function __construct(array $allowedPatterns, ?string $redirectTo = null)
     {
-        $this->patterns = array_map('strtolower', $allowedPatterns);
+        $this->patterns   = \array_map('strtolower', $allowedPatterns);
         $this->redirectTo = $redirectTo;
     }
 
@@ -48,8 +50,8 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
 
         // Store original recipients
         $this->originalRecipients = [
-            'to' => $message->getTo(),
-            'cc' => $message->getCc(),
+            'to'  => $message->getTo(),
+            'cc'  => $message->getCc(),
             'bcc' => $message->getBcc(),
         ];
 
@@ -60,8 +62,8 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
         }
 
         // Filter each recipient field
-        $filteredTo = $this->filterRecipients($this->originalRecipients['to'] ?? []);
-        $filteredCc = $this->filterRecipients($this->originalRecipients['cc'] ?? []);
+        $filteredTo  = $this->filterRecipients($this->originalRecipients['to'] ?? []);
+        $filteredCc  = $this->filterRecipients($this->originalRecipients['cc'] ?? []);
         $filteredBcc = $this->filterRecipients($this->originalRecipients['bcc'] ?? []);
 
         // If no recipients left at all, cancel the send
@@ -110,18 +112,18 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
 
     private function applyRedirect(Swift_Mime_SimpleMessage $message): void
     {
-        $allOriginal = array_merge(
-            $this->originalRecipients['to'] ?? [],
-            $this->originalRecipients['cc'] ?? [],
+        $allOriginal = \array_merge(
+            $this->originalRecipients['to']  ?? [],
+            $this->originalRecipients['cc']  ?? [],
             $this->originalRecipients['bcc'] ?? [],
         );
 
-        $filteredTo = $this->filterRecipients($this->originalRecipients['to'] ?? []);
+        $filteredTo    = $this->filterRecipients($this->originalRecipients['to'] ?? []);
         $needsRedirect = \count($filteredTo) < \count($allOriginal);
 
         if ($needsRedirect) {
             // Store original recipients in X-Original-To header
-            $originalAddresses = implode(', ', array_keys($allOriginal));
+            $originalAddresses = \implode(', ', \array_keys($allOriginal));
             $message->getHeaders()->addTextHeader('X-Original-To', $originalAddresses);
         }
 
@@ -158,7 +160,7 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
 
     private function isAllowed(string $email): bool
     {
-        $email = strtolower($email);
+        $email = \strtolower($email);
 
         foreach ($this->patterns as $pattern) {
             // Exact match
@@ -167,9 +169,9 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
             }
 
             // Domain wildcard: *@domain
-            if (str_starts_with($pattern, '*@')) {
-                $domain = substr($pattern, 2);
-                $emailDomain = substr($email, strrpos($email, '@') + 1);
+            if (\str_starts_with($pattern, '*@')) {
+                $domain      = \substr($pattern, 2);
+                $emailDomain = \substr($email, \strrpos($email, '@') + 1);
 
                 if ($domain === $emailDomain) {
                     return true;
