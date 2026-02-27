@@ -33,4 +33,29 @@ class Swift_Transport_DsnTransportFactoryTest extends PHPUnit\Framework\TestCase
         $this->expectExceptionMessage('Unsupported DSN scheme');
         $this->factory->fromDsnString('unknown://default');
     }
+
+    public function testSmtpUtf8DisabledViaDsn(): void
+    {
+        $transport = $this->factory->fromDsnString('smtp://user:pass@smtp.example.com:587?smtputf8=false');
+
+        $this->assertInstanceOf(Swift_SmtpTransport::class, $transport);
+
+        // When smtputf8=false, the address encoder should be IdnAddressEncoder (not Auto)
+        $encoder = $this->getAddressEncoder($transport);
+        $this->assertInstanceOf(Swift_AddressEncoder_IdnAddressEncoder::class, $encoder);
+    }
+
+    public function testSmtpUtf8EnabledByDefaultInDsn(): void
+    {
+        $transport = $this->factory->fromDsnString('smtp://user:pass@smtp.example.com:587');
+
+        // Default should use AutoAddressEncoder
+        $encoder = $this->getAddressEncoder($transport);
+        $this->assertInstanceOf(Swift_AddressEncoder_AutoAddressEncoder::class, $encoder);
+    }
+
+    private function getAddressEncoder(Swift_SmtpTransport $transport): Swift_AddressEncoder
+    {
+        return $transport->getAddressEncoder();
+    }
 }

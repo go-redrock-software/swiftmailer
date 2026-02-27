@@ -108,6 +108,11 @@ class Swift_Transport_DsnTransportFactory
             $transport->setStreamOptions($streamOptions);
         }
 
+        if (isset($params['smtputf8']) && !filter_var($params['smtputf8'], FILTER_VALIDATE_BOOLEAN)) {
+            // Disable SMTPUTF8: use plain IdnAddressEncoder instead of AutoAddressEncoder
+            $transport->setAddressEncoder(new Swift_AddressEncoder_IdnAddressEncoder());
+        }
+
         return $transport;
     }
 }
