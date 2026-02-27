@@ -378,6 +378,12 @@ class Swift_Transport_EsmtpTransport extends Swift_Transport_AbstractSmtpTranspo
             $this->pipelining = isset($this->capabilities['PIPELINING']);
         }
 
+        // Update AutoAddressEncoder based on SMTPUTF8 capability
+        $addressEncoder = $this->getAddressEncoder();
+        if ($addressEncoder instanceof Swift_AddressEncoder_AutoAddressEncoder) {
+            $addressEncoder->setSmtpUtf8Available(isset($this->capabilities['SMTPUTF8']));
+        }
+
         $this->setHandlerParams();
         foreach ($this->getActiveHandlers() as $handler) {
             $handler->afterEhlo($this);
