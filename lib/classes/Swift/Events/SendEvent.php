@@ -52,6 +52,11 @@ class Swift_Events_SendEvent extends Swift_Events_EventObject
     private $result;
 
     /**
+     * The explicit envelope, if any.
+     */
+    private ?Swift_Envelope $envelope = null;
+
+    /**
      * Create a new SendEvent for $source and $message.
      */
     public function __construct(Swift_Transport $source, Swift_Mime_SimpleMessage $message)
@@ -122,5 +127,24 @@ class Swift_Events_SendEvent extends Swift_Events_EventObject
     public function getResult()
     {
         return $this->result;
+    }
+
+    /**
+     * Set an explicit SMTP envelope for this send operation.
+     *
+     * Plugins can read this in beforeSendPerformed to inspect or modify
+     * the envelope before the transport uses it.
+     */
+    public function setEnvelope(?Swift_Envelope $envelope): void
+    {
+        $this->envelope = $envelope;
+    }
+
+    /**
+     * Get the explicit SMTP envelope, if one was provided.
+     */
+    public function getEnvelope(): ?Swift_Envelope
+    {
+        return $this->envelope;
     }
 }

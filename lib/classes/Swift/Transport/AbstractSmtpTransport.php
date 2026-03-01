@@ -179,7 +179,7 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
      *
      * @return int
      */
-    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null)
+    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null)
     {
         if (!$this->isStarted()) {
             $this->start();
@@ -189,31 +189,45 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
         $failedRecipients = (array) $failedRecipients;
 
         if ($evt = $this->eventDispatcher->createSendEvent($this, $message)) {
+            $evt->setEnvelope($envelope);
             $this->eventDispatcher->dispatchEvent($evt, 'beforeSendPerformed');
             if ($evt->bubbleCancelled()) {
                 return 0;
             }
+            // Re-read envelope in case a listener modified it
+            $envelope = $evt->getEnvelope();
         }
 
-        if (!$reversePath = $this->getReversePath($message)) {
-            $this->throwException(new Swift_TransportException('Cannot send message without a sender address'));
-        }
+        if (null !== $envelope) {
+            // Use explicit envelope -- no BCC stripping, no header inspection
+            $reversePath   = $envelope->getSender();
+            $recipientArr  = $envelope->getRecipients();
+            $totalExpected = \count($recipientArr);
 
-        $to  = (array) $message->getTo();
-        $cc  = (array) $message->getCc();
-        $bcc = (array) $message->getBcc();
-        $tos = \array_merge($to, $cc, $bcc);
+            $sent += $this->doMailTransaction($message, $reversePath, $recipientArr, $failedRecipients);
+        } else {
+            // Legacy behavior: derive from message headers
+            if (!$reversePath = $this->getReversePath($message)) {
+                $this->throwException(new Swift_TransportException('Cannot send message without a sender address'));
+            }
 
-        $message->setBcc([]);
+            $to            = (array) $message->getTo();
+            $cc            = (array) $message->getCc();
+            $bcc           = (array) $message->getBcc();
+            $tos           = \array_merge($to, $cc, $bcc);
+            $totalExpected = \count($to) + \count($cc) + \count($bcc);
 
-        try {
-            $sent += $this->sendTo($message, $reversePath, $tos, $failedRecipients);
-        } finally {
-            $message->setBcc($bcc);
+            $message->setBcc([]);
+
+            try {
+                $sent += $this->sendTo($message, $reversePath, $tos, $failedRecipients);
+            } finally {
+                $message->setBcc($bcc);
+            }
         }
 
         if ($evt) {
-            if ($sent == \count($to) + \count($cc) + \count($bcc)) {
+            if ($sent == $totalExpected) {
                 $evt->setResult(Swift_Events_SendEvent::RESULT_SUCCESS);
             } elseif ($sent > 0) {
                 $evt->setResult(Swift_Events_SendEvent::RESULT_TENTATIVE);

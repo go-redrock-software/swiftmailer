@@ -99,7 +99,7 @@ class Swift_Transport_SendmailTransport extends Swift_Transport_AbstractSmtpTran
      *
      * @return int
      */
-    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null)
+    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null)
     {
         $failedRecipients = (array) $failedRecipients;
         $command          = $this->getCommand();
@@ -108,14 +108,17 @@ class Swift_Transport_SendmailTransport extends Swift_Transport_AbstractSmtpTran
 
         if (\str_contains($command, ' -t')) {
             if ($evt = $this->eventDispatcher->createSendEvent($this, $message)) {
+                $evt->setEnvelope($envelope);
                 $this->eventDispatcher->dispatchEvent($evt, 'beforeSendPerformed');
                 if ($evt->bubbleCancelled()) {
                     return 0;
                 }
             }
 
+            $reversePath = null !== $envelope ? $envelope->getSender() : $this->getReversePath($message);
+
             if (!\str_contains($command, ' -f')) {
-                $command .= ' -f'.\escapeshellarg($this->getReversePath($message) ?? '');
+                $command .= ' -f'.\escapeshellarg($reversePath ?? '');
             }
 
             $buffer->initialize(\array_merge($this->params, ['command' => $command]));
@@ -126,9 +129,13 @@ class Swift_Transport_SendmailTransport extends Swift_Transport_AbstractSmtpTran
                 $buffer->setWriteTranslations(["\r\n" => "\n"]);
             }
 
-            $count = \count((array) $message->getTo())
-                + \count((array) $message->getCc())
-                + \count((array) $message->getBcc());
+            if (null !== $envelope) {
+                $count = \count($envelope->getRecipients());
+            } else {
+                $count = \count((array) $message->getTo())
+                    + \count((array) $message->getCc())
+                    + \count((array) $message->getBcc());
+            }
             $message->toByteStream($buffer);
             $buffer->flushBuffers();
             $buffer->setWriteTranslations([]);
@@ -142,7 +149,7 @@ class Swift_Transport_SendmailTransport extends Swift_Transport_AbstractSmtpTran
 
             $message->generateId();
         } elseif (\str_contains($command, ' -bs')) {
-            $count = parent::send($message, $failedRecipients);
+            $count = parent::send($message, $failedRecipients, $envelope);
         } else {
             $this->throwException(
                 new Swift_TransportException(
