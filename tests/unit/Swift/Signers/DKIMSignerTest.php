@@ -141,6 +141,64 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $this->assertEquals($sig->getValue(), 'v=1; q=dns/txt; a=rsa-sha256; bh=f+W+hu8dIhf2VAni89o8lF6WKTXi7nViA4RrMdpD5/U=; d=dummy.nxdomain.be; h=; i=@dummy.nxdomain.be; s=dummySelector; c=simple/relaxed; t=1299879181; b=k/y8Cyt5YylUbo2Ey0iXMeOO/KBV5lMClErTPeKRQ1Q5Y3X4UsbBldbta8ZxxIj/cpAVjheDk v/t0OMZLrbCxCVXnB+d2/aiz7w5Lnru2E2EFaVM2DmXVEIb6KjCGmpAJFZn+AKZtSpramk4zm Z80Df07CsmItnJE/A+J5m1nnw=');
     }
 
+    public function testOversigningDisabledByDefault()
+    {
+        $headerSet      = $this->createHeaderSetWithFrom();
+        $messageContent = 'Hello World';
+        $signer         = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector'
+        );
+        $signer->setHashAlgorithm('rsa-sha256');
+        $signer->setSignatureTimestamp('1299879181');
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write($messageContent);
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $dkim = $headerSet->getAll('DKIM-Signature');
+        $sig  = \reset($dkim);
+        $value = $sig->getValue();
+        // Extract h= value (use \b to avoid matching bh=)
+        \preg_match('/\bh=([^;]+)/', $value, $matches);
+        $signedHeaders = \array_map('trim', \explode(':', $matches[1]));
+        // From should appear exactly once (not oversigned)
+        $fromCount = \array_count_values($signedHeaders)['From'] ?? 0;
+        $this->assertEquals(1, $fromCount);
+    }
+
+    public function testOversigningAddsExtraHeaderInstances()
+    {
+        $headerSet      = $this->createHeaderSetWithFrom();
+        $messageContent = 'Hello World';
+        $signer         = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector'
+        );
+        $signer->setHashAlgorithm('rsa-sha256');
+        $signer->setSignatureTimestamp('1299879181');
+        $signer->setOversigning(true);
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write($messageContent);
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $dkim = $headerSet->getAll('DKIM-Signature');
+        $sig  = \reset($dkim);
+        $value = $sig->getValue();
+        // Extract h= value (use \b to avoid matching bh=)
+        \preg_match('/\bh=([^;]+)/', $value, $matches);
+        $signedHeaders = \array_map('trim', \explode(':', $matches[1]));
+        $headerCounts  = \array_count_values($signedHeaders);
+        // From, Subject, To should each appear twice (once real + once oversigned)
+        $this->assertEquals(2, $headerCounts['From'] ?? 0, 'From should be oversigned');
+        $this->assertEquals(2, $headerCounts['Subject'] ?? 0, 'Subject should be oversigned');
+    }
+
     public function testSetHashAlgorithmAcceptsEd25519()
     {
         $signer = new Swift_Signers_DKIMSigner(

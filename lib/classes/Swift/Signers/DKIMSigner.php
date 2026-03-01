@@ -16,6 +16,13 @@
 class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
 {
     /**
+     * Headers to oversign when oversigning is enabled.
+     */
+    private const OVERSIGN_HEADERS = [
+        'from', 'to', 'subject', 'date', 'cc', 'reply-to', 'message-id',
+    ];
+
+    /**
      * PrivateKey.
      *
      * @var string
@@ -115,6 +122,15 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
      * @var bool
      */
     protected $debugHeaders = false;
+
+    /**
+     * Whether to oversign critical headers to prevent replay attacks.
+     *
+     * When enabled, From, To, Subject, Date, Cc, Reply-To, and Message-ID
+     * are signed an extra time (for a non-existent instance), so any header
+     * added post-signing breaks DKIM verification.
+     */
+    protected bool $oversigning = false;
 
     // work variables
     /**
@@ -432,6 +448,20 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
     }
 
     /**
+     * Enable or disable oversigning of critical headers.
+     *
+     * @param bool $oversign
+     *
+     * @return $this
+     */
+    public function setOversigning(bool $oversign)
+    {
+        $this->oversigning = $oversign;
+
+        return $this;
+    }
+
+    /**
      * Start Body.
      */
     public function startBody()
@@ -524,8 +554,20 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
      */
     public function addSignature(Swift_Mime_SimpleHeaderSet $headers)
     {
+        // Build the header list, with optional oversigning
+        $headerList = $this->signedHeaders;
+        if ($this->oversigning) {
+            $lowerSigned = \array_map('strtolower', $headerList);
+            foreach (self::OVERSIGN_HEADERS as $oh) {
+                if (\in_array($oh, $lowerSigned, true)) {
+                    // Find the original-case version to keep formatting consistent
+                    $idx = \array_search($oh, $lowerSigned, true);
+                    $headerList[] = $this->signedHeaders[$idx];
+                }
+            }
+        }
         // Prepare the DKIM-Signature
-        $params = ['v' => '1', 'q' => 'dns/txt', 'a' => $this->hashAlgorithm, 'bh' => \base64_encode($this->bodyHash ?? ''), 'd' => $this->domainName, 'h' => \implode(': ', $this->signedHeaders), 'i' => $this->signerIdentity, 's' => $this->selector];
+        $params = ['v' => '1', 'q' => 'dns/txt', 'a' => $this->hashAlgorithm, 'bh' => \base64_encode($this->bodyHash ?? ''), 'd' => $this->domainName, 'h' => \implode(': ', $headerList), 'i' => $this->signerIdentity, 's' => $this->selector];
         if ('simple' != $this->bodyCanon) {
             $params['c'] = $this->headerCanon.'/'.$this->bodyCanon;
         } elseif ('simple' != $this->headerCanon) {
