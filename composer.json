@@ -58,6 +58,9 @@
       "Swift_": "tests/unit"
     }
   },
+  "bin": [
+    "bin/swiftmailer-test"
+  ],
   "extra": {
     "branch-alias": {
       "dev-master": "6.3-dev"
