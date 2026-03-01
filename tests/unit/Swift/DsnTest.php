@@ -113,6 +113,12 @@ class Swift_DsnTest extends TestCase
         ];
     }
 
+    public function testIsReadonlyClass(): void
+    {
+        $ref = new ReflectionClass(Swift_Dsn::class);
+        $this->assertTrue($ref->isReadOnly());
+    }
+
     public function testUnknownSchemeThrowsException(): void
     {
         $dsn = $this->createMock(Dsn::class);

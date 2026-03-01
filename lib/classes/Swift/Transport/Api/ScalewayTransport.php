@@ -27,6 +27,7 @@ class Swift_Transport_Api_ScalewayTransport extends Swift_Transport_AbstractHttp
         parent::__construct($apiKey, $httpClient, $eventDispatcher);
     }
 
+    #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
         $payload = $this->buildPayload($message);
@@ -57,6 +58,7 @@ class Swift_Transport_Api_ScalewayTransport extends Swift_Transport_AbstractHttp
         ];
     }
 
+    #[Override]
     protected function getEndpoint(): string
     {
         return \sprintf(
@@ -65,6 +67,7 @@ class Swift_Transport_Api_ScalewayTransport extends Swift_Transport_AbstractHttp
         );
     }
 
+    #[Override]
     protected function getAuthHeaders(): array
     {
         return [
@@ -72,6 +75,7 @@ class Swift_Transport_Api_ScalewayTransport extends Swift_Transport_AbstractHttp
         ];
     }
 
+    #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
         $body = (string) $response->getBody();
@@ -79,6 +83,7 @@ class Swift_Transport_Api_ScalewayTransport extends Swift_Transport_AbstractHttp
         return \json_decode($body, true) ?? [];
     }
 
+    #[Override]
     protected function getPingEndpoint(): string
     {
         return \sprintf(

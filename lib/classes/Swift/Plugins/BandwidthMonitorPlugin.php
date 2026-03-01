@@ -35,6 +35,7 @@ class Swift_Plugins_BandwidthMonitorPlugin implements Swift_Events_SendListener,
     /**
      * Not used.
      */
+    #[Override]
     public function beforeSendPerformed(Swift_Events_SendEvent $evt)
     {
     }
@@ -42,6 +43,7 @@ class Swift_Plugins_BandwidthMonitorPlugin implements Swift_Events_SendListener,
     /**
      * Invoked immediately after the Message is sent.
      */
+    #[Override]
     public function sendPerformed(Swift_Events_SendEvent $evt)
     {
         $message = $evt->getMessage();
@@ -51,6 +53,7 @@ class Swift_Plugins_BandwidthMonitorPlugin implements Swift_Events_SendListener,
     /**
      * Invoked immediately following a command being sent.
      */
+    #[Override]
     public function commandSent(Swift_Events_CommandEvent $evt)
     {
         $command = $evt->getCommand();
@@ -60,6 +63,7 @@ class Swift_Plugins_BandwidthMonitorPlugin implements Swift_Events_SendListener,
     /**
      * Invoked immediately following a response coming back.
      */
+    #[Override]
     public function responseReceived(Swift_Events_ResponseEvent $evt)
     {
         $response = $evt->getResponse();
@@ -71,6 +75,7 @@ class Swift_Plugins_BandwidthMonitorPlugin implements Swift_Events_SendListener,
      *
      * @param string|array $bytes
      */
+    #[Override]
     public function write($bytes)
     {
         // Convert array to string
@@ -87,6 +92,7 @@ class Swift_Plugins_BandwidthMonitorPlugin implements Swift_Events_SendListener,
     /**
      * Not used.
      */
+    #[Override]
     public function commit()
     {
     }
@@ -97,6 +103,7 @@ class Swift_Plugins_BandwidthMonitorPlugin implements Swift_Events_SendListener,
      * The stream acts as an observer, receiving all data that is written.
      * All {@link write()} and {@link flushBuffers()} operations will be mirrored.
      */
+    #[Override]
     public function bind(Swift_InputByteStream $is)
     {
         $this->mirrors[] = $is;
@@ -109,6 +116,7 @@ class Swift_Plugins_BandwidthMonitorPlugin implements Swift_Events_SendListener,
      * If the stream currently has any buffered data it will be written to $is
      * before unbinding occurs.
      */
+    #[Override]
     public function unbind(Swift_InputByteStream $is)
     {
         foreach ($this->mirrors as $k => $stream) {
@@ -121,6 +129,7 @@ class Swift_Plugins_BandwidthMonitorPlugin implements Swift_Events_SendListener,
     /**
      * Not used.
      */
+    #[Override]
     public function flushBuffers()
     {
         foreach ($this->mirrors as $stream) {

@@ -27,11 +27,13 @@ class Swift_Webhook_Converter_MailjetConverter extends Swift_Webhook_AbstractPay
         'unsub'   => ['engagement', 'unsubscribed'],
     ];
 
+    #[Override]
     public function getProviderName(): string
     {
         return 'mailjet';
     }
 
+    #[Override]
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
         // Mailjet relies on basic HTTP authentication on the webhook URL.
@@ -39,6 +41,7 @@ class Swift_Webhook_Converter_MailjetConverter extends Swift_Webhook_AbstractPay
         return true;
     }
 
+    #[Override]
     public function convert(array $payload, array $headers): array
     {
         $eventName = $payload['event'] ?? null;

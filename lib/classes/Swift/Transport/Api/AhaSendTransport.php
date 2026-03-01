@@ -18,6 +18,7 @@ use Psr\Http\Message\ResponseInterface;
  */
 class Swift_Transport_Api_AhaSendTransport extends Swift_Transport_AbstractHttpApiTransport
 {
+    #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
         $payload = $this->getPayload($message);
@@ -49,11 +50,13 @@ class Swift_Transport_Api_AhaSendTransport extends Swift_Transport_AbstractHttpA
         ];
     }
 
+    #[Override]
     protected function getEndpoint(): string
     {
         return 'https://api.ahasend.com/v1/email/send';
     }
 
+    #[Override]
     protected function getAuthHeaders(): array
     {
         return [
@@ -61,11 +64,13 @@ class Swift_Transport_Api_AhaSendTransport extends Swift_Transport_AbstractHttpA
         ];
     }
 
+    #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
         return \json_decode((string) $response->getBody(), true) ?? [];
     }
 
+    #[Override]
     protected function getPingEndpoint(): string
     {
         return 'https://api.ahasend.com/v1/email/send';

@@ -13,18 +13,18 @@
  * Two types: 'delivery' (bounced, delivered, deferred, dropped) and
  * 'engagement' (opened, clicked, unsubscribed, complained).
  */
-class Swift_Webhook_Event
+readonly class Swift_Webhook_Event
 {
-    private const VALID_TYPES = ['delivery', 'engagement'];
+    private const array VALID_TYPES = ['delivery', 'engagement'];
 
     public function __construct(
-        private readonly string $type,
-        private readonly string $name,
-        private readonly string $messageId,
-        private readonly string $recipient,
-        private readonly array $metadata,
-        private readonly DateTimeImmutable $timestamp,
-        private readonly array $rawPayload,
+        private string $type,
+        private string $name,
+        private string $messageId,
+        private string $recipient,
+        private array $metadata,
+        private DateTimeImmutable $timestamp,
+        private array $rawPayload,
     ) {
         if (!\in_array($type, self::VALID_TYPES, true)) {
             throw new InvalidArgumentException(\sprintf('Invalid event type "%s". Valid types: %s', $type, \implode(', ', self::VALID_TYPES)));

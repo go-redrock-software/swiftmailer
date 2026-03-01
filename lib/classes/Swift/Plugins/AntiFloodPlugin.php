@@ -100,6 +100,7 @@ class Swift_Plugins_AntiFloodPlugin implements Swift_Events_SendListener, Swift_
     /**
      * Invoked immediately before the Message is sent.
      */
+    #[Override]
     public function beforeSendPerformed(Swift_Events_SendEvent $evt)
     {
     }
@@ -107,6 +108,7 @@ class Swift_Plugins_AntiFloodPlugin implements Swift_Events_SendListener, Swift_
     /**
      * Invoked immediately after the Message is sent.
      */
+    #[Override]
     public function sendPerformed(Swift_Events_SendEvent $evt)
     {
         ++$this->counter;
@@ -126,6 +128,7 @@ class Swift_Plugins_AntiFloodPlugin implements Swift_Events_SendListener, Swift_
      *
      * @param int $seconds
      */
+    #[Override]
     public function sleep($seconds)
     {
         if (isset($this->sleeper)) {

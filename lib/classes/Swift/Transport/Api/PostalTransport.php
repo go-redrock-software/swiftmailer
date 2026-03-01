@@ -31,6 +31,7 @@ class Swift_Transport_Api_PostalTransport extends Swift_Transport_AbstractHttpAp
         $this->host = \rtrim($host, '/');
     }
 
+    #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
         $payload = $this->getPayload($message);
@@ -57,11 +58,13 @@ class Swift_Transport_Api_PostalTransport extends Swift_Transport_AbstractHttpAp
         ];
     }
 
+    #[Override]
     protected function getEndpoint(): string
     {
         return 'https://'.$this->host.'/api/v1/send/message';
     }
 
+    #[Override]
     protected function getAuthHeaders(): array
     {
         return [
@@ -69,11 +72,13 @@ class Swift_Transport_Api_PostalTransport extends Swift_Transport_AbstractHttpAp
         ];
     }
 
+    #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
         return \json_decode((string) $response->getBody(), true) ?? [];
     }
 
+    #[Override]
     protected function getPingEndpoint(): string
     {
         return 'https://'.$this->host.'/api/v1/messages/deliveries';

@@ -20,6 +20,7 @@ class Swift_Mime_ContentEncoder_Base64ContentEncoder extends Swift_Encoder_Base6
      *
      * @param int $firstLineOffset
      */
+    #[Override]
     public function encodeByteStream(Swift_OutputByteStream $os, Swift_InputByteStream $is, $firstLineOffset = 0, $maxLineLength = 0)
     {
         if (0 >= $maxLineLength || 76 < $maxLineLength) {
@@ -94,6 +95,7 @@ class Swift_Mime_ContentEncoder_Base64ContentEncoder extends Swift_Encoder_Base6
      *
      * @return string
      */
+    #[Override]
     public function getName()
     {
         return 'base64';

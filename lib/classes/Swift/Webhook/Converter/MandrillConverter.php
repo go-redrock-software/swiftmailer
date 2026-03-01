@@ -34,11 +34,13 @@ class Swift_Webhook_Converter_MandrillConverter extends Swift_Webhook_AbstractPa
         'unsub'       => ['engagement', 'unsubscribed'],
     ];
 
+    #[Override]
     public function getProviderName(): string
     {
         return 'mandrill';
     }
 
+    #[Override]
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
         $signature = $headers['x-mandrill-signature'] ?? null;
@@ -70,6 +72,7 @@ class Swift_Webhook_Converter_MandrillConverter extends Swift_Webhook_AbstractPa
         return \hash_equals($expected, $signature);
     }
 
+    #[Override]
     public function convert(array $payload, array $headers): array
     {
         $events = [];

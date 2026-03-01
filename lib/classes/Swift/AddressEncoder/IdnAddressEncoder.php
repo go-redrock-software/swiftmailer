@@ -29,6 +29,7 @@ class Swift_AddressEncoder_IdnAddressEncoder implements Swift_AddressEncoder
      *
      * @throws Swift_AddressEncoderException If local-part contains non-ASCII characters
      */
+    #[Override]
     public function encodeString(string $address): string
     {
         $i = \strrpos($address, '@');

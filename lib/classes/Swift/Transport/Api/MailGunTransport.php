@@ -35,6 +35,7 @@ class Swift_Transport_Api_MailGunTransport extends Swift_Transport_AbstractHttpA
         $this->host   = $host;
     }
 
+    #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
@@ -57,11 +58,13 @@ class Swift_Transport_Api_MailGunTransport extends Swift_Transport_AbstractHttpA
         ];
     }
 
+    #[Override]
     protected function getEndpoint(): string
     {
         return \rtrim($this->host, '/').'/v3/'.\urlencode($this->domain).'/messages';
     }
 
+    #[Override]
     protected function getAuthHeaders(): array
     {
         return [
@@ -69,11 +72,13 @@ class Swift_Transport_Api_MailGunTransport extends Swift_Transport_AbstractHttpA
         ];
     }
 
+    #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
         return \json_decode((string) $response->getBody(), true) ?? [];
     }
 
+    #[Override]
     protected function getPingEndpoint(): string
     {
         return \rtrim($this->host, '/').'/v3/domains/'.\urlencode($this->domain);

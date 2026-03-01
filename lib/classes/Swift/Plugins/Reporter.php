@@ -16,10 +16,10 @@
 interface Swift_Plugins_Reporter
 {
     /** The recipient was accepted for delivery */
-    public const RESULT_PASS = 0x01;
+    public const int RESULT_PASS = 0x01;
 
     /** The recipient could not be accepted */
-    public const RESULT_FAIL = 0x10;
+    public const int RESULT_FAIL = 0x10;
 
     /**
      * Notifies this ReportNotifier that $address failed or succeeded.

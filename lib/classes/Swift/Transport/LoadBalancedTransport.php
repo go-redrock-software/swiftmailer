@@ -77,6 +77,7 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
      *
      * @return bool
      */
+    #[Override]
     public function isStarted()
     {
         return \count($this->transports) > 0;
@@ -85,6 +86,7 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
     /**
      * Start this Transport mechanism.
      */
+    #[Override]
     public function start()
     {
         $this->transports = \array_merge($this->transports, $this->deadTransports);
@@ -93,6 +95,7 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
     /**
      * Stop this Transport mechanism.
      */
+    #[Override]
     public function stop()
     {
         foreach ($this->transports as $transport) {
@@ -100,6 +103,7 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
         }
     }
 
+    #[Override]
     public function ping()
     {
         foreach ($this->transports as $transport) {
@@ -121,6 +125,7 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
      *
      * @return int
      */
+    #[Override]
     public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null)
     {
         $maxTransports           = \count($this->transports);
@@ -154,6 +159,7 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
     /**
      * Register a plugin.
      */
+    #[Override]
     public function registerPlugin(Swift_Events_EventListener $plugin)
     {
         foreach ($this->transports as $transport) {

@@ -18,6 +18,7 @@ use Psr\Http\Message\ResponseInterface;
  */
 class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHttpApiTransport
 {
+    #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
         $payload = $this->getPayload($message);
@@ -74,21 +75,25 @@ class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHtt
         }
     }
 
+    #[Override]
     protected function getEndpoint(): string
     {
         return 'https://mandrillapp.com/api/1.0/messages/send';
     }
 
+    #[Override]
     protected function getAuthHeaders(): array
     {
         return [];
     }
 
+    #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
         return \json_decode((string) $response->getBody(), true) ?? [];
     }
 
+    #[Override]
     protected function getPingEndpoint(): string
     {
         return 'https://mandrillapp.com/api/1.0/users/ping';

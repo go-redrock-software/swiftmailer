@@ -16,19 +16,19 @@
 class Swift_DependencyContainer
 {
     /** Constant for literal value types */
-    public const TYPE_VALUE = 0x00001;
+    public const int TYPE_VALUE = 0x00001;
 
     /** Constant for new instance types */
-    public const TYPE_INSTANCE = 0x00010;
+    public const int TYPE_INSTANCE = 0x00010;
 
     /** Constant for shared instance types */
-    public const TYPE_SHARED = 0x00100;
+    public const int TYPE_SHARED = 0x00100;
 
     /** Constant for aliases */
-    public const TYPE_ALIAS = 0x01000;
+    public const int TYPE_ALIAS = 0x01000;
 
     /** Constant for arrays */
-    public const TYPE_ARRAY = 0x10000;
+    public const int TYPE_ARRAY = 0x10000;
 
     /** Singleton instance */
     private static $instance;

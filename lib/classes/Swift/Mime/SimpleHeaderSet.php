@@ -287,6 +287,7 @@ class Swift_Mime_SimpleHeaderSet implements Swift_Mime_CharsetObserver
      *
      * @param string $charset
      */
+    #[Override]
     public function charsetChanged($charset)
     {
         $this->setCharset($charset);

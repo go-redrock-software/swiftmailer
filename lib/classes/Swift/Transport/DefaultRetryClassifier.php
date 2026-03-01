@@ -68,6 +68,7 @@ class Swift_Transport_DefaultRetryClassifier implements Swift_Transport_RetryCla
         'relay access denied',
     ];
 
+    #[Override]
     public function isRetryable(Swift_TransportException $e): bool
     {
         $code    = $e->getCode();

@@ -451,6 +451,7 @@ class Swift_Mime_SimpleMimeEntity implements Swift_Mime_CharsetObserver, Swift_M
      *
      * @param string $charset
      */
+    #[Override]
     public function charsetChanged($charset)
     {
         $this->notifyCharsetChanged($charset);
@@ -460,6 +461,7 @@ class Swift_Mime_SimpleMimeEntity implements Swift_Mime_CharsetObserver, Swift_M
      * Receive notification that the encoder of this entity or a parent entity
      * has changed.
      */
+    #[Override]
     public function encoderChanged(Swift_Mime_ContentEncoder $encoder)
     {
         $this->notifyEncoderChanged($encoder);

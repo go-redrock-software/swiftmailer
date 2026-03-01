@@ -133,6 +133,7 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
     /**
      * Start the SMTP connection.
      */
+    #[Override]
     public function start()
     {
         if (!$this->started) {
@@ -164,6 +165,7 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
      *
      * @return bool
      */
+    #[Override]
     public function isStarted()
     {
         return $this->started;
@@ -179,6 +181,7 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
      *
      * @return int
      */
+    #[Override]
     public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null)
     {
         if (!$this->isStarted()) {
@@ -250,6 +253,7 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
     /**
      * Stop the SMTP connection.
      */
+    #[Override]
     public function stop()
     {
         if ($this->started) {
@@ -278,6 +282,7 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
         $this->started = false;
     }
 
+    #[Override]
     public function ping()
     {
         try {
@@ -301,6 +306,7 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
     /**
      * Register a plugin.
      */
+    #[Override]
     public function registerPlugin(Swift_Events_EventListener $plugin)
     {
         $this->eventDispatcher->bindEventListener($plugin);
@@ -443,12 +449,9 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
         if (!empty($return)) {
             $path = $return;
         } elseif (!empty($sender)) {
-            // Don't use array_keys
-            \reset($sender); // Reset Pointer to first pos
-            $path = \key($sender); // Get key
+            $path = \array_key_first($sender);
         } elseif (!empty($from)) {
-            \reset($from); // Reset Pointer to first pos
-            $path = \key($from); // Get key
+            $path = \array_key_first($from);
         }
 
         return $path;

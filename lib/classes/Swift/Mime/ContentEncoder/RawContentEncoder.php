@@ -28,6 +28,7 @@ class Swift_Mime_ContentEncoder_RawContentEncoder implements Swift_Mime_ContentE
      *
      * @return string
      */
+    #[Override]
     public function encodeString($string, $firstLineOffset = 0, $maxLineLength = 0)
     {
         return $string;
@@ -39,6 +40,7 @@ class Swift_Mime_ContentEncoder_RawContentEncoder implements Swift_Mime_ContentE
      * @param int $firstLineOffset ignored
      * @param int $maxLineLength   ignored
      */
+    #[Override]
     public function encodeByteStream(Swift_OutputByteStream $os, Swift_InputByteStream $is, $firstLineOffset = 0, $maxLineLength = 0)
     {
         while (false !== ($bytes = $os->read(8192))) {
@@ -51,6 +53,7 @@ class Swift_Mime_ContentEncoder_RawContentEncoder implements Swift_Mime_ContentE
      *
      * @return string
      */
+    #[Override]
     public function getName()
     {
         return 'raw';
@@ -59,6 +62,7 @@ class Swift_Mime_ContentEncoder_RawContentEncoder implements Swift_Mime_ContentE
     /**
      * Not used.
      */
+    #[Override]
     public function charsetChanged($charset)
     {
     }

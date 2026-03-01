@@ -132,4 +132,10 @@ class Swift_EnvelopeTest extends PHPUnit\Framework\TestCase
         $recipients[] = 'other@example.com';
         $this->assertCount(1, $envelope->getRecipients());
     }
+
+    public function testIsReadonlyClass()
+    {
+        $ref = new ReflectionClass(Swift_Envelope::class);
+        $this->assertTrue($ref->isReadOnly());
+    }
 }

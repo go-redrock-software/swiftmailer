@@ -31,6 +31,7 @@ class Swift_Transport_Api_InfoBipTransport extends Swift_Transport_AbstractHttpA
         $this->baseUrl = \rtrim($baseUrl, '/');
     }
 
+    #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
@@ -59,11 +60,13 @@ class Swift_Transport_Api_InfoBipTransport extends Swift_Transport_AbstractHttpA
         ];
     }
 
+    #[Override]
     protected function getEndpoint(): string
     {
         return 'https://'.$this->baseUrl.'/email/3/send';
     }
 
+    #[Override]
     protected function getAuthHeaders(): array
     {
         return [
@@ -71,11 +74,13 @@ class Swift_Transport_Api_InfoBipTransport extends Swift_Transport_AbstractHttpA
         ];
     }
 
+    #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
         return \json_decode((string) $response->getBody(), true) ?? [];
     }
 
+    #[Override]
     protected function getPingEndpoint(): string
     {
         return 'https://'.$this->baseUrl.'/email/1/domains';

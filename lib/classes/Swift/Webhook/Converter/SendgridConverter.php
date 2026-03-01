@@ -32,11 +32,13 @@ class Swift_Webhook_Converter_SendgridConverter extends Swift_Webhook_AbstractPa
         'spamreport'  => ['engagement', 'complained'],
     ];
 
+    #[Override]
     public function getProviderName(): string
     {
         return 'sendgrid';
     }
 
+    #[Override]
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
         $signature = $headers['x-twilio-email-event-webhook-signature'] ?? null;
@@ -62,6 +64,7 @@ class Swift_Webhook_Converter_SendgridConverter extends Swift_Webhook_AbstractPa
         return 1 === \openssl_verify($payload, $decodedSig, $publicKey, OPENSSL_ALGO_SHA256);
     }
 
+    #[Override]
     public function convert(array $payload, array $headers): array
     {
         $events = [];

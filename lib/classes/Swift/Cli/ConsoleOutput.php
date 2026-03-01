@@ -23,7 +23,7 @@ class Swift_Cli_ConsoleOutput
      */
     public function __construct($stream = null, $errorStream = null)
     {
-        $this->stream       = $stream ?? \STDOUT;
+        $this->stream       = $stream      ?? \STDOUT;
         $this->errorStream  = $errorStream ?? \fopen('php://stderr', 'w');
         $this->colorEnabled = $this->detectColor();
     }

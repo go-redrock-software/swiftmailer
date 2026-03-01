@@ -13,7 +13,7 @@
  * This allows sender rewriting, recipient overriding, and BCC handling
  * without modifying the Swift_Mime_SimpleMessage headers.
  */
-class Swift_Envelope
+readonly class Swift_Envelope
 {
     private string $sender;
 
@@ -103,16 +103,12 @@ class Swift_Envelope
 
         $sender = $message->getSender();
         if (!empty($sender)) {
-            \reset($sender);
-
-            return \key($sender);
+            return \array_key_first($sender);
         }
 
         $from = $message->getFrom();
         if (!empty($from)) {
-            \reset($from);
-
-            return \key($from);
+            return \array_key_first($from);
         }
 
         return null;

@@ -34,7 +34,7 @@ class Swift_Transport_RejectionBehaviorTest extends PHPUnit\Framework\TestCase
         };
 
         // Register a plugin that rejects all messages
-        $rejecter = new class() implements Swift_Events_SendListener {
+        $rejecter = new class implements Swift_Events_SendListener {
             public function beforeSendPerformed(Swift_Events_SendEvent $evt): void
             {
                 $evt->reject('Test rejection');
@@ -89,7 +89,7 @@ class Swift_Transport_RejectionBehaviorTest extends PHPUnit\Framework\TestCase
         };
 
         // Register rejecting plugin
-        $transport->registerPlugin(new class() implements Swift_Events_SendListener {
+        $transport->registerPlugin(new class implements Swift_Events_SendListener {
             public function beforeSendPerformed(Swift_Events_SendEvent $evt): void
             {
                 $evt->reject('Suppression list match');

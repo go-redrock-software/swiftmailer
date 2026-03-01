@@ -32,11 +32,13 @@ class Swift_Webhook_Converter_MailtrapConverter extends Swift_Webhook_AbstractPa
         'unsubscribe' => ['engagement', 'unsubscribed'],
     ];
 
+    #[Override]
     public function getProviderName(): string
     {
         return 'mailtrap';
     }
 
+    #[Override]
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
         $signature = $headers['mailtrap-signature'] ?? null;
@@ -48,6 +50,7 @@ class Swift_Webhook_Converter_MailtrapConverter extends Swift_Webhook_AbstractPa
         return $this->verifyHmac($rawBody, $signature, $secret, 'sha256');
     }
 
+    #[Override]
     public function convert(array $payload, array $headers): array
     {
         $entries = $payload['events'] ?? [];

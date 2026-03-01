@@ -21,12 +21,12 @@ use Psr\Http\Message\ResponseInterface;
  */
 abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_AbstractApiTransport
 {
-    protected string $apiKey;
+    public protected(set) string $apiKey;
 
-    protected ClientInterface $httpClient;
+    public protected(set) ClientInterface $httpClient;
 
     /** @var Swift_Envelope|null Active envelope during send */
-    protected ?Swift_Envelope $activeEnvelope = null;
+    public protected(set) ?Swift_Envelope $activeEnvelope = null;
 
     public function __construct(
         #[SensitiveParameter] string $apiKey,
@@ -38,6 +38,7 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
         $this->eventDispatcher = $eventDispatcher;
     }
 
+    #[Override]
     public function start(): void
     {
         if (!$this->started) {
@@ -56,6 +57,7 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
         }
     }
 
+    #[Override]
     public function ping(): bool
     {
         if (!$this->isStarted()) {
@@ -74,6 +76,7 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
         }
     }
 
+    #[Override]
     public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null): int
     {
         if (null === $failedRecipients) {
@@ -152,6 +155,7 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
         }
     }
 
+    #[Override]
     protected function getApiConnection(): ClientInterface
     {
         return $this->httpClient;

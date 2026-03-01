@@ -28,11 +28,13 @@ class Swift_Webhook_Converter_MailomatConverter extends Swift_Webhook_AbstractPa
         'clicked'      => ['engagement', 'clicked'],
     ];
 
+    #[Override]
     public function getProviderName(): string
     {
         return 'mailomat';
     }
 
+    #[Override]
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
         $id        = $headers['x-mom-webhook-id']        ?? null;
@@ -62,6 +64,7 @@ class Swift_Webhook_Converter_MailomatConverter extends Swift_Webhook_AbstractPa
         return \hash_equals($expected, $hash);
     }
 
+    #[Override]
     public function convert(array $payload, array $headers): array
     {
         $eventType = $payload['eventType'] ?? null;

@@ -57,21 +57,25 @@ class Swift_Transport_RetryTransport implements Swift_Transport
         return $this->innerTransport;
     }
 
+    #[Override]
     public function isStarted(): bool
     {
         return $this->innerTransport->isStarted();
     }
 
+    #[Override]
     public function start(): void
     {
         $this->innerTransport->start();
     }
 
+    #[Override]
     public function stop(): void
     {
         $this->innerTransport->stop();
     }
 
+    #[Override]
     public function ping(): bool
     {
         return $this->innerTransport->ping();
@@ -90,6 +94,7 @@ class Swift_Transport_RetryTransport implements Swift_Transport
      *
      * @throws Swift_TransportException on permanent failure or after all retries exhausted
      */
+    #[Override]
     public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null): int
     {
         $attempt = 0;
@@ -117,6 +122,7 @@ class Swift_Transport_RetryTransport implements Swift_Transport
         }
     }
 
+    #[Override]
     public function registerPlugin(Swift_Events_EventListener $plugin): void
     {
         $this->innerTransport->registerPlugin($plugin);
