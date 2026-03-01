@@ -66,9 +66,18 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
         $filteredCc  = $this->filterRecipients($this->originalRecipients['cc'] ?? []);
         $filteredBcc = $this->filterRecipients($this->originalRecipients['bcc'] ?? []);
 
-        // If no recipients left at all, cancel the send
+        // If no recipients left at all, reject with reason
         if (empty($filteredTo) && empty($filteredCc) && empty($filteredBcc)) {
-            $evt->cancelBubble(true);
+            $allOriginalAddresses = \array_keys(\array_merge(
+                $this->originalRecipients['to']  ?? [],
+                $this->originalRecipients['cc']  ?? [],
+                $this->originalRecipients['bcc'] ?? [],
+            ));
+
+            $evt->reject(\sprintf(
+                'AllowlistPlugin: all recipients removed by allowlist filter (%s)',
+                \implode(', ', $allOriginalAddresses),
+            ));
 
             return;
         }

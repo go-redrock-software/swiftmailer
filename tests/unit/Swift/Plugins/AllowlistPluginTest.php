@@ -257,4 +257,65 @@ class Swift_Plugins_AllowlistPluginTest extends PHPUnit\Framework\TestCase
         $this->assertArrayHasKey('catchall@dev.example.com', $to);
         $this->assertArrayNotHasKey('real@external.com', $to);
     }
+
+    public function testAllRecipientsFilteredUsesRejectWithReason()
+    {
+        $plugin = new Swift_Plugins_AllowlistPlugin(['dev@example.com']);
+
+        $message = (new Swift_Message())
+            ->setFrom(['sender@example.com'])
+            ->setTo(['external@other.com' => 'External User'])
+            ->setSubject('Test');
+
+        $event = $this->createSendEvent($message);
+        $plugin->beforeSendPerformed($event);
+
+        $this->assertTrue($event->isRejected());
+        $reason = $event->getRejectionReason();
+        $this->assertNotNull($reason);
+        $this->assertStringContainsString('external@other.com', $reason);
+        $this->assertStringContainsString('allowlist', \strtolower($reason));
+    }
+
+    public function testAllRecipientsFilteredIncludesAllRemovedAddressesInReason()
+    {
+        $plugin = new Swift_Plugins_AllowlistPlugin(['dev@example.com']);
+
+        $message = (new Swift_Message())
+            ->setFrom(['sender@example.com'])
+            ->setTo([
+                'blocked1@other.com' => 'Blocked One',
+                'blocked2@other.com' => 'Blocked Two',
+            ])
+            ->setCc(['blocked3@other.com' => 'Blocked Three'])
+            ->setSubject('Test');
+
+        $event = $this->createSendEvent($message);
+        $plugin->beforeSendPerformed($event);
+
+        $this->assertTrue($event->isRejected());
+        $reason = $event->getRejectionReason();
+        $this->assertStringContainsString('blocked1@other.com', $reason);
+        $this->assertStringContainsString('blocked2@other.com', $reason);
+        $this->assertStringContainsString('blocked3@other.com', $reason);
+    }
+
+    public function testPartialFilterDoesNotReject()
+    {
+        $plugin = new Swift_Plugins_AllowlistPlugin(['dev@example.com']);
+
+        $message = (new Swift_Message())
+            ->setFrom(['sender@example.com'])
+            ->setTo([
+                'dev@example.com'   => 'Dev',
+                'real@external.com' => 'Real',
+            ])
+            ->setSubject('Test');
+
+        $event = $this->createSendEvent($message);
+        $plugin->beforeSendPerformed($event);
+
+        $this->assertFalse($event->isRejected());
+        $this->assertNull($event->getRejectionReason());
+    }
 }
