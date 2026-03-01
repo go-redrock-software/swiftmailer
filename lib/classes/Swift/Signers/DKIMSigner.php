@@ -66,7 +66,7 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
      *
      * @var array
      */
-    protected $ignoredHeaders = ['return-path' => true];
+    protected $ignoredHeaders = ['return-path' => true, 'x-transport' => true];
 
     /**
      * Signer identity.
@@ -471,7 +471,11 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
      */
     public function ignoreHeader($header_name)
     {
-        $this->ignoredHeaders[\strtolower($header_name ?? '')] = true;
+        $lower = \strtolower($header_name ?? '');
+        if ('from' === $lower) {
+            return $this;
+        }
+        $this->ignoredHeaders[$lower] = true;
 
         return $this;
     }
@@ -512,7 +516,7 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
     public function addSignature(Swift_Mime_SimpleHeaderSet $headers)
     {
         // Prepare the DKIM-Signature
-        $params = ['v' => '1', 'a' => $this->hashAlgorithm, 'bh' => \base64_encode($this->bodyHash ?? ''), 'd' => $this->domainName, 'h' => \implode(': ', $this->signedHeaders), 'i' => $this->signerIdentity, 's' => $this->selector];
+        $params = ['v' => '1', 'q' => 'dns/txt', 'a' => $this->hashAlgorithm, 'bh' => \base64_encode($this->bodyHash ?? ''), 'd' => $this->domainName, 'h' => \implode(': ', $this->signedHeaders), 'i' => $this->signerIdentity, 's' => $this->selector];
         if ('simple' != $this->bodyCanon) {
             $params['c'] = $this->headerCanon.'/'.$this->bodyCanon;
         } elseif ('simple' != $this->headerCanon) {

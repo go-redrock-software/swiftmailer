@@ -42,7 +42,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $this->assertTrue($headerSet->has('DKIM-Signature'));
         $dkim = $headerSet->getAll('DKIM-Signature');
         $sig  = \reset($dkim);
-        $this->assertEquals($sig->getValue(), 'v=1; a=rsa-sha1; bh=wlbYcY9O9OPInGJ4D0E/rGsvMLE=; d=dummy.nxdomain.be; h=; i=@dummy.nxdomain.be; s=dummySelector; t=1299879181; b=RMSNelzM2O5MAAnMjT3G3/VF36S3DGJXoPCXR001F1WDReu0prGphWjuzK/m6V1pwqQL8cCNg Hi74mTx2bvyAvmkjvQtJf1VMUOCc9WHGcm1Yec66I3ZWoNMGSWZ1EKAm2CtTzyG0IFw4ml9DI wSkyAFxlgicckDD6FibhqwX4w=');
+        $this->assertEquals($sig->getValue(), 'v=1; q=dns/txt; a=rsa-sha1; bh=wlbYcY9O9OPInGJ4D0E/rGsvMLE=; d=dummy.nxdomain.be; h=; i=@dummy.nxdomain.be; s=dummySelector; t=1299879181; b=WTmOCHDkG12u861eQwLXyKHvBDYSZN4qeXHXJxn9fmHRa331sYgQnPZUBs9JxNI743PHkR2N3 KEvsSAqA8zLsNVWcIujYbkk00jp/ZjO8quRW9jBQhMKaIT/Z0xNGZDZ82+5xbE/DpJY3ygMKP 59iT2+AbIqDai+LnzmBV4+QHs=');
     }
 
     // SHA256 Signing
@@ -65,7 +65,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $this->assertTrue($headerSet->has('DKIM-Signature'));
         $dkim = $headerSet->getAll('DKIM-Signature');
         $sig  = \reset($dkim);
-        $this->assertEquals($sig->getValue(), 'v=1; a=rsa-sha256; bh=f+W+hu8dIhf2VAni89o8lF6WKTXi7nViA4RrMdpD5/U=; d=dummy.nxdomain.be; h=; i=@dummy.nxdomain.be; s=dummySelector; t=1299879181; b=jqPmieHzF5vR9F4mXCAkowuphpO4iJ8IAVuioh1BFZ3VITXZj5jlOFxULJMBiiApm2keJirnh u4mzogj444QkpT3lJg8/TBGAYQPdcvkG3KC0jdyN6QpSgpITBJG2BwWa+keXsv2bkQgLRAzNx qRhP45vpHCKun0Tg9LrwW/KCg=');
+        $this->assertEquals($sig->getValue(), 'v=1; q=dns/txt; a=rsa-sha256; bh=f+W+hu8dIhf2VAni89o8lF6WKTXi7nViA4RrMdpD5/U=; d=dummy.nxdomain.be; h=; i=@dummy.nxdomain.be; s=dummySelector; t=1299879181; b=tDqvADv/EgLRXCwjA5XyybCSnuwpgib4gOYoXfqjcwumIF+q6d7UGSPGilnD675PIISv+P2+S AKqRh3mdQnEc8qAsYttU0t5mL6Uz90Vkecb62X13n0n59+VFIMN0BxjmWooSz6/mu4jWw2qqP 9/3sPEU+MRNjbjHllZ/v88TJA=');
     }
 
     // Relaxed/Relaxed Hash Signing
@@ -90,7 +90,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $this->assertTrue($headerSet->has('DKIM-Signature'));
         $dkim = $headerSet->getAll('DKIM-Signature');
         $sig  = \reset($dkim);
-        $this->assertEquals($sig->getValue(), 'v=1; a=rsa-sha256; bh=f+W+hu8dIhf2VAni89o8lF6WKTXi7nViA4RrMdpD5/U=; d=dummy.nxdomain.be; h=; i=@dummy.nxdomain.be; s=dummySelector; c=relaxed/relaxed; t=1299879181; b=gzOI+PX6HpZKQFzwwmxzcVJsyirdLXOS+4pgfCpVHQIdqYusKLrhlLeFBTNoz75HrhNvGH6T0 Rt3w5aTqkrWfUuAEYt0Ns14GowLM7JojaFN+pZ4eYnRB3CBBgW6fee4NEMD5WPca3uS09tr1E 10RYh9ILlRtl+84sovhx5id3Y=');
+        $this->assertEquals($sig->getValue(), 'v=1; q=dns/txt; a=rsa-sha256; bh=f+W+hu8dIhf2VAni89o8lF6WKTXi7nViA4RrMdpD5/U=; d=dummy.nxdomain.be; h=; i=@dummy.nxdomain.be; s=dummySelector; c=relaxed/relaxed; t=1299879181; b=w5OGnqxz+68TQFhfOv/6bmMQCZbLUI2yKCSax+RZw6inOToRBcXNej/JqbXJg8cPqK2n94e9E NhRxHdcPQKswuILsFJoMQvXc6Zm1jCgW4JZKy8ghV58O5P5PXzstHnf05s7zTlArBmZuURgks 8v5txRVl8hYXO5E4vpzeLJnak=');
     }
 
     // Relaxed/Simple Hash Signing
@@ -114,7 +114,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $this->assertTrue($headerSet->has('DKIM-Signature'));
         $dkim = $headerSet->getAll('DKIM-Signature');
         $sig  = \reset($dkim);
-        $this->assertEquals($sig->getValue(), 'v=1; a=rsa-sha256; bh=f+W+hu8dIhf2VAni89o8lF6WKTXi7nViA4RrMdpD5/U=; d=dummy.nxdomain.be; h=; i=@dummy.nxdomain.be; s=dummySelector; c=relaxed; t=1299879181; b=dLPJNec5v81oelyzGOY0qPqTlGnQeNfUNBOrV/JKbStr3NqWGI9jH4JAe2YvO2V32lfPNoby1 4MMzZ6EPkaZkZDDSPa+53YbCPQAlqiD9QZZIUe2UNM33HN8yAMgiWEF5aP7MbQnxeVZMfVLEl 9S8qOImu+K5JZqhQQTL0dgLwA=');
+        $this->assertEquals($sig->getValue(), 'v=1; q=dns/txt; a=rsa-sha256; bh=f+W+hu8dIhf2VAni89o8lF6WKTXi7nViA4RrMdpD5/U=; d=dummy.nxdomain.be; h=; i=@dummy.nxdomain.be; s=dummySelector; c=relaxed; t=1299879181; b=FE+27glrc4+pqe1qAwe1W1WRGPzzDgEH+V+zI/RFU6XDFSUae4Z4YQUhOCyHvHu8XRX+LMEji KqcUtAjJK7zWX5ajLMXXgVZfI6XxBTlcZihXXWO+Ur4W0r7B0se9Ys7GDm3P+c3naWepXfgwY zU/ZGk6kHyYPZa6HNnG/vBpfE=');
     }
 
     // Simple/Relaxed Hash Signing
@@ -138,7 +138,75 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $this->assertTrue($headerSet->has('DKIM-Signature'));
         $dkim = $headerSet->getAll('DKIM-Signature');
         $sig  = \reset($dkim);
-        $this->assertEquals($sig->getValue(), 'v=1; a=rsa-sha256; bh=f+W+hu8dIhf2VAni89o8lF6WKTXi7nViA4RrMdpD5/U=; d=dummy.nxdomain.be; h=; i=@dummy.nxdomain.be; s=dummySelector; c=simple/relaxed; t=1299879181; b=M5eomH/zamyzix9kOes+6YLzQZxuJdBP4x3nP9zF2N26eMLG2/cBKbnNyqiOTDhJdYfWPbLIa 1CWnjST0j5p4CpeOkGYuiE+M4TWEZwhRmRWootlPO3Ii6XpbBJKFk1o9zviS7OmXblUUE4aqb yRSIMDhtLdCK5GlaCneFLN7RQ=');
+        $this->assertEquals($sig->getValue(), 'v=1; q=dns/txt; a=rsa-sha256; bh=f+W+hu8dIhf2VAni89o8lF6WKTXi7nViA4RrMdpD5/U=; d=dummy.nxdomain.be; h=; i=@dummy.nxdomain.be; s=dummySelector; c=simple/relaxed; t=1299879181; b=k/y8Cyt5YylUbo2Ey0iXMeOO/KBV5lMClErTPeKRQ1Q5Y3X4UsbBldbta8ZxxIj/cpAVjheDk v/t0OMZLrbCxCVXnB+d2/aiz7w5Lnru2E2EFaVM2DmXVEIb6KjCGmpAJFZn+AKZtSpramk4zm Z80Df07CsmItnJE/A+J5m1nnw=');
+    }
+
+    public function testSignatureContainsQueryMethodTag()
+    {
+        $headerSet      = $this->createHeaderSet();
+        $messageContent = 'Hello World';
+        $signer         = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector'
+        );
+        $signer->setHashAlgorithm('rsa-sha256');
+        $signer->setSignatureTimestamp('1299879181');
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write($messageContent);
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $dkim = $headerSet->getAll('DKIM-Signature');
+        $sig  = \reset($dkim);
+        $this->assertStringContainsString('q=dns/txt', $sig->getValue());
+    }
+
+    public function testXTransportHeaderIsIgnoredByDefault()
+    {
+        $headerSet = $this->createHeaderSetWithXTransport();
+        $messageContent = 'Hello World';
+        $signer = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector'
+        );
+        $signer->setHashAlgorithm('rsa-sha256');
+        $signer->setSignatureTimestamp('1299879181');
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write($messageContent);
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $dkim = $headerSet->getAll('DKIM-Signature');
+        $sig  = \reset($dkim);
+        $this->assertStringNotContainsString('X-Transport', $sig->getValue());
+    }
+
+    public function testFromHeaderCannotBeIgnored()
+    {
+        $headerSet      = $this->createHeaderSetWithFrom();
+        $messageContent = 'Hello World';
+        $signer         = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector'
+        );
+        $signer->ignoreHeader('From');
+        $signer->setHashAlgorithm('rsa-sha256');
+        $signer->setSignatureTimestamp('1299879181');
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write($messageContent);
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $dkim = $headerSet->getAll('DKIM-Signature');
+        $sig  = \reset($dkim);
+        // h= must contain From even though ignoreHeader was called
+        $this->assertMatchesRegularExpression('/h=.*From/', $sig->getValue());
     }
 
     private function createHeaderSet()
@@ -151,6 +219,39 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $paramEncoder   = new Swift_Encoder_Rfc2231Encoder(new Swift_CharacterStream_ArrayCharacterStream($factory, 'utf-8'));
         $emailValidator = new EmailValidator();
         $headers        = new Swift_Mime_SimpleHeaderSet(new Swift_Mime_SimpleHeaderFactory($headerEncoder, $paramEncoder, $emailValidator));
+
+        return $headers;
+    }
+
+    private function createHeaderSetWithFrom()
+    {
+        $cache          = new Swift_KeyCache_ArrayKeyCache(new Swift_KeyCache_SimpleKeyCacheInputStream());
+        $factory        = new Swift_CharacterReaderFactory_SimpleCharacterReaderFactory();
+        $contentEncoder = new Swift_Mime_ContentEncoder_Base64ContentEncoder();
+
+        $headerEncoder  = new Swift_Mime_HeaderEncoder_QpHeaderEncoder(new Swift_CharacterStream_ArrayCharacterStream($factory, 'utf-8'));
+        $paramEncoder   = new Swift_Encoder_Rfc2231Encoder(new Swift_CharacterStream_ArrayCharacterStream($factory, 'utf-8'));
+        $emailValidator = new EmailValidator();
+        $headerFactory  = new Swift_Mime_SimpleHeaderFactory($headerEncoder, $paramEncoder, $emailValidator);
+        $headers        = new Swift_Mime_SimpleHeaderSet($headerFactory);
+        $headers->addMailboxHeader('From', 'test@test.test');
+        $headers->addMailboxHeader('To', 'recipient@test.test');
+        $headers->addTextHeader('Subject', 'Test Subject');
+
+        return $headers;
+    }
+
+    private function createHeaderSetWithXTransport()
+    {
+        $cache          = new Swift_KeyCache_ArrayKeyCache(new Swift_KeyCache_SimpleKeyCacheInputStream());
+        $factory        = new Swift_CharacterReaderFactory_SimpleCharacterReaderFactory();
+        $contentEncoder = new Swift_Mime_ContentEncoder_Base64ContentEncoder();
+
+        $headerEncoder  = new Swift_Mime_HeaderEncoder_QpHeaderEncoder(new Swift_CharacterStream_ArrayCharacterStream($factory, 'utf-8'));
+        $paramEncoder   = new Swift_Encoder_Rfc2231Encoder(new Swift_CharacterStream_ArrayCharacterStream($factory, 'utf-8'));
+        $emailValidator = new EmailValidator();
+        $headers        = new Swift_Mime_SimpleHeaderSet(new Swift_Mime_SimpleHeaderFactory($headerEncoder, $paramEncoder, $emailValidator));
+        $headers->addTextHeader('X-Transport', 'smtp://internal');
 
         return $headers;
     }
