@@ -7,7 +7,7 @@ class Swift_Transport_RejectionBehaviorTest extends PHPUnit\Framework\TestCase
         $dispatcher = new Swift_Events_SimpleEventDispatcher();
 
         $transport = new class('test-key', new GuzzleHttp\Client(), $dispatcher) extends Swift_Transport_AbstractHttpApiTransport {
-            protected function doSend(Swift_Mime_SimpleMessage $message): array
+            protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
             {
                 return ['message_id' => 'test', 'recipients' => 1];
             }
@@ -62,7 +62,7 @@ class Swift_Transport_RejectionBehaviorTest extends PHPUnit\Framework\TestCase
         $dispatcher = new Swift_Events_SimpleEventDispatcher();
 
         $transport = new class('test-key', new GuzzleHttp\Client(), $dispatcher) extends Swift_Transport_AbstractHttpApiTransport {
-            protected function doSend(Swift_Mime_SimpleMessage $message): array
+            protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
             {
                 return ['message_id' => 'test', 'recipients' => 1];
             }

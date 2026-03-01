@@ -96,7 +96,7 @@ class Swift_Transport_RetryTransport implements Swift_Transport
 
         while (true) {
             try {
-                return $this->innerTransport->send($message, $failedRecipients);
+                return $this->innerTransport->send($message, $failedRecipients, $envelope);
             } catch (Swift_TransportException $e) {
                 if (!$this->classifier->isRetryable($e) || $attempt >= $this->maxRetries) {
                     throw $e;

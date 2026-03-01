@@ -23,7 +23,7 @@ class Swift_Transport_RetryTransportIntegrationTest extends PHPUnit\Framework\Te
                 $this->maxFail = $maxFailures;
             }
 
-            protected function doSend(Swift_Mime_SimpleMessage $message): array
+            protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
             {
                 ++$this->callCount;
                 if ($this->callCount <= $this->maxFail) {
@@ -83,7 +83,7 @@ class Swift_Transport_RetryTransportIntegrationTest extends PHPUnit\Framework\Te
                 $this->countRef = &$callCount;
             }
 
-            protected function doSend(Swift_Mime_SimpleMessage $message): array
+            protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
             {
                 ++$this->countRef;
                 throw new Exception('Invalid API key provided');
@@ -146,7 +146,7 @@ class Swift_Transport_RetryTransportIntegrationTest extends PHPUnit\Framework\Te
                 $this->countRef = &$sendCount;
             }
 
-            protected function doSend(Swift_Mime_SimpleMessage $message): array
+            protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
             {
                 ++$this->calls;
                 ++$this->countRef;
