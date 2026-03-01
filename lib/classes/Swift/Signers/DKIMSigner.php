@@ -634,10 +634,17 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
 
     protected function endOfBody()
     {
-        // Add trailing Line return if last line is non empty
+        // Add trailing line return if last line is non-empty
         if (\strlen($this->bodyCanonLine) > 0) {
             $this->addToBodyHash("\r\n");
         }
+
+        // RFC 6376 Section 3.4.3: If the body is null (not even one CRLF),
+        // a CRLF is added for simple canonicalization.
+        if ('simple' === $this->bodyCanon && 0 === $this->bodyLen) {
+            $this->addToBodyHash("\r\n");
+        }
+
         $this->bodyHash = \hash_final($this->bodyHashHandler, true);
     }
 

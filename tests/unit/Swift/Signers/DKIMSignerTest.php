@@ -141,6 +141,54 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $this->assertEquals($sig->getValue(), 'v=1; q=dns/txt; a=rsa-sha256; bh=f+W+hu8dIhf2VAni89o8lF6WKTXi7nViA4RrMdpD5/U=; d=dummy.nxdomain.be; h=; i=@dummy.nxdomain.be; s=dummySelector; c=simple/relaxed; t=1299879181; b=k/y8Cyt5YylUbo2Ey0iXMeOO/KBV5lMClErTPeKRQ1Q5Y3X4UsbBldbta8ZxxIj/cpAVjheDk v/t0OMZLrbCxCVXnB+d2/aiz7w5Lnru2E2EFaVM2DmXVEIb6KjCGmpAJFZn+AKZtSpramk4zm Z80Df07CsmItnJE/A+J5m1nnw=');
     }
 
+    public function testEmptyBodySimpleCanon()
+    {
+        $headerSet = $this->createHeaderSet();
+        $signer    = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector'
+        );
+        $signer->setHashAlgorithm('rsa-sha256');
+        $signer->setSignatureTimestamp('1299879181');
+        $signer->setBodyCanon('simple');
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        // Write nothing -- empty body
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $dkim = $headerSet->getAll('DKIM-Signature');
+        $sig  = \reset($dkim);
+        // RFC 6376 3.4.3: empty body gets CRLF appended, SHA-256 of "\r\n"
+        $expectedBh = \base64_encode(\hash('sha256', "\r\n", true));
+        $this->assertStringContainsString('bh='.$expectedBh, $sig->getValue());
+    }
+
+    public function testEmptyBodyRelaxedCanon()
+    {
+        $headerSet = $this->createHeaderSet();
+        $signer    = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector'
+        );
+        $signer->setHashAlgorithm('rsa-sha256');
+        $signer->setSignatureTimestamp('1299879181');
+        $signer->setBodyCanon('relaxed');
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        // Write nothing -- empty body
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $dkim = $headerSet->getAll('DKIM-Signature');
+        $sig  = \reset($dkim);
+        // RFC 6376 3.4.4: empty body in relaxed = hash of empty string
+        $expectedBh = \base64_encode(\hash('sha256', '', true));
+        $this->assertStringContainsString('bh='.$expectedBh, $sig->getValue());
+    }
+
     public function testSignatureContainsQueryMethodTag()
     {
         $headerSet      = $this->createHeaderSet();
