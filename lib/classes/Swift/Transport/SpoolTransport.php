@@ -104,6 +104,10 @@ class Swift_Transport_SpoolTransport implements Swift_Transport
             $this->eventDispatcher->dispatchEvent($evt, 'sendPerformed');
         }
 
+        if ($envelope) {
+            return \count($envelope->getRecipients());
+        }
+
         return 1;
     }
 
