@@ -233,7 +233,7 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
     public function commit()
     {
         // Nothing to do
-        return;
+
     }
 
     /**
@@ -247,7 +247,6 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
         // Don't have to mirror anything
         $this->bound[] = $is;
 
-        return;
     }
 
     /**
@@ -457,9 +456,9 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
     {
         if ($this->debugHeaders) {
             return ['DKIM-Signature', 'X-DebugHash'];
-        } else {
-            return ['DKIM-Signature'];
         }
+
+        return ['DKIM-Signature'];
     }
 
     /**
@@ -599,10 +598,10 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
                             $this->bodyCanonLine = '';
                             $canon .= "\r\n";
                         }
-                    } else {
-                        // Wooops Error
-                        // todo handle it but should never happen
                     }
+                    // Wooops Error
+                    // todo handle it but should never happen
+
                     break;
                 case ' ':
                 case "\t":

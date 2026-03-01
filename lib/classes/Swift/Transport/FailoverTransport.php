@@ -37,9 +37,8 @@ class Swift_Transport_FailoverTransport extends Swift_Transport_LoadBalancedTran
         ) {
             if ($transport->ping()) {
                 return true;
-            } else {
-                $this->killCurrentTransport();
             }
+            $this->killCurrentTransport();
         }
 
         return \count($this->transports) > 0;

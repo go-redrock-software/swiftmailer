@@ -18,7 +18,6 @@ class Swift_MailerTest extends SwiftMailerTestCase
             ->andReturnUsing(function () use (&$started) {
                 $started = true;
 
-                return;
             });
 
         $mailer = $this->createMailer($transport);
@@ -41,7 +40,6 @@ class Swift_MailerTest extends SwiftMailerTestCase
             ->andReturnUsing(function () use (&$started) {
                 $started = true;
 
-                return;
             });
 
         $mailer = $this->createMailer($transport);

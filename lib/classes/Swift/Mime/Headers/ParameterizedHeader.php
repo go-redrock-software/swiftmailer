@@ -223,13 +223,13 @@ class Swift_Mime_Headers_ParameterizedHeader extends Swift_Mime_Headers_Unstruct
             }
 
             return \implode(";\r\n ", $paramLines);
-        } else {
-            return $name.$this->getEndOfParameterValue(
-                $valueLines[0],
-                $encoded,
-                true,
-            );
         }
+
+        return $name.$this->getEndOfParameterValue(
+            $valueLines[0],
+            $encoded,
+            true,
+        );
     }
 
     /**

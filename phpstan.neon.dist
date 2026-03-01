@@ -1,0 +1,13 @@
+includes:
+    - phpstan-baseline.neon
+
+parameters:
+    level: 5
+    paths:
+        - lib/classes
+    excludePaths:
+        - vendor
+    reportUnmatchedIgnoredErrors: false
+    ignoreErrors:
+        # PSR-0 underscore naming conventions trigger false positives
+        - '#Class Swift_[A-Za-z_]+ not found#'

@@ -326,9 +326,9 @@ class Swift_Transport_EsmtpTransport extends Swift_Transport_AbstractSmtpTranspo
                 // Allow fluid method calls
                 if (null === $return && 'set' == \substr($method, 0, 3)) {
                     return $this;
-                } else {
-                    return $return;
                 }
+
+                return $return;
             }
         }
         \trigger_error('Call to undefined method '.$method, E_USER_ERROR);

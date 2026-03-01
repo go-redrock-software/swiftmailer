@@ -140,10 +140,9 @@ class Swift_Transport_StreamBuffer extends Swift_ByteStream_AbstractFilterableIn
                 if (!$filter || !($filter instanceof Swift_StreamFilter)) {
                     // handle the error, maybe with an exception or logging
                     throw new Exception("Invalid filter created for search='$search', replace='$replace'");
-                } else {
-                    $this->addFilter($filter, $search);
-                    $this->translations[$search] = true;
                 }
+                $this->addFilter($filter, $search);
+                $this->translations[$search] = true;
             }
         }
     }
