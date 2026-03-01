@@ -87,6 +87,27 @@ class Swift_Events_SendEventTest extends PHPUnit\Framework\TestCase
         $this->assertEquals([], $evt->getFailedRecipients());
     }
 
+    public function testEnvelopeIsNullByDefault()
+    {
+        $transport = $this->createTransport();
+        $message   = $this->createMessage();
+        $evt       = $this->createEvent($transport, $message);
+
+        $this->assertNull($evt->getEnvelope());
+    }
+
+    public function testEnvelopeCanBeSetAndRetrieved()
+    {
+        $transport = $this->createTransport();
+        $message   = $this->createMessage();
+        $envelope  = new Swift_Envelope('sender@example.com', ['to@example.com']);
+        $evt       = $this->createEvent($transport, $message);
+
+        $evt->setEnvelope($envelope);
+
+        $this->assertSame($envelope, $evt->getEnvelope());
+    }
+
     private function createEvent(Swift_Transport $source, Swift_Mime_SimpleMessage $message)
     {
         return new Swift_Events_SendEvent($source, $message);
