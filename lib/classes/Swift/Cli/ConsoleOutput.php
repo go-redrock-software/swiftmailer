@@ -19,7 +19,7 @@ class Swift_Cli_ConsoleOutput
      */
     public function __construct($stream = null)
     {
-        $this->stream = $stream ?? \STDOUT;
+        $this->stream       = $stream ?? \STDOUT;
         $this->colorEnabled = $this->detectColor();
     }
 
@@ -45,7 +45,7 @@ class Swift_Cli_ConsoleOutput
 
     public function writeln(string $message): void
     {
-        fwrite($this->stream, $message.\PHP_EOL);
+        \fwrite($this->stream, $message.\PHP_EOL);
     }
 
     private function colorize(string $text, string $code): string
@@ -60,12 +60,12 @@ class Swift_Cli_ConsoleOutput
     private function detectColor(): bool
     {
         // Respect NO_COLOR convention (https://no-color.org/)
-        if (isset($_SERVER['NO_COLOR']) || false !== getenv('NO_COLOR')) {
+        if (isset($_SERVER['NO_COLOR']) || false !== \getenv('NO_COLOR')) {
             return false;
         }
 
         if (\function_exists('stream_isatty')) {
-            return stream_isatty($this->stream);
+            return \stream_isatty($this->stream);
         }
 
         return false;

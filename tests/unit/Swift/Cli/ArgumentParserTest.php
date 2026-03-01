@@ -1,11 +1,11 @@
 <?php
 
-class Swift_Cli_ArgumentParserTest extends \PHPUnit\Framework\TestCase
+class Swift_Cli_ArgumentParserTest extends PHPUnit\Framework\TestCase
 {
     public function testParsesRequiredDsnAndTo()
     {
         $parser = new Swift_Cli_ArgumentParser();
-        $args = $parser->parse([
+        $args   = $parser->parse([
             'bin/swiftmailer-test',
             'smtp://user:pass@smtp.example.com:587',
             '--to=test@example.com',
@@ -15,13 +15,13 @@ class Swift_Cli_ArgumentParserTest extends \PHPUnit\Framework\TestCase
         $this->assertSame('test@example.com', $args->to);
         $this->assertSame('swiftmailer-test@localhost', $args->from);
         $this->assertSame('SwiftMailer Test Email', $args->subject);
-        $this->assertStringContainsString('test email', strtolower($args->body));
+        $this->assertStringContainsString('test email', \strtolower($args->body));
     }
 
     public function testParsesAllOptionalFlags()
     {
         $parser = new Swift_Cli_ArgumentParser();
-        $args = $parser->parse([
+        $args   = $parser->parse([
             'bin/swiftmailer-test',
             'sendgrid://apikey',
             '--to=a@b.com',
@@ -39,7 +39,7 @@ class Swift_Cli_ArgumentParserTest extends \PHPUnit\Framework\TestCase
 
     public function testThrowsWhenDsnMissing()
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('DSN');
 
         $parser = new Swift_Cli_ArgumentParser();
@@ -48,7 +48,7 @@ class Swift_Cli_ArgumentParserTest extends \PHPUnit\Framework\TestCase
 
     public function testThrowsWhenToMissing()
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('--to');
 
         $parser = new Swift_Cli_ArgumentParser();
@@ -59,7 +59,7 @@ class Swift_Cli_ArgumentParserTest extends \PHPUnit\Framework\TestCase
     {
         $parser = new Swift_Cli_ArgumentParser();
 
-        $this->expectException(\Swift_Cli_HelpRequestedException::class);
+        $this->expectException(Swift_Cli_HelpRequestedException::class);
 
         $parser->parse(['bin/swiftmailer-test', '--help']);
     }

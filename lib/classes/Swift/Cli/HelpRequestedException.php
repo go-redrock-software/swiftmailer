@@ -7,7 +7,7 @@
 /**
  * Thrown when the user passes --help to signal the script should print usage and exit.
  */
-class Swift_Cli_HelpRequestedException extends \RuntimeException
+class Swift_Cli_HelpRequestedException extends RuntimeException
 {
     public function __construct()
     {
