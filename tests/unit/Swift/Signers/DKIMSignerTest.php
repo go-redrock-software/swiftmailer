@@ -141,6 +141,32 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $this->assertEquals($sig->getValue(), 'v=1; q=dns/txt; a=rsa-sha256; bh=f+W+hu8dIhf2VAni89o8lF6WKTXi7nViA4RrMdpD5/U=; d=dummy.nxdomain.be; h=; i=@dummy.nxdomain.be; s=dummySelector; c=simple/relaxed; t=1299879181; b=k/y8Cyt5YylUbo2Ey0iXMeOO/KBV5lMClErTPeKRQ1Q5Y3X4UsbBldbta8ZxxIj/cpAVjheDk v/t0OMZLrbCxCVXnB+d2/aiz7w5Lnru2E2EFaVM2DmXVEIb6KjCGmpAJFZn+AKZtSpramk4zm Z80Df07CsmItnJE/A+J5m1nnw=');
     }
 
+    public function testRsaSha1TriggersDeprecation()
+    {
+        $signer = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector'
+        );
+
+        $triggered = false;
+        $previousHandler = \set_error_handler(static function (int $errno, string $errstr) use (&$triggered) {
+            if (\E_USER_DEPRECATED === $errno && \str_contains($errstr, 'rsa-sha1 is deprecated')) {
+                $triggered = true;
+
+                return true;
+            }
+
+            return false;
+        });
+        try {
+            $signer->setHashAlgorithm('rsa-sha1');
+        } finally {
+            \restore_error_handler();
+        }
+        $this->assertTrue($triggered, 'Expected E_USER_DEPRECATED to be triggered for rsa-sha1');
+    }
+
     public function testConstructorValidatesRsaPrivateKey()
     {
         $this->expectException(Swift_SwiftException::class);

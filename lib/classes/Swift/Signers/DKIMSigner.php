@@ -243,6 +243,10 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
     {
         switch ($hash) {
             case 'rsa-sha1':
+                \trigger_error(
+                    'rsa-sha1 is deprecated per RFC 8301 and will be removed in a future version. Use rsa-sha256 or ed25519-sha256 instead.',
+                    \E_USER_DEPRECATED
+                );
                 $this->hashAlgorithm = 'rsa-sha1';
                 break;
             case 'rsa-sha256':
