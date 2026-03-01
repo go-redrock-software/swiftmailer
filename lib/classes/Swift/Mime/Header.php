@@ -16,22 +16,22 @@
 interface Swift_Mime_Header
 {
     /** Text headers */
-    public const TYPE_TEXT = 2;
+    public const int TYPE_TEXT = 2;
 
     /**  headers (text + params) */
-    public const TYPE_PARAMETERIZED = 6;
+    public const int TYPE_PARAMETERIZED = 6;
 
     /** Mailbox and address headers */
-    public const TYPE_MAILBOX = 8;
+    public const int TYPE_MAILBOX = 8;
 
     /** Date and time headers */
-    public const TYPE_DATE = 16;
+    public const int TYPE_DATE = 16;
 
     /** Identification headers */
-    public const TYPE_ID = 32;
+    public const int TYPE_ID = 32;
 
     /** Address path headers */
-    public const TYPE_PATH = 64;
+    public const int TYPE_PATH = 64;
 
     /**
      * Get the type of Header that this instance represents.

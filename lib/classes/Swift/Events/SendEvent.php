@@ -16,19 +16,19 @@
 class Swift_Events_SendEvent extends Swift_Events_EventObject
 {
     /** Sending has yet to occur */
-    public const RESULT_PENDING = 0x0001;
+    public const int RESULT_PENDING = 0x0001;
 
     /** Email is spooled, ready to be sent */
-    public const RESULT_SPOOLED = 0x0011;
+    public const int RESULT_SPOOLED = 0x0011;
 
     /** Sending was successful */
-    public const RESULT_SUCCESS = 0x0010;
+    public const int RESULT_SUCCESS = 0x0010;
 
     /** Sending worked, but there were some failures */
-    public const RESULT_TENTATIVE = 0x0100;
+    public const int RESULT_TENTATIVE = 0x0100;
 
     /** Sending failed */
-    public const RESULT_FAILED = 0x1000;
+    public const int RESULT_FAILED = 0x1000;
 
     /**
      * The Message being sent.
