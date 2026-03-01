@@ -1,0 +1,104 @@
+#!/usr/bin/env php
+<?php
+
+/*
+ * Copyright (c) 2024. Redrock Software Corporation
+ *
+ * CLI tool to send a test email via any SwiftMailer-supported transport.
+ *
+ * Usage:
+ *   php bin/swiftmailer-test "smtp://user:pass@host:587" --to=test@example.com
+ */
+
+// Autoload
+(function () {
+    $autoloadPaths = [
+        __DIR__ . '/../vendor/autoload.php',        // when run from the package itself
+        __DIR__ . '/../../../autoload.php',          // when installed as a Composer dependency
+    ];
+
+    foreach ($autoloadPaths as $path) {
+        if (file_exists($path)) {
+            require $path;
+            return;
+        }
+    }
+
+    fwrite(STDERR, "Cannot find Composer autoloader. Run 'composer install' first.\n");
+    exit(1);
+})();
+
+$output = new Swift_Cli_ConsoleOutput();
+
+// ── Parse arguments ──────────────────────────────────────────────
+try {
+    $parser = new Swift_Cli_ArgumentParser();
+    $args   = $parser->parse($argv);
+} catch (Swift_Cli_HelpRequestedException $e) {
+    $output->writeln($e->getMessage());
+    exit(0);
+} catch (\InvalidArgumentException $e) {
+    $output->error('Error: ' . $e->getMessage());
+    exit(1);
+}
+
+// ── Create transport from DSN ────────────────────────────────────
+$output->info('DSN:       ' . $args->dsn);
+$output->info('From:      ' . $args->from);
+$output->info('To:        ' . $args->to);
+$output->info('Subject:   ' . $args->subject);
+$output->writeln('');
+
+try {
+    $output->info('Creating transport from DSN...');
+    $factory   = new Swift_Transport_DsnTransportFactory();
+    $transport = $factory->fromDsnString($args->dsn);
+    $output->success('Transport: ' . get_class($transport));
+} catch (\Throwable $e) {
+    $output->error('Failed to create transport: ' . $e->getMessage());
+    exit(1);
+}
+
+// ── Connect / start transport ────────────────────────────────────
+try {
+    $output->info('Starting transport...');
+    $transport->start();
+    $output->success('Transport started successfully.');
+} catch (\Throwable $e) {
+    $output->error('Connection failed: ' . $e->getMessage());
+    exit(1);
+}
+
+// ── Build and send message ───────────────────────────────────────
+try {
+    $message = (new Swift_Message($args->subject))
+        ->setFrom($args->from)
+        ->setTo($args->to)
+        ->setBody($args->body, 'text/plain');
+
+    $mailer           = new Swift_Mailer($transport);
+    $failedRecipients = [];
+    $sent             = $mailer->send($message, $failedRecipients);
+
+    if ($sent > 0) {
+        $output->success(sprintf('Email sent successfully to %d recipient(s).', $sent));
+    } else {
+        $output->error('Email was not accepted for delivery.');
+        if (!empty($failedRecipients)) {
+            $output->error('Failed recipients: ' . implode(', ', $failedRecipients));
+        }
+        exit(1);
+    }
+} catch (\Throwable $e) {
+    $output->error('Send failed: ' . $e->getMessage());
+    exit(1);
+} finally {
+    // ── Stop transport ───────────────────────────────────────────
+    try {
+        $transport->stop();
+    } catch (\Throwable $e) {
+        $output->warning('Warning: could not cleanly stop transport: ' . $e->getMessage());
+    }
+}
+
+exit(0);

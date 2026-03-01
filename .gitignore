@@ -155,6 +155,7 @@ fabric.properties
 /bin/*
 !bin/console
 !bin/symfony_requirements
+!bin/swiftmailer-test
 /vendor/
 
 # Assets and user uploads
