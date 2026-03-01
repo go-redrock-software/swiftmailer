@@ -70,6 +70,7 @@ class Swift_Transport_DefaultRetryClassifierTest extends PHPUnit\Framework\TestC
             'invalid api key message'     => [0, 'Invalid API key provided'],
             'relay denied message'        => [0, 'Relay access denied'],
             'SMTP 530 auth required'      => [530, 'Authentication required'],
+            'SMTP 500 syntax error'       => [500, 'Syntax error, command unrecognized'],
         ];
     }
 

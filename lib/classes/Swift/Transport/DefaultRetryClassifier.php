@@ -23,7 +23,7 @@ class Swift_Transport_DefaultRetryClassifier implements Swift_Transport_RetryCla
      * 5xx SMTP = permanent failure, 401/403 = auth errors.
      */
     private const PERMANENT_CODES = [
-        501, 530, 535, 550, 551, 552, 553, 554, // SMTP permanent
+        500, 501, 530, 535, 550, 551, 552, 553, 554, // SMTP permanent
         401, 403, // HTTP auth errors
     ];
 
@@ -33,7 +33,7 @@ class Swift_Transport_DefaultRetryClassifier implements Swift_Transport_RetryCla
     private const RETRYABLE_CODES = [
         421, 450, 451, 452, // SMTP temporary failures
         429, // HTTP too many requests
-        500, 502, 503, 504, // HTTP server errors (note: SMTP 500 is permanent, but HTTP 500 is transient)
+        502, 503, 504, // HTTP server errors
     ];
 
     /**
@@ -80,7 +80,16 @@ class Swift_Transport_DefaultRetryClassifier implements Swift_Transport_RetryCla
             }
         }
 
-        // Check permanent codes
+        // Check retryable message patterns (before code checks, so HTTP 500
+        // with "internal server error" message is retried even though SMTP 500
+        // is a permanent code)
+        foreach (self::RETRYABLE_PATTERNS as $pattern) {
+            if (\str_contains($message, $pattern)) {
+                return true;
+            }
+        }
+
+        // Check permanent codes (SMTP 500 = syntax error = permanent)
         if (\in_array($code, self::PERMANENT_CODES, true)) {
             return false;
         }
@@ -88,13 +97,6 @@ class Swift_Transport_DefaultRetryClassifier implements Swift_Transport_RetryCla
         // Check explicit retryable codes
         if (\in_array($code, self::RETRYABLE_CODES, true)) {
             return true;
-        }
-
-        // Check retryable message patterns
-        foreach (self::RETRYABLE_PATTERNS as $pattern) {
-            if (\str_contains($message, $pattern)) {
-                return true;
-            }
         }
 
         // Code 0 typically means connection-level failure (no SMTP/HTTP code received)

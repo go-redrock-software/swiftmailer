@@ -90,7 +90,7 @@ class Swift_Transport_RetryTransport implements Swift_Transport
      *
      * @throws Swift_TransportException on permanent failure or after all retries exhausted
      */
-    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null): int
+    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null): int
     {
         $attempt = 0;
 
@@ -135,7 +135,7 @@ class Swift_Transport_RetryTransport implements Swift_Transport
 
         $delay   = $this->baseDelayMs * (2 ** $attempt);
         $jitter  = \random_int(0, (int) ($this->baseDelayMs / 2));
-        $totalMs = $delay + $jitter;
+        $totalMs = \min($delay + $jitter, 60000);
 
         \usleep($totalMs * 1000);
     }
