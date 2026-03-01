@@ -48,8 +48,8 @@ class Swift_Webhook_Converter_ResendConverter extends Swift_Webhook_AbstractPayl
             return false;
         }
 
-        $signedContent   = $svixId.'.'.$timestamp.'.'.$rawBody;
-        $expectedSig     = \base64_encode(\hash_hmac('sha256', $signedContent, $secretKey, true));
+        $signedContent = $svixId.'.'.$timestamp.'.'.$rawBody;
+        $expectedSig   = \base64_encode(\hash_hmac('sha256', $signedContent, $secretKey, true));
 
         // Svix signature header may contain multiple signatures separated by spaces, each prefixed with "v1,"
         foreach (\explode(' ', $signature) as $candidate) {
@@ -71,7 +71,7 @@ class Swift_Webhook_Converter_ResendConverter extends Swift_Webhook_AbstractPayl
         }
 
         [$type, $name] = self::EVENT_MAP[$eventType];
-        $data          = $payload['data'] ?? [];
+        $data          = $payload['data']  ?? [];
         $messageId     = $data['email_id'] ?? '';
         $recipients    = (array) ($data['to'] ?? []);
         $recipient     = $recipients[0] ?? '';

@@ -17,15 +17,15 @@ class Swift_Webhook_Converter_MailjetConverterTest extends PHPUnit\Framework\Tes
     public function testConvertBounceEvent()
     {
         $payload = [
-            'event'         => 'bounce',
-            'time'          => 1706000000,
-            'email'         => 'user@example.com',
-            'MessageID'     => 12345678901234,
-            'Message_GUID'  => 'msg-600',
-            'hard_bounce'   => true,
-            'comment'       => '550 User unknown',
+            'event'            => 'bounce',
+            'time'             => 1706000000,
+            'email'            => 'user@example.com',
+            'MessageID'        => 12345678901234,
+            'Message_GUID'     => 'msg-600',
+            'hard_bounce'      => true,
+            'comment'          => '550 User unknown',
             'error_related_to' => 'recipient',
-            'error'         => 'user unknown',
+            'error'            => 'user unknown',
         ];
 
         $events = $this->converter->convert($payload, []);
@@ -41,11 +41,11 @@ class Swift_Webhook_Converter_MailjetConverterTest extends PHPUnit\Framework\Tes
     public function testConvertSoftBounceEvent()
     {
         $payload = [
-            'event'       => 'bounce',
-            'time'        => 1706000000,
-            'email'       => 'user@example.com',
+            'event'        => 'bounce',
+            'time'         => 1706000000,
+            'email'        => 'user@example.com',
             'Message_GUID' => 'msg-601',
-            'hard_bounce' => false,
+            'hard_bounce'  => false,
         ];
 
         $events = $this->converter->convert($payload, []);

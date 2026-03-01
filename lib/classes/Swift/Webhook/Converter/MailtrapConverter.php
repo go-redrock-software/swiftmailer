@@ -62,7 +62,7 @@ class Swift_Webhook_Converter_MailtrapConverter extends Swift_Webhook_AbstractPa
 
             [$type, $name] = self::EVENT_MAP[$eventName];
             $messageId     = $entry['message_id'] ?? '';
-            $recipient     = $entry['email'] ?? '';
+            $recipient     = $entry['email']      ?? '';
             $timestamp     = $this->parseTimestamp($entry['timestamp'] ?? \time());
             $metadata      = $this->extractMetadata($entry);
 

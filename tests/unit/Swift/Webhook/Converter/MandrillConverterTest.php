@@ -22,9 +22,9 @@ class Swift_Webhook_Converter_MandrillConverterTest extends PHPUnit\Framework\Te
                 'ts'    => 1706000000,
                 '_id'   => 'msg-700',
                 'msg'   => [
-                    'email'       => 'user@example.com',
-                    'sender'      => 'sender@example.com',
-                    'subject'     => 'Test',
+                    'email'              => 'user@example.com',
+                    'sender'             => 'sender@example.com',
+                    'subject'            => 'Test',
                     'bounce_description' => '550 User unknown',
                 ],
             ],
@@ -91,11 +91,11 @@ class Swift_Webhook_Converter_MandrillConverterTest extends PHPUnit\Framework\Te
     {
         $payload = [
             [
-                'event' => 'open',
-                'ts'    => 1706000000,
-                '_id'   => 'msg-704',
-                'msg'   => ['email' => 'user@example.com'],
-                'ip'    => '1.2.3.4',
+                'event'      => 'open',
+                'ts'         => 1706000000,
+                '_id'        => 'msg-704',
+                'msg'        => ['email' => 'user@example.com'],
+                'ip'         => '1.2.3.4',
                 'user_agent' => 'Mozilla/5.0',
             ],
         ];

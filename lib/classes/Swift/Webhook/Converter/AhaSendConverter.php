@@ -37,9 +37,9 @@ class Swift_Webhook_Converter_AhaSendConverter extends Swift_Webhook_AbstractPay
 
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
-        $webhookId  = $headers['webhook-id']        ?? null;
-        $timestamp  = $headers['webhook-timestamp'] ?? null;
-        $signature  = $headers['webhook-signature'] ?? null;
+        $webhookId = $headers['webhook-id']        ?? null;
+        $timestamp = $headers['webhook-timestamp'] ?? null;
+        $signature = $headers['webhook-signature'] ?? null;
 
         if (null === $webhookId || null === $timestamp || null === $signature) {
             return false;
@@ -73,9 +73,9 @@ class Swift_Webhook_Converter_AhaSendConverter extends Swift_Webhook_AbstractPay
         }
 
         [$type, $name] = self::EVENT_MAP[$eventType];
-        $data          = $payload['data'] ?? [];
+        $data          = $payload['data']           ?? [];
         $messageId     = $data['message_id_header'] ?? $data['id'] ?? '';
-        $recipient     = $data['recipient'] ?? '';
+        $recipient     = $data['recipient']         ?? '';
         $timestamp     = $this->parseTimestamp($payload['timestamp'] ?? 'now');
         $metadata      = $this->extractMetadata($data);
 

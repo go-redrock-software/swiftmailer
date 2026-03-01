@@ -58,7 +58,7 @@ class Swift_Webhook_Converter_BrevoConverter extends Swift_Webhook_AbstractPaylo
 
         [$type, $name] = self::EVENT_MAP[$eventName];
         $messageId     = $payload['message-id'] ?? '';
-        $recipient     = $payload['email'] ?? '';
+        $recipient     = $payload['email']      ?? '';
         $timestamp     = $this->parseTimestamp((int) (($payload['ts_epoch'] ?? \time() * 1000) / 1000));
         $metadata      = $this->extractMetadata($payload);
 

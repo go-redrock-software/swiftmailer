@@ -38,9 +38,9 @@ class Swift_Webhook_Converter_SweegoConverter extends Swift_Webhook_AbstractPayl
 
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
-        $webhookId  = $headers['webhook-id']        ?? null;
-        $timestamp  = $headers['webhook-timestamp'] ?? null;
-        $signature  = $headers['webhook-signature'] ?? null;
+        $webhookId = $headers['webhook-id']        ?? null;
+        $timestamp = $headers['webhook-timestamp'] ?? null;
+        $signature = $headers['webhook-signature'] ?? null;
 
         if (null === $webhookId || null === $timestamp || null === $signature) {
             return false;
@@ -67,7 +67,7 @@ class Swift_Webhook_Converter_SweegoConverter extends Swift_Webhook_AbstractPayl
 
         [$type, $name] = self::EVENT_MAP[$eventType];
         $messageId     = $payload['transaction_id'] ?? '';
-        $recipient     = $payload['recipient'] ?? '';
+        $recipient     = $payload['recipient']      ?? '';
         $timestamp     = $this->parseTimestamp($payload['timestamp'] ?? 'now');
         $metadata      = $this->extractMetadata($payload);
 

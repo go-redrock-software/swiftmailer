@@ -56,9 +56,9 @@ class Swift_Webhook_Converter_MailerSendConverter extends Swift_Webhook_Abstract
         }
 
         [$type, $name] = self::EVENT_MAP[$eventType];
-        $data          = $payload['data'] ?? [];
+        $data          = $payload['data']    ?? [];
         $messageId     = $data['message_id'] ?? '';
-        $recipient     = $data['email'] ?? '';
+        $recipient     = $data['email']      ?? '';
         $timestamp     = $this->parseTimestamp($payload['created_at'] ?? 'now');
         $metadata      = $this->extractMetadata($data);
 

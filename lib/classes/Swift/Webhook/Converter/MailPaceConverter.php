@@ -49,7 +49,7 @@ class Swift_Webhook_Converter_MailPaceConverter extends Swift_Webhook_AbstractPa
 
         try {
             return \sodium_crypto_sign_verify_detached($signatureRaw, $rawBody, $publicKey);
-        } catch (\SodiumException) {
+        } catch (SodiumException) {
             return false;
         }
     }
@@ -65,7 +65,7 @@ class Swift_Webhook_Converter_MailPaceConverter extends Swift_Webhook_AbstractPa
         [$type, $name] = self::EVENT_MAP[$eventName];
         $data          = $payload['payload'] ?? [];
         $messageId     = $data['message_id'] ?? '';
-        $recipient     = $data['to'] ?? '';
+        $recipient     = $data['to']         ?? '';
         $timestamp     = $this->parseTimestamp($data['updated_at'] ?? $data['created_at'] ?? 'now');
         $metadata      = $this->extractMetadata($data);
 
