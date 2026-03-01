@@ -21,9 +21,17 @@ class Swift_Transport_DsnTransportFactory
     public function fromDsnString(string $dsnString): Swift_Transport
     {
         // Check for meta-transport wrappers
-        if (\preg_match('/^(failover|roundrobin)\((.+)\)$/', $dsnString, $matches)) {
+        if (\preg_match('/^(failover|roundrobin|retry)\((.+)\)$/', $dsnString, $matches)) {
             $wrapper   = $matches[1];
-            $innerDsns = \preg_split('/\s+/', \trim($matches[2]));
+            $innerPart = \trim($matches[2]);
+
+            if ('retry' === $wrapper) {
+                $innerTransport = $this->fromDsnString($innerPart);
+
+                return new Swift_Transport_RetryTransport($innerTransport);
+            }
+
+            $innerDsns = \preg_split('/\s+/', $innerPart);
 
             $transports = [];
             foreach ($innerDsns as $innerDsn) {
@@ -47,25 +55,35 @@ class Swift_Transport_DsnTransportFactory
     {
         $nyholmDsn = DsnParser::parseUrl($dsnString);
         $dsn       = new Swift_Dsn($nyholmDsn);
-        $class     = $dsn->getTransportClass();
+        $params    = $dsn->getParameters();
+
+        // Extract retry parameters before creating transport
+        $retries    = isset($params['retries']) ? (int) $params['retries'] : null;
+        $retryDelay = isset($params['retry_delay']) ? (int) $params['retry_delay'] : 1000;
+
+        $class = $dsn->getTransportClass();
 
         // NullTransport needs an event dispatcher
         if (Swift_Transport_NullTransport::class === $class) {
-            return new Swift_Transport_NullTransport(
+            $transport = new Swift_Transport_NullTransport(
                 new Swift_Events_SimpleEventDispatcher(),
             );
+        } elseif (Swift_Transport_EsmtpTransport::class === $class) {
+            // SMTP transports
+            $transport = $this->createSmtpTransport($dsn);
+        } else {
+            // HTTP API transports: all extend AbstractHttpApiTransport(apiKey, ?httpClient, ?eventDispatcher)
+            $apiKey     = $dsn->getUser() ?: $dsn->getPassword() ?: '';
+            $dispatcher = new Swift_Events_SimpleEventDispatcher();
+            $transport  = new $class($apiKey, null, $dispatcher);
         }
 
-        // SMTP transports
-        if (Swift_Transport_EsmtpTransport::class === $class) {
-            return $this->createSmtpTransport($dsn);
+        // Wrap with retry if query params specify it
+        if (null !== $retries && $retries > 0) {
+            $transport = new Swift_Transport_RetryTransport($transport, $retries, $retryDelay);
         }
 
-        // HTTP API transports: all extend AbstractHttpApiTransport(apiKey, ?httpClient, ?eventDispatcher)
-        $apiKey     = $dsn->getUser() ?: $dsn->getPassword() ?: '';
-        $dispatcher = new Swift_Events_SimpleEventDispatcher();
-
-        return new $class($apiKey, null, $dispatcher);
+        return $transport;
     }
 
     private function createSmtpTransport(Swift_Dsn $dsn): Swift_Transport
