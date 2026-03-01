@@ -12,6 +12,8 @@
  *
  * Populated by transports after a successful send and made available
  * through SentMessageEvent for plugin consumption.
+ *
+ * Supports PHP 8.5 clone with syntax for immutable modifications.
  */
 readonly class Swift_SentMessage
 {
@@ -48,6 +50,37 @@ readonly class Swift_SentMessage
         $this->recipientCount   = $result['recipients']        ?? 0;
         $this->debug            = $result['debug']             ?? [];
         $this->failedRecipients = $result['failed_recipients'] ?? [];
+    }
+
+    /**
+     * Named constructor for creating from individual values.
+     */
+    public static function fromResult(
+        Swift_Mime_SimpleMessage $message,
+        Swift_Transport $transport,
+        array $result,
+    ): self {
+        return new self(
+            $message,
+            $transport,
+            $result,
+        );
+    }
+
+    /**
+     * Return a clone with a different message ID (PHP 8.5 clone with).
+     */
+    public function withMessageId(?string $messageId): self
+    {
+        return clone($this, ['messageId' => $messageId]);
+    }
+
+    /**
+     * Return a clone with a different recipient count (PHP 8.5 clone with).
+     */
+    public function withRecipientCount(int $recipientCount): self
+    {
+        return clone($this, ['recipientCount' => $recipientCount]);
     }
 
     public function getOriginalMessage(): Swift_Mime_SimpleMessage
