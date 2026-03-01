@@ -16,168 +16,119 @@
 class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
 {
     /**
-     * PrivateKey.
-     *
-     * @var string
+     * Headers to oversign when oversigning is enabled.
      */
-    protected $privateKey;
+    private const OVERSIGN_HEADERS = [
+        'from', 'to', 'subject', 'date', 'cc', 'reply-to', 'message-id',
+    ];
 
-    /**
-     * DomainName.
-     *
-     * @var string
-     */
-    protected $domainName;
+    protected string $privateKey;
 
-    /**
-     * Selector.
-     *
-     * @var string
-     */
-    protected $selector;
+    protected string $domainName;
 
-    private $passphrase = '';
+    protected string $selector;
+
+    private string $passphrase = '';
 
     /**
      * Hash algorithm used.
      *
      * @see RFC6376 3.3: Signers MUST implement and SHOULD sign using rsa-sha256.
-     *
-     * @var string
      */
-    protected $hashAlgorithm = 'rsa-sha256';
+    protected string $hashAlgorithm = 'rsa-sha256';
+
+    /** Body canonicalization method. */
+    protected string $bodyCanon = 'simple';
+
+    /** Header canonicalization method. */
+    protected string $headerCanon = 'simple';
+
+    /** Headers not being signed. */
+    protected array $ignoredHeaders = ['return-path' => true, 'x-transport' => true];
+
+    protected string $signerIdentity;
+
+    protected int $bodyLen = 0;
+
+    protected int $maxLen = PHP_INT_MAX;
+
+    protected bool $showLen = false;
+
+    /** When the signature has been applied (true means time()), false means not embedded. */
+    protected int|bool $signatureTimestamp = true;
+
+    /** When will the signature expire. false means not embedded. */
+    protected int|false $signatureExpiration = false;
+
+    protected bool $debugHeaders = false;
 
     /**
-     * Body canon method.
+     * Whether to oversign critical headers to prevent replay attacks.
      *
-     * @var string
+     * When enabled, From, To, Subject, Date, Cc, Reply-To, and Message-ID
+     * are signed an extra time (for a non-existent instance), so any header
+     * added post-signing breaks DKIM verification.
      */
-    protected $bodyCanon = 'simple';
-
-    /**
-     * Header canon method.
-     *
-     * @var string
-     */
-    protected $headerCanon = 'simple';
-
-    /**
-     * Headers not being signed.
-     *
-     * @var array
-     */
-    protected $ignoredHeaders = ['return-path' => true];
-
-    /**
-     * Signer identity.
-     *
-     * @var string
-     */
-    protected $signerIdentity;
-
-    /**
-     * BodyLength.
-     *
-     * @var int
-     */
-    protected $bodyLen = 0;
-
-    /**
-     * Maximum signedLen.
-     *
-     * @var int
-     */
-    protected $maxLen = PHP_INT_MAX;
-
-    /**
-     * Embbed bodyLen in signature.
-     *
-     * @var bool
-     */
-    protected $showLen = false;
-
-    /**
-     * When the signature has been applied (true means time()), false means not embedded.
-     */
-    protected $signatureTimestamp = true;
-
-    /**
-     * When will the signature expires false means not embedded, if sigTimestamp is auto
-     * Expiration is relative, otherwise it's absolute.
-     *
-     * @var int
-     */
-    protected $signatureExpiration = false;
-
-    /**
-     * Must we embed signed headers?
-     *
-     * @var bool
-     */
-    protected $debugHeaders = false;
+    protected bool $oversigning = false;
 
     // work variables
-    /**
-     * Headers used to generate hash.
-     *
-     * @var array
-     */
-    protected $signedHeaders = [];
+    protected array $signedHeaders = [];
 
-    /**
-     * If debugHeaders is set store debugData here.
-     *
-     * @var string[]
-     */
-    private $debugHeadersData = [];
+    /** @var string[] */
+    private array $debugHeadersData = [];
 
-    /**
-     * Stores the bodyHash.
-     *
-     * @var string
-     */
-    private $bodyHash = '';
+    private string $bodyHash = '';
 
-    /**
-     * Stores the signature header.
-     *
-     * @var Swift_Mime_Headers_ParameterizedHeader
-     */
     protected $dkimHeader;
 
     private $bodyHashHandler;
 
     private $headerHash;
 
-    private $headerCanonData = '';
+    private string $headerCanonData = '';
 
-    private $bodyCanonEmptyCounter = 0;
+    private int $bodyCanonEmptyCounter = 0;
 
-    private $bodyCanonIgnoreStart = 2;
+    private int $bodyCanonIgnoreStart = 2;
 
-    private $bodyCanonSpace = false;
+    private bool $bodyCanonSpace = false;
 
     private $bodyCanonLastChar;
 
-    private $bodyCanonLine = '';
+    private string $bodyCanonLine = '';
 
-    private $bound = [];
+    private array $bound = [];
 
     /**
      * Constructor.
      *
-     * @param string $privateKey
-     * @param string $domainName
-     * @param string $selector
      * @param string $passphrase
      */
-    public function __construct($privateKey, $domainName, $selector, $passphrase = '')
-    {
-        $this->privateKey     = $privateKey;
+    public function __construct(
+        string $privateKey,
+        string $domainName,
+        string $selector,
+        #[SensitiveParameter] string $passphrase = '',
+    ) {
         $this->domainName     = $domainName;
         $this->signerIdentity = '@'.$domainName;
         $this->selector       = $selector;
         $this->passphrase     = $passphrase;
+
+        // Try to load as RSA key; if it fails and it's a raw binary key
+        // (64 bytes for Ed25519 secret key), store it for later Ed25519 use.
+        if (\defined('SODIUM_CRYPTO_SIGN_SECRETKEYBYTES')
+            && SODIUM_CRYPTO_SIGN_SECRETKEYBYTES === \strlen($privateKey)
+            && !\str_contains($privateKey, '-----BEGIN')) {
+            // Raw Ed25519 secret key
+            $this->privateKey = $privateKey;
+        } else {
+            $pkeyId = \openssl_pkey_get_private($privateKey, $passphrase);
+            if (!$pkeyId) {
+                throw new Swift_SwiftException('Unable to load DKIM Private Key ['.\openssl_error_string().']');
+            }
+            $this->privateKey = $privateKey;
+        }
     }
 
     /**
@@ -189,7 +140,7 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
     {
         $this->headerHash            = null;
         $this->signedHeaders         = [];
-        $this->bodyHash              = null;
+        $this->bodyHash              = '';
         $this->bodyHashHandler       = null;
         $this->bodyCanonIgnoreStart  = 2;
         $this->bodyCanonEmptyCounter = 0;
@@ -281,9 +232,9 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
     }
 
     /**
-     * Set hash_algorithm, must be one of rsa-sha256 | rsa-sha1.
+     * Set hash_algorithm, must be one of rsa-sha256 | rsa-sha1 | ed25519-sha256.
      *
-     * @param string $hash 'rsa-sha1' or 'rsa-sha256'
+     * @param string $hash 'rsa-sha1', 'rsa-sha256', or 'ed25519-sha256'
      *
      * @return $this
      *
@@ -293,6 +244,10 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
     {
         switch ($hash) {
             case 'rsa-sha1':
+                \trigger_error(
+                    'rsa-sha1 is deprecated per RFC 8301 and will be removed in a future version. Use rsa-sha256 or ed25519-sha256 instead.',
+                    \E_USER_DEPRECATED,
+                );
                 $this->hashAlgorithm = 'rsa-sha1';
                 break;
             case 'rsa-sha256':
@@ -301,8 +256,14 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
                     throw new Swift_SwiftException('Unable to set sha256 as it is not supported by OpenSSL.');
                 }
                 break;
+            case 'ed25519-sha256':
+                if (!\function_exists('sodium_crypto_sign_detached')) {
+                    throw new Swift_SwiftException('The sodium extension is required for ed25519-sha256 DKIM signing.');
+                }
+                $this->hashAlgorithm = 'ed25519-sha256';
+                break;
             default:
-                throw new Swift_SwiftException('Unable to set the hash algorithm, must be one of rsa-sha1 or rsa-sha256 (%s given).', $hash);
+                throw new Swift_SwiftException(\sprintf('Unable to set the hash algorithm, must be one of rsa-sha1, rsa-sha256, or ed25519-sha256 (%s given).', $hash));
         }
 
         return $this;
@@ -424,6 +385,18 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
     }
 
     /**
+     * Enable or disable oversigning of critical headers.
+     *
+     * @return $this
+     */
+    public function setOversigning(bool $oversign)
+    {
+        $this->oversigning = $oversign;
+
+        return $this;
+    }
+
+    /**
      * Start Body.
      */
     public function startBody()
@@ -431,6 +404,7 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
         // Init
         switch ($this->hashAlgorithm) {
             case 'rsa-sha256':
+            case 'ed25519-sha256':
                 $this->bodyHashHandler = \hash_init('sha256');
                 break;
             case 'rsa-sha1':
@@ -471,7 +445,11 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
      */
     public function ignoreHeader($header_name)
     {
-        $this->ignoredHeaders[\strtolower($header_name ?? '')] = true;
+        $lower = \strtolower($header_name ?? '');
+        if ('from' === $lower) {
+            return $this;
+        }
+        $this->ignoredHeaders[$lower] = true;
 
         return $this;
     }
@@ -511,13 +489,21 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
      */
     public function addSignature(Swift_Mime_SimpleHeaderSet $headers)
     {
-        // Prepare the DKIM-Signature
-        $params = ['v' => '1', 'a' => $this->hashAlgorithm, 'bh' => \base64_encode($this->bodyHash ?? ''), 'd' => $this->domainName, 'h' => \implode(': ', $this->signedHeaders), 'i' => $this->signerIdentity, 's' => $this->selector];
-        if ('simple' != $this->bodyCanon) {
-            $params['c'] = $this->headerCanon.'/'.$this->bodyCanon;
-        } elseif ('simple' != $this->headerCanon) {
-            $params['c'] = $this->headerCanon;
+        // Build the header list, with optional oversigning
+        $headerList = $this->signedHeaders;
+        if ($this->oversigning) {
+            $lowerSigned = \array_map('strtolower', $headerList);
+            foreach (self::OVERSIGN_HEADERS as $oh) {
+                if (\in_array($oh, $lowerSigned, true)) {
+                    // Find the original-case version to keep formatting consistent
+                    $idx          = \array_search($oh, $lowerSigned, true);
+                    $headerList[] = $this->signedHeaders[$idx];
+                }
+            }
         }
+        // Prepare the DKIM-Signature
+        $params      = ['v' => '1', 'q' => 'dns/txt', 'a' => $this->hashAlgorithm, 'bh' => \base64_encode($this->bodyHash ?? ''), 'd' => $this->domainName, 'h' => \implode(': ', $headerList), 'i' => $this->signerIdentity, 's' => $this->selector];
+        $params['c'] = $this->headerCanon.'/'.$this->bodyCanon;
         if ($this->showLen) {
             $params['l'] = $this->bodyLen;
         }
@@ -630,10 +616,17 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
 
     protected function endOfBody()
     {
-        // Add trailing Line return if last line is non empty
+        // Add trailing line return if last line is non-empty
         if (\strlen($this->bodyCanonLine) > 0) {
             $this->addToBodyHash("\r\n");
         }
+
+        // RFC 6376 Section 3.4.3: If the body is null (not even one CRLF),
+        // a CRLF is added for simple canonicalization.
+        if ('simple' === $this->bodyCanon && 0 === $this->bodyLen) {
+            $this->addToBodyHash("\r\n");
+        }
+
         $this->bodyHash = \hash_final($this->bodyHashHandler, true);
     }
 
@@ -664,6 +657,16 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
     private function getEncryptedHash()
     {
         $signature = '';
+
+        if ('ed25519-sha256' === $this->hashAlgorithm) {
+            // Ed25519 uses sodium_crypto_sign_detached with the raw secret key.
+            // The header canon data is first hashed with SHA-256, then signed.
+            $hash      = \hash('sha256', $this->headerCanonData, true);
+            $signature = \sodium_crypto_sign_detached($hash, $this->privateKey);
+
+            return $signature;
+        }
+
         switch ($this->hashAlgorithm) {
             case 'rsa-sha1':
                 $algorithm = OPENSSL_ALGO_SHA1;
