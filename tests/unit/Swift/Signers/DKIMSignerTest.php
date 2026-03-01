@@ -42,7 +42,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $this->assertTrue($headerSet->has('DKIM-Signature'));
         $dkim = $headerSet->getAll('DKIM-Signature');
         $sig  = \reset($dkim);
-        $this->assertEquals($sig->getValue(), 'v=1; q=dns/txt; a=rsa-sha1; bh=wlbYcY9O9OPInGJ4D0E/rGsvMLE=; d=dummy.nxdomain.be; h=; i=@dummy.nxdomain.be; s=dummySelector; t=1299879181; b=WTmOCHDkG12u861eQwLXyKHvBDYSZN4qeXHXJxn9fmHRa331sYgQnPZUBs9JxNI743PHkR2N3 KEvsSAqA8zLsNVWcIujYbkk00jp/ZjO8quRW9jBQhMKaIT/Z0xNGZDZ82+5xbE/DpJY3ygMKP 59iT2+AbIqDai+LnzmBV4+QHs=');
+        $this->assertEquals($sig->getValue(), 'v=1; q=dns/txt; a=rsa-sha1; bh=wlbYcY9O9OPInGJ4D0E/rGsvMLE=; d=dummy.nxdomain.be; h=; i=@dummy.nxdomain.be; s=dummySelector; c=simple/simple; t=1299879181; b=mXaWZGkmLsUyQzoOQLBHFULU9bK3JpckZ99AGt7E/CGOTNgUkPmi69Kj1pCeLYtj3wKve48dI hqmmaeVWVYHAGASm2WbFc27idM6hPB/iqV1BqeeBaO+PnRecGQ9GmWvfhaUzxEMvDrbiiR35J plhRhbisw4icOKdBPWSPKLKDE=');
     }
 
     // SHA256 Signing
@@ -65,7 +65,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $this->assertTrue($headerSet->has('DKIM-Signature'));
         $dkim = $headerSet->getAll('DKIM-Signature');
         $sig  = \reset($dkim);
-        $this->assertEquals($sig->getValue(), 'v=1; q=dns/txt; a=rsa-sha256; bh=f+W+hu8dIhf2VAni89o8lF6WKTXi7nViA4RrMdpD5/U=; d=dummy.nxdomain.be; h=; i=@dummy.nxdomain.be; s=dummySelector; t=1299879181; b=tDqvADv/EgLRXCwjA5XyybCSnuwpgib4gOYoXfqjcwumIF+q6d7UGSPGilnD675PIISv+P2+S AKqRh3mdQnEc8qAsYttU0t5mL6Uz90Vkecb62X13n0n59+VFIMN0BxjmWooSz6/mu4jWw2qqP 9/3sPEU+MRNjbjHllZ/v88TJA=');
+        $this->assertEquals($sig->getValue(), 'v=1; q=dns/txt; a=rsa-sha256; bh=f+W+hu8dIhf2VAni89o8lF6WKTXi7nViA4RrMdpD5/U=; d=dummy.nxdomain.be; h=; i=@dummy.nxdomain.be; s=dummySelector; c=simple/simple; t=1299879181; b=rTJ+UhdTPaQl7qAVytvMUehTPCMQ5rkllj4DagUta0stO+Du6C3gw+TeZc6AJRpHa0AdQekW5 Ca7vm7dU3HFIpmlBsqRJlPTBwMH9UNHnivA85rdl9S1FpoG0JvOdFww5PLD43Jn5olcOfcU1R +MrZ20ukFy9MOw7tJhU3YvwZk=');
     }
 
     // Relaxed/Relaxed Hash Signing
@@ -114,7 +114,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $this->assertTrue($headerSet->has('DKIM-Signature'));
         $dkim = $headerSet->getAll('DKIM-Signature');
         $sig  = \reset($dkim);
-        $this->assertEquals($sig->getValue(), 'v=1; q=dns/txt; a=rsa-sha256; bh=f+W+hu8dIhf2VAni89o8lF6WKTXi7nViA4RrMdpD5/U=; d=dummy.nxdomain.be; h=; i=@dummy.nxdomain.be; s=dummySelector; c=relaxed; t=1299879181; b=FE+27glrc4+pqe1qAwe1W1WRGPzzDgEH+V+zI/RFU6XDFSUae4Z4YQUhOCyHvHu8XRX+LMEji KqcUtAjJK7zWX5ajLMXXgVZfI6XxBTlcZihXXWO+Ur4W0r7B0se9Ys7GDm3P+c3naWepXfgwY zU/ZGk6kHyYPZa6HNnG/vBpfE=');
+        $this->assertEquals($sig->getValue(), 'v=1; q=dns/txt; a=rsa-sha256; bh=f+W+hu8dIhf2VAni89o8lF6WKTXi7nViA4RrMdpD5/U=; d=dummy.nxdomain.be; h=; i=@dummy.nxdomain.be; s=dummySelector; c=relaxed/simple; t=1299879181; b=iotFIBu8nAK30NBzpc5rLRnErDiUSbdbgjA9ChC4spuuLrOOH0s3H0xpisyB/ZM87gpn8yEef 3Ti4bALS2qlbLUea4dtFSR94viBR8laB4A+VtkqnpNXn98xgUSNwNtqmFmt9QiBOR1lgkM5kv 074s+Qk5R7iYzNLebZB8GmgjI=');
     }
 
     // Simple/Relaxed Hash Signing
@@ -139,6 +139,51 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $dkim = $headerSet->getAll('DKIM-Signature');
         $sig  = \reset($dkim);
         $this->assertEquals($sig->getValue(), 'v=1; q=dns/txt; a=rsa-sha256; bh=f+W+hu8dIhf2VAni89o8lF6WKTXi7nViA4RrMdpD5/U=; d=dummy.nxdomain.be; h=; i=@dummy.nxdomain.be; s=dummySelector; c=simple/relaxed; t=1299879181; b=k/y8Cyt5YylUbo2Ey0iXMeOO/KBV5lMClErTPeKRQ1Q5Y3X4UsbBldbta8ZxxIj/cpAVjheDk v/t0OMZLrbCxCVXnB+d2/aiz7w5Lnru2E2EFaVM2DmXVEIb6KjCGmpAJFZn+AKZtSpramk4zm Z80Df07CsmItnJE/A+J5m1nnw=');
+    }
+
+    public function testConstructorValidatesRsaPrivateKey()
+    {
+        $this->expectException(Swift_SwiftException::class);
+        $this->expectExceptionMessage('Unable to load DKIM Private Key');
+        $signer = new Swift_Signers_DKIMSigner(
+            'not-a-valid-key',
+            'dummy.nxdomain.be',
+            'dummySelector'
+        );
+        // RSA keys are validated at construction time
+    }
+
+    public function testConstructorAcceptsValidRsaKey()
+    {
+        $signer = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector'
+        );
+        $this->assertInstanceOf(Swift_Signers_DKIMSigner::class, $signer);
+    }
+
+    public function testCTagAlwaysEmitted()
+    {
+        $headerSet      = $this->createHeaderSet();
+        $messageContent = 'Hello World';
+        $signer         = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector'
+        );
+        $signer->setHashAlgorithm('rsa-sha256');
+        $signer->setSignatureTimestamp('1299879181');
+        // Both simple (the default) -- previously c= was omitted
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write($messageContent);
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $dkim = $headerSet->getAll('DKIM-Signature');
+        $sig  = \reset($dkim);
+        $this->assertStringContainsString('c=simple/simple', $sig->getValue());
     }
 
     public function testOversigningDisabledByDefault()
@@ -201,8 +246,13 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
 
     public function testSetHashAlgorithmAcceptsEd25519()
     {
+        if (!\function_exists('sodium_crypto_sign_keypair')) {
+            $this->markTestSkipped('sodium extension required for Ed25519 tests');
+        }
+        $keypair   = \sodium_crypto_sign_keypair();
+        $secretKey = \sodium_crypto_sign_secretkey($keypair);
         $signer = new Swift_Signers_DKIMSigner(
-            'dummy-key-not-used-here',
+            $secretKey,
             'dummy.nxdomain.be',
             'dummySelector'
         );
@@ -214,7 +264,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
     {
         $this->expectException(Swift_SwiftException::class);
         $signer = new Swift_Signers_DKIMSigner(
-            'dummy-key-not-used-here',
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
             'dummy.nxdomain.be',
             'dummySelector'
         );
