@@ -1,12 +1,89 @@
 Changelog
 =========
 
-**Swiftmailer will stop being maintained at the end of November 2021.**
+Maintained by Redrock Software Corporation since 2022. This fork continues
+Swiftmailer development for legacy and enterprise applications that cannot
+migrate to Symfony Mailer.
 
-Please, move to Symfony Mailer at your earliest convenience.
-Symfony Mailer is the next evolution of Swiftmailer.
-It provides the same features with support for modern PHP code and support for third-party providers.
-See https://symfony.com/doc/current/mailer.html for more information.
+6.4.0 (2026-02-28)
+------------------
+
+ Maintained by Redrock Software Corporation. This fork integrates features
+ from Symfony Mailer back into Swiftmailer for legacy/enterprise applications.
+
+ New Features:
+
+ * Added 17 HTTP API transports: Amazon SES, SendGrid, Postmark, Brevo,
+   Mailgun, Mailjet, MailerSend, MailPace, Resend, Scaleway,
+   Mandrill/MailChimp, Azure Communication Services, AhaSend, Mailomat,
+   Mailtrap, Postal, and Sweego
+ * Added AbstractHttpApiTransport base class for building HTTP API transports
+ * Added Gmail transport via Google API
+ * Added Microsoft Graph transport
+ * Added DSN transport factory with support for failover and round-robin
+   multi-transport configurations (e.g. `failover(sendgrid+api://... mailgun+api://...)`)
+ * Added DSN parsing system with scheme-to-transport class mapping for all
+   built-in transports including null, smtp, smtp+tls, and smtp+ssl schemes
+ * Added retry() wrapper to DsnTransportFactory with ?retries=N&retry_delay=M
+   query parameters for automatic retry configuration
+ * Added webhook system (Swift_Webhook) with request handler, signature
+   verification, and payload converters for SendGrid, Mailgun, Postmark,
+   Amazon SES (via SNS), Brevo, Resend, MailerSend, Mailjet, Mandrill,
+   AhaSend, Mailomat, Mailtrap, Sweego, and MailPace
+ * Added SentMessage/FailedMessage event system with SentMessageEvent,
+   FailedMessageEvent, listener interfaces, and SentMessagePlugin
+ * Added reject() method on SendEvent for pre-send message suppression
+   with descriptive reason and RESULT_FAILED dispatching across all transports
+ * Added CssInlinerPlugin for automatic CSS inlining in HTML emails
+   (requires tijsverkoyen/css-to-inline-styles)
+ * Added AllowlistPlugin for restricting delivery to approved recipients
+   with redirect mode, X-Original-To header preservation, and reject()
+   with descriptive reason for non-allowlisted recipients
+ * Added AutoAddressEncoder that switches between IDN and UTF-8 encoding
+   based on SMTPUTF8 server capability, with smtputf8 DSN parameter control
+ * Added tag and metadata support to SendGrid, Mailgun, PostMark, Brevo,
+   Resend, MailPace, MailerSend, Mailjet, Mandrill, and Amazon SES transports
+ * Added Swift_SentMessage value object for tracking sent message results
+ * Added Swift_Envelope value object for SMTP envelope separation, threaded
+   through all transports
+ * Added Swift_Transport_RetryTransport with exponential backoff and
+   DefaultRetryClassifier for automatic retry of failed sends
+ * Added bin/swiftmailer-test CLI script for testing mail configuration
+ * Added DKIM signer enhancements: Ed25519-SHA256 (RFC 8463), oversigning,
+   q=dns/txt canonicalization, x-transport ignore, typed properties, and
+   rsa-sha1 deprecation
+
+ Security:
+
+ * Added #[\SensitiveParameter] attribute to API key constructor parameters
+   to prevent credential exposure in stack traces
+ * Prevented API key leakage through Guzzle exception chain by wrapping
+   HTTP client exceptions
+
+ Improvements:
+
+ * Updated LoggerPlugin to log SentMessage, FailedMessage, and pre-send
+   rejection events with reason
+ * Added TLS 1.3 support; disabled TLS 1.0 and 1.1 by default
+ * Created TLS/STARTTLS constants for transport configuration
+ * Added DES-ECB encryption support
+ * Modernized codebase with nullsafe operators and interface type hints
+ * Bumped minimum PHP version to 8.1
+ * Updated to PHPUnit 9.6 with Symfony PHPUnit Bridge
+ * Applied PHP-CS-Fixer code style across entire codebase
+ * Removed broken OpenDKIM components
+ * Fixed DKIM Signer type hints
+ * Added CI pipeline with GitHub Actions, PHPStan level 5, and
+   PHP 8.1-8.4 test matrix
+
+ Bug Fixes:
+
+ * Fixed AmazonSes transport naming conflict and class/file alignment
+ * Fixed MailGun transport class name to match PSR-0 convention
+ * Fixed StreamFilters to only apply needed filters (no duplicates)
+ * Fixed SSL connection handling
+ * Fixed string/array handling when writing bytes to Streams
+ * Fixed deprecated call_user_func_array usage
 
 6.3.0 (2021-10-18)
 ------------------
