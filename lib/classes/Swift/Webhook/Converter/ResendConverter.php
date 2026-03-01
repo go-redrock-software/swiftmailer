@@ -43,7 +43,11 @@ class Swift_Webhook_Converter_ResendConverter extends Swift_Webhook_AbstractPayl
         }
 
         // Strip the "whsec_" prefix and base64-decode the secret
-        $secretKey = \base64_decode(\substr($secret, 6), true);
+        if (\str_starts_with($secret, 'whsec_')) {
+            $secretKey = \base64_decode(\substr($secret, 6), true);
+        } else {
+            $secretKey = \base64_decode($secret, true);
+        }
         if (false === $secretKey) {
             return false;
         }

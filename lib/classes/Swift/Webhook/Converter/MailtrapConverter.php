@@ -81,7 +81,7 @@ class Swift_Webhook_Converter_MailtrapConverter extends Swift_Webhook_AbstractPa
         $metadata = [];
 
         if (isset($entry['response'])) {
-            $metadata['reason'] = $entry['response'];
+            $metadata['response'] = $entry['response'];
         }
         if (isset($entry['reason'])) {
             $metadata['reason'] = $entry['reason'];

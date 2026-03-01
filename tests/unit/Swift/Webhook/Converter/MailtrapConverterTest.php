@@ -61,7 +61,7 @@ class Swift_Webhook_Converter_MailtrapConverterTest extends PHPUnit\Framework\Te
         $events = $this->converter->convert($payload, []);
 
         $this->assertSame('bounced', $events[0]->getName());
-        $this->assertSame('550 User not found', $events[0]->getMetadata()['reason']);
+        $this->assertSame('550 User not found', $events[0]->getMetadata()['response']);
     }
 
     public function testConvertSoftBounceEvent()

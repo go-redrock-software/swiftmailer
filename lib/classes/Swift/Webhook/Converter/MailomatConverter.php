@@ -52,8 +52,12 @@ class Swift_Webhook_Converter_MailomatConverter extends Swift_Webhook_AbstractPa
 
         [$algo, $hash] = $parts;
 
+        if ('sha256' !== $algo) {
+            return false;
+        }
+
         $payload  = \implode('.', [$id, $event, $timestamp]);
-        $expected = \hash_hmac($algo, $payload, $secret);
+        $expected = \hash_hmac('sha256', $payload, $secret);
 
         return \hash_equals($expected, $hash);
     }
