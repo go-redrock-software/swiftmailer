@@ -141,6 +141,94 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $this->assertEquals($sig->getValue(), 'v=1; q=dns/txt; a=rsa-sha256; bh=f+W+hu8dIhf2VAni89o8lF6WKTXi7nViA4RrMdpD5/U=; d=dummy.nxdomain.be; h=; i=@dummy.nxdomain.be; s=dummySelector; c=simple/relaxed; t=1299879181; b=k/y8Cyt5YylUbo2Ey0iXMeOO/KBV5lMClErTPeKRQ1Q5Y3X4UsbBldbta8ZxxIj/cpAVjheDk v/t0OMZLrbCxCVXnB+d2/aiz7w5Lnru2E2EFaVM2DmXVEIb6KjCGmpAJFZn+AKZtSpramk4zm Z80Df07CsmItnJE/A+J5m1nnw=');
     }
 
+    public function testSetHashAlgorithmAcceptsEd25519()
+    {
+        $signer = new Swift_Signers_DKIMSigner(
+            'dummy-key-not-used-here',
+            'dummy.nxdomain.be',
+            'dummySelector'
+        );
+        $result = $signer->setHashAlgorithm('ed25519-sha256');
+        $this->assertSame($signer, $result);
+    }
+
+    public function testSetHashAlgorithmRejectsUnknown()
+    {
+        $this->expectException(Swift_SwiftException::class);
+        $signer = new Swift_Signers_DKIMSigner(
+            'dummy-key-not-used-here',
+            'dummy.nxdomain.be',
+            'dummySelector'
+        );
+        $signer->setHashAlgorithm('rsa-md5');
+    }
+
+    public function testEd25519SigningProducesValidSignature()
+    {
+        if (!\function_exists('sodium_crypto_sign_keypair')) {
+            $this->markTestSkipped('sodium extension required for Ed25519 tests');
+        }
+
+        // Generate an Ed25519 keypair for testing
+        $keypair    = \sodium_crypto_sign_keypair();
+        $secretKey  = \sodium_crypto_sign_secretkey($keypair);
+        $publicKey  = \sodium_crypto_sign_publickey($keypair);
+
+        $headerSet      = $this->createHeaderSet();
+        $messageContent = 'Hello World';
+        $signer         = new Swift_Signers_DKIMSigner(
+            $secretKey,
+            'dummy.nxdomain.be',
+            'ed25519selector'
+        );
+        $signer->setHashAlgorithm('ed25519-sha256');
+        $signer->setSignatureTimestamp('1299879181');
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write($messageContent);
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+
+        $this->assertTrue($headerSet->has('DKIM-Signature'));
+        $dkim = $headerSet->getAll('DKIM-Signature');
+        $sig  = \reset($dkim);
+        $this->assertStringContainsString('a=ed25519-sha256', $sig->getValue());
+        // Ed25519 signatures are always 64 bytes = 88 base64 chars (with padding)
+        $this->assertMatchesRegularExpression('/b=.{10,}/', $sig->getValue());
+    }
+
+    public function testEd25519AlwaysUsesSha256ForBody()
+    {
+        if (!\function_exists('sodium_crypto_sign_keypair')) {
+            $this->markTestSkipped('sodium extension required for Ed25519 tests');
+        }
+
+        $keypair   = \sodium_crypto_sign_keypair();
+        $secretKey = \sodium_crypto_sign_secretkey($keypair);
+
+        $headerSet      = $this->createHeaderSet();
+        $messageContent = 'Hello World';
+        $signer         = new Swift_Signers_DKIMSigner(
+            $secretKey,
+            'dummy.nxdomain.be',
+            'ed25519selector'
+        );
+        $signer->setHashAlgorithm('ed25519-sha256');
+        $signer->setSignatureTimestamp('1299879181');
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write($messageContent);
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+
+        $dkim = $headerSet->getAll('DKIM-Signature');
+        $sig  = \reset($dkim);
+        // Body hash must match the SHA-256 hash (same bh= as rsa-sha256 tests)
+        $this->assertStringContainsString('bh=f+W+hu8dIhf2VAni89o8lF6WKTXi7nViA4RrMdpD5/U=', $sig->getValue());
+    }
+
     public function testEmptyBodySimpleCanon()
     {
         $headerSet = $this->createHeaderSet();

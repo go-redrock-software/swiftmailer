@@ -301,8 +301,16 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
                     throw new Swift_SwiftException('Unable to set sha256 as it is not supported by OpenSSL.');
                 }
                 break;
+            case 'ed25519-sha256':
+                if (!\function_exists('sodium_crypto_sign_detached')) {
+                    throw new Swift_SwiftException('The sodium extension is required for ed25519-sha256 DKIM signing.');
+                }
+                $this->hashAlgorithm = 'ed25519-sha256';
+                break;
             default:
-                throw new Swift_SwiftException('Unable to set the hash algorithm, must be one of rsa-sha1 or rsa-sha256 (%s given).', $hash);
+                throw new Swift_SwiftException(
+                    \sprintf('Unable to set the hash algorithm, must be one of rsa-sha1, rsa-sha256, or ed25519-sha256 (%s given).', $hash)
+                );
         }
 
         return $this;
@@ -431,6 +439,7 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
         // Init
         switch ($this->hashAlgorithm) {
             case 'rsa-sha256':
+            case 'ed25519-sha256':
                 $this->bodyHashHandler = \hash_init('sha256');
                 break;
             case 'rsa-sha1':
@@ -675,6 +684,16 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
     private function getEncryptedHash()
     {
         $signature = '';
+
+        if ('ed25519-sha256' === $this->hashAlgorithm) {
+            // Ed25519 uses sodium_crypto_sign_detached with the raw secret key.
+            // The header canon data is first hashed with SHA-256, then signed.
+            $hash = \hash('sha256', $this->headerCanonData, true);
+            $signature = \sodium_crypto_sign_detached($hash, $this->privateKey);
+
+            return $signature;
+        }
+
         switch ($this->hashAlgorithm) {
             case 'rsa-sha1':
                 $algorithm = OPENSSL_ALGO_SHA1;
