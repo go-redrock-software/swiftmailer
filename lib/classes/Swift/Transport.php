@@ -58,16 +58,17 @@ interface Swift_Transport
     /**
      * Send the given Message.
      *
-     * Recipient/sender data will be retrieved from the Message API.
-     * The return value is the number of recipients who were accepted for delivery.
+     * Recipient/sender data will be retrieved from the Message API unless
+     * an explicit Envelope is provided.
      *
      * This is the responsibility of the send method to start the transport if needed.
      *
-     * @param string[] $failedRecipients An array of failures by-reference
+     * @param string[]            $failedRecipients An array of failures by-reference
+     * @param Swift_Envelope|null $envelope         Optional explicit SMTP envelope
      *
      * @return int
      */
-    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null);
+    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null);
 
     /**
      * Register a plugin in the Transport.
