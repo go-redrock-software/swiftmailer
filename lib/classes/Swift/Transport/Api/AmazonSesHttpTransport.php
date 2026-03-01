@@ -27,7 +27,7 @@ class Swift_Transport_Api_AmazonSesHttpTransport extends Swift_Transport_Abstrac
         }
     }
 
-    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null): int
+    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null): int
     {
         try {
             $tags      = $this->extractSesTagsFromMessage($message);
