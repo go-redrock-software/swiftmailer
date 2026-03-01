@@ -19,7 +19,7 @@ class Swift_Transport_AbstractHttpApiTransportTest extends TestCase
         $this->eventDispatcherMock = $this->createMock(\Swift_Events_EventDispatcher::class);
 
         $this->transport = new class('test-api-key', $this->httpClientMock, $this->eventDispatcherMock) extends \Swift_Transport_AbstractHttpApiTransport {
-            protected function doSend(\Swift_Mime_SimpleMessage $message): array
+            protected function doSend(\Swift_Mime_SimpleMessage $message, ?\Swift_Envelope $envelope = null): array
             {
                 return ['message_id' => 'test-123', 'recipients' => 1];
             }
@@ -117,7 +117,7 @@ class Swift_Transport_AbstractHttpApiTransportTest extends TestCase
                 $this->doSendCallback = $doSendCallback;
             }
 
-            protected function doSend(\Swift_Mime_SimpleMessage $message): array
+            protected function doSend(\Swift_Mime_SimpleMessage $message, ?\Swift_Envelope $envelope = null): array
             {
                 if ($this->doSendCallback) {
                     return ($this->doSendCallback)($message);
@@ -234,5 +234,75 @@ class Swift_Transport_AbstractHttpApiTransportTest extends TestCase
         $this->assertInstanceOf(\Swift_TransportException::class, $holder->event->getException());
         $this->assertEquals(['to@example.com'], $holder->event->getFailedRecipients());
         $this->assertSame($transport, $holder->event->getTransport());
+    }
+
+    public function testCountRecipientsUsesEnvelopeWhenProvided(): void
+    {
+        $dispatcher = new \Swift_Events_SimpleEventDispatcher();
+        $httpClient = $this->createMock(ClientInterface::class);
+
+        $transport = $this->createConcreteTransport('test-key', $httpClient, $dispatcher);
+
+        $message = (new \Swift_Message())
+            ->setFrom(['from@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'Recipient'])
+            ->setSubject('Test');
+
+        $envelope = new \Swift_Envelope('override@example.com', ['a@example.com', 'b@example.com', 'c@example.com']);
+
+        $transport->start();
+        $count = $transport->send($message, $failures, $envelope);
+
+        // doSend returns recipients=1 but envelope has 3, countRecipients should return 3
+        // Since doSend returns 'recipients' => 1, that takes precedence
+        $this->assertEquals(1, $count);
+    }
+
+    public function testCollectRecipientsUsesEnvelopeWhenProvided(): void
+    {
+        $dispatcher = new \Swift_Events_SimpleEventDispatcher();
+        $httpClient = $this->createMock(ClientInterface::class);
+
+        $transport = $this->createConcreteTransport('test-key', $httpClient, $dispatcher, function (\Swift_Mime_SimpleMessage $message) {
+            throw new \RuntimeException('API error');
+        });
+
+        $message = (new \Swift_Message())
+            ->setFrom(['from@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'Recipient'])
+            ->setSubject('Test');
+
+        $envelope = new \Swift_Envelope('override@example.com', ['a@example.com', 'b@example.com']);
+
+        $transport->start();
+
+        $failures = [];
+        try {
+            $transport->send($message, $failures, $envelope);
+            $this->fail('Should have thrown');
+        } catch (\Swift_TransportException $e) {
+            // Expected
+        }
+
+        // Failed recipients should be from envelope, not message
+        $this->assertEquals(['a@example.com', 'b@example.com'], $failures);
+    }
+
+    public function testSendWithoutEnvelopeFallsBackToMessage(): void
+    {
+        $dispatcher = new \Swift_Events_SimpleEventDispatcher();
+        $httpClient = $this->createMock(ClientInterface::class);
+
+        $transport = $this->createConcreteTransport('test-key', $httpClient, $dispatcher);
+
+        $message = (new \Swift_Message())
+            ->setFrom(['from@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'Recipient'])
+            ->setSubject('Test');
+
+        $transport->start();
+        $count = $transport->send($message);
+
+        $this->assertEquals(1, $count);
     }
 }

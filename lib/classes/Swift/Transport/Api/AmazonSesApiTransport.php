@@ -28,7 +28,7 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
         }
     }
 
-    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null): int
+    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null): int
     {
         if (!$this->isStarted()) {
             $this->start();

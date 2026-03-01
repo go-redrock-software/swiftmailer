@@ -57,6 +57,9 @@ class Swift_Events_SendEvent extends Swift_Events_EventObject
     /** Optional reason for rejection. */
     private ?string $rejectionReason = null;
 
+    /** Optional explicit SMTP envelope. */
+    private ?Swift_Envelope $envelope = null;
+
     /**
      * Create a new SendEvent for $source and $message.
      */
@@ -160,5 +163,24 @@ class Swift_Events_SendEvent extends Swift_Events_EventObject
     public function getRejectionReason(): ?string
     {
         return $this->rejectionReason;
+    }
+
+    /**
+     * Set an explicit SMTP envelope for this send operation.
+     *
+     * Plugins can read this in beforeSendPerformed to inspect or modify
+     * the envelope before the transport uses it.
+     */
+    public function setEnvelope(?Swift_Envelope $envelope): void
+    {
+        $this->envelope = $envelope;
+    }
+
+    /**
+     * Get the explicit SMTP envelope, if one was provided.
+     */
+    public function getEnvelope(): ?Swift_Envelope
+    {
+        return $this->envelope;
     }
 }

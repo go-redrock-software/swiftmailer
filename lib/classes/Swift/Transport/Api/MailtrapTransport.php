@@ -35,7 +35,7 @@ class Swift_Transport_Api_MailtrapTransport extends Swift_Transport_AbstractHttp
         $this->inboxId = $inboxId;
     }
 
-    protected function doSend(Swift_Mime_SimpleMessage $message): array
+    protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
         $payload = $this->buildPayload($message);
 

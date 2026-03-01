@@ -86,7 +86,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
      *
      * @throws Swift_TransportException
      */
-    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null): int
+    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null): int
     {
         if (null === $failedRecipients) {
             $failedRecipients = [];

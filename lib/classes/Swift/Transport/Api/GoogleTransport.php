@@ -21,7 +21,7 @@ class Swift_Transport_Api_GoogleTransport extends Swift_Transport_AbstractApiTra
         return true;
     }
 
-    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null): int
+    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null): int
     {
         if (!$this->isStarted()) {
             $this->start();

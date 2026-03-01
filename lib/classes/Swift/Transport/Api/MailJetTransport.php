@@ -31,7 +31,7 @@ class Swift_Transport_Api_MailJetTransport extends Swift_Transport_AbstractHttpA
         $this->privateKey = $privateKey;
     }
 
-    protected function doSend(Swift_Mime_SimpleMessage $message): array
+    protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
         $payload = $this->getPayload($message);
 

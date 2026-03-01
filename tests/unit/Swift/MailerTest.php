@@ -56,7 +56,7 @@ class Swift_MailerTest extends SwiftMailerTestCase
         $message   = $this->createMessage();
         $transport->shouldReceive('send')
             ->once()
-            ->with($message, Mockery::any());
+            ->with($message, Mockery::any(), null);
 
         $mailer = $this->createMailer($transport);
         $mailer->send($message);
@@ -68,7 +68,7 @@ class Swift_MailerTest extends SwiftMailerTestCase
         $message   = $this->createMessage();
         $transport->shouldReceive('send')
             ->once()
-            ->with($message, Mockery::any())
+            ->with($message, Mockery::any(), null)
             ->andReturn(57);
 
         $mailer = $this->createMailer($transport);
@@ -83,7 +83,7 @@ class Swift_MailerTest extends SwiftMailerTestCase
         $message   = $this->createMessage();
         $transport->shouldReceive('send')
             ->once()
-            ->with($message, $failures)
+            ->with($message, $failures, null)
             ->andReturn(57);
 
         $mailer = $this->createMailer($transport);
@@ -102,7 +102,7 @@ class Swift_MailerTest extends SwiftMailerTestCase
             ->andReturn(['foo&invalid' => 'Foo', 'bar@valid.tld' => 'Bar']);
         $transport->shouldReceive('send')
             ->once()
-            ->with($message, $failures)
+            ->with($message, $failures, null)
             ->andThrow($rfcException);
 
         $mailer = $this->createMailer($transport);
@@ -121,6 +121,39 @@ class Swift_MailerTest extends SwiftMailerTestCase
             ->with($plugin);
 
         $mailer->registerPlugin($plugin);
+    }
+
+    public function testSendPassesEnvelopeToTransport()
+    {
+        $envelope  = new Swift_Envelope('override@example.com', ['recipient@example.com']);
+        $transport = $this->createTransport();
+        $message   = $this->createMessage();
+
+        $transport->shouldReceive('send')
+            ->once()
+            ->with($message, Mockery::any(), $envelope)
+            ->andReturn(1);
+
+        $mailer = $this->createMailer($transport);
+        $result = $mailer->send($message, $failures, $envelope);
+
+        $this->assertSame(1, $result);
+    }
+
+    public function testSendWithoutEnvelopePassesNull()
+    {
+        $transport = $this->createTransport();
+        $message   = $this->createMessage();
+
+        $transport->shouldReceive('send')
+            ->once()
+            ->with($message, Mockery::any(), null)
+            ->andReturn(1);
+
+        $mailer = $this->createMailer($transport);
+        $result = $mailer->send($message);
+
+        $this->assertSame(1, $result);
     }
 
     private function createPlugin()

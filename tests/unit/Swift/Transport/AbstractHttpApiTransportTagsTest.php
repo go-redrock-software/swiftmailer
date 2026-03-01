@@ -11,7 +11,7 @@ class Swift_Transport_AbstractHttpApiTransportTagsTest extends PHPUnit\Framework
         $httpClient = $this->createMock(ClientInterface::class);
 
         return new class('key', $httpClient, $dispatcher) extends Swift_Transport_AbstractHttpApiTransport {
-            protected function doSend(Swift_Mime_SimpleMessage $message): array
+            protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
             {
                 return [];
             }

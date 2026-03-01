@@ -25,6 +25,9 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
 
     protected ClientInterface $httpClient;
 
+    /** @var Swift_Envelope|null Active envelope during send */
+    protected ?Swift_Envelope $activeEnvelope = null;
+
     public function __construct(
         #[SensitiveParameter] string $apiKey,
         ?ClientInterface $httpClient = null,
@@ -71,7 +74,7 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
         }
     }
 
-    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null): int
+    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null): int
     {
         if (null === $failedRecipients) {
             $failedRecipients = [];
@@ -81,19 +84,27 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
             $this->start();
         }
 
+        // Store envelope so doSend()/countRecipients()/collectRecipients() can use it
+        $this->activeEnvelope = $envelope;
+
         if ($evt = $this->eventDispatcher?->createSendEvent($this, $message)) {
+            $evt->setEnvelope($envelope);
             $this->eventDispatcher->dispatchEvent($evt, 'beforeSendPerformed');
             if ($evt->bubbleCancelled()) {
                 $evt->setResult(Swift_Events_SendEvent::RESULT_FAILED);
                 $evt->cancelBubble(false);
                 $this->eventDispatcher->dispatchEvent($evt, 'sendPerformed');
+                $this->activeEnvelope = null;
 
                 return 0;
             }
+            // Re-read envelope in case a listener modified it
+            $envelope             = $evt->getEnvelope();
+            $this->activeEnvelope = $envelope;
         }
 
         try {
-            $result = $this->doSend($message);
+            $result = $this->doSend($message, $envelope);
 
             if ($evt) {
                 $evt->setResult(Swift_Events_SendEvent::RESULT_SUCCESS);
@@ -134,6 +145,7 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
 
             return 0;
         } finally {
+            $this->activeEnvelope = null;
             if ($evt) {
                 $this->eventDispatcher->dispatchEvent($evt, 'sendPerformed');
             }
@@ -148,9 +160,11 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
     /**
      * Send the message via the provider's HTTP API.
      *
+     * @param Swift_Envelope|null $envelope Optional explicit SMTP envelope
+     *
      * @return array{message_id?: string, recipients?: int} Result data
      */
-    abstract protected function doSend(Swift_Mime_SimpleMessage $message): array;
+    abstract protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array;
 
     /**
      * Get the API endpoint URL for sending email.
@@ -177,6 +191,10 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
      */
     protected function countRecipients(Swift_Mime_SimpleMessage $message): int
     {
+        if (null !== $this->activeEnvelope) {
+            return \count($this->activeEnvelope->getRecipients());
+        }
+
         return \count($message->getTo() ?? [])
             + \count($message->getCc() ?? [])
             + \count($message->getBcc() ?? []);
@@ -187,6 +205,10 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
      */
     protected function collectRecipients(Swift_Mime_SimpleMessage $message): array
     {
+        if (null !== $this->activeEnvelope) {
+            return $this->activeEnvelope->getRecipients();
+        }
+
         $recipients = [];
         foreach (['getTo', 'getCc', 'getBcc'] as $method) {
             foreach ($message->$method() ?? [] as $address => $name) {
@@ -195,6 +217,23 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
         }
 
         return $recipients;
+    }
+
+    /**
+     * Get the envelope sender, preferring the active envelope over message headers.
+     */
+    protected function getEnvelopeSender(Swift_Mime_SimpleMessage $message): ?string
+    {
+        if (null !== $this->activeEnvelope) {
+            return $this->activeEnvelope->getSender();
+        }
+
+        $from = $message->getFrom();
+        if (!empty($from)) {
+            return \array_key_first($from);
+        }
+
+        return null;
     }
 
     /**

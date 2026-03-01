@@ -31,7 +31,7 @@ class Swift_Transport_Api_PostalTransport extends Swift_Transport_AbstractHttpAp
         $this->host = \rtrim($host, '/');
     }
 
-    protected function doSend(Swift_Mime_SimpleMessage $message): array
+    protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
         $payload = $this->getPayload($message);
 

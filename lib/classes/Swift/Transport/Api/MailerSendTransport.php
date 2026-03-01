@@ -20,7 +20,7 @@ class Swift_Transport_Api_MailerSendTransport extends Swift_Transport_AbstractHt
 {
     private const HOST = 'https://api.mailersend.com';
 
-    protected function doSend(Swift_Mime_SimpleMessage $message): array
+    protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
         $payload = $this->getPayload($message);
 

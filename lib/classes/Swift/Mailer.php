@@ -56,7 +56,7 @@ class Swift_Mailer
      *
      * @return int The number of successful recipients. Can be 0 which indicates failure
      */
-    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null)
+    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null)
     {
         $failedRecipients = (array) $failedRecipients;
 
@@ -68,7 +68,7 @@ class Swift_Mailer
         $sent = 0;
 
         try {
-            $sent = $this->transport->send($message, $failedRecipients);
+            $sent = $this->transport->send($message, $failedRecipients, $envelope);
         } catch (Swift_RfcComplianceException $e) {
             foreach ($message->getTo() as $address => $name) {
                 $failedRecipients[] = $address;

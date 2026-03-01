@@ -1241,6 +1241,103 @@ abstract class Swift_Transport_AbstractSmtpTest extends SwiftMailerTestCase
         $this->assertEquals('[IPv6:fd00::]', $smtp->getLocalDomain());
     }
 
+    public function testSendUsesEnvelopeSenderWhenProvided()
+    {
+        $buf     = $this->getBuffer();
+        $smtp    = $this->getTransport($buf);
+        $message = $this->createMessage();
+
+        // Message has From: original@example.com, but envelope overrides
+        $message->shouldReceive('getFrom')
+            ->zeroOrMoreTimes()
+            ->andReturn(['original@example.com' => 'Original']);
+        $message->shouldReceive('getTo')
+            ->zeroOrMoreTimes()
+            ->andReturn(['to@example.com' => null]);
+
+        $envelope = new Swift_Envelope('override@example.com', ['recipient@example.com']);
+
+        // Expect MAIL FROM to use envelope sender
+        $buf->shouldReceive('write')
+            ->once()
+            ->with("MAIL FROM:<override@example.com>\r\n")
+            ->andReturn(1);
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(1)
+            ->andReturn("250 OK\r\n");
+
+        // Expect RCPT TO to use envelope recipients
+        $buf->shouldReceive('write')
+            ->once()
+            ->with("RCPT TO:<recipient@example.com>\r\n")
+            ->andReturn(2);
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(2)
+            ->andReturn("250 OK\r\n");
+
+        $this->finishBuffer($buf);
+        $smtp->start();
+        $count = $smtp->send($message, $failures, $envelope);
+        $this->assertEquals(1, $count);
+    }
+
+    public function testSendDoesNotStripBccWhenEnvelopeProvided()
+    {
+        $buf     = $this->getBuffer();
+        $smtp    = $this->getTransport($buf);
+        $message = $this->createMessage();
+
+        $message->shouldReceive('getFrom')
+            ->zeroOrMoreTimes()
+            ->andReturn(['me@domain.com' => 'Me']);
+        $message->shouldReceive('getTo')
+            ->zeroOrMoreTimes()
+            ->andReturn(['to@example.com' => null]);
+        $message->shouldReceive('getBcc')
+            ->zeroOrMoreTimes()
+            ->andReturn(['secret@example.com' => null]);
+
+        // When envelope is provided, setBcc([]) must NOT be called
+        $message->shouldNotReceive('setBcc');
+
+        $envelope = new Swift_Envelope('me@domain.com', ['to@example.com', 'secret@example.com']);
+
+        $this->finishBuffer($buf);
+        $smtp->start();
+        $smtp->send($message, $failures, $envelope);
+    }
+
+    public function testSendFallsBackToMessageWhenNoEnvelope()
+    {
+        $buf     = $this->getBuffer();
+        $smtp    = $this->getTransport($buf);
+        $message = $this->createMessage();
+
+        $message->shouldReceive('getFrom')
+            ->zeroOrMoreTimes()
+            ->andReturn(['me@domain.com' => 'Me']);
+        $message->shouldReceive('getTo')
+            ->zeroOrMoreTimes()
+            ->andReturn(['to@bar' => null]);
+        $message->shouldReceive('getBcc')
+            ->zeroOrMoreTimes()
+            ->andReturn(['bcc@bar' => 'Bcc']);
+
+        // Legacy behavior strips BCC
+        $message->shouldReceive('setBcc')
+            ->atLeast()->once()
+            ->with([]);
+        $message->shouldReceive('setBcc')
+            ->atLeast()->once()
+            ->with(['bcc@bar' => 'Bcc']);
+
+        $this->finishBuffer($buf);
+        $smtp->start();
+        $smtp->send($message);
+    }
+
     protected function getBuffer()
     {
         return $this->getMockery('Swift_Transport_IoBuffer')->shouldIgnoreMissing();

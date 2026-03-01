@@ -48,7 +48,7 @@ abstract class Swift_Transport_AbstractApiTransport implements Swift_Transport
      *
      * {@inheritDoc}
      */
-    abstract public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null): int;
+    abstract public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null): int;
 
     /**
      * Plugins would be registered differently based on the API's options/parameters

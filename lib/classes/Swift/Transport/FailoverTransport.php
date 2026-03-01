@@ -55,7 +55,7 @@ class Swift_Transport_FailoverTransport extends Swift_Transport_LoadBalancedTran
      *
      * @return int
      */
-    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null)
+    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null)
     {
         $maxTransports           = \count($this->transports);
         $sent                    = 0;
@@ -70,7 +70,7 @@ class Swift_Transport_FailoverTransport extends Swift_Transport_LoadBalancedTran
                     $transport->start();
                 }
 
-                if ($sent = $transport->send($message, $failedRecipients)) {
+                if ($sent = $transport->send($message, $failedRecipients, $envelope)) {
                     $this->lastUsedTransport = $transport;
 
                     return $sent;

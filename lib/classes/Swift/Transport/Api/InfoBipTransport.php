@@ -31,7 +31,7 @@ class Swift_Transport_Api_InfoBipTransport extends Swift_Transport_AbstractHttpA
         $this->baseUrl = \rtrim($baseUrl, '/');
     }
 
-    protected function doSend(Swift_Mime_SimpleMessage $message): array
+    protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
             'headers'     => $this->getAuthHeaders(),
