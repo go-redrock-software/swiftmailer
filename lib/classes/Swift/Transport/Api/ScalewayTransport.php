@@ -27,7 +27,7 @@ class Swift_Transport_Api_ScalewayTransport extends Swift_Transport_AbstractHttp
         parent::__construct($apiKey, $httpClient, $eventDispatcher);
     }
 
-    protected function doSend(Swift_Mime_SimpleMessage $message): array
+    protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
         $payload = $this->buildPayload($message);
 

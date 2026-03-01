@@ -121,7 +121,7 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
      *
      * @return int
      */
-    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null)
+    public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null)
     {
         $maxTransports           = \count($this->transports);
         $sent                    = 0;
@@ -135,7 +135,7 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
                 if (!$transport->isStarted()) {
                     $transport->start();
                 }
-                if ($sent = $transport->send($message, $failedRecipients)) {
+                if ($sent = $transport->send($message, $failedRecipients, $envelope)) {
                     $this->lastUsedTransport = $transport;
                     break;
                 }

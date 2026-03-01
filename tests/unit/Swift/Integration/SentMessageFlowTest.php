@@ -13,7 +13,7 @@ class SentMessageFlowTest extends TestCase
         $httpClient = $this->createMock(\GuzzleHttp\ClientInterface::class);
 
         $transport = new class('test-key', $httpClient, $dispatcher) extends \Swift_Transport_AbstractHttpApiTransport {
-            protected function doSend(\Swift_Mime_SimpleMessage $message): array
+            protected function doSend(\Swift_Mime_SimpleMessage $message, ?\Swift_Envelope $envelope = null): array
             {
                 return ['message_id' => 'integration-test-id', 'recipients' => 1];
             }
@@ -67,7 +67,7 @@ class SentMessageFlowTest extends TestCase
         $httpClient = $this->createMock(\GuzzleHttp\ClientInterface::class);
 
         $transport = new class('test-key', $httpClient, $dispatcher) extends \Swift_Transport_AbstractHttpApiTransport {
-            protected function doSend(\Swift_Mime_SimpleMessage $message): array
+            protected function doSend(\Swift_Mime_SimpleMessage $message, ?\Swift_Envelope $envelope = null): array
             {
                 throw new \RuntimeException('API down');
             }
@@ -147,7 +147,7 @@ class SentMessageFlowTest extends TestCase
                 $this->tagHolder = $tagHolder;
             }
 
-            protected function doSend(\Swift_Mime_SimpleMessage $message): array
+            protected function doSend(\Swift_Mime_SimpleMessage $message, ?\Swift_Envelope $envelope = null): array
             {
                 $this->tagHolder->tags = $this->extractTags($message);
 
@@ -209,7 +209,7 @@ class SentMessageFlowTest extends TestCase
                 $this->metaHolder = $metaHolder;
             }
 
-            protected function doSend(\Swift_Mime_SimpleMessage $message): array
+            protected function doSend(\Swift_Mime_SimpleMessage $message, ?\Swift_Envelope $envelope = null): array
             {
                 $this->metaHolder->meta = $this->extractMetadata($message);
 

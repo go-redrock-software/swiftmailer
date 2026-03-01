@@ -6,7 +6,7 @@ class Swift_Transport_Api_SendgridTransport extends Swift_Transport_AbstractHttp
 {
     private const HOST = 'https://api.sendgrid.com';
 
-    protected function doSend(Swift_Mime_SimpleMessage $message): array
+    protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
         $payload = $this->getPayload($message);
 

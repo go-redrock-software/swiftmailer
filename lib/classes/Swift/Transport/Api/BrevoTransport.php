@@ -4,7 +4,7 @@ use Psr\Http\Message\ResponseInterface;
 
 class Swift_Transport_Api_BrevoTransport extends Swift_Transport_AbstractHttpApiTransport
 {
-    protected function doSend(Swift_Mime_SimpleMessage $message): array
+    protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
         $payload = $this->getPayload($message);
 
