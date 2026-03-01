@@ -43,7 +43,8 @@ try {
 }
 
 // ── Create transport from DSN ────────────────────────────────────
-$output->info('DSN:       ' . $args->dsn);
+$displayDsn = \preg_replace('#://([^:]+):([^@]+)@#', '://$1:****@', $args->dsn);
+$output->info('DSN:       ' . $displayDsn);
 $output->info('From:      ' . $args->from);
 $output->info('To:        ' . $args->to);
 $output->info('Subject:   ' . $args->subject);

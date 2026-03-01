@@ -14,12 +14,17 @@ class Swift_Cli_ConsoleOutput
     /** @var resource */
     private $stream;
 
+    /** @var resource */
+    private $errorStream;
+
     /**
-     * @param resource $stream Writable stream (default: STDOUT)
+     * @param resource $stream      Writable stream (default: STDOUT)
+     * @param resource $errorStream Writable stream for errors/warnings (default: STDERR)
      */
-    public function __construct($stream = null)
+    public function __construct($stream = null, $errorStream = null)
     {
         $this->stream       = $stream ?? \STDOUT;
+        $this->errorStream  = $errorStream ?? \fopen('php://stderr', 'w');
         $this->colorEnabled = $this->detectColor();
     }
 
@@ -35,12 +40,12 @@ class Swift_Cli_ConsoleOutput
 
     public function error(string $message): void
     {
-        $this->writeln($this->colorize($message, '0;31')); // red
+        \fwrite($this->errorStream, $this->colorize($message, '0;31').\PHP_EOL); // red
     }
 
     public function warning(string $message): void
     {
-        $this->writeln($this->colorize($message, '1;33')); // yellow
+        \fwrite($this->errorStream, $this->colorize($message, '1;33').\PHP_EOL); // yellow
     }
 
     public function writeln(string $message): void
