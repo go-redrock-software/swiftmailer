@@ -146,10 +146,10 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $signer = new Swift_Signers_DKIMSigner(
             \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
             'dummy.nxdomain.be',
-            'dummySelector'
+            'dummySelector',
         );
 
-        $triggered = false;
+        $triggered       = false;
         $previousHandler = \set_error_handler(static function (int $errno, string $errstr) use (&$triggered) {
             if (\E_USER_DEPRECATED === $errno && \str_contains($errstr, 'rsa-sha1 is deprecated')) {
                 $triggered = true;
@@ -174,7 +174,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $signer = new Swift_Signers_DKIMSigner(
             'not-a-valid-key',
             'dummy.nxdomain.be',
-            'dummySelector'
+            'dummySelector',
         );
         // RSA keys are validated at construction time
     }
@@ -184,7 +184,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $signer = new Swift_Signers_DKIMSigner(
             \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
             'dummy.nxdomain.be',
-            'dummySelector'
+            'dummySelector',
         );
         $this->assertInstanceOf(Swift_Signers_DKIMSigner::class, $signer);
     }
@@ -196,7 +196,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $signer         = new Swift_Signers_DKIMSigner(
             \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
             'dummy.nxdomain.be',
-            'dummySelector'
+            'dummySelector',
         );
         $signer->setHashAlgorithm('rsa-sha256');
         $signer->setSignatureTimestamp('1299879181');
@@ -219,7 +219,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $signer         = new Swift_Signers_DKIMSigner(
             \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
             'dummy.nxdomain.be',
-            'dummySelector'
+            'dummySelector',
         );
         $signer->setHashAlgorithm('rsa-sha256');
         $signer->setSignatureTimestamp('1299879181');
@@ -229,8 +229,8 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $signer->write($messageContent);
         $signer->endBody();
         $signer->addSignature($headerSet);
-        $dkim = $headerSet->getAll('DKIM-Signature');
-        $sig  = \reset($dkim);
+        $dkim  = $headerSet->getAll('DKIM-Signature');
+        $sig   = \reset($dkim);
         $value = $sig->getValue();
         // Extract h= value (use \b to avoid matching bh=)
         \preg_match('/\bh=([^;]+)/', $value, $matches);
@@ -247,7 +247,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $signer         = new Swift_Signers_DKIMSigner(
             \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
             'dummy.nxdomain.be',
-            'dummySelector'
+            'dummySelector',
         );
         $signer->setHashAlgorithm('rsa-sha256');
         $signer->setSignatureTimestamp('1299879181');
@@ -258,8 +258,8 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $signer->write($messageContent);
         $signer->endBody();
         $signer->addSignature($headerSet);
-        $dkim = $headerSet->getAll('DKIM-Signature');
-        $sig  = \reset($dkim);
+        $dkim  = $headerSet->getAll('DKIM-Signature');
+        $sig   = \reset($dkim);
         $value = $sig->getValue();
         // Extract h= value (use \b to avoid matching bh=)
         \preg_match('/\bh=([^;]+)/', $value, $matches);
@@ -277,10 +277,10 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         }
         $keypair   = \sodium_crypto_sign_keypair();
         $secretKey = \sodium_crypto_sign_secretkey($keypair);
-        $signer = new Swift_Signers_DKIMSigner(
+        $signer    = new Swift_Signers_DKIMSigner(
             $secretKey,
             'dummy.nxdomain.be',
-            'dummySelector'
+            'dummySelector',
         );
         $result = $signer->setHashAlgorithm('ed25519-sha256');
         $this->assertSame($signer, $result);
@@ -292,7 +292,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $signer = new Swift_Signers_DKIMSigner(
             \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
             'dummy.nxdomain.be',
-            'dummySelector'
+            'dummySelector',
         );
         $signer->setHashAlgorithm('rsa-md5');
     }
@@ -304,16 +304,16 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         }
 
         // Generate an Ed25519 keypair for testing
-        $keypair    = \sodium_crypto_sign_keypair();
-        $secretKey  = \sodium_crypto_sign_secretkey($keypair);
-        $publicKey  = \sodium_crypto_sign_publickey($keypair);
+        $keypair   = \sodium_crypto_sign_keypair();
+        $secretKey = \sodium_crypto_sign_secretkey($keypair);
+        $publicKey = \sodium_crypto_sign_publickey($keypair);
 
         $headerSet      = $this->createHeaderSet();
         $messageContent = 'Hello World';
         $signer         = new Swift_Signers_DKIMSigner(
             $secretKey,
             'dummy.nxdomain.be',
-            'ed25519selector'
+            'ed25519selector',
         );
         $signer->setHashAlgorithm('ed25519-sha256');
         $signer->setSignatureTimestamp('1299879181');
@@ -346,7 +346,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $signer         = new Swift_Signers_DKIMSigner(
             $secretKey,
             'dummy.nxdomain.be',
-            'ed25519selector'
+            'ed25519selector',
         );
         $signer->setHashAlgorithm('ed25519-sha256');
         $signer->setSignatureTimestamp('1299879181');
@@ -369,7 +369,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $signer    = new Swift_Signers_DKIMSigner(
             \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
             'dummy.nxdomain.be',
-            'dummySelector'
+            'dummySelector',
         );
         $signer->setHashAlgorithm('rsa-sha256');
         $signer->setSignatureTimestamp('1299879181');
@@ -393,7 +393,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $signer    = new Swift_Signers_DKIMSigner(
             \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
             'dummy.nxdomain.be',
-            'dummySelector'
+            'dummySelector',
         );
         $signer->setHashAlgorithm('rsa-sha256');
         $signer->setSignatureTimestamp('1299879181');
@@ -418,7 +418,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $signer         = new Swift_Signers_DKIMSigner(
             \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
             'dummy.nxdomain.be',
-            'dummySelector'
+            'dummySelector',
         );
         $signer->setHashAlgorithm('rsa-sha256');
         $signer->setSignatureTimestamp('1299879181');
@@ -435,12 +435,12 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
 
     public function testXTransportHeaderIsIgnoredByDefault()
     {
-        $headerSet = $this->createHeaderSetWithXTransport();
+        $headerSet      = $this->createHeaderSetWithXTransport();
         $messageContent = 'Hello World';
-        $signer = new Swift_Signers_DKIMSigner(
+        $signer         = new Swift_Signers_DKIMSigner(
             \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
             'dummy.nxdomain.be',
-            'dummySelector'
+            'dummySelector',
         );
         $signer->setHashAlgorithm('rsa-sha256');
         $signer->setSignatureTimestamp('1299879181');
@@ -462,7 +462,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $signer         = new Swift_Signers_DKIMSigner(
             \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
             'dummy.nxdomain.be',
-            'dummySelector'
+            'dummySelector',
         );
         $signer->ignoreHeader('From');
         $signer->setHashAlgorithm('rsa-sha256');
