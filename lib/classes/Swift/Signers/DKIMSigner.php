@@ -117,7 +117,8 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
 
         // Try to load as RSA key; if it fails and it's a raw binary key
         // (64 bytes for Ed25519 secret key), store it for later Ed25519 use.
-        if (SODIUM_CRYPTO_SIGN_SECRETKEYBYTES === \strlen($privateKey)
+        if (\defined('SODIUM_CRYPTO_SIGN_SECRETKEYBYTES')
+            && SODIUM_CRYPTO_SIGN_SECRETKEYBYTES === \strlen($privateKey)
             && !\str_contains($privateKey, '-----BEGIN')) {
             // Raw Ed25519 secret key
             $this->privateKey = $privateKey;
@@ -231,9 +232,9 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
     }
 
     /**
-     * Set hash_algorithm, must be one of rsa-sha256 | rsa-sha1.
+     * Set hash_algorithm, must be one of rsa-sha256 | rsa-sha1 | ed25519-sha256.
      *
-     * @param string $hash 'rsa-sha1' or 'rsa-sha256'
+     * @param string $hash 'rsa-sha1', 'rsa-sha256', or 'ed25519-sha256'
      *
      * @return $this
      *

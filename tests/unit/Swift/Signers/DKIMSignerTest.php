@@ -328,8 +328,13 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $dkim = $headerSet->getAll('DKIM-Signature');
         $sig  = \reset($dkim);
         $this->assertStringContainsString('a=ed25519-sha256', $sig->getValue());
-        // Ed25519 signatures are always 64 bytes = 88 base64 chars (with padding)
-        $this->assertMatchesRegularExpression('/b=.{10,}/', $sig->getValue());
+
+        // Extract the b= value and verify it is a valid Ed25519 signature (64 bytes)
+        \preg_match('/\bb=([A-Za-z0-9+\/= ]+)$/', $sig->getValue(), $bMatch);
+        $this->assertNotEmpty($bMatch, 'b= tag must be present in DKIM-Signature');
+        $rawSignature = \base64_decode(\str_replace(' ', '', $bMatch[1]), true);
+        $this->assertNotFalse($rawSignature, 'b= value must be valid base64');
+        $this->assertSame(64, \strlen($rawSignature), 'Ed25519 signature must be exactly 64 bytes');
     }
 
     public function testEd25519AlwaysUsesSha256ForBody()
