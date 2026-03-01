@@ -15,6 +15,7 @@
  */
 class Swift_Plugins_CssInlinerPlugin implements Swift_Events_SendListener
 {
+    #[\Override]
     public function beforeSendPerformed(Swift_Events_SendEvent $evt): void
     {
         if (!\class_exists(TijsVerkoyen\CssToInlineStyles\CssToInlineStyles::class)) {
@@ -36,6 +37,7 @@ class Swift_Plugins_CssInlinerPlugin implements Swift_Events_SendListener
         }
     }
 
+    #[\Override]
     public function sendPerformed(Swift_Events_SendEvent $evt): void
     {
         // No-op — required by interface

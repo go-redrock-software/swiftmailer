@@ -35,6 +35,7 @@ class Swift_Plugins_ImpersonatePlugin implements Swift_Events_SendListener
     /**
      * Invoked immediately before the Message is sent.
      */
+    #[\Override]
     public function beforeSendPerformed(Swift_Events_SendEvent $evt)
     {
         $message = $evt->getMessage();
@@ -50,6 +51,7 @@ class Swift_Plugins_ImpersonatePlugin implements Swift_Events_SendListener
     /**
      * Invoked immediately after the Message is sent.
      */
+    #[\Override]
     public function sendPerformed(Swift_Events_SendEvent $evt)
     {
         $message = $evt->getMessage();

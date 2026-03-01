@@ -54,6 +54,7 @@ class Swift_Mime_ContentEncoder_PlainContentEncoder implements Swift_Mime_Conten
      *
      * @return string
      */
+    #[\Override]
     public function encodeString($string, $firstLineOffset = 0, $maxLineLength = 0)
     {
         if ($this->canonical) {
@@ -69,6 +70,7 @@ class Swift_Mime_ContentEncoder_PlainContentEncoder implements Swift_Mime_Conten
      * @param int $firstLineOffset ignored
      * @param int $maxLineLength   optional, 0 means no wrapping will occur
      */
+    #[\Override]
     public function encodeByteStream(Swift_OutputByteStream $os, Swift_InputByteStream $is, $firstLineOffset = 0, $maxLineLength = 0)
     {
         $leftOver = '';
@@ -94,6 +96,7 @@ class Swift_Mime_ContentEncoder_PlainContentEncoder implements Swift_Mime_Conten
      *
      * @return string
      */
+    #[\Override]
     public function getName()
     {
         return $this->name;
@@ -102,6 +105,7 @@ class Swift_Mime_ContentEncoder_PlainContentEncoder implements Swift_Mime_Conten
     /**
      * Not used.
      */
+    #[\Override]
     public function charsetChanged($charset)
     {
     }

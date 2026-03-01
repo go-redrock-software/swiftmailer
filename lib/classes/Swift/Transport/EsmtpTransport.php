@@ -201,6 +201,7 @@ class Swift_Transport_EsmtpTransport extends Swift_Transport_AbstractSmtpTranspo
      *
      * @return $this
      */
+    #[\Override]
     public function setSourceIp($source)
     {
         $this->params['sourceIp'] = $source;
@@ -213,6 +214,7 @@ class Swift_Transport_EsmtpTransport extends Swift_Transport_AbstractSmtpTranspo
      *
      * @return string
      */
+    #[\Override]
     public function getSourceIp()
     {
         return $this->params['sourceIp'] ?? null;
@@ -293,6 +295,7 @@ class Swift_Transport_EsmtpTransport extends Swift_Transport_AbstractSmtpTranspo
      *
      * @return string|null The server response, or null if pipelining is enabled
      */
+    #[\Override]
     public function executeCommand($command, $codes = [], &$failures = null, $pipeline = false, $address = null)
     {
         $failures   = (array) $failures;
@@ -335,12 +338,14 @@ class Swift_Transport_EsmtpTransport extends Swift_Transport_AbstractSmtpTranspo
     }
 
     /** Get the params to initialize the buffer */
+    #[\Override]
     protected function getBufferParams()
     {
         return $this->params;
     }
 
     /** Overridden to perform EHLO instead */
+    #[\Override]
     protected function doHeloCommand()
     {
         try {
@@ -391,6 +396,7 @@ class Swift_Transport_EsmtpTransport extends Swift_Transport_AbstractSmtpTranspo
     }
 
     /** Overridden to add Extension support */
+    #[\Override]
     protected function doMailFromCommand($address)
     {
         $address  = $this->addressEncoder->encodeString($address);
@@ -409,6 +415,7 @@ class Swift_Transport_EsmtpTransport extends Swift_Transport_AbstractSmtpTranspo
     }
 
     /** Overridden to add Extension support */
+    #[\Override]
     protected function doRcptToCommand($address)
     {
         $address  = $this->addressEncoder->encodeString($address);

@@ -9,6 +9,7 @@ use Psr\Http\Message\ResponseInterface;
  */
 class Swift_Transport_Api_ResendTransport extends Swift_Transport_AbstractHttpApiTransport
 {
+    #[\Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
         $payload = $this->getPayload($message);
@@ -35,11 +36,13 @@ class Swift_Transport_Api_ResendTransport extends Swift_Transport_AbstractHttpAp
         ];
     }
 
+    #[\Override]
     protected function getEndpoint(): string
     {
         return 'https://api.resend.com/emails';
     }
 
+    #[\Override]
     protected function getAuthHeaders(): array
     {
         return [
@@ -47,6 +50,7 @@ class Swift_Transport_Api_ResendTransport extends Swift_Transport_AbstractHttpAp
         ];
     }
 
+    #[\Override]
     protected function parseResponse(ResponseInterface $response): array
     {
         $body = (string) $response->getBody();
@@ -54,6 +58,7 @@ class Swift_Transport_Api_ResendTransport extends Swift_Transport_AbstractHttpAp
         return \json_decode($body, true) ?? [];
     }
 
+    #[\Override]
     protected function getPingEndpoint(): string
     {
         return 'https://api.resend.com/api-keys';

@@ -31,6 +31,7 @@ class Swift_Transport_NullTransport implements Swift_Transport
      *
      * @return bool
      */
+    #[\Override]
     public function isStarted()
     {
         return true;
@@ -39,6 +40,7 @@ class Swift_Transport_NullTransport implements Swift_Transport
     /**
      * Starts this Transport mechanism.
      */
+    #[\Override]
     public function start()
     {
     }
@@ -46,10 +48,12 @@ class Swift_Transport_NullTransport implements Swift_Transport
     /**
      * Stops this Transport mechanism.
      */
+    #[\Override]
     public function stop()
     {
     }
 
+    #[\Override]
     public function ping()
     {
         return true;
@@ -62,6 +66,7 @@ class Swift_Transport_NullTransport implements Swift_Transport
      *
      * @return int The number of sent emails
      */
+    #[\Override]
     public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null)
     {
         if ($evt = $this->eventDispatcher->createSendEvent($this, $message)) {
@@ -92,6 +97,7 @@ class Swift_Transport_NullTransport implements Swift_Transport
     /**
      * Register a plugin.
      */
+    #[\Override]
     public function registerPlugin(Swift_Events_EventListener $plugin)
     {
         $this->eventDispatcher->bindEventListener($plugin);

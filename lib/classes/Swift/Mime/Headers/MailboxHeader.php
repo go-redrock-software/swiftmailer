@@ -55,6 +55,7 @@ class Swift_Mime_Headers_MailboxHeader extends Swift_Mime_Headers_AbstractHeader
      *
      * @return int
      */
+    #[\Override]
     public function getFieldType()
     {
         return self::TYPE_MAILBOX;
@@ -67,6 +68,7 @@ class Swift_Mime_Headers_MailboxHeader extends Swift_Mime_Headers_AbstractHeader
      *
      * @throws Swift_RfcComplianceException
      */
+    #[\Override]
     public function setFieldBodyModel($model)
     {
         $this->setNameAddresses($model);
@@ -81,6 +83,7 @@ class Swift_Mime_Headers_MailboxHeader extends Swift_Mime_Headers_AbstractHeader
      *
      * @throws Swift_RfcComplianceException
      */
+    #[\Override]
     public function getFieldBodyModel()
     {
         return $this->getNameAddresses();
@@ -237,6 +240,7 @@ class Swift_Mime_Headers_MailboxHeader extends Swift_Mime_Headers_AbstractHeader
      *
      * @throws Swift_RfcComplianceException
      */
+    #[\Override]
     public function getFieldBody()
     {
         // Compute the string value of the header only if needed

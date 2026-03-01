@@ -28,6 +28,7 @@ class Swift_Transport_FailoverTransport extends Swift_Transport_LoadBalancedTran
         parent::__construct();
     }
 
+    #[\Override]
     public function ping()
     {
         $maxTransports = \count($this->transports);
@@ -54,6 +55,7 @@ class Swift_Transport_FailoverTransport extends Swift_Transport_LoadBalancedTran
      *
      * @return int
      */
+    #[\Override]
     public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null)
     {
         $maxTransports           = \count($this->transports);

@@ -28,6 +28,7 @@ class Swift_Encoder_Base64Encoder implements Swift_Encoder
      *
      * @return string
      */
+    #[\Override]
     public function encodeString($string, $firstLineOffset = 0, $maxLineLength = 0)
     {
         if (0 >= $maxLineLength || 76 < $maxLineLength) {

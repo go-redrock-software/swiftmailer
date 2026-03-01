@@ -48,6 +48,7 @@ class Swift_Transport_SendmailTransport extends Swift_Transport_AbstractSmtpTran
     /**
      * Start the standalone SMTP session if running in -bs mode.
      */
+    #[\Override]
     public function start()
     {
         if (\str_contains($this->getCommand(), ' -bs')) {
@@ -99,6 +100,7 @@ class Swift_Transport_SendmailTransport extends Swift_Transport_AbstractSmtpTran
      *
      * @return int
      */
+    #[\Override]
     public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null)
     {
         $failedRecipients = (array) $failedRecipients;
@@ -167,6 +169,7 @@ class Swift_Transport_SendmailTransport extends Swift_Transport_AbstractSmtpTran
     }
 
     /** Get the params to initialize the buffer */
+    #[\Override]
     protected function getBufferParams()
     {
         return $this->params;

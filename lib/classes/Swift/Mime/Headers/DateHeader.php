@@ -40,6 +40,7 @@ class Swift_Mime_Headers_DateHeader extends Swift_Mime_Headers_AbstractHeader
      *
      * @return int
      */
+    #[\Override]
     public function getFieldType()
     {
         return self::TYPE_DATE;
@@ -50,6 +51,7 @@ class Swift_Mime_Headers_DateHeader extends Swift_Mime_Headers_AbstractHeader
      *
      * @param DateTimeInterface $model
      */
+    #[\Override]
     public function setFieldBodyModel($model)
     {
         $this->setDateTime($model);
@@ -60,6 +62,7 @@ class Swift_Mime_Headers_DateHeader extends Swift_Mime_Headers_AbstractHeader
      *
      * @return DateTimeImmutable
      */
+    #[\Override]
     public function getFieldBodyModel()
     {
         return $this->getDateTime();
@@ -100,6 +103,7 @@ class Swift_Mime_Headers_DateHeader extends Swift_Mime_Headers_AbstractHeader
      *
      * @return string
      */
+    #[\Override]
     public function getFieldBody()
     {
         if (!$this->getCachedValue()) {

@@ -61,6 +61,7 @@ class Swift_Mime_ContentEncoder_QpContentEncoder extends Swift_Encoder_QpEncoder
      * @param int                    $firstLineOffset
      * @param int                    $maxLineLength
      */
+    #[\Override]
     public function encodeByteStream(Swift_OutputByteStream $os, Swift_InputByteStream $is, $firstLineOffset = 0, $maxLineLength = 0)
     {
         if ($maxLineLength > 76 || $maxLineLength <= 0) {
@@ -127,6 +128,7 @@ class Swift_Mime_ContentEncoder_QpContentEncoder extends Swift_Encoder_QpEncoder
      *
      * @return string
      */
+    #[\Override]
     public function getName()
     {
         return 'quoted-printable';

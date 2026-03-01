@@ -31,11 +31,13 @@ class Swift_Webhook_Converter_MailerSendConverter extends Swift_Webhook_Abstract
         'activity.spam_complaint' => ['engagement', 'complained'],
     ];
 
+    #[\Override]
     public function getProviderName(): string
     {
         return 'mailersend';
     }
 
+    #[\Override]
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
         $signature = $headers['signature'] ?? null;
@@ -47,6 +49,7 @@ class Swift_Webhook_Converter_MailerSendConverter extends Swift_Webhook_Abstract
         return $this->verifyHmac($rawBody, $signature, $secret, 'sha256');
     }
 
+    #[\Override]
     public function convert(array $payload, array $headers): array
     {
         $eventType = $payload['type'] ?? null;

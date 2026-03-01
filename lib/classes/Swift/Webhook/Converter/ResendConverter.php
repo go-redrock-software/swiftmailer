@@ -27,11 +27,13 @@ class Swift_Webhook_Converter_ResendConverter extends Swift_Webhook_AbstractPayl
         'email.complained'       => ['engagement', 'complained'],
     ];
 
+    #[\Override]
     public function getProviderName(): string
     {
         return 'resend';
     }
 
+    #[\Override]
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
         $svixId    = $headers['svix-id']        ?? null;
@@ -66,6 +68,7 @@ class Swift_Webhook_Converter_ResendConverter extends Swift_Webhook_AbstractPayl
         return false;
     }
 
+    #[\Override]
     public function convert(array $payload, array $headers): array
     {
         $eventType = $payload['type'] ?? null;

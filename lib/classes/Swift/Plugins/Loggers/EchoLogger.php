@@ -33,6 +33,7 @@ class Swift_Plugins_Loggers_EchoLogger implements Swift_Plugins_Logger
      *
      * @param string $entry
      */
+    #[\Override]
     public function add($entry)
     {
         if ($this->isHtml) {
@@ -45,6 +46,7 @@ class Swift_Plugins_Loggers_EchoLogger implements Swift_Plugins_Logger
     /**
      * Not implemented.
      */
+    #[\Override]
     public function clear()
     {
     }
@@ -52,6 +54,7 @@ class Swift_Plugins_Loggers_EchoLogger implements Swift_Plugins_Logger
     /**
      * Not implemented.
      */
+    #[\Override]
     public function dump()
     {
     }

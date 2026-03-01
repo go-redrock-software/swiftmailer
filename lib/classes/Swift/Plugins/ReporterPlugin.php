@@ -33,6 +33,7 @@ class Swift_Plugins_ReporterPlugin implements Swift_Events_SendListener
     /**
      * Not used.
      */
+    #[\Override]
     public function beforeSendPerformed(Swift_Events_SendEvent $evt)
     {
     }
@@ -40,6 +41,7 @@ class Swift_Plugins_ReporterPlugin implements Swift_Events_SendListener
     /**
      * Invoked immediately after the Message is sent.
      */
+    #[\Override]
     public function sendPerformed(Swift_Events_SendEvent $evt)
     {
         $message  = $evt->getMessage();

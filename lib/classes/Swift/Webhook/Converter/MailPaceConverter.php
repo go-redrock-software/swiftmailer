@@ -27,11 +27,13 @@ class Swift_Webhook_Converter_MailPaceConverter extends Swift_Webhook_AbstractPa
         'email.spam'      => ['delivery', 'dropped'],
     ];
 
+    #[\Override]
     public function getProviderName(): string
     {
         return 'mailpace';
     }
 
+    #[\Override]
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
         $signature = $headers['x-mailpace-signature'] ?? null;
@@ -54,6 +56,7 @@ class Swift_Webhook_Converter_MailPaceConverter extends Swift_Webhook_AbstractPa
         }
     }
 
+    #[\Override]
     public function convert(array $payload, array $headers): array
     {
         $eventName = $payload['event'] ?? null;

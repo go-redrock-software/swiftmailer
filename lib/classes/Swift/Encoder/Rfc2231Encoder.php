@@ -40,6 +40,7 @@ class Swift_Encoder_Rfc2231Encoder implements Swift_Encoder
      *
      * @return string
      */
+    #[\Override]
     public function encodeString($string, $firstLineOffset = 0, $maxLineLength = 0)
     {
         $lines       = [];

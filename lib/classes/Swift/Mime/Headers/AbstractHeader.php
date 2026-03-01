@@ -64,6 +64,7 @@ abstract class Swift_Mime_Headers_AbstractHeader implements Swift_Mime_Header
      *
      * @param string $charset
      */
+    #[\Override]
     public function setCharset($charset)
     {
         $this->clearCachedValueIf($charset != $this->charset);
@@ -131,6 +132,7 @@ abstract class Swift_Mime_Headers_AbstractHeader implements Swift_Mime_Header
      *
      * @return string
      */
+    #[\Override]
     public function getFieldName()
     {
         return $this->name;
@@ -164,6 +166,7 @@ abstract class Swift_Mime_Headers_AbstractHeader implements Swift_Mime_Header
      *
      * @throws Swift_RfcComplianceException
      */
+    #[\Override]
     public function toString()
     {
         return $this->tokensToString($this->toTokens());

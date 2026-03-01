@@ -21,17 +21,20 @@
  */
 class Swift_Webhook_Converter_AmazonSesConverter extends Swift_Webhook_AbstractPayloadConverter
 {
+    #[\Override]
     public function getProviderName(): string
     {
         return 'amazon-ses';
     }
 
+    #[\Override]
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
         // Basic validation: ensure this comes from SNS
         return isset($headers['x-amz-sns-message-type']);
     }
 
+    #[\Override]
     public function convert(array $payload, array $headers): array
     {
         $type = $payload['Type'] ?? null;
