@@ -38,9 +38,10 @@
   "require-dev": {
     "mockery/mockery": "^1.0",
     "symfony/phpunit-bridge": "^4.4|^5.4",
-    "phpunit/phpunit": "9.6.19",
+    "phpunit/phpunit": "^9.6.33",
     "friendsofphp/php-cs-fixer": "^3.57",
-    "rector/rector": "^1.1",
+    "phpstan/phpstan": "^2.1",
+    "rector/rector": "^2.0",
     "roave/security-advisories": "dev-master",
     "tijsverkoyen/css-to-inline-styles": "^2.4"
   },
@@ -74,6 +75,7 @@
     }
   },
   "scripts": {
-    "php-cs-fixer": "php-cs-fixer --config=.php-cs-fixer.dist.php fix"
+    "php-cs-fixer": "php-cs-fixer --config=.php-cs-fixer.dist.php fix",
+    "phpstan": "phpstan analyse --configuration=phpstan.neon.dist"
   }
 }

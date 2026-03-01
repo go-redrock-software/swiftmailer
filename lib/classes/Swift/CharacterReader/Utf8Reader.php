@@ -98,33 +98,32 @@ class Swift_CharacterReader_Utf8Reader implements Swift_CharacterReader
                 /* char is invalid, we must wait for a resync */
                 $invalid = true;
                 continue;
-            } else {
-                if (true === $invalid) {
-                    /* We mark the chars as invalid and start a new char */
-                    $currentMap['p'][$charPos + $foundChars] = $startOffset + $i;
-                    $currentMap['i'][$charPos + $foundChars] = true;
-                    ++$foundChars;
-                    $invalid = false;
-                }
-                if (($i + $size) > $strlen) {
-                    $ignoredChars = \substr($string, $i);
-                    break;
-                }
-                for ($j = 1; $j < $size; ++$j) {
-                    $char = $string[$i + $j];
-                    if ($char > "\x7F" && $char < "\xC0") {
-                        // Valid - continue parsing
-                    } else {
-                        /* char is invalid, we must wait for a resync */
-                        $invalid = true;
-                        continue 2;
-                    }
-                }
-                /* Ok we got a complete char here */
-                $currentMap['p'][$charPos + $foundChars] = $startOffset + $i + $size;
-                $i += $j - 1;
-                ++$foundChars;
             }
+            if (true === $invalid) {
+                /* We mark the chars as invalid and start a new char */
+                $currentMap['p'][$charPos + $foundChars] = $startOffset + $i;
+                $currentMap['i'][$charPos + $foundChars] = true;
+                ++$foundChars;
+                $invalid = false;
+            }
+            if (($i + $size) > $strlen) {
+                $ignoredChars = \substr($string, $i);
+                break;
+            }
+            for ($j = 1; $j < $size; ++$j) {
+                $char = $string[$i + $j];
+                if ($char > "\x7F" && $char < "\xC0") {
+                    // Valid - continue parsing
+                } else {
+                    /* char is invalid, we must wait for a resync */
+                    $invalid = true;
+                    continue 2;
+                }
+            }
+            /* Ok we got a complete char here */
+            $currentMap['p'][$charPos + $foundChars] = $startOffset + $i + $size;
+            $i += $j - 1;
+            ++$foundChars;
         }
 
         return $foundChars;
