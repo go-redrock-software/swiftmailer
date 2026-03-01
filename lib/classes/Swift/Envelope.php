@@ -13,7 +13,7 @@
  * This allows sender rewriting, recipient overriding, and BCC handling
  * without modifying the Swift_Mime_SimpleMessage headers.
  */
-class Swift_Envelope
+readonly class Swift_Envelope
 {
     private string $sender;
 

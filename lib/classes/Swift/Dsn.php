@@ -14,9 +14,9 @@ use Nyholm\Dsn\Configuration\Url;
 /**
  * Object representation of a DSN (mail connection).
  */
-class Swift_Dsn
+readonly class Swift_Dsn
 {
-    private static array $transport_class_map = [
+    private const array TRANSPORT_CLASS_MAP = [
         'null'            => Swift_Transport_NullTransport::class,
         'smtp'            => Swift_Transport_EsmtpTransport::class,
         'smtp+tls'        => Swift_Transport_EsmtpTransport::class,
@@ -110,10 +110,10 @@ class Swift_Dsn
 
     public function getTransportClass(): string
     {
-        if (!isset(static::$transport_class_map[$this->scheme])) {
-            throw new InvalidArgumentException(\sprintf('Unsupported DSN scheme "%s". Supported: %s', $this->scheme, \implode(', ', \array_keys(static::$transport_class_map))));
+        if (!isset(self::TRANSPORT_CLASS_MAP[$this->scheme])) {
+            throw new InvalidArgumentException(\sprintf('Unsupported DSN scheme "%s". Supported: %s', $this->scheme, \implode(', ', \array_keys(self::TRANSPORT_CLASS_MAP))));
         }
 
-        return static::$transport_class_map[$this->scheme];
+        return self::TRANSPORT_CLASS_MAP[$this->scheme];
     }
 }

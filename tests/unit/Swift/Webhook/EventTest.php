@@ -38,4 +38,10 @@ class Swift_Webhook_EventTest extends PHPUnit\Framework\TestCase
             [],
         );
     }
+
+    public function testIsReadonlyClass()
+    {
+        $ref = new ReflectionClass(Swift_Webhook_Event::class);
+        $this->assertTrue($ref->isReadOnly());
+    }
 }

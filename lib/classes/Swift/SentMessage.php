@@ -13,7 +13,7 @@
  * Populated by transports after a successful send and made available
  * through SentMessageEvent for plugin consumption.
  */
-class Swift_SentMessage
+readonly class Swift_SentMessage
 {
     private Swift_Mime_SimpleMessage $originalMessage;
 

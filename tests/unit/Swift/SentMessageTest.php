@@ -52,4 +52,10 @@ class Swift_SentMessageTest extends PHPUnit\Framework\TestCase
         $this->assertEquals([], $sentMessage->getDebug());
         $this->assertEquals([], $sentMessage->getFailedRecipients());
     }
+
+    public function testIsReadonlyClass()
+    {
+        $ref = new ReflectionClass(Swift_SentMessage::class);
+        $this->assertTrue($ref->isReadOnly());
+    }
 }
