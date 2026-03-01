@@ -23,7 +23,7 @@ class Swift_Transport_DefaultRetryClassifier implements Swift_Transport_RetryCla
      * 5xx SMTP = permanent failure, 401/403 = auth errors.
      */
     private const PERMANENT_CODES = [
-        501, 502, 503, 504, 530, 535, 550, 551, 552, 553, 554, // SMTP permanent
+        501, 530, 535, 550, 551, 552, 553, 554, // SMTP permanent
         401, 403, // HTTP auth errors
     ];
 
