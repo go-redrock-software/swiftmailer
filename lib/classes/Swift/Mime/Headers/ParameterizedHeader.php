@@ -55,7 +55,7 @@ class Swift_Mime_Headers_ParameterizedHeader extends Swift_Mime_Headers_Unstruct
      *
      * @return int
      */
-    #[\Override]
+    #[Override]
     public function getFieldType()
     {
         return self::TYPE_PARAMETERIZED;
@@ -125,7 +125,7 @@ class Swift_Mime_Headers_ParameterizedHeader extends Swift_Mime_Headers_Unstruct
      *
      * @return string
      */
-    #[\Override]
+    #[Override]
     public function getFieldBody() // TODO: Check caching here
     {
         $body = parent::getFieldBody();

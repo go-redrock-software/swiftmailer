@@ -34,7 +34,7 @@ class Swift_AddressEncoder_AutoAddressEncoder implements Swift_AddressEncoder
         $this->utf8Encoder = $utf8Encoder ?? new Swift_AddressEncoder_Utf8AddressEncoder();
     }
 
-    #[\Override]
+    #[Override]
     public function encodeString(string $address): string
     {
         if ($this->smtpUtf8Available) {

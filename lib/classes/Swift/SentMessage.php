@@ -72,7 +72,7 @@ readonly class Swift_SentMessage
      */
     public function withMessageId(?string $messageId): self
     {
-        return clone($this, ['messageId' => $messageId]);
+        return clone ($this, ['messageId' => $messageId]);
     }
 
     /**
@@ -80,7 +80,7 @@ readonly class Swift_SentMessage
      */
     public function withRecipientCount(int $recipientCount): self
     {
-        return clone($this, ['recipientCount' => $recipientCount]);
+        return clone ($this, ['recipientCount' => $recipientCount]);
     }
 
     public function getOriginalMessage(): Swift_Mime_SimpleMessage

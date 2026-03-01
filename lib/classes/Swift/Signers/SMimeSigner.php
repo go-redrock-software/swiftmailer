@@ -211,7 +211,7 @@ class Swift_Signers_SMimeSigner implements Swift_Signers_BodySigner
      *
      * @return $this
      */
-    #[\Override]
+    #[Override]
     public function signMessage(Swift_Message $message)
     {
         if (null === $this->signCertificate && null === $this->encryptCert) {
@@ -232,7 +232,7 @@ class Swift_Signers_SMimeSigner implements Swift_Signers_BodySigner
      *
      * @return array
      */
-    #[\Override]
+    #[Override]
     public function getAlteredHeaders()
     {
         return ['Content-Type', 'Content-Transfer-Encoding', 'Content-Disposition'];

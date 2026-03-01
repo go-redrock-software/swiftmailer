@@ -31,7 +31,7 @@ class Swift_Transport_Api_MailPaceTransport extends Swift_Transport_AbstractHttp
         return true;
     }
 
-    #[\Override]
+    #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
         $payload = $this->getPayload($message);
@@ -62,13 +62,13 @@ class Swift_Transport_Api_MailPaceTransport extends Swift_Transport_AbstractHttp
         ];
     }
 
-    #[\Override]
+    #[Override]
     protected function getEndpoint(): string
     {
         return 'https://app.mailpace.com/api/v1/send';
     }
 
-    #[\Override]
+    #[Override]
     protected function getAuthHeaders(): array
     {
         return [
@@ -76,13 +76,13 @@ class Swift_Transport_Api_MailPaceTransport extends Swift_Transport_AbstractHttp
         ];
     }
 
-    #[\Override]
+    #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
         return \json_decode((string) $response->getBody(), true) ?? [];
     }
 
-    #[\Override]
+    #[Override]
     protected function getPingEndpoint(): string
     {
         return 'https://app.mailpace.com/api/v1/send';

@@ -32,13 +32,13 @@ class Swift_Webhook_Converter_BrevoConverter extends Swift_Webhook_AbstractPaylo
         'unsubscribed' => ['engagement', 'unsubscribed'],
     ];
 
-    #[\Override]
+    #[Override]
     public function getProviderName(): string
     {
         return 'brevo';
     }
 
-    #[\Override]
+    #[Override]
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
         $token = $headers['x-brevo-webhook-token'] ?? null;
@@ -50,7 +50,7 @@ class Swift_Webhook_Converter_BrevoConverter extends Swift_Webhook_AbstractPaylo
         return \hash_equals($secret, $token);
     }
 
-    #[\Override]
+    #[Override]
     public function convert(array $payload, array $headers): array
     {
         $eventName = $payload['event'] ?? null;

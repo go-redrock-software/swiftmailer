@@ -87,7 +87,7 @@ class Swift_Plugins_ThrottlerPlugin extends Swift_Plugins_BandwidthMonitorPlugin
     /**
      * Invoked immediately before the Message is sent.
      */
-    #[\Override]
+    #[Override]
     public function beforeSendPerformed(Swift_Events_SendEvent $evt)
     {
         $time = $this->getTimestamp();
@@ -119,7 +119,7 @@ class Swift_Plugins_ThrottlerPlugin extends Swift_Plugins_BandwidthMonitorPlugin
     /**
      * Invoked when a Message is sent.
      */
-    #[\Override]
+    #[Override]
     public function sendPerformed(Swift_Events_SendEvent $evt)
     {
         parent::sendPerformed($evt);
@@ -131,7 +131,7 @@ class Swift_Plugins_ThrottlerPlugin extends Swift_Plugins_BandwidthMonitorPlugin
      *
      * @param int $seconds
      */
-    #[\Override]
+    #[Override]
     public function sleep($seconds)
     {
         if (isset($this->sleeper)) {

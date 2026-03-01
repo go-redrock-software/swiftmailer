@@ -22,7 +22,7 @@ abstract class Swift_Transport_AbstractApiTransport implements Swift_Transport
 
     public protected(set) ?Swift_Events_EventDispatcher $eventDispatcher = null;
 
-    #[\Override]
+    #[Override]
     public function isStarted(): bool
     {
         return $this->started;
@@ -57,7 +57,7 @@ abstract class Swift_Transport_AbstractApiTransport implements Swift_Transport
      *
      * {@inheritDoc}
      */
-    #[\Override]
+    #[Override]
     public function registerPlugin(Swift_Events_EventListener $plugin): void
     {
         $this->eventDispatcher->bindEventListener($plugin);
@@ -79,7 +79,7 @@ abstract class Swift_Transport_AbstractApiTransport implements Swift_Transport
      *
      * {@inheritDoc}
      */
-    #[\Override]
+    #[Override]
     public function stop(): void
     {
         if ($this->started && $evt = $this->eventDispatcher->createTransportChangeEvent($this)) {

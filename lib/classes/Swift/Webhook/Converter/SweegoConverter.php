@@ -31,13 +31,13 @@ class Swift_Webhook_Converter_SweegoConverter extends Swift_Webhook_AbstractPayl
         'email_clicked' => ['engagement', 'clicked'],
     ];
 
-    #[\Override]
+    #[Override]
     public function getProviderName(): string
     {
         return 'sweego';
     }
 
-    #[\Override]
+    #[Override]
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
         $webhookId = $headers['webhook-id']        ?? null;
@@ -59,7 +59,7 @@ class Swift_Webhook_Converter_SweegoConverter extends Swift_Webhook_AbstractPayl
         return \hash_equals($expectedSig, $signature);
     }
 
-    #[\Override]
+    #[Override]
     public function convert(array $payload, array $headers): array
     {
         $eventType = $payload['event_type'] ?? null;

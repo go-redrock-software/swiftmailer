@@ -17,13 +17,13 @@
  */
 class Swift_Webhook_Converter_PostmarkConverter extends Swift_Webhook_AbstractPayloadConverter
 {
-    #[\Override]
+    #[Override]
     public function getProviderName(): string
     {
         return 'postmark';
     }
 
-    #[\Override]
+    #[Override]
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
         $token = $headers['x-postmark-webhook-token'] ?? null;
@@ -35,7 +35,7 @@ class Swift_Webhook_Converter_PostmarkConverter extends Swift_Webhook_AbstractPa
         return \hash_equals($secret, $token);
     }
 
-    #[\Override]
+    #[Override]
     public function convert(array $payload, array $headers): array
     {
         $recordType = $payload['RecordType'] ?? null;

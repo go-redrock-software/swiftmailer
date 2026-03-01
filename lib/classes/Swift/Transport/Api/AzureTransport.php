@@ -64,7 +64,7 @@ class Swift_Transport_Api_AzureTransport extends Swift_Transport_AbstractHttpApi
         }
     }
 
-    #[\Override]
+    #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
         $payload = $this->buildPayload($message);
@@ -95,26 +95,26 @@ class Swift_Transport_Api_AzureTransport extends Swift_Transport_AbstractHttpApi
         ];
     }
 
-    #[\Override]
+    #[Override]
     protected function getEndpoint(): string
     {
         return $this->endpoint.'/emails:send?api-version='.self::API_VERSION;
     }
 
-    #[\Override]
+    #[Override]
     protected function getAuthHeaders(): array
     {
         // Auth is handled per-request via HMAC signing in doSend/ping.
         return [];
     }
 
-    #[\Override]
+    #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
         return \json_decode((string) $response->getBody(), true) ?? [];
     }
 
-    #[\Override]
+    #[Override]
     protected function getPingEndpoint(): string
     {
         // Not used — ping() is overridden entirely.

@@ -25,13 +25,13 @@ class Swift_Webhook_Converter_MailgunConverter extends Swift_Webhook_AbstractPay
         'complained'   => ['engagement', 'complained'],
     ];
 
-    #[\Override]
+    #[Override]
     public function getProviderName(): string
     {
         return 'mailgun';
     }
 
-    #[\Override]
+    #[Override]
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
         $decoded = \json_decode($rawBody, true);
@@ -48,7 +48,7 @@ class Swift_Webhook_Converter_MailgunConverter extends Swift_Webhook_AbstractPay
         return $this->verifyHmac($timestamp.$token, $signature, $secret, 'sha256');
     }
 
-    #[\Override]
+    #[Override]
     public function convert(array $payload, array $headers): array
     {
         $eventData = $payload['event-data'] ?? [];

@@ -6,7 +6,7 @@ class Swift_Transport_Api_SendgridTransport extends Swift_Transport_AbstractHttp
 {
     private const HOST = 'https://api.sendgrid.com';
 
-    #[\Override]
+    #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
         $payload = $this->getPayload($message);
@@ -29,25 +29,25 @@ class Swift_Transport_Api_SendgridTransport extends Swift_Transport_AbstractHttp
         return ['recipients' => $this->countRecipients($message)];
     }
 
-    #[\Override]
+    #[Override]
     protected function getEndpoint(): string
     {
         return self::HOST.'/v3/mail/send';
     }
 
-    #[\Override]
+    #[Override]
     protected function getAuthHeaders(): array
     {
         return ['Authorization' => 'Bearer '.$this->apiKey];
     }
 
-    #[\Override]
+    #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
         return \json_decode($response->getBody()->getContents(), true) ?? [];
     }
 
-    #[\Override]
+    #[Override]
     protected function getPingEndpoint(): string
     {
         return self::HOST.'/v3/scopes';

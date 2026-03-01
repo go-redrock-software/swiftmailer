@@ -168,7 +168,7 @@ class Swift_Mime_SimpleHeaderFactory implements Swift_Mime_CharsetObserver
      *
      * @param string $charset
      */
-    #[\Override]
+    #[Override]
     public function charsetChanged($charset)
     {
         $this->charset = $charset;

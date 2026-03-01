@@ -42,7 +42,7 @@ class Swift_Events_SimpleEventDispatcher implements Swift_Events_EventDispatcher
      *
      * @return Swift_Events_SendEvent
      */
-    #[\Override]
+    #[Override]
     public function createSendEvent(Swift_Transport $source, Swift_Mime_SimpleMessage $message)
     {
         return new Swift_Events_SendEvent($source, $message);
@@ -56,7 +56,7 @@ class Swift_Events_SimpleEventDispatcher implements Swift_Events_EventDispatcher
      *
      * @return Swift_Events_CommandEvent
      */
-    #[\Override]
+    #[Override]
     public function createCommandEvent(Swift_Transport $source, $command, $successCodes = [])
     {
         return new Swift_Events_CommandEvent($source, $command, $successCodes);
@@ -70,7 +70,7 @@ class Swift_Events_SimpleEventDispatcher implements Swift_Events_EventDispatcher
      *
      * @return Swift_Events_ResponseEvent
      */
-    #[\Override]
+    #[Override]
     public function createResponseEvent(Swift_Transport $source, $response, $valid)
     {
         return new Swift_Events_ResponseEvent($source, $response, $valid);
@@ -81,7 +81,7 @@ class Swift_Events_SimpleEventDispatcher implements Swift_Events_EventDispatcher
      *
      * @return Swift_Events_TransportChangeEvent
      */
-    #[\Override]
+    #[Override]
     public function createTransportChangeEvent(Swift_Transport $source)
     {
         return new Swift_Events_TransportChangeEvent($source);
@@ -92,7 +92,7 @@ class Swift_Events_SimpleEventDispatcher implements Swift_Events_EventDispatcher
      *
      * @return Swift_Events_TransportExceptionEvent
      */
-    #[\Override]
+    #[Override]
     public function createTransportExceptionEvent(Swift_Transport $source, Swift_TransportException $ex)
     {
         return new Swift_Events_TransportExceptionEvent($source, $ex);
@@ -103,7 +103,7 @@ class Swift_Events_SimpleEventDispatcher implements Swift_Events_EventDispatcher
      *
      * @return Swift_Events_SentMessageEvent
      */
-    #[\Override]
+    #[Override]
     public function createSentMessageEvent(Swift_Transport $source, Swift_SentMessage $sentMessage)
     {
         return new Swift_Events_SentMessageEvent($source, $sentMessage);
@@ -114,7 +114,7 @@ class Swift_Events_SimpleEventDispatcher implements Swift_Events_EventDispatcher
      *
      * @return Swift_Events_FailedMessageEvent
      */
-    #[\Override]
+    #[Override]
     public function createFailedMessageEvent(Swift_Transport $source, Swift_Mime_SimpleMessage $message, Swift_TransportException $ex, array $failedRecipients = [])
     {
         return new Swift_Events_FailedMessageEvent($source, $message, $ex, $failedRecipients);
@@ -123,7 +123,7 @@ class Swift_Events_SimpleEventDispatcher implements Swift_Events_EventDispatcher
     /**
      * Bind an event listener to this dispatcher.
      */
-    #[\Override]
+    #[Override]
     public function bindEventListener(Swift_Events_EventListener $listener)
     {
         foreach ($this->listeners as $l) {
@@ -140,7 +140,7 @@ class Swift_Events_SimpleEventDispatcher implements Swift_Events_EventDispatcher
      *
      * @param string $target method
      */
-    #[\Override]
+    #[Override]
     public function dispatchEvent(Swift_Events_Event $evt, $target)
     {
         $bubbleQueue = $this->prepareBubbleQueue($evt);

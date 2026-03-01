@@ -15,7 +15,7 @@ class Swift_Plugins_SentMessagePlugin implements Swift_Events_SentMessageListene
     /** @var Swift_SentMessage[] */
     private array $sentMessages = [];
 
-    #[\Override]
+    #[Override]
     public function sentMessage(Swift_Events_SentMessageEvent $evt): void
     {
         $this->sentMessages[] = $evt->getSentMessage();

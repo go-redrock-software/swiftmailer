@@ -57,7 +57,7 @@ class Swift_Mime_Headers_IdentificationHeader extends Swift_Mime_Headers_Abstrac
      *
      * @return int
      */
-    #[\Override]
+    #[Override]
     public function getFieldType()
     {
         return self::TYPE_ID;
@@ -70,7 +70,7 @@ class Swift_Mime_Headers_IdentificationHeader extends Swift_Mime_Headers_Abstrac
      *
      * @throws Swift_RfcComplianceException
      */
-    #[\Override]
+    #[Override]
     public function setFieldBodyModel($model)
     {
         $this->setId($model);
@@ -83,7 +83,7 @@ class Swift_Mime_Headers_IdentificationHeader extends Swift_Mime_Headers_Abstrac
      *
      * @return array
      */
-    #[\Override]
+    #[Override]
     public function getFieldBodyModel()
     {
         return $this->getIds();
@@ -157,7 +157,7 @@ class Swift_Mime_Headers_IdentificationHeader extends Swift_Mime_Headers_Abstrac
      *
      * @throws Swift_RfcComplianceException
      */
-    #[\Override]
+    #[Override]
     public function getFieldBody()
     {
         if (!$this->getCachedValue()) {

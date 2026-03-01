@@ -20,7 +20,7 @@ class Swift_Transport_Api_MailerSendTransport extends Swift_Transport_AbstractHt
 {
     private const HOST = 'https://api.mailersend.com';
 
-    #[\Override]
+    #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
         $payload = $this->getPayload($message);
@@ -60,13 +60,13 @@ class Swift_Transport_Api_MailerSendTransport extends Swift_Transport_AbstractHt
         ];
     }
 
-    #[\Override]
+    #[Override]
     protected function getEndpoint(): string
     {
         return self::HOST.'/v1/email';
     }
 
-    #[\Override]
+    #[Override]
     protected function getAuthHeaders(): array
     {
         return [
@@ -74,13 +74,13 @@ class Swift_Transport_Api_MailerSendTransport extends Swift_Transport_AbstractHt
         ];
     }
 
-    #[\Override]
+    #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
         return \json_decode((string) $response->getBody(), true) ?? [];
     }
 
-    #[\Override]
+    #[Override]
     protected function getPingEndpoint(): string
     {
         return self::HOST.'/v1/api-quota';

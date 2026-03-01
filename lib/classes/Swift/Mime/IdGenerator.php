@@ -46,7 +46,7 @@ class Swift_Mime_IdGenerator implements Swift_IdGenerator
     /**
      * @return string
      */
-    #[\Override]
+    #[Override]
     public function generateId()
     {
         // 32 hex values for the left part

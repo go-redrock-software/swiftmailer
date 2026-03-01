@@ -13,7 +13,7 @@ class Swift_SendResultTest extends PHPUnit\Framework\TestCase
 
     public function testEnumIsBackedInt()
     {
-        $this->assertInstanceOf(\BackedEnum::class, Swift_SendResult::PENDING);
+        $this->assertInstanceOf(BackedEnum::class, Swift_SendResult::PENDING);
     }
 
     public function testFromInt()

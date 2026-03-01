@@ -162,7 +162,7 @@ class Swift_Encoder_QpEncoder implements Swift_Encoder
      *
      * @return string
      */
-    #[\Override]
+    #[Override]
     public function encodeString($string, $firstLineOffset = 0, $maxLineLength = 0)
     {
         if ($maxLineLength > 76 || $maxLineLength <= 0) {

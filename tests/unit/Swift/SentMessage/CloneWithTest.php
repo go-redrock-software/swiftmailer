@@ -1,6 +1,6 @@
 <?php
 
-class Swift_SentMessage_CloneWithTest extends \PHPUnit\Framework\TestCase
+class Swift_SentMessage_CloneWithTest extends PHPUnit\Framework\TestCase
 {
     public function testCloneWithModifiedMessageId()
     {

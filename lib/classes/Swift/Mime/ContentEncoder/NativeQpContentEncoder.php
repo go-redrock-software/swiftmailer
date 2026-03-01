@@ -33,7 +33,7 @@ class Swift_Mime_ContentEncoder_NativeQpContentEncoder implements Swift_Mime_Con
      *
      * @param string $charset
      */
-    #[\Override]
+    #[Override]
     public function charsetChanged($charset)
     {
         $this->charset = $charset;
@@ -49,7 +49,7 @@ class Swift_Mime_ContentEncoder_NativeQpContentEncoder implements Swift_Mime_Con
      *
      * @throws RuntimeException
      */
-    #[\Override]
+    #[Override]
     public function encodeByteStream(Swift_OutputByteStream $os, Swift_InputByteStream $is, $firstLineOffset = 0, $maxLineLength = 0)
     {
         if ('utf-8' !== $this->charset) {
@@ -70,7 +70,7 @@ class Swift_Mime_ContentEncoder_NativeQpContentEncoder implements Swift_Mime_Con
      *
      * @return string
      */
-    #[\Override]
+    #[Override]
     public function getName()
     {
         return 'quoted-printable';
@@ -87,7 +87,7 @@ class Swift_Mime_ContentEncoder_NativeQpContentEncoder implements Swift_Mime_Con
      *
      * @throws RuntimeException
      */
-    #[\Override]
+    #[Override]
     public function encodeString($string, $firstLineOffset = 0, $maxLineLength = 0)
     {
         if ('utf-8' !== $this->charset) {

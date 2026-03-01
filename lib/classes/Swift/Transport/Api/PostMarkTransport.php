@@ -18,7 +18,7 @@ use Psr\Http\Message\ResponseInterface;
  */
 class Swift_Transport_Api_PostMarkTransport extends Swift_Transport_AbstractHttpApiTransport
 {
-    #[\Override]
+    #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
         $payload = $this->getPayload($message);
@@ -44,13 +44,13 @@ class Swift_Transport_Api_PostMarkTransport extends Swift_Transport_AbstractHttp
         ];
     }
 
-    #[\Override]
+    #[Override]
     protected function getEndpoint(): string
     {
         return 'https://api.postmarkapp.com/email';
     }
 
-    #[\Override]
+    #[Override]
     protected function getAuthHeaders(): array
     {
         return [
@@ -58,13 +58,13 @@ class Swift_Transport_Api_PostMarkTransport extends Swift_Transport_AbstractHttp
         ];
     }
 
-    #[\Override]
+    #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
         return \json_decode((string) $response->getBody(), true) ?? [];
     }
 
-    #[\Override]
+    #[Override]
     protected function getPingEndpoint(): string
     {
         return 'https://api.postmarkapp.com/server';

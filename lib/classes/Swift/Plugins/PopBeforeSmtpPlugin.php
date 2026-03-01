@@ -124,7 +124,7 @@ class Swift_Plugins_PopBeforeSmtpPlugin implements Swift_Events_TransportChangeL
      *
      * @throws Swift_Plugins_Pop_Pop3Exception if connection fails
      */
-    #[\Override]
+    #[Override]
     public function connect()
     {
         if (isset($this->connection)) {
@@ -159,7 +159,7 @@ class Swift_Plugins_PopBeforeSmtpPlugin implements Swift_Events_TransportChangeL
     /**
      * Disconnect from the POP3 host.
      */
-    #[\Override]
+    #[Override]
     public function disconnect()
     {
         if (isset($this->connection)) {
@@ -176,7 +176,7 @@ class Swift_Plugins_PopBeforeSmtpPlugin implements Swift_Events_TransportChangeL
     /**
      * Invoked just before a Transport is started.
      */
-    #[\Override]
+    #[Override]
     public function beforeTransportStarted(Swift_Events_TransportChangeEvent $evt)
     {
         if (isset($this->transport)) {
@@ -192,7 +192,7 @@ class Swift_Plugins_PopBeforeSmtpPlugin implements Swift_Events_TransportChangeL
     /**
      * Not used.
      */
-    #[\Override]
+    #[Override]
     public function transportStarted(Swift_Events_TransportChangeEvent $evt)
     {
     }
@@ -200,7 +200,7 @@ class Swift_Plugins_PopBeforeSmtpPlugin implements Swift_Events_TransportChangeL
     /**
      * Not used.
      */
-    #[\Override]
+    #[Override]
     public function beforeTransportStopped(Swift_Events_TransportChangeEvent $evt)
     {
     }
@@ -208,7 +208,7 @@ class Swift_Plugins_PopBeforeSmtpPlugin implements Swift_Events_TransportChangeL
     /**
      * Not used.
      */
-    #[\Override]
+    #[Override]
     public function transportStopped(Swift_Events_TransportChangeEvent $evt)
     {
     }

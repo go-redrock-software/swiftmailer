@@ -30,13 +30,13 @@ class Swift_Webhook_Converter_AhaSendConverter extends Swift_Webhook_AbstractPay
         'message.unsubscribed' => ['engagement', 'unsubscribed'],
     ];
 
-    #[\Override]
+    #[Override]
     public function getProviderName(): string
     {
         return 'ahasend';
     }
 
-    #[\Override]
+    #[Override]
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
         $webhookId = $headers['webhook-id']        ?? null;
@@ -66,7 +66,7 @@ class Swift_Webhook_Converter_AhaSendConverter extends Swift_Webhook_AbstractPay
         return false;
     }
 
-    #[\Override]
+    #[Override]
     public function convert(array $payload, array $headers): array
     {
         $eventType = $payload['type'] ?? null;

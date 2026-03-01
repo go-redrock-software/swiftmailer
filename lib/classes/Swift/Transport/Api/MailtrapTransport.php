@@ -35,7 +35,7 @@ class Swift_Transport_Api_MailtrapTransport extends Swift_Transport_AbstractHttp
         $this->inboxId = $inboxId;
     }
 
-    #[\Override]
+    #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
         $payload = $this->buildPayload($message);
@@ -68,7 +68,7 @@ class Swift_Transport_Api_MailtrapTransport extends Swift_Transport_AbstractHttp
         ];
     }
 
-    #[\Override]
+    #[Override]
     protected function getEndpoint(): string
     {
         if ($this->sandbox) {
@@ -78,7 +78,7 @@ class Swift_Transport_Api_MailtrapTransport extends Swift_Transport_AbstractHttp
         return 'https://send.api.mailtrap.io/api/send';
     }
 
-    #[\Override]
+    #[Override]
     protected function getAuthHeaders(): array
     {
         return [
@@ -86,7 +86,7 @@ class Swift_Transport_Api_MailtrapTransport extends Swift_Transport_AbstractHttp
         ];
     }
 
-    #[\Override]
+    #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
         $body = (string) $response->getBody();
@@ -94,7 +94,7 @@ class Swift_Transport_Api_MailtrapTransport extends Swift_Transport_AbstractHttp
         return \json_decode($body, true) ?? [];
     }
 
-    #[\Override]
+    #[Override]
     protected function getPingEndpoint(): string
     {
         return $this->getEndpoint();

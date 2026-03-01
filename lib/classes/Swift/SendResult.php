@@ -17,17 +17,17 @@
 enum Swift_SendResult: int
 {
     /** Sending has yet to occur */
-    case PENDING   = 0x0001;
+    case PENDING = 0x0001;
 
     /** Email is spooled, ready to be sent */
-    case SPOOLED   = 0x0011;
+    case SPOOLED = 0x0011;
 
     /** Sending was successful */
-    case SUCCESS   = 0x0010;
+    case SUCCESS = 0x0010;
 
     /** Sending worked, but there were some failures */
     case TENTATIVE = 0x0100;
 
     /** Sending failed */
-    case FAILED    = 0x1000;
+    case FAILED = 0x1000;
 }

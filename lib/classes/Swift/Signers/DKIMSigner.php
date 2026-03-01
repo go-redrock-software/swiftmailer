@@ -101,8 +101,6 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
 
     /**
      * Constructor.
-     *
-     * @param string $passphrase
      */
     public function __construct(
         string $privateKey,
@@ -136,7 +134,7 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
      *
      * @see Swift_Signer::reset()
      */
-    #[\Override]
+    #[Override]
     public function reset()
     {
         $this->headerHash            = null;
@@ -166,7 +164,7 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
      * @throws Swift_IoException
      */
     // TODO fix return
-    #[\Override]
+    #[Override]
     public function write($bytes)
     {
         // Convert array to string
@@ -183,11 +181,10 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
      * For any bytes that are currently buffered inside the stream, force them
      * off the buffer.
      */
-    #[\Override]
+    #[Override]
     public function commit()
     {
         // Nothing to do
-
     }
 
     /**
@@ -196,12 +193,11 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
      * The stream acts as an observer, receiving all data that is written.
      * All {@link write()} and {@link flushBuffers()} operations will be mirrored.
      */
-    #[\Override]
+    #[Override]
     public function bind(Swift_InputByteStream $is)
     {
         // Don't have to mirror anything
         $this->bound[] = $is;
-
     }
 
     /**
@@ -211,7 +207,7 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
      * If the stream currently has any buffered data it will be written to $is
      * before unbinding occurs.
      */
-    #[\Override]
+    #[Override]
     public function unbind(Swift_InputByteStream $is)
     {
         // Don't have to mirror anything
@@ -230,7 +226,7 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
      *
      * @throws Swift_IoException
      */
-    #[\Override]
+    #[Override]
     public function flushBuffers()
     {
         $this->reset();
@@ -404,7 +400,7 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
     /**
      * Start Body.
      */
-    #[\Override]
+    #[Override]
     public function startBody()
     {
         // Init
@@ -423,7 +419,7 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
     /**
      * End Body.
      */
-    #[\Override]
+    #[Override]
     public function endBody()
     {
         $this->endOfBody();
@@ -434,7 +430,7 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
      *
      * @return array
      */
-    #[\Override]
+    #[Override]
     public function getAlteredHeaders()
     {
         if ($this->debugHeaders) {
@@ -451,7 +447,7 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
      *
      * @return Swift_Signers_DKIMSigner
      */
-    #[\Override]
+    #[Override]
     public function ignoreHeader($header_name)
     {
         $lower = \strtolower($header_name ?? '');
@@ -468,7 +464,7 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
      *
      * @return Swift_Signers_DKIMSigner
      */
-    #[\Override]
+    #[Override]
     public function setHeaders(Swift_Mime_SimpleHeaderSet $headers)
     {
         $this->headerCanonData = '';
@@ -497,7 +493,7 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
      *
      * @return Swift_Signers_DKIMSigner
      */
-    #[\Override]
+    #[Override]
     public function addSignature(Swift_Mime_SimpleHeaderSet $headers)
     {
         // Build the header list, with optional oversigning

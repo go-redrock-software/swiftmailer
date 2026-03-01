@@ -127,7 +127,7 @@ class Swift_Signers_DomainKeySigner implements Swift_Signers_HeaderSigner
      *
      * @return $this
      */
-    #[\Override]
+    #[Override]
     public function reset()
     {
         $this->hashHandler           = null;
@@ -156,7 +156,7 @@ class Swift_Signers_DomainKeySigner implements Swift_Signers_HeaderSigner
      *
      * @throws Swift_IoException
      */
-    #[\Override]
+    #[Override]
     public function write($bytes)
     {
         // Convert array to string
@@ -179,7 +179,7 @@ class Swift_Signers_DomainKeySigner implements Swift_Signers_HeaderSigner
      *
      * @throws Swift_IoException
      */
-    #[\Override]
+    #[Override]
     public function commit()
     {
         // Nothing to do
@@ -194,7 +194,7 @@ class Swift_Signers_DomainKeySigner implements Swift_Signers_HeaderSigner
      *
      * @return $this
      */
-    #[\Override]
+    #[Override]
     public function bind(Swift_InputByteStream $is)
     {
         // Don't have to mirror anything
@@ -212,7 +212,7 @@ class Swift_Signers_DomainKeySigner implements Swift_Signers_HeaderSigner
      *
      * @return $this
      */
-    #[\Override]
+    #[Override]
     public function unbind(Swift_InputByteStream $is)
     {
         // Don't have to mirror anything
@@ -235,7 +235,7 @@ class Swift_Signers_DomainKeySigner implements Swift_Signers_HeaderSigner
      *
      * @throws Swift_IoException
      */
-    #[\Override]
+    #[Override]
     public function flushBuffers()
     {
         $this->reset();
@@ -306,7 +306,7 @@ class Swift_Signers_DomainKeySigner implements Swift_Signers_HeaderSigner
     /**
      * Start Body.
      */
-    #[\Override]
+    #[Override]
     public function startBody()
     {
     }
@@ -314,7 +314,7 @@ class Swift_Signers_DomainKeySigner implements Swift_Signers_HeaderSigner
     /**
      * End Body.
      */
-    #[\Override]
+    #[Override]
     public function endBody()
     {
         $this->endOfBody();
@@ -325,7 +325,7 @@ class Swift_Signers_DomainKeySigner implements Swift_Signers_HeaderSigner
      *
      * @return array
      */
-    #[\Override]
+    #[Override]
     public function getAlteredHeaders()
     {
         if ($this->debugHeaders) {
@@ -342,7 +342,7 @@ class Swift_Signers_DomainKeySigner implements Swift_Signers_HeaderSigner
      *
      * @return $this
      */
-    #[\Override]
+    #[Override]
     public function ignoreHeader($header_name)
     {
         $this->ignoredHeaders[\strtolower($header_name ?? '')] = true;
@@ -355,7 +355,7 @@ class Swift_Signers_DomainKeySigner implements Swift_Signers_HeaderSigner
      *
      * @return $this
      */
-    #[\Override]
+    #[Override]
     public function setHeaders(Swift_Mime_SimpleHeaderSet $headers)
     {
         $this->startHash();
@@ -386,7 +386,7 @@ class Swift_Signers_DomainKeySigner implements Swift_Signers_HeaderSigner
      *
      * @return $this
      */
-    #[\Override]
+    #[Override]
     public function addSignature(Swift_Mime_SimpleHeaderSet $headers)
     {
         // Prepare the DomainKey-Signature Header

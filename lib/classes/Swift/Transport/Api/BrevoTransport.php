@@ -4,7 +4,7 @@ use Psr\Http\Message\ResponseInterface;
 
 class Swift_Transport_Api_BrevoTransport extends Swift_Transport_AbstractHttpApiTransport
 {
-    #[\Override]
+    #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
         $payload = $this->getPayload($message);
@@ -36,25 +36,25 @@ class Swift_Transport_Api_BrevoTransport extends Swift_Transport_AbstractHttpApi
         ];
     }
 
-    #[\Override]
+    #[Override]
     protected function getEndpoint(): string
     {
         return 'https://api.brevo.com/v3/smtp/email';
     }
 
-    #[\Override]
+    #[Override]
     protected function getAuthHeaders(): array
     {
         return ['api-key' => $this->apiKey];
     }
 
-    #[\Override]
+    #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
         return \json_decode($response->getBody()->getContents(), true) ?? [];
     }
 
-    #[\Override]
+    #[Override]
     protected function getPingEndpoint(): string
     {
         return 'https://api.brevo.com/v3/account';

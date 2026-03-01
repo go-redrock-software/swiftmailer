@@ -44,7 +44,7 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
         $this->redirectTo = $redirectTo;
     }
 
-    #[\Override]
+    #[Override]
     public function beforeSendPerformed(Swift_Events_SendEvent $evt): void
     {
         $message = $evt->getMessage();
@@ -94,7 +94,7 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
         }
     }
 
-    #[\Override]
+    #[Override]
     public function sendPerformed(Swift_Events_SendEvent $evt): void
     {
         if (null === $this->originalRecipients) {

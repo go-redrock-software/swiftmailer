@@ -44,7 +44,7 @@ class Swift_Plugins_Loggers_ArrayLogger implements Swift_Plugins_Logger
      *
      * @param string $entry
      */
-    #[\Override]
+    #[Override]
     public function add($entry)
     {
         $this->log[] = $entry;
@@ -56,7 +56,7 @@ class Swift_Plugins_Loggers_ArrayLogger implements Swift_Plugins_Logger
     /**
      * Clear the log contents.
      */
-    #[\Override]
+    #[Override]
     public function clear()
     {
         $this->log = [];
@@ -67,7 +67,7 @@ class Swift_Plugins_Loggers_ArrayLogger implements Swift_Plugins_Logger
      *
      * @return string
      */
-    #[\Override]
+    #[Override]
     public function dump()
     {
         return \implode(PHP_EOL, $this->log);
