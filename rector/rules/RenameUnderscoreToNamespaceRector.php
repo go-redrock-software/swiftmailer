@@ -58,13 +58,13 @@ final class RenameUnderscoreToNamespaceRector extends AbstractRector
             return null;
         }
 
-        $parts = \explode('\\', $this->classMap[$className]);
+        $parts     = \explode('\\', $this->classMap[$className]);
         $shortName = \array_pop($parts);
         $namespace = \implode('\\', $parts);
 
         $node->name = new Identifier($shortName);
 
-        $namespaceNode = new Namespace_(new Name($namespace));
+        $namespaceNode          = new Namespace_(new Name($namespace));
         $namespaceNode->stmts[] = $node;
 
         return $namespaceNode;

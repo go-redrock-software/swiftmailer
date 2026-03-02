@@ -23,8 +23,8 @@ class ClassNameVisitor extends NodeVisitorAbstract
                 return;
             }
 
-            $parts = \explode('_', $name);
-            $newClassName = \implode('\\', $parts);
+            $parts                 = \explode('_', $name);
+            $newClassName          = \implode('\\', $parts);
             $this->classMap[$name] = $newClassName;
         }
     }
@@ -37,9 +37,9 @@ class ClassNameVisitor extends NodeVisitorAbstract
 
 function generateClassMap(string ...$directories): array
 {
-    $parser = (new ParserFactory())->createForVersion(\PhpParser\PhpVersion::getHostVersion());
+    $parser    = (new ParserFactory())->createForVersion(PhpParser\PhpVersion::getHostVersion());
     $traverser = new NodeTraverser();
-    $visitor = new ClassNameVisitor();
+    $visitor   = new ClassNameVisitor();
     $traverser->addVisitor($visitor);
 
     foreach ($directories as $directory) {
@@ -64,7 +64,7 @@ function generateClassMap(string ...$directories): array
     return $visitor->getClassMap();
 }
 
-$classMap = generateClassMap(__DIR__.'/lib');
+$classMap = \generateClassMap(__DIR__.'/lib');
 \ksort($classMap);
 \file_put_contents(__DIR__.'/class_map.php', '<?php return '.\var_export($classMap, true).";\n", \LOCK_EX);
 

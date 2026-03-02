@@ -7,7 +7,7 @@ require_once __DIR__.'/../../mailpit_bootstrap.php';
  *
  * Requires Mailpit running: docker compose -f docker-compose.test.yml up -d
  */
-class Swift_Smoke_MailpitSmokeTest extends \PHPUnit\Framework\TestCase
+class Swift_Smoke_MailpitSmokeTest extends PHPUnit\Framework\TestCase
 {
     private Swift_Mailer $mailer;
 
@@ -19,7 +19,7 @@ class Swift_Smoke_MailpitSmokeTest extends \PHPUnit\Framework\TestCase
 
         $this->purgeMailpit();
 
-        $transport = new Swift_SmtpTransport(MAILPIT_SMTP_HOST, MAILPIT_SMTP_PORT);
+        $transport    = new Swift_SmtpTransport(MAILPIT_SMTP_HOST, MAILPIT_SMTP_PORT);
         $this->mailer = new Swift_Mailer($transport);
     }
 
@@ -86,11 +86,11 @@ class Swift_Smoke_MailpitSmokeTest extends \PHPUnit\Framework\TestCase
         $ch = \curl_init(MAILPIT_API_URL.'/api/v1/messages');
         \curl_setopt_array($ch, [
             \CURLOPT_RETURNTRANSFER => true,
-            \CURLOPT_TIMEOUT => 2,
+            \CURLOPT_TIMEOUT        => 2,
             \CURLOPT_CONNECTTIMEOUT => 2,
         ]);
         $result = \curl_exec($ch);
-        $code = \curl_getinfo($ch, \CURLINFO_HTTP_CODE);
+        $code   = \curl_getinfo($ch, \CURLINFO_HTTP_CODE);
         \curl_close($ch);
 
         return false !== $result && 200 === $code;
@@ -100,9 +100,9 @@ class Swift_Smoke_MailpitSmokeTest extends \PHPUnit\Framework\TestCase
     {
         $ch = \curl_init(MAILPIT_API_URL.'/api/v1/messages');
         \curl_setopt_array($ch, [
-            \CURLOPT_CUSTOMREQUEST => 'DELETE',
+            \CURLOPT_CUSTOMREQUEST  => 'DELETE',
             \CURLOPT_RETURNTRANSFER => true,
-            \CURLOPT_TIMEOUT => 5,
+            \CURLOPT_TIMEOUT        => 5,
         ]);
         \curl_exec($ch);
         \curl_close($ch);
@@ -116,7 +116,7 @@ class Swift_Smoke_MailpitSmokeTest extends \PHPUnit\Framework\TestCase
         $ch = \curl_init(MAILPIT_API_URL.'/api/v1/messages');
         \curl_setopt_array($ch, [
             \CURLOPT_RETURNTRANSFER => true,
-            \CURLOPT_TIMEOUT => 5,
+            \CURLOPT_TIMEOUT        => 5,
         ]);
         $response = \curl_exec($ch);
         \curl_close($ch);
