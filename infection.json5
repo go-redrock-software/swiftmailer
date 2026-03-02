@@ -1,0 +1,35 @@
+{
+    "$schema": "vendor/infection/infection/resources/schema.json",
+    "source": {
+        "directories": ["lib/classes"],
+        "excludes": [
+            "Swift/DependencyContainer.php",
+            "Swift/Preferences.php"
+        ]
+    },
+    "timeout": 120,
+    "logs": {
+        "text": "infection.log",
+        "html": "infection.html",
+        "summary": "infection-summary.log",
+        "perMutator": "infection-per-mutator.md"
+    },
+    "tmpDir": ".infection",
+    "phpUnit": {
+        "configDir": ".",
+        "customPath": "vendor/bin/phpunit"
+    },
+    "testFramework": "phpunit",
+    "testFrameworkOptions": "--testsuite='SwiftMailer unit tests'",
+    "mutators": {
+        "@default": true,
+        "Yield_": false,
+        "ConcatOperandRemoval": false,
+        "ArrayItemRemoval": false,
+        "UnwrapStrReplace": false,
+        "UnwrapStrToLower": false,
+        "UnwrapStrToUpper": false
+    },
+    "minMsi": 78,
+    "minCoveredMsi": 95
+}

@@ -209,3 +209,10 @@ phpunit-report.xml
 /phpunit.xml
 .php-cs-fixer.cache
 phpstan.neon
+
+### Infection (mutation testing)
+.infection/
+infection.log
+infection.html
+infection-summary.log
+infection-per-mutator.md
