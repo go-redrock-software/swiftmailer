@@ -726,6 +726,331 @@ class Swift_Mime_SimpleHeaderSetTest extends PHPUnit\Framework\TestCase
         $set->setCharset('utf-8');
     }
 
+    public function testListAllReturnsEmptyArrayWhenNoHeaders()
+    {
+        $set = $this->createSet($this->createFactory());
+        $this->assertEquals([], $set->listAll());
+    }
+
+    public function testListAllReturnsHeaderNames()
+    {
+        $factory = $this->createFactory();
+        $factory->expects($this->exactly(2))
+            ->method('createTextHeader')
+            ->withConsecutive(
+                ['Subject', 'text'],
+                ['X-Custom', 'val'],
+            )
+            ->willReturnOnConsecutiveCalls(
+                $this->createHeader('Subject', 'text'),
+                $this->createHeader('X-Custom', 'val'),
+            );
+
+        $set = $this->createSet($factory);
+        $set->addTextHeader('Subject', 'text');
+        $set->addTextHeader('X-Custom', 'val');
+        $names = $set->listAll();
+        $this->assertContains('subject', $names);
+        $this->assertContains('x-custom', $names);
+    }
+
+    public function testNewInstanceReturnsNewHeaderSet()
+    {
+        $factory = $this->createFactory();
+        $set     = $this->createSet($factory);
+        $newSet  = $set->newInstance();
+        $this->assertInstanceOf(Swift_Mime_SimpleHeaderSet::class, $newSet);
+        $this->assertNotSame($set, $newSet);
+    }
+
+    public function testSetHeaderAtSpecificIndex()
+    {
+        $factory = $this->createFactory();
+        $header  = $this->createHeader('X-Foo', 'bar');
+        $set     = $this->createSet($factory);
+        $set->set($header, 5);
+        $this->assertTrue($set->has('X-Foo', 5));
+    }
+
+    public function testSetHeaderOverwritesAtIndex()
+    {
+        $factory = $this->createFactory();
+        $header1 = $this->createHeader('X-Foo', 'first');
+        $header2 = $this->createHeader('X-Foo', 'second');
+        $set     = $this->createSet($factory);
+        $set->set($header1, 0);
+        $set->set($header2, 0);
+        $this->assertSame($header2, $set->get('X-Foo', 0));
+    }
+
+    public function testGetReturnsNullForMissingHeader()
+    {
+        $set = $this->createSet($this->createFactory());
+        $this->assertNull($set->get('Nonexistent'));
+    }
+
+    public function testHasCaseInsensitiveWithDifferentCases()
+    {
+        $factory = $this->createFactory();
+        $header  = $this->createHeader('X-Custom-Header', 'val');
+        $set     = $this->createSet($factory);
+        $set->set($header);
+        $this->assertTrue($set->has('x-custom-header'));
+        $this->assertTrue($set->has('X-CUSTOM-HEADER'));
+        $this->assertTrue($set->has('X-Custom-Header'));
+    }
+
+    public function testRemoveNonExistentDoesNotThrow()
+    {
+        $set = $this->createSet($this->createFactory());
+        $set->remove('NonExistent');
+        $this->assertFalse($set->has('NonExistent'));
+    }
+
+    public function testRemoveAllNonExistentDoesNotThrow()
+    {
+        $set = $this->createSet($this->createFactory());
+        $set->removeAll('NonExistent');
+        $this->assertFalse($set->has('NonExistent'));
+    }
+
+    public function testToStringReturnsEmptyWhenNoHeaders()
+    {
+        $set = $this->createSet($this->createFactory());
+        $this->assertEquals('', $set->toString());
+    }
+
+    public function testToStringCastWorks()
+    {
+        $factory = $this->createFactory();
+        $factory->expects($this->once())
+            ->method('createTextHeader')
+            ->with('Foo', 'bar')
+            ->willReturn($this->createHeader('Foo', 'bar'));
+
+        $set = $this->createSet($factory);
+        $set->addTextHeader('Foo', 'bar');
+        $this->assertEquals("Foo: bar\r\n", (string) $set);
+    }
+
+    public function testDefineOrderingWithEmptyArray()
+    {
+        $factory = $this->createFactory();
+        $factory->expects($this->once())
+            ->method('createTextHeader')
+            ->with('Foo', 'bar')
+            ->willReturn($this->createHeader('Foo', 'bar'));
+
+        $set = $this->createSet($factory);
+        $set->addTextHeader('Foo', 'bar');
+        $set->defineOrdering([]);
+        $this->assertEquals("Foo: bar\r\n", $set->toString());
+    }
+
+    public function testSetHeaderThenGetReturnsSame()
+    {
+        $factory = $this->createFactory();
+        $header  = $this->createHeader('X-Test', 'val');
+        $set     = $this->createSet($factory);
+        $set->set($header);
+
+        $this->assertSame($header, $set->get('X-Test'));
+    }
+
+    public function testGetAllWithNoNameReturnsAllHeaders()
+    {
+        $factory = $this->createFactory();
+        $h1      = $this->createHeader('X-A', 'val1');
+        $h2      = $this->createHeader('X-B', 'val2');
+        $set     = $this->createSet($factory);
+        $set->set($h1);
+        $set->set($h2);
+
+        $all = $set->getAll();
+        $this->assertCount(2, $all);
+    }
+
+    public function testSetAlwaysDisplayedWithEmptyArray()
+    {
+        $factory = $this->createFactory();
+        $set     = $this->createSet($factory);
+        $set->setAlwaysDisplayed([]);
+        $this->assertEquals('', $set->toString());
+    }
+
+    public function testMultipleHeadersWithSameNameGetAll()
+    {
+        $factory = $this->createFactory();
+        $h1      = $this->createHeader('Received', 'from server1');
+        $h2      = $this->createHeader('Received', 'from server2');
+        $set     = $this->createSet($factory);
+        $set->set($h1, 0);
+        $set->set($h2, 1);
+
+        $all = $set->getAll('Received');
+        $this->assertCount(2, $all);
+    }
+
+    public function testDefineOrderingIsCaseInsensitive()
+    {
+        $factory = $this->createFactory();
+        $factory->expects($this->exactly(2))
+            ->method('createTextHeader')
+            ->withConsecutive(
+                ['Bbb', 'second'],
+                ['Aaa', 'first'],
+            )
+            ->willReturnOnConsecutiveCalls(
+                $this->createHeader('Bbb', 'second'),
+                $this->createHeader('Aaa', 'first'),
+            );
+
+        $set = $this->createSet($factory);
+        $set->addTextHeader('Bbb', 'second');
+        $set->addTextHeader('Aaa', 'first');
+        $set->defineOrdering(['aaa', 'bbb']);
+        $this->assertEquals(
+            "Aaa: first\r\n".
+            "Bbb: second\r\n",
+            $set->toString(),
+        );
+    }
+
+    public function testSetAlwaysDisplayedIsCaseInsensitive()
+    {
+        $factory = $this->createFactory();
+        $factory->expects($this->once())
+            ->method('createTextHeader')
+            ->with('X-Empty', '')
+            ->willReturn($this->createHeader('X-Empty', ''));
+
+        $set = $this->createSet($factory);
+        $set->addTextHeader('X-Empty', '');
+        $set->setAlwaysDisplayed(['x-empty']);
+        $this->assertEquals("X-Empty: \r\n", $set->toString());
+    }
+
+    public function testAddIdHeaderWithDifferentId()
+    {
+        $factory = $this->createFactory();
+        $factory->expects($this->once())
+            ->method('createIdHeader')
+            ->with('Content-ID', 'abc@def')
+            ->willReturn($this->createHeader('Content-ID', 'abc@def'));
+
+        $set = $this->createSet($factory);
+        $set->addIdHeader('Content-ID', 'abc@def');
+    }
+
+    public function testAddPathHeaderWithBounceAddress()
+    {
+        $factory = $this->createFactory();
+        $factory->expects($this->once())
+            ->method('createPathHeader')
+            ->with('Return-Path', 'bounce@example.com')
+            ->willReturn($this->createHeader('Return-Path', 'bounce@example.com'));
+
+        $set = $this->createSet($factory);
+        $set->addPathHeader('Return-Path', 'bounce@example.com');
+    }
+
+    public function testHasReturnsFalseForMissingIndex()
+    {
+        $factory = $this->createFactory();
+        $header  = $this->createHeader('X-Foo', 'bar');
+        $set     = $this->createSet($factory);
+        $set->set($header, 0);
+        $this->assertFalse($set->has('X-Foo', 5));
+    }
+
+    public function testGetAtSpecificIndex()
+    {
+        $factory = $this->createFactory();
+        $h0      = $this->createHeader('Received', 'from server1');
+        $h1      = $this->createHeader('Received', 'from server2');
+        $set     = $this->createSet($factory);
+        $set->set($h0, 0);
+        $set->set($h1, 1);
+
+        $this->assertSame($h0, $set->get('Received', 0));
+        $this->assertSame($h1, $set->get('Received', 1));
+    }
+
+    public function testRemoveAtSpecificIndex()
+    {
+        $factory = $this->createFactory();
+        $h0      = $this->createHeader('X-Multi', 'first');
+        $h1      = $this->createHeader('X-Multi', 'second');
+        $set     = $this->createSet($factory);
+        $set->set($h0, 0);
+        $set->set($h1, 1);
+        $set->remove('X-Multi', 0);
+
+        $this->assertFalse($set->has('X-Multi', 0));
+        $this->assertTrue($set->has('X-Multi', 1));
+    }
+
+    public function testRemoveAllClearsAllIndices()
+    {
+        $factory = $this->createFactory();
+        $h0      = $this->createHeader('X-Multi', 'first');
+        $h1      = $this->createHeader('X-Multi', 'second');
+        $set     = $this->createSet($factory);
+        $set->set($h0, 0);
+        $set->set($h1, 1);
+        $set->removeAll('X-Multi');
+
+        $this->assertFalse($set->has('X-Multi'));
+        $this->assertEquals([], $set->getAll('X-Multi'));
+    }
+
+    public function testGetAllReturnsEmptyArrayForMissingName()
+    {
+        $set = $this->createSet($this->createFactory());
+        $this->assertEquals([], $set->getAll('Nonexistent'));
+    }
+
+    public function testMultipleHeaderTypesInToString()
+    {
+        $factory = $this->createFactory();
+        $h1      = $this->createHeader('From', 'test@test.com');
+        $h2      = $this->createHeader('Subject', 'Hello');
+        $set     = $this->createSet($factory);
+        $set->set($h1);
+        $set->set($h2);
+
+        $output = $set->toString();
+        $this->assertStringContainsString('From: test@test.com', $output);
+        $this->assertStringContainsString('Subject: Hello', $output);
+    }
+
+    public function testDefineOrderingWithPartialMatch()
+    {
+        $factory = $this->createFactory();
+        $factory->expects($this->exactly(3))
+            ->method('createTextHeader')
+            ->withConsecutive(
+                ['C', 'three'],
+                ['A', 'one'],
+                ['B', 'two'],
+            )
+            ->willReturnOnConsecutiveCalls(
+                $this->createHeader('C', 'three'),
+                $this->createHeader('A', 'one'),
+                $this->createHeader('B', 'two'),
+            );
+
+        $set = $this->createSet($factory);
+        $set->addTextHeader('C', 'three');
+        $set->addTextHeader('A', 'one');
+        $set->addTextHeader('B', 'two');
+        // Only order A, no mention of B or C
+        $set->defineOrdering(['A']);
+
+        $output = $set->toString();
+        $this->assertStringStartsWith('A: one', $output);
+    }
+
     private function createSet($factory)
     {
         return new Swift_Mime_SimpleHeaderSet($factory);

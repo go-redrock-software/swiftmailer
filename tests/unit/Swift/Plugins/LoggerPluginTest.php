@@ -229,6 +229,127 @@ class Swift_Plugins_LoggerPluginTest extends SwiftMailerTestCase
         return $evt;
     }
 
+    public function testBeforeSendPerformedIsNoop()
+    {
+        $logger = $this->createLogger();
+        $logger->expects($this->never())
+            ->method('add');
+
+        $plugin = $this->createPlugin($logger);
+
+        $transport = $this->createTransport();
+        $message = $this->getMockBuilder('Swift_Mime_SimpleMessage')
+            ->disableOriginalConstructor()
+            ->getMock();
+        $event = new Swift_Events_SendEvent($transport, $message);
+
+        $plugin->beforeSendPerformed($event);
+    }
+
+    public function testSendPerformedWithNonRejectedMessageDoesNotLog()
+    {
+        $logger = $this->createLogger();
+        $logger->expects($this->never())
+            ->method('add');
+
+        $plugin = $this->createPlugin($logger);
+
+        $transport = $this->createTransport();
+        $message = $this->getMockBuilder('Swift_Mime_SimpleMessage')
+            ->disableOriginalConstructor()
+            ->getMock();
+        $event = new Swift_Events_SendEvent($transport, $message);
+
+        $plugin->sendPerformed($event);
+    }
+
+    public function testSendPerformedWithRejectedMessageWithoutReasonLogs()
+    {
+        $logger = $this->createMock(Swift_Plugins_Logger::class);
+        $logger->expects($this->once())
+            ->method('add')
+            ->with($this->stringContains('rejected'));
+
+        $plugin = new Swift_Plugins_LoggerPlugin($logger);
+
+        $transport = $this->createTransport();
+        $message = $this->getMockBuilder('Swift_Mime_SimpleMessage')
+            ->disableOriginalConstructor()
+            ->getMock();
+        $event = new Swift_Events_SendEvent($transport, $message);
+        $event->reject();
+
+        $plugin->sendPerformed($event);
+    }
+
+    public function testPluginImplementsAllRequiredInterfaces()
+    {
+        $logger = $this->createLogger();
+        $plugin = $this->createPlugin($logger);
+
+        $this->assertInstanceOf(Swift_Events_CommandListener::class, $plugin);
+        $this->assertInstanceOf(Swift_Events_ResponseListener::class, $plugin);
+        $this->assertInstanceOf(Swift_Events_TransportChangeListener::class, $plugin);
+        $this->assertInstanceOf(Swift_Events_TransportExceptionListener::class, $plugin);
+        $this->assertInstanceOf(Swift_Events_SendListener::class, $plugin);
+        $this->assertInstanceOf(Swift_Events_SentMessageListener::class, $plugin);
+        $this->assertInstanceOf(Swift_Events_FailedMessageListener::class, $plugin);
+        $this->assertInstanceOf(Swift_Plugins_Logger::class, $plugin);
+    }
+
+    public function testExceptionThrownIncludesLogDump()
+    {
+        $logger = $this->createMock(Swift_Plugins_Logger::class);
+        $logger->expects($this->once())
+            ->method('dump')
+            ->willReturn('log contents here');
+
+        $plugin = new Swift_Plugins_LoggerPlugin($logger);
+        $transport = $this->createTransport();
+        $ex = new Swift_TransportException('Original error');
+
+        $evt = $this->getMockBuilder('Swift_Events_TransportExceptionEvent')
+            ->disableOriginalConstructor()
+            ->getMock();
+        $evt->expects($this->any())
+            ->method('getException')
+            ->willReturn($ex);
+        $evt->expects($this->once())
+            ->method('cancelBubble');
+
+        try {
+            $plugin->exceptionThrown($evt);
+            $this->fail('Exception should have been thrown');
+        } catch (Swift_TransportException $e) {
+            $this->assertStringContainsString('Original error', $e->getMessage());
+            $this->assertStringContainsString('log contents here', $e->getMessage());
+        }
+    }
+
+    public function testCommandEventFormatsWithPrefix()
+    {
+        $evt = $this->createCommandEvent("EHLO localhost\r\n");
+        $logger = $this->createLogger();
+        $logger->expects($this->once())
+            ->method('add')
+            ->with($this->stringContains('>>'));
+
+        $plugin = $this->createPlugin($logger);
+        $plugin->commandSent($evt);
+    }
+
+    public function testResponseEventFormatsWithPrefix()
+    {
+        $evt = $this->createResponseEvent("220 smtp.example.com\r\n");
+        $logger = $this->createLogger();
+        $logger->expects($this->once())
+            ->method('add')
+            ->with($this->stringContains('<<'));
+
+        $plugin = $this->createPlugin($logger);
+        $plugin->responseReceived($evt);
+    }
+
     public function createTransportExceptionEvent()
     {
         $evt = $this->getMockBuilder('Swift_Events_TransportExceptionEvent')

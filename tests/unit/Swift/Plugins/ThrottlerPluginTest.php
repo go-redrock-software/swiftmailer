@@ -94,6 +94,82 @@ class Swift_Plugins_ThrottlerPluginTest extends SwiftMailerTestCase
         return $msg;
     }
 
+    public function testMessagesPerSecondThrottling()
+    {
+        $sleeper = $this->createSleeper();
+        $timer   = $this->createTimer();
+
+        // 2/sec
+        $plugin = new Swift_Plugins_ThrottlerPlugin(
+            2,
+            Swift_Plugins_ThrottlerPlugin::MESSAGES_PER_SECOND,
+            $sleeper,
+            $timer,
+        );
+
+        $timer->shouldReceive('getTimestamp')->once()->andReturn(0);
+        $timer->shouldReceive('getTimestamp')->once()->andReturn(0); // expected 0.5 (sleep 1)
+        $timer->shouldReceive('getTimestamp')->once()->andReturn(1); // expected 1
+        $timer->shouldReceive('getTimestamp')->once()->andReturn(1); // expected 1.5 (sleep 1)
+        $sleeper->shouldReceive('sleep')->twice()->with(1);
+
+        $message = $this->createMessageWithByteCount(10);
+        $evt = $this->createSendEvent($message);
+
+        for ($i = 0; $i < 4; ++$i) {
+            $plugin->beforeSendPerformed($evt);
+            $plugin->sendPerformed($evt);
+        }
+    }
+
+    public function testModeConstants()
+    {
+        $this->assertSame(0x01, Swift_Plugins_ThrottlerPlugin::BYTES_PER_MINUTE);
+        $this->assertSame(0x11, Swift_Plugins_ThrottlerPlugin::MESSAGES_PER_SECOND);
+        $this->assertSame(0x10, Swift_Plugins_ThrottlerPlugin::MESSAGES_PER_MINUTE);
+    }
+
+    public function testPluginImplementsSleeper()
+    {
+        $plugin = new Swift_Plugins_ThrottlerPlugin(100);
+        $this->assertInstanceOf(Swift_Plugins_Sleeper::class, $plugin);
+    }
+
+    public function testPluginImplementsTimer()
+    {
+        $plugin = new Swift_Plugins_ThrottlerPlugin(100);
+        $this->assertInstanceOf(Swift_Plugins_Timer::class, $plugin);
+    }
+
+    public function testPluginExtendsBandwidthMonitor()
+    {
+        $plugin = new Swift_Plugins_ThrottlerPlugin(100);
+        $this->assertInstanceOf(Swift_Plugins_BandwidthMonitorPlugin::class, $plugin);
+    }
+
+    public function testGetTimestampUsesTimerWhenSet()
+    {
+        $timer = $this->createTimer();
+        $timer->shouldReceive('getTimestamp')->once()->andReturn(42);
+
+        $plugin = new Swift_Plugins_ThrottlerPlugin(
+            100,
+            Swift_Plugins_ThrottlerPlugin::BYTES_PER_MINUTE,
+            null,
+            $timer,
+        );
+
+        $this->assertSame(42, $plugin->getTimestamp());
+    }
+
+    public function testGetTimestampUsesSystemTimeWhenNoTimer()
+    {
+        $plugin = new Swift_Plugins_ThrottlerPlugin(100);
+        $timestamp = $plugin->getTimestamp();
+        // Should be approximately current time
+        $this->assertEqualsWithDelta(\time(), $timestamp, 2);
+    }
+
     private function createSendEvent($message)
     {
         $evt = $this->getMockery('Swift_Events_SendEvent');

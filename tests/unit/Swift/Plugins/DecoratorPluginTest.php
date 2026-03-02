@@ -285,4 +285,122 @@ class Swift_Plugins_DecoratorPluginTest extends SwiftMailerTestCase
 
         return $header;
     }
+
+    public function testPluginImplementsSendListener()
+    {
+        $plugin = $this->createPlugin([]);
+        $this->assertInstanceOf(Swift_Events_SendListener::class, $plugin);
+    }
+
+    public function testPluginImplementsReplacementsInterface()
+    {
+        $plugin = $this->createPlugin([]);
+        $this->assertInstanceOf(Swift_Plugins_Decorator_Replacements::class, $plugin);
+    }
+
+    public function testGetReplacementsForKnownAddress()
+    {
+        $replacements = [
+            'foo@bar.tld' => ['{name}' => 'Foo'],
+            'zip@bar.tld' => ['{name}' => 'Zip'],
+        ];
+
+        $plugin = $this->createPlugin($replacements);
+
+        $this->assertSame(['{name}' => 'Foo'], $plugin->getReplacementsFor('foo@bar.tld'));
+        $this->assertSame(['{name}' => 'Zip'], $plugin->getReplacementsFor('zip@bar.tld'));
+    }
+
+    public function testGetReplacementsForUnknownAddressReturnsNull()
+    {
+        $plugin = $this->createPlugin([
+            'foo@bar.tld' => ['{name}' => 'Foo'],
+        ]);
+
+        $this->assertNull($plugin->getReplacementsFor('unknown@bar.tld'));
+    }
+
+    public function testSetReplacementsOverridesPrevious()
+    {
+        $plugin = $this->createPlugin([
+            'foo@bar.tld' => ['{name}' => 'Foo'],
+        ]);
+
+        $this->assertSame(['{name}' => 'Foo'], $plugin->getReplacementsFor('foo@bar.tld'));
+
+        $plugin->setReplacements([
+            'foo@bar.tld' => ['{name}' => 'NewFoo'],
+        ]);
+
+        $this->assertSame(['{name}' => 'NewFoo'], $plugin->getReplacementsFor('foo@bar.tld'));
+    }
+
+    public function testNoReplacementsLeavesMessageUnchanged()
+    {
+        $message = (new Swift_Message('subject'))
+            ->setBody('body text')
+            ->addTo('nobody@unknown.tld')
+            ->addFrom('sender@example.com');
+
+        $evt    = $this->createSendEvent($message);
+        $plugin = $this->createPlugin([]);
+
+        $plugin->beforeSendPerformed($evt);
+
+        $this->assertEquals('body text', $message->getBody());
+    }
+
+    public function testReplacementsWithRealMessageObject()
+    {
+        $message = (new Swift_Message('Hello {name}'))
+            ->setBody('Dear {name}, your code is {code}.')
+            ->addTo('user@example.com')
+            ->addFrom('sender@example.com');
+
+        $evt    = $this->createSendEvent($message);
+        $plugin = $this->createPlugin([
+            'user@example.com' => ['{name}' => 'Alice', '{code}' => 'ABC123'],
+        ]);
+
+        $plugin->beforeSendPerformed($evt);
+
+        $this->assertEquals('Dear Alice, your code is ABC123.', $message->getBody());
+        $this->assertEquals('Hello Alice', $message->getSubject());
+    }
+
+    public function testSendPerformedRestoresBody()
+    {
+        $message = (new Swift_Message('Test'))
+            ->setBody('Hello {name}')
+            ->addTo('user@example.com')
+            ->addFrom('sender@example.com');
+
+        $evt    = $this->createSendEvent($message);
+        $plugin = $this->createPlugin([
+            'user@example.com' => ['{name}' => 'Bob'],
+        ]);
+
+        $plugin->beforeSendPerformed($evt);
+        $this->assertEquals('Hello Bob', $message->getBody());
+
+        $plugin->sendPerformed($evt);
+        $this->assertEquals('Hello {name}', $message->getBody());
+    }
+
+    public function testEmptyReplacementsArrayForAddress()
+    {
+        $message = (new Swift_Message('Test'))
+            ->setBody('Hello {name}')
+            ->addTo('user@example.com')
+            ->addFrom('sender@example.com');
+
+        $evt    = $this->createSendEvent($message);
+        $plugin = $this->createPlugin([
+            'user@example.com' => [],
+        ]);
+
+        $plugin->beforeSendPerformed($evt);
+        // No replacements means body unchanged
+        $this->assertEquals('Hello {name}', $message->getBody());
+    }
 }

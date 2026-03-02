@@ -181,4 +181,141 @@ class Swift_Webhook_Converter_MailerSendConverterTest extends PHPUnit\Framework\
     {
         $this->assertFalse($this->converter->verify('{}', [], 'secret'));
     }
+
+    public function testConvertEmptyPayload()
+    {
+        $this->assertSame([], $this->converter->convert([], []));
+    }
+
+    public function testConvertMissingType()
+    {
+        $payload = [
+            'created_at' => '2026-01-15T10:30:00.000000Z',
+            'data'       => ['message_id' => 'msg-x', 'email' => 'user@example.com'],
+        ];
+
+        $this->assertSame([], $this->converter->convert($payload, []));
+    }
+
+    public function testConvertMissingData()
+    {
+        $payload = [
+            'type'       => 'activity.delivered',
+            'created_at' => '2026-01-15T10:30:00.000000Z',
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertCount(1, $events);
+        $this->assertSame('', $events[0]->getMessageId());
+        $this->assertSame('', $events[0]->getRecipient());
+    }
+
+    public function testConvertOpenedUniqueEvent()
+    {
+        $payload = [
+            'type'       => 'activity.opened_unique',
+            'created_at' => '2026-01-15T10:30:00.000000Z',
+            'data'       => [
+                'message_id' => 'msg-unique-open',
+                'email'      => 'user@example.com',
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertSame('engagement', $events[0]->getType());
+        $this->assertSame('opened', $events[0]->getName());
+    }
+
+    public function testConvertClickedUniqueEvent()
+    {
+        $payload = [
+            'type'       => 'activity.clicked_unique',
+            'created_at' => '2026-01-15T10:30:00.000000Z',
+            'data'       => [
+                'message_id' => 'msg-unique-click',
+                'email'      => 'user@example.com',
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertSame('engagement', $events[0]->getType());
+        $this->assertSame('clicked', $events[0]->getName());
+    }
+
+    public function testConvertExtractsMetadata()
+    {
+        $payload = [
+            'type'       => 'activity.delivered',
+            'created_at' => '2026-01-15T10:30:00.000000Z',
+            'data'       => [
+                'message_id' => 'msg-meta',
+                'email'      => 'user@example.com',
+                'subject'    => 'Test Subject',
+                'tags'       => ['welcome', 'onboarding'],
+            ],
+        ];
+
+        $events   = $this->converter->convert($payload, []);
+        $metadata = $events[0]->getMetadata();
+        $this->assertSame('Test Subject', $metadata['subject']);
+        $this->assertSame(['welcome', 'onboarding'], $metadata['tags']);
+    }
+
+    public function testConvertDeliveryVsEngagementType()
+    {
+        // Delivery event
+        $deliveryPayload = [
+            'type'       => 'activity.hard_bounced',
+            'created_at' => '2026-01-15T10:30:00.000000Z',
+            'data'       => ['message_id' => 'msg-bounce', 'email' => 'user@example.com'],
+        ];
+
+        $events = $this->converter->convert($deliveryPayload, []);
+        $this->assertSame('delivery', $events[0]->getType());
+
+        // Engagement event
+        $engagementPayload = [
+            'type'       => 'activity.spam_complaint',
+            'created_at' => '2026-01-15T10:30:00.000000Z',
+            'data'       => ['message_id' => 'msg-spam', 'email' => 'user@example.com'],
+        ];
+
+        $events = $this->converter->convert($engagementPayload, []);
+        $this->assertSame('engagement', $events[0]->getType());
+    }
+
+    public function testConvertSkipsSentEvent()
+    {
+        $payload = [
+            'type'       => 'activity.sent',
+            'created_at' => '2026-01-15T10:30:00.000000Z',
+            'data'       => ['message_id' => 'msg-sent', 'email' => 'user@example.com'],
+        ];
+
+        $this->assertSame([], $this->converter->convert($payload, []));
+    }
+
+    public function testConvertSkipsProcessedEvent()
+    {
+        $payload = [
+            'type'       => 'activity.processed',
+            'created_at' => '2026-01-15T10:30:00.000000Z',
+            'data'       => ['message_id' => 'msg-proc', 'email' => 'user@example.com'],
+        ];
+
+        $this->assertSame([], $this->converter->convert($payload, []));
+    }
+
+    public function testVerifyCorrectHmacAlgorithm()
+    {
+        $secret = 'my-webhook-secret';
+        $body   = '{"type":"activity.opened"}';
+        $sig    = \hash_hmac('sha256', $body, $secret);
+
+        $this->assertTrue($this->converter->verify($body, ['signature' => $sig], $secret));
+
+        // Wrong signature should fail
+        $wrongSig = \hash_hmac('sha256', 'different body', $secret);
+        $this->assertFalse($this->converter->verify($body, ['signature' => $wrongSig], $secret));
+    }
 }

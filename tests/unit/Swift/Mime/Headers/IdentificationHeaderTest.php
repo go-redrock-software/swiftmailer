@@ -182,6 +182,141 @@ class Swift_Mime_Headers_IdentificationHeaderTest extends PHPUnit\Framework\Test
         $this->assertEquals('References: <a@b> <x@y>'."\r\n", $header->toString());
     }
 
+    public function testSetIdWithAngleBrackets()
+    {
+        $header = $this->getHeader('Message-ID');
+        $header->setId('simple@test.com');
+        $this->assertEquals('<simple@test.com>', $header->getFieldBody());
+    }
+
+    public function testSetIdsWithEmptyArray()
+    {
+        $header = $this->getHeader('References');
+        $header->setIds([]);
+        $this->assertEquals([], $header->getIds());
+        $this->assertEquals('', $header->getFieldBody());
+    }
+
+    public function testSetBodyModelWithArray()
+    {
+        $header = $this->getHeader('References');
+        $header->setFieldBodyModel(['a@b', 'x@y']);
+        $this->assertEquals(['a@b', 'x@y'], $header->getFieldBodyModel());
+    }
+
+    public function testSetBodyModelWithString()
+    {
+        $header = $this->getHeader('Message-ID');
+        $header->setFieldBodyModel('single@id');
+        $this->assertEquals(['single@id'], $header->getFieldBodyModel());
+    }
+
+    public function testThreeIdsProduceCorrectFieldBody()
+    {
+        $header = $this->getHeader('References');
+        $header->setIds(['a@b', 'c@d', 'e@f']);
+        $this->assertEquals('<a@b> <c@d> <e@f>', $header->getFieldBody());
+    }
+
+    public function testIdWithDotAtomLeftAndRight()
+    {
+        $header = $this->getHeader('Message-ID');
+        $header->setId('foo.bar@baz.qux');
+        $this->assertEquals('foo.bar@baz.qux', $header->getId());
+        $this->assertEquals('<foo.bar@baz.qux>', $header->getFieldBody());
+    }
+
+    public function testIdWithQuotedLocalPart()
+    {
+        $header = $this->getHeader('Message-ID');
+        $header->setId('"foo bar"@test.com');
+        $this->assertEquals('"foo bar"@test.com', $header->getId());
+    }
+
+    public function testIdRightAsLiteralWithIPv6()
+    {
+        $header = $this->getHeader('Message-ID');
+        $header->setId('abc@[::1]');
+        $this->assertEquals('abc@[::1]', $header->getId());
+        $this->assertEquals('<abc@[::1]>', $header->getFieldBody());
+    }
+
+    public function testEmptyIdThrowsException()
+    {
+        $this->expectException(Swift_RfcComplianceException::class);
+        $header = $this->getHeader('Message-ID');
+        $header->setId('');
+    }
+
+    public function testToStringWithSingleId()
+    {
+        $header = $this->getHeader('Message-ID');
+        $header->setId('unique@host');
+        $this->assertEquals("Message-ID: <unique@host>\r\n", $header->toString());
+    }
+
+    public function testMultipleSetIdOverwritesPrevious()
+    {
+        $header = $this->getHeader('Message-ID');
+        $header->setId('first@host');
+        $header->setId('second@host');
+        $this->assertEquals('second@host', $header->getId());
+    }
+
+    public function testSetIdsOverwritesPreviousIds()
+    {
+        $header = $this->getHeader('References');
+        $header->setIds(['a@b', 'c@d']);
+        $header->setIds(['x@y']);
+        $this->assertEquals(['x@y'], $header->getIds());
+    }
+
+    public function testFieldTypeIsAlwaysId()
+    {
+        $header = $this->getHeader('References');
+        $this->assertEquals(Swift_Mime_Header::TYPE_ID, $header->getFieldType());
+    }
+
+    public function testFieldTypeIsIdForContentId()
+    {
+        $header = $this->getHeader('Content-ID');
+        $this->assertEquals(Swift_Mime_Header::TYPE_ID, $header->getFieldType());
+    }
+
+    public function testFieldTypeIsIdForInReplyTo()
+    {
+        $header = $this->getHeader('In-Reply-To');
+        $this->assertEquals(Swift_Mime_Header::TYPE_ID, $header->getFieldType());
+    }
+
+    public function testIdWithComplexDotAtom()
+    {
+        $header = $this->getHeader('Message-ID');
+        $header->setId('a.b.c.d.e@f.g.h.i');
+        $this->assertEquals('a.b.c.d.e@f.g.h.i', $header->getId());
+    }
+
+    public function testIdWithSpecialCharsInDotAtom()
+    {
+        $header = $this->getHeader('Message-ID');
+        $header->setId('user+tag@example.com');
+        $this->assertEquals('user+tag@example.com', $header->getId());
+    }
+
+    public function testManyIdsProduceCorrectToString()
+    {
+        $header = $this->getHeader('References');
+        $header->setIds(['a@b', 'c@d', 'e@f', 'g@h']);
+        $this->assertEquals('References: <a@b> <c@d> <e@f> <g@h>'."\r\n", $header->toString());
+    }
+
+    public function testSingleIdToString()
+    {
+        $header = $this->getHeader('In-Reply-To');
+        $header->setId('reply@host');
+        $this->assertEquals("In-Reply-To: <reply@host>\r\n", $header->toString());
+    }
+
     private function getHeader($name)
     {
         return new Swift_Mime_Headers_IdentificationHeader($name, new EmailValidator(), new Swift_AddressEncoder_IdnAddressEncoder());

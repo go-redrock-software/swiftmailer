@@ -142,6 +142,106 @@ class Swift_Events_SendEventTest extends PHPUnit\Framework\TestCase
         $this->assertSame($envelope, $evt->getEnvelope());
     }
 
+    public function testDefaultResultIsPending()
+    {
+        $evt = $this->createEvent($this->createTransport(), $this->createMessage());
+        $this->assertTrue((bool) ($evt->getResult() & Swift_Events_SendEvent::RESULT_PENDING));
+    }
+
+    public function testResultSuccess()
+    {
+        $evt = $this->createEvent($this->createTransport(), $this->createMessage());
+        $evt->setResult(Swift_Events_SendEvent::RESULT_SUCCESS);
+        $this->assertTrue((bool) ($evt->getResult() & Swift_Events_SendEvent::RESULT_SUCCESS));
+    }
+
+    public function testResultFailed()
+    {
+        $evt = $this->createEvent($this->createTransport(), $this->createMessage());
+        $evt->setResult(Swift_Events_SendEvent::RESULT_FAILED);
+        $this->assertSame(Swift_Events_SendEvent::RESULT_FAILED, $evt->getResult());
+    }
+
+    public function testResultSpooled()
+    {
+        $evt = $this->createEvent($this->createTransport(), $this->createMessage());
+        $evt->setResult(Swift_Events_SendEvent::RESULT_SPOOLED);
+        $this->assertSame(Swift_Events_SendEvent::RESULT_SPOOLED, $evt->getResult());
+    }
+
+    public function testInheritsEventObject()
+    {
+        $evt = $this->createEvent($this->createTransport(), $this->createMessage());
+        $this->assertInstanceOf(Swift_Events_EventObject::class, $evt);
+    }
+
+    public function testBubbleCancellation()
+    {
+        $evt = $this->createEvent($this->createTransport(), $this->createMessage());
+        $this->assertFalse($evt->bubbleCancelled());
+        $evt->cancelBubble(true);
+        $this->assertTrue($evt->bubbleCancelled());
+    }
+
+    public function testGetTransportReturnsSameAsGetSource()
+    {
+        $transport = $this->createTransport();
+        $evt = $this->createEvent($transport, $this->createMessage());
+        $this->assertSame($evt->getTransport(), $evt->getSource());
+    }
+
+    public function testSetFailedRecipientsOverwritesPrevious()
+    {
+        $evt = $this->createEvent($this->createTransport(), $this->createMessage());
+        $evt->setFailedRecipients(['a@b.com']);
+        $evt->setFailedRecipients(['c@d.com', 'e@f.com']);
+        $this->assertEquals(['c@d.com', 'e@f.com'], $evt->getFailedRecipients());
+    }
+
+    public function testRejectCanBeCalledMultipleTimes()
+    {
+        $evt = $this->createEvent($this->createTransport(), $this->createMessage());
+        $evt->reject('First reason');
+        $evt->reject('Second reason');
+        $this->assertTrue($evt->isRejected());
+        $this->assertSame('Second reason', $evt->getRejectionReason());
+    }
+
+    public function testEnvelopeCanBeSetToNull()
+    {
+        $evt = $this->createEvent($this->createTransport(), $this->createMessage());
+        $envelope = new Swift_Envelope('sender@example.com', ['to@example.com']);
+        $evt->setEnvelope($envelope);
+        $this->assertNotNull($evt->getEnvelope());
+        $evt->setEnvelope(null);
+        $this->assertNull($evt->getEnvelope());
+    }
+
+    public function testEnvelopeSender()
+    {
+        $evt = $this->createEvent($this->createTransport(), $this->createMessage());
+        $envelope = new Swift_Envelope('sender@example.com', ['to@example.com']);
+        $evt->setEnvelope($envelope);
+        $this->assertSame('sender@example.com', $evt->getEnvelope()->getSender());
+    }
+
+    public function testEnvelopeRecipients()
+    {
+        $evt = $this->createEvent($this->createTransport(), $this->createMessage());
+        $envelope = new Swift_Envelope('sender@example.com', ['a@b.com', 'c@d.com']);
+        $evt->setEnvelope($envelope);
+        $this->assertCount(2, $evt->getEnvelope()->getRecipients());
+    }
+
+    public function testResultConstants()
+    {
+        $this->assertSame(0x0001, Swift_Events_SendEvent::RESULT_PENDING);
+        $this->assertSame(0x0011, Swift_Events_SendEvent::RESULT_SPOOLED);
+        $this->assertSame(0x0010, Swift_Events_SendEvent::RESULT_SUCCESS);
+        $this->assertSame(0x0100, Swift_Events_SendEvent::RESULT_TENTATIVE);
+        $this->assertSame(0x1000, Swift_Events_SendEvent::RESULT_FAILED);
+    }
+
     private function createEvent(Swift_Transport $source, Swift_Mime_SimpleMessage $message)
     {
         return new Swift_Events_SendEvent($source, $message);

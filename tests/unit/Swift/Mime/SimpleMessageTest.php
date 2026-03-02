@@ -934,6 +934,600 @@ class Swift_Mime_SimpleMessageTest extends Swift_Mime_MimePartTest
         );
     }
 
+    public function testGetChildrenReturnsEmptyArrayByDefault()
+    {
+        $message = $this->createMessage(
+            $this->createHeaderSet(),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $this->assertEquals([], $message->getChildren());
+    }
+
+    public function testAttachSameChildTwice()
+    {
+        $child = $this->createChild();
+        $message = $this->createMessage(
+            $this->createHeaderSet(),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $message->attach($child);
+        $message->attach($child);
+        // Attaching same child twice should result in two entries
+        $this->assertCount(2, $message->getChildren());
+    }
+
+    public function testDetachNonAttachedChildDoesNothing()
+    {
+        $child1 = $this->createChild();
+        $child2 = $this->createChild();
+        $message = $this->createMessage(
+            $this->createHeaderSet(),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $message->attach($child1);
+        $message->detach($child2);
+        $this->assertEquals([$child1], $message->getChildren());
+    }
+
+    public function testSetSubjectReturnsMessage()
+    {
+        $headers = $this->createHeaderSet([], false);
+        $headers->shouldReceive('addTextHeader')
+            ->zeroOrMoreTimes();
+
+        $message = $this->createMessage(
+            $headers,
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $result = $message->setSubject('Test');
+        $this->assertSame($message, $result);
+    }
+
+    public function testSetFromReturnsMessage()
+    {
+        $headers = $this->createHeaderSet([], false);
+        $headers->shouldReceive('addMailboxHeader')
+            ->zeroOrMoreTimes();
+
+        $message = $this->createMessage(
+            $headers,
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $result = $message->setFrom('test@example.com');
+        $this->assertSame($message, $result);
+    }
+
+    public function testSetToReturnsMessage()
+    {
+        $headers = $this->createHeaderSet([], false);
+        $headers->shouldReceive('addMailboxHeader')
+            ->zeroOrMoreTimes();
+
+        $message = $this->createMessage(
+            $headers,
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $result = $message->setTo('to@example.com');
+        $this->assertSame($message, $result);
+    }
+
+    public function testSetCcReturnsMessage()
+    {
+        $headers = $this->createHeaderSet([], false);
+        $headers->shouldReceive('addMailboxHeader')
+            ->zeroOrMoreTimes();
+
+        $message = $this->createMessage(
+            $headers,
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $result = $message->setCc('cc@example.com');
+        $this->assertSame($message, $result);
+    }
+
+    public function testSetBccReturnsMessage()
+    {
+        $headers = $this->createHeaderSet([], false);
+        $headers->shouldReceive('addMailboxHeader')
+            ->zeroOrMoreTimes();
+
+        $message = $this->createMessage(
+            $headers,
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $result = $message->setBcc('bcc@example.com');
+        $this->assertSame($message, $result);
+    }
+
+    public function testSetPriorityReturnsMessage()
+    {
+        $headers = $this->createHeaderSet([], false);
+        $headers->shouldReceive('addTextHeader')
+            ->zeroOrMoreTimes();
+
+        $message = $this->createMessage(
+            $headers,
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $result = $message->setPriority(Swift_Mime_SimpleMessage::PRIORITY_HIGH);
+        $this->assertSame($message, $result);
+    }
+
+    public function testSetDateReturnsMessage()
+    {
+        $headers = $this->createHeaderSet([], false);
+        $headers->shouldReceive('addDateHeader')
+            ->zeroOrMoreTimes();
+
+        $message = $this->createMessage(
+            $headers,
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $result = $message->setDate(new DateTimeImmutable());
+        $this->assertSame($message, $result);
+    }
+
+    public function testSetReturnPathReturnsMessage()
+    {
+        $headers = $this->createHeaderSet([], false);
+        $headers->shouldReceive('addPathHeader')
+            ->zeroOrMoreTimes();
+
+        $message = $this->createMessage(
+            $headers,
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $result = $message->setReturnPath('bounce@example.com');
+        $this->assertSame($message, $result);
+    }
+
+    public function testSetSenderReturnsMessage()
+    {
+        $headers = $this->createHeaderSet([], false);
+        $headers->shouldReceive('addMailboxHeader')
+            ->zeroOrMoreTimes();
+
+        $message = $this->createMessage(
+            $headers,
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $result = $message->setSender('sender@example.com');
+        $this->assertSame($message, $result);
+    }
+
+    public function testSetReplyToReturnsMessage()
+    {
+        $headers = $this->createHeaderSet([], false);
+        $headers->shouldReceive('addMailboxHeader')
+            ->zeroOrMoreTimes();
+
+        $message = $this->createMessage(
+            $headers,
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $result = $message->setReplyTo('reply@example.com');
+        $this->assertSame($message, $result);
+    }
+
+    public function testSetReadReceiptToReturnsMessage()
+    {
+        $headers = $this->createHeaderSet([], false);
+        $headers->shouldReceive('addMailboxHeader')
+            ->zeroOrMoreTimes();
+
+        $message = $this->createMessage(
+            $headers,
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $result = $message->setReadReceiptTo('receipt@example.com');
+        $this->assertSame($message, $result);
+    }
+
+    public function testGetSubjectReturnsNullWhenNoHeader()
+    {
+        $message = $this->createMessage(
+            $this->createHeaderSet(),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $this->assertNull($message->getSubject());
+    }
+
+    public function testGetFromReturnsNullWhenNoHeader()
+    {
+        $message = $this->createMessage(
+            $this->createHeaderSet(),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        // headers mock returns null for missing keys
+        $this->assertNull($message->getFrom());
+    }
+
+    public function testGetToReturnsNullWhenNoHeader()
+    {
+        $message = $this->createMessage(
+            $this->createHeaderSet(),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $this->assertNull($message->getTo());
+    }
+
+    public function testGetCcReturnsNullWhenNoHeader()
+    {
+        $message = $this->createMessage(
+            $this->createHeaderSet(),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $this->assertNull($message->getCc());
+    }
+
+    public function testGetBccReturnsNullWhenNoHeader()
+    {
+        $message = $this->createMessage(
+            $this->createHeaderSet(),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $this->assertNull($message->getBcc());
+    }
+
+    public function testGetReplyToReturnsNullWhenNoHeader()
+    {
+        $message = $this->createMessage(
+            $this->createHeaderSet(),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $this->assertNull($message->getReplyTo());
+    }
+
+    public function testGetReturnPathReturnsNullWhenNoHeader()
+    {
+        $message = $this->createMessage(
+            $this->createHeaderSet(),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $this->assertNull($message->getReturnPath());
+    }
+
+    public function testGetDateReturnsNullWhenNoHeader()
+    {
+        $message = $this->createMessage(
+            $this->createHeaderSet(),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $this->assertNull($message->getDate());
+    }
+
+    public function testGetPriorityReturnsNormalWhenNoHeader()
+    {
+        $message = $this->createMessage(
+            $this->createHeaderSet(),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $this->assertEquals(Swift_Mime_SimpleMessage::PRIORITY_NORMAL, $message->getPriority());
+    }
+
+    public function testAttachReturnsMessage()
+    {
+        $child = $this->createChild();
+        $message = $this->createMessage(
+            $this->createHeaderSet(),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $result = $message->attach($child);
+        $this->assertSame($message, $result);
+    }
+
+    public function testDetachReturnsMessage()
+    {
+        $child = $this->createChild();
+        $message = $this->createMessage(
+            $this->createHeaderSet(),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $message->attach($child);
+        $result = $message->detach($child);
+        $this->assertSame($message, $result);
+    }
+
+    public function testMultipleChildrenCanBeAttachedAndDetached()
+    {
+        $child1 = $this->createChild();
+        $child2 = $this->createChild();
+        $child3 = $this->createChild();
+
+        $message = $this->createMessage(
+            $this->createHeaderSet(),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+
+        $message->attach($child1);
+        $message->attach($child2);
+        $message->attach($child3);
+        $this->assertCount(3, $message->getChildren());
+
+        $message->detach($child2);
+        $this->assertCount(2, $message->getChildren());
+    }
+
+    public function testNestingLevelIsAlwaysTop()
+    {
+        $message = $this->createMessage(
+            $this->createHeaderSet(),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $this->assertEquals(Swift_Mime_SimpleMimeEntity::LEVEL_TOP, $message->getNestingLevel());
+    }
+
+    public function testSetSubjectAddsHeaderIfNotSet()
+    {
+        $headers = $this->createHeaderSet([], false);
+        $headers->shouldReceive('addTextHeader')
+            ->once()
+            ->with('Subject', 'My Subject');
+        $headers->shouldReceive('addTextHeader')
+            ->zeroOrMoreTimes();
+
+        $message = $this->createMessage(
+            $headers,
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $message->setSubject('My Subject');
+    }
+
+    public function testSetFromWithNameParam()
+    {
+        $headers = $this->createHeaderSet([], false);
+        $headers->shouldReceive('addMailboxHeader')
+            ->once()
+            ->with('From', ['from@example.com' => 'From Name']);
+        $headers->shouldReceive('addMailboxHeader')
+            ->zeroOrMoreTimes();
+
+        $message = $this->createMessage(
+            $headers,
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $message->setFrom('from@example.com', 'From Name');
+    }
+
+    public function testSetToWithNameParam()
+    {
+        $headers = $this->createHeaderSet([], false);
+        $headers->shouldReceive('addMailboxHeader')
+            ->once()
+            ->with('To', ['to@example.com' => 'To Name']);
+        $headers->shouldReceive('addMailboxHeader')
+            ->zeroOrMoreTimes();
+
+        $message = $this->createMessage(
+            $headers,
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $message->setTo('to@example.com', 'To Name');
+    }
+
+    public function testSetCcWithNameParam()
+    {
+        $headers = $this->createHeaderSet([], false);
+        $headers->shouldReceive('addMailboxHeader')
+            ->once()
+            ->with('Cc', ['cc@example.com' => 'CC Name']);
+        $headers->shouldReceive('addMailboxHeader')
+            ->zeroOrMoreTimes();
+
+        $message = $this->createMessage(
+            $headers,
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $message->setCc('cc@example.com', 'CC Name');
+    }
+
+    public function testSetBccWithNameParam()
+    {
+        $headers = $this->createHeaderSet([], false);
+        $headers->shouldReceive('addMailboxHeader')
+            ->once()
+            ->with('Bcc', ['bcc@example.com' => 'BCC Name']);
+        $headers->shouldReceive('addMailboxHeader')
+            ->zeroOrMoreTimes();
+
+        $message = $this->createMessage(
+            $headers,
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $message->setBcc('bcc@example.com', 'BCC Name');
+    }
+
+    public function testSetSenderWithNameParam()
+    {
+        $headers = $this->createHeaderSet([], false);
+        $headers->shouldReceive('addMailboxHeader')
+            ->once()
+            ->with('Sender', ['sender@example.com' => 'Sender Name']);
+        $headers->shouldReceive('addMailboxHeader')
+            ->zeroOrMoreTimes();
+
+        $message = $this->createMessage(
+            $headers,
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $message->setSender('sender@example.com', 'Sender Name');
+    }
+
+    public function testSetReplyToWithNameParam()
+    {
+        $headers = $this->createHeaderSet([], false);
+        $headers->shouldReceive('addMailboxHeader')
+            ->once()
+            ->with('Reply-To', ['reply@example.com' => 'Reply Name']);
+        $headers->shouldReceive('addMailboxHeader')
+            ->zeroOrMoreTimes();
+
+        $message = $this->createMessage(
+            $headers,
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $message->setReplyTo('reply@example.com', 'Reply Name');
+    }
+
+    public function testPriorityHighestIsSetCorrectly()
+    {
+        $prio = $this->createHeader('X-Priority', '1 (Highest)', [], false);
+        $prio->shouldReceive('setFieldBodyModel')
+            ->once()
+            ->with('1 (Highest)');
+
+        $message = $this->createMessage(
+            $this->createHeaderSet(['X-Priority' => $prio]),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $message->setPriority(Swift_Mime_SimpleMessage::PRIORITY_HIGHEST);
+    }
+
+    public function testPriorityNormalIsSetCorrectly()
+    {
+        $prio = $this->createHeader('X-Priority', '3 (Normal)', [], false);
+        $prio->shouldReceive('setFieldBodyModel')
+            ->once()
+            ->with('3 (Normal)');
+
+        $message = $this->createMessage(
+            $this->createHeaderSet(['X-Priority' => $prio]),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $message->setPriority(Swift_Mime_SimpleMessage::PRIORITY_NORMAL);
+    }
+
+    public function testPriorityConstantsHaveCorrectValues()
+    {
+        $this->assertEquals(1, Swift_Mime_SimpleMessage::PRIORITY_HIGHEST);
+        $this->assertEquals(2, Swift_Mime_SimpleMessage::PRIORITY_HIGH);
+        $this->assertEquals(3, Swift_Mime_SimpleMessage::PRIORITY_NORMAL);
+        $this->assertEquals(4, Swift_Mime_SimpleMessage::PRIORITY_LOW);
+        $this->assertEquals(5, Swift_Mime_SimpleMessage::PRIORITY_LOWEST);
+    }
+
+    public function testEmbedReturnsCorrectCidForMultipleChildren()
+    {
+        $child1 = $this->createChild(
+            Swift_Mime_SimpleMimeEntity::LEVEL_RELATED,
+            '',
+            false,
+        );
+        $child1->shouldReceive('getId')
+            ->zeroOrMoreTimes()
+            ->andReturn('image1@host');
+
+        $child2 = $this->createChild(
+            Swift_Mime_SimpleMimeEntity::LEVEL_RELATED,
+            '',
+            false,
+        );
+        $child2->shouldReceive('getId')
+            ->zeroOrMoreTimes()
+            ->andReturn('image2@host');
+
+        $message = $this->createMessage(
+            $this->createHeaderSet(),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+
+        $this->assertEquals('cid:image1@host', $message->embed($child1));
+        $this->assertEquals('cid:image2@host', $message->embed($child2));
+        $this->assertCount(2, $message->getChildren());
+    }
+
+    public function testDetachRemovesOnlySpecifiedChild()
+    {
+        $child1 = $this->createChild();
+        $child2 = $this->createChild();
+        $child3 = $this->createChild();
+
+        $message = $this->createMessage(
+            $this->createHeaderSet(),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+
+        $message->attach($child1);
+        $message->attach($child2);
+        $message->attach($child3);
+        $message->detach($child2);
+
+        $children = $message->getChildren();
+        $this->assertCount(2, $children);
+        $this->assertContains($child1, $children);
+        $this->assertContains($child3, $children);
+    }
+
+    public function testSetFromWithArrayOfAddresses()
+    {
+        $addresses = ['a@b.com' => 'A', 'c@d.com' => 'C'];
+        $from      = $this->createHeader('From', $addresses, [], false);
+        $from->shouldReceive('setFieldBodyModel')
+            ->once()
+            ->with($addresses);
+
+        $message = $this->createMessage(
+            $this->createHeaderSet(['From' => $from]),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $message->setFrom($addresses);
+    }
+
+    public function testSetToWithArrayOfAddresses()
+    {
+        $addresses = ['a@b.com', 'c@d.com'];
+        $to        = $this->createHeader('To', $addresses, [], false);
+        $to->shouldReceive('setFieldBodyModel')
+            ->once()
+            ->with($addresses);
+
+        $message = $this->createMessage(
+            $this->createHeaderSet(['To' => $to]),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $message->setTo($addresses);
+    }
+
     // abstract
     protected function createEntity($headers, $encoder, $cache)
     {

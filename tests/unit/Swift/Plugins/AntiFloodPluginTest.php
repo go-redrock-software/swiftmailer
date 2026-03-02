@@ -71,6 +71,98 @@ class Swift_Plugins_AntiFloodPluginTest extends PHPUnit\Framework\TestCase
         }
     }
 
+    public function testDefaultThreshold()
+    {
+        $plugin = new Swift_Plugins_AntiFloodPlugin();
+        $this->assertEquals(99, $plugin->getThreshold());
+    }
+
+    public function testDefaultSleepTime()
+    {
+        $plugin = new Swift_Plugins_AntiFloodPlugin();
+        $this->assertEquals(0, $plugin->getSleepTime());
+    }
+
+    public function testBeforeSendPerformedIsNoop()
+    {
+        $transport = $this->createTransport();
+        $transport->expects($this->never())->method('start');
+        $transport->expects($this->never())->method('stop');
+
+        $evt = $this->createSendEvent($transport);
+
+        $plugin = new Swift_Plugins_AntiFloodPlugin(10);
+        $plugin->beforeSendPerformed($evt);
+    }
+
+    public function testPluginImplementsSendListener()
+    {
+        $plugin = new Swift_Plugins_AntiFloodPlugin();
+        $this->assertInstanceOf(Swift_Events_SendListener::class, $plugin);
+    }
+
+    public function testPluginImplementsSleeper()
+    {
+        $plugin = new Swift_Plugins_AntiFloodPlugin();
+        $this->assertInstanceOf(Swift_Plugins_Sleeper::class, $plugin);
+    }
+
+    public function testExactThresholdTriggersRestart()
+    {
+        $transport = $this->createTransport();
+        $transport->expects($this->once())->method('start');
+        $transport->expects($this->once())->method('stop');
+
+        $evt = $this->createSendEvent($transport);
+        $plugin = new Swift_Plugins_AntiFloodPlugin(5);
+
+        for ($i = 0; $i < 5; ++$i) {
+            $plugin->sendPerformed($evt);
+        }
+    }
+
+    public function testBelowThresholdDoesNotRestart()
+    {
+        $transport = $this->createTransport();
+        $transport->expects($this->never())->method('start');
+        $transport->expects($this->never())->method('stop');
+
+        $evt = $this->createSendEvent($transport);
+        $plugin = new Swift_Plugins_AntiFloodPlugin(10);
+
+        for ($i = 0; $i < 9; ++$i) {
+            $plugin->sendPerformed($evt);
+        }
+    }
+
+    public function testSleeperNotCalledWhenSleepTimeIsZero()
+    {
+        $sleeper = $this->getMockBuilder('Swift_Plugins_Sleeper')->getMock();
+        $sleeper->expects($this->never())->method('sleep');
+
+        $transport = $this->createTransport();
+        $evt = $this->createSendEvent($transport);
+
+        $plugin = new Swift_Plugins_AntiFloodPlugin(2, 0, $sleeper);
+        for ($i = 0; $i < 3; ++$i) {
+            $plugin->sendPerformed($evt);
+        }
+    }
+
+    public function testThresholdOfOneRestartsEveryTime()
+    {
+        $transport = $this->createTransport();
+        $transport->expects($this->exactly(5))->method('start');
+        $transport->expects($this->exactly(5))->method('stop');
+
+        $evt = $this->createSendEvent($transport);
+        $plugin = new Swift_Plugins_AntiFloodPlugin(1);
+
+        for ($i = 0; $i < 5; ++$i) {
+            $plugin->sendPerformed($evt);
+        }
+    }
+
     private function createTransport()
     {
         return $this->getMockBuilder('Swift_Transport')->getMock();

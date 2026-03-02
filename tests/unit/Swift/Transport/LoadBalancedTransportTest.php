@@ -825,6 +825,453 @@ class Swift_Transport_LoadBalancedTransportTest extends SwiftMailerTestCase
         return $isRef;
     }
 
+    public function testGetTransportsReturnsConfiguredTransports()
+    {
+        $t1 = $this->getMockery('Swift_Transport');
+        $t2 = $this->getMockery('Swift_Transport');
+
+        $t1->shouldReceive('isStarted')->zeroOrMoreTimes()->andReturn(false);
+        $t2->shouldReceive('isStarted')->zeroOrMoreTimes()->andReturn(false);
+
+        $transport = $this->getTransport([$t1, $t2]);
+        $this->assertCount(2, $transport->getTransports());
+    }
+
+    public function testIsStartedReturnsTrueWhenTransportsExist()
+    {
+        $t1 = $this->getMockery('Swift_Transport');
+        $t1->shouldReceive('isStarted')->zeroOrMoreTimes()->andReturn(true);
+        $t1->shouldReceive('ping')->zeroOrMoreTimes()->andReturn(true);
+
+        $transport = $this->getTransport([$t1]);
+        $this->assertTrue($transport->isStarted());
+    }
+
+    public function testStartedAfterStartCall()
+    {
+        $t1 = $this->getMockery('Swift_Transport');
+        $t2 = $this->getMockery('Swift_Transport');
+
+        $t1->shouldReceive('isStarted')
+            ->zeroOrMoreTimes()
+            ->andReturn(true);
+        $t1->shouldReceive('ping')
+            ->zeroOrMoreTimes()
+            ->andReturn(true);
+
+        $t2->shouldReceive('isStarted')
+            ->zeroOrMoreTimes()
+            ->andReturn(true);
+        $t2->shouldReceive('ping')
+            ->zeroOrMoreTimes()
+            ->andReturn(true);
+
+        $transport = $this->getTransport([$t1, $t2]);
+        $transport->start();
+        $this->assertTrue($transport->isStarted());
+    }
+
+    public function testSingleTransportSendsSuccessfully()
+    {
+        $message         = $this->getMockery('Swift_Mime_SimpleMessage');
+        $t1              = $this->getMockery('Swift_Transport');
+        $connectionState = false;
+
+        $t1->shouldReceive('isStarted')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function () use (&$connectionState) {
+                return $connectionState;
+            });
+        $t1->shouldReceive('start')
+            ->once()
+            ->andReturnUsing(function () use (&$connectionState) {
+                $connectionState = true;
+            });
+        $t1->shouldReceive('send')
+            ->once()
+            ->with($message, Mockery::any(), Mockery::any())
+            ->andReturn(1);
+
+        $transport = $this->getTransport([$t1]);
+        $transport->start();
+        $this->assertEquals(1, $transport->send($message));
+    }
+
+    public function testSetTransportsOverwritesPrevious()
+    {
+        $t1 = $this->getMockery('Swift_Transport');
+        $t2 = $this->getMockery('Swift_Transport');
+        $t3 = $this->getMockery('Swift_Transport');
+
+        $t1->shouldReceive('isStarted')->zeroOrMoreTimes()->andReturn(false);
+        $t2->shouldReceive('isStarted')->zeroOrMoreTimes()->andReturn(false);
+        $t3->shouldReceive('isStarted')->zeroOrMoreTimes()->andReturn(false);
+
+        $transport = new Swift_Transport_LoadBalancedTransport();
+        $transport->setTransports([$t1, $t2]);
+        $this->assertCount(2, $transport->getTransports());
+
+        $transport->setTransports([$t3]);
+        $this->assertCount(1, $transport->getTransports());
+    }
+
+    public function testRegisterPluginDelegatesToAllTransportsIncludingNew()
+    {
+        $plugin = $this->createPlugin();
+
+        $t1 = $this->getMockery('Swift_Transport');
+        $t1->shouldReceive('registerPlugin')
+            ->once()
+            ->with($plugin);
+
+        $transport = $this->getTransport([$t1]);
+        $transport->registerPlugin($plugin);
+    }
+
+    public function testPingReturnsTrueWhenAtLeastOneAlive()
+    {
+        $t1 = $this->getMockery('Swift_Transport');
+        $t2 = $this->getMockery('Swift_Transport');
+
+        $t1->shouldReceive('isStarted')->zeroOrMoreTimes()->andReturn(true);
+        $t1->shouldReceive('ping')->once()->andReturn(false);
+
+        $t2->shouldReceive('isStarted')->zeroOrMoreTimes()->andReturn(true);
+        $t2->shouldReceive('ping')->once()->andReturn(true);
+
+        $transport = $this->getTransport([$t1, $t2]);
+        $this->assertTrue($transport->ping());
+    }
+
+    public function testPingReturnsFalseWhenAllDead()
+    {
+        $t1 = $this->getMockery('Swift_Transport');
+        $t1->shouldReceive('isStarted')->zeroOrMoreTimes()->andReturn(false);
+        $t1->shouldReceive('ping')->once()->andReturn(false);
+
+        $transport = $this->getTransport([$t1]);
+        $this->assertFalse($transport->ping());
+    }
+
+    public function testStopCalledOnAllTransports()
+    {
+        $t1               = $this->getMockery('Swift_Transport');
+        $connectionState1 = true;
+
+        $t1->shouldReceive('isStarted')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function () use (&$connectionState1) {
+                return $connectionState1;
+            });
+        $t1->shouldReceive('stop')
+            ->once()
+            ->andReturnUsing(function () use (&$connectionState1) {
+                $connectionState1 = false;
+            });
+
+        $transport = $this->getTransport([$t1]);
+        $transport->start();
+        $transport->stop();
+    }
+
+    public function testGetLastUsedTransportReturnsNullBeforeSend()
+    {
+        $t1 = $this->getMockery('Swift_Transport');
+        $t1->shouldReceive('isStarted')->zeroOrMoreTimes()->andReturn(false);
+
+        $transport = $this->getTransport([$t1]);
+        $this->assertNull($transport->getLastUsedTransport());
+    }
+
+    public function testGetLastUsedTransportReturnsTransportAfterSend()
+    {
+        $message         = $this->getMockery('Swift_Mime_SimpleMessage');
+        $t1              = $this->getMockery('Swift_Transport');
+        $connectionState = false;
+
+        $t1->shouldReceive('isStarted')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function () use (&$connectionState) {
+                return $connectionState;
+            });
+        $t1->shouldReceive('start')
+            ->once()
+            ->andReturnUsing(function () use (&$connectionState) {
+                $connectionState = true;
+            });
+        $t1->shouldReceive('send')
+            ->once()
+            ->with($message, Mockery::any(), Mockery::any())
+            ->andReturn(1);
+
+        $transport = $this->getTransport([$t1]);
+        $transport->start();
+        $transport->send($message);
+        $this->assertSame($t1, $transport->getLastUsedTransport());
+    }
+
+    public function testIsStartedReturnsFalseWithNoTransports()
+    {
+        $transport = new Swift_Transport_LoadBalancedTransport();
+        $this->assertFalse($transport->isStarted());
+    }
+
+    public function testSetTransportsResetsDeadTransports()
+    {
+        $e = new Swift_TransportException('b0rken');
+
+        $message          = $this->getMockery('Swift_Mime_SimpleMessage');
+        $t1               = $this->getMockery('Swift_Transport');
+        $t2               = $this->getMockery('Swift_Transport');
+        $connectionState1 = false;
+
+        $t1->shouldReceive('isStarted')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function () use (&$connectionState1) {
+                return $connectionState1;
+            });
+        $t1->shouldReceive('start')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function () use (&$connectionState1) {
+                $connectionState1 = true;
+            });
+        $t1->shouldReceive('send')
+            ->zeroOrMoreTimes()
+            ->andThrow($e);
+        $t1->shouldReceive('stop')
+            ->zeroOrMoreTimes();
+
+        $transport = $this->getTransport([$t1]);
+        $transport->start();
+        try {
+            $transport->send($message);
+        } catch (Swift_TransportException $ex) {
+        }
+        $this->assertFalse($transport->isStarted());
+
+        // Now replace transports
+        $t2->shouldReceive('isStarted')->zeroOrMoreTimes()->andReturn(true);
+        $t2->shouldReceive('ping')->zeroOrMoreTimes()->andReturn(true);
+        $transport->setTransports([$t2]);
+        $this->assertTrue($transport->isStarted());
+    }
+
+    public function testEmptyTransportsThrowsOnSend()
+    {
+        $message   = $this->getMockery('Swift_Mime_SimpleMessage');
+        $transport = new Swift_Transport_LoadBalancedTransport();
+
+        $this->expectException(Swift_TransportException::class);
+        $transport->send($message);
+    }
+
+    public function testThreeTransportsRoundRobin()
+    {
+        $message         = $this->getMockery('Swift_Mime_SimpleMessage');
+        $t1              = $this->getMockery('Swift_Transport');
+        $t2              = $this->getMockery('Swift_Transport');
+        $t3              = $this->getMockery('Swift_Transport');
+        $connectionState = [false, false, false];
+
+        foreach ([[$t1, 0], [$t2, 1], [$t3, 2]] as [$t, $i]) {
+            $t->shouldReceive('isStarted')
+                ->zeroOrMoreTimes()
+                ->andReturnUsing(function () use (&$connectionState, $i) {
+                    return $connectionState[$i];
+                });
+            $t->shouldReceive('start')
+                ->zeroOrMoreTimes()
+                ->andReturnUsing(function () use (&$connectionState, $i) {
+                    $connectionState[$i] = true;
+                });
+            $t->shouldReceive('send')
+                ->zeroOrMoreTimes()
+                ->with($message, Mockery::any(), Mockery::any())
+                ->andReturn(1);
+        }
+
+        $transport = $this->getTransport([$t1, $t2, $t3]);
+        $transport->start();
+        $transport->send($message);
+        $transport->send($message);
+        $transport->send($message);
+        $this->assertCount(3, $transport->getTransports());
+    }
+
+    public function testRegisterPluginRegistersOnAllDelegates()
+    {
+        $plugin = $this->createPlugin();
+        $t1     = $this->getMockery('Swift_Transport');
+        $t2     = $this->getMockery('Swift_Transport');
+        $t3     = $this->getMockery('Swift_Transport');
+
+        $t1->shouldReceive('registerPlugin')->once()->with($plugin);
+        $t2->shouldReceive('registerPlugin')->once()->with($plugin);
+        $t3->shouldReceive('registerPlugin')->once()->with($plugin);
+
+        $transport = $this->getTransport([$t1, $t2, $t3]);
+        $transport->registerPlugin($plugin);
+    }
+
+    public function testGetTransportsIncludesDeadTransports()
+    {
+        $e = new Swift_TransportException('b0rken');
+
+        $message          = $this->getMockery('Swift_Mime_SimpleMessage');
+        $t1               = $this->getMockery('Swift_Transport');
+        $t2               = $this->getMockery('Swift_Transport');
+        $connectionState1 = false;
+        $connectionState2 = false;
+
+        $t1->shouldReceive('isStarted')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function () use (&$connectionState1) {
+                return $connectionState1;
+            });
+        $t1->shouldReceive('start')
+            ->once()
+            ->andReturnUsing(function () use (&$connectionState1) {
+                $connectionState1 = true;
+            });
+        $t1->shouldReceive('send')
+            ->once()
+            ->andThrow($e);
+        $t1->shouldReceive('stop')
+            ->zeroOrMoreTimes();
+
+        $t2->shouldReceive('isStarted')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function () use (&$connectionState2) {
+                return $connectionState2;
+            });
+        $t2->shouldReceive('start')
+            ->once()
+            ->andReturnUsing(function () use (&$connectionState2) {
+                $connectionState2 = true;
+            });
+        $t2->shouldReceive('send')
+            ->once()
+            ->with($message, Mockery::any(), Mockery::any())
+            ->andReturn(1);
+
+        $transport = $this->getTransport([$t1, $t2]);
+        $transport->start();
+        $transport->send($message);
+        // Even though t1 is dead, getTransports() includes it
+        $this->assertCount(2, $transport->getTransports());
+    }
+
+    public function testStartRevivesDeadTransports()
+    {
+        $e = new Swift_TransportException('b0rken');
+
+        $message          = $this->getMockery('Swift_Mime_SimpleMessage');
+        $t1               = $this->getMockery('Swift_Transport');
+        $connectionState1 = false;
+
+        $t1->shouldReceive('isStarted')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function () use (&$connectionState1) {
+                return $connectionState1;
+            });
+        $t1->shouldReceive('start')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function () use (&$connectionState1) {
+                $connectionState1 = true;
+            });
+        $t1->shouldReceive('send')
+            ->once()
+            ->andThrow($e);
+        $t1->shouldReceive('stop')
+            ->zeroOrMoreTimes();
+
+        $transport = $this->getTransport([$t1]);
+        $transport->start();
+        try {
+            $transport->send($message);
+        } catch (Swift_TransportException $ex) {
+        }
+        $this->assertFalse($transport->isStarted());
+
+        // Restart should revive dead transports
+        $transport->start();
+        $this->assertTrue($transport->isStarted());
+    }
+
+    public function testSendReturnsZeroWhenTransportReturnsZero()
+    {
+        $message         = $this->getMockery('Swift_Mime_SimpleMessage');
+        $t1              = $this->getMockery('Swift_Transport');
+        $connectionState = false;
+
+        $t1->shouldReceive('isStarted')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function () use (&$connectionState) {
+                return $connectionState;
+            });
+        $t1->shouldReceive('start')
+            ->once()
+            ->andReturnUsing(function () use (&$connectionState) {
+                $connectionState = true;
+            });
+        $t1->shouldReceive('send')
+            ->once()
+            ->with($message, Mockery::any(), Mockery::any())
+            ->andReturn(0);
+
+        $transport = $this->getTransport([$t1]);
+        $transport->start();
+        // send returns 0 - it keeps trying other transports when sent=0
+        $result = $transport->send($message);
+        $this->assertEquals(0, $result);
+    }
+
+    public function testStopOnEmptyTransportDoesNotThrow()
+    {
+        $transport = new Swift_Transport_LoadBalancedTransport();
+        $transport->stop();
+        $this->assertFalse($transport->isStarted());
+    }
+
+    public function testPingOnEmptyTransportReturnsFalse()
+    {
+        $transport = new Swift_Transport_LoadBalancedTransport();
+        $this->assertFalse($transport->ping());
+    }
+
+    public function testConstructorCreatesEmptyTransport()
+    {
+        $transport = new Swift_Transport_LoadBalancedTransport();
+        $this->assertEmpty($transport->getTransports());
+        $this->assertNull($transport->getLastUsedTransport());
+    }
+
+    public function testSendWithMultipleRecipientCount()
+    {
+        $message         = $this->getMockery('Swift_Mime_SimpleMessage');
+        $t1              = $this->getMockery('Swift_Transport');
+        $connectionState = false;
+
+        $t1->shouldReceive('isStarted')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function () use (&$connectionState) {
+                return $connectionState;
+            });
+        $t1->shouldReceive('start')
+            ->once()
+            ->andReturnUsing(function () use (&$connectionState) {
+                $connectionState = true;
+            });
+        $t1->shouldReceive('send')
+            ->once()
+            ->with($message, Mockery::any(), Mockery::any())
+            ->andReturn(5);
+
+        $transport = $this->getTransport([$t1]);
+        $transport->start();
+        $this->assertEquals(5, $transport->send($message));
+    }
+
     private function getTransport(array $transports)
     {
         $transport = new Swift_Transport_LoadBalancedTransport();

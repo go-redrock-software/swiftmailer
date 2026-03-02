@@ -158,4 +158,153 @@ class Swift_Webhook_Converter_MailomatConverterTest extends PHPUnit\Framework\Te
     {
         $this->assertFalse($this->converter->verify('{}', [], 'secret'));
     }
+
+    public function testConvertEmptyPayload()
+    {
+        $this->assertSame([], $this->converter->convert([], []));
+    }
+
+    public function testConvertMissingEventType()
+    {
+        $payload = [
+            'occurredAt' => '2026-01-15T10:30:00Z',
+            'messageId'  => 'msg-x@example.com',
+            'recipient'  => 'user@example.com',
+        ];
+
+        $this->assertSame([], $this->converter->convert($payload, []));
+    }
+
+    public function testConvertMissingRecipientAndMessageId()
+    {
+        $payload = [
+            'eventType'  => 'delivered',
+            'occurredAt' => '2026-01-15T10:30:00Z',
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertCount(1, $events);
+        $this->assertSame('', $events[0]->getMessageId());
+        $this->assertSame('', $events[0]->getRecipient());
+    }
+
+    public function testConvertWithPayloadMetadata()
+    {
+        $payload = [
+            'eventType'  => 'delivered',
+            'occurredAt' => '2026-01-15T10:30:00Z',
+            'messageId'  => 'msg-meta@example.com',
+            'recipient'  => 'user@example.com',
+            'payload'    => [
+                'custom_key' => 'custom_value',
+                'another'    => 123,
+            ],
+        ];
+
+        $events   = $this->converter->convert($payload, []);
+        $metadata = $events[0]->getMetadata();
+        $this->assertSame('custom_value', $metadata['custom_key']);
+        $this->assertSame(123, $metadata['another']);
+    }
+
+    public function testConvertWithEmptyPayloadArray()
+    {
+        $payload = [
+            'eventType'  => 'delivered',
+            'occurredAt' => '2026-01-15T10:30:00Z',
+            'messageId'  => 'msg-empty-payload@example.com',
+            'recipient'  => 'user@example.com',
+            'payload'    => [],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertCount(1, $events);
+        $this->assertSame([], $events[0]->getMetadata());
+    }
+
+    public function testConvertUnknownEventType()
+    {
+        $payload = [
+            'eventType'  => 'unknown_type',
+            'occurredAt' => '2026-01-15T10:30:00Z',
+            'messageId'  => 'msg-unk@example.com',
+            'recipient'  => 'user@example.com',
+        ];
+
+        $this->assertSame([], $this->converter->convert($payload, []));
+    }
+
+    public function testConvertDeliveryVsEngagementTypes()
+    {
+        // Delivery types
+        $deliveryTypes = ['delivered', 'failure_perm', 'failure_tmp'];
+        foreach ($deliveryTypes as $type) {
+            $payload = [
+                'eventType'  => $type,
+                'occurredAt' => '2026-01-15T10:30:00Z',
+                'messageId'  => "msg-{$type}@example.com",
+                'recipient'  => 'user@example.com',
+                'payload'    => [],
+            ];
+            $events = $this->converter->convert($payload, []);
+            $this->assertSame('delivery', $events[0]->getType(), "Expected delivery type for: {$type}");
+        }
+
+        // Engagement types
+        $engagementTypes = ['opened', 'clicked'];
+        foreach ($engagementTypes as $type) {
+            $payload = [
+                'eventType'  => $type,
+                'occurredAt' => '2026-01-15T10:30:00Z',
+                'messageId'  => "msg-{$type}@example.com",
+                'recipient'  => 'user@example.com',
+                'payload'    => [],
+            ];
+            $events = $this->converter->convert($payload, []);
+            $this->assertSame('engagement', $events[0]->getType(), "Expected engagement type for: {$type}");
+        }
+    }
+
+    public function testVerifyPartialHeaders()
+    {
+        // Missing signature header
+        $headers = [
+            'x-mom-webhook-id'        => 'test-id',
+            'x-mom-webhook-event'     => 'delivered',
+            'x-mom-webhook-timestamp' => '1712240232',
+        ];
+        $this->assertFalse($this->converter->verify('{}', $headers, 'secret'));
+
+        // Missing id header
+        $headers = [
+            'x-mom-webhook-event'     => 'delivered',
+            'x-mom-webhook-timestamp' => '1712240232',
+            'x-mom-webhook-signature' => 'sha256=abc',
+        ];
+        $this->assertFalse($this->converter->verify('{}', $headers, 'secret'));
+    }
+
+    public function testVerifyWrongAlgorithmPrefix()
+    {
+        $headers = [
+            'x-mom-webhook-id'        => 'test-id',
+            'x-mom-webhook-event'     => 'delivered',
+            'x-mom-webhook-timestamp' => '1712240232',
+            'x-mom-webhook-signature' => 'sha512=somehash',
+        ];
+
+        $this->assertFalse($this->converter->verify('{}', $headers, 'secret'));
+    }
+
+    public function testVerifySignatureWithoutEquals()
+    {
+        $headers = [
+            'x-mom-webhook-id'        => 'test-id',
+            'x-mom-webhook-event'     => 'delivered',
+            'x-mom-webhook-timestamp' => '1712240232',
+            'x-mom-webhook-signature' => 'noprefixhash',
+        ];
+
+        $this->assertFalse($this->converter->verify('{}', $headers, 'secret'));
+    }
 }

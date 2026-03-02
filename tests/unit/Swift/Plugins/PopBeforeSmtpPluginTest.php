@@ -98,4 +98,93 @@ class Swift_Plugins_PopBeforeSmtpPluginTest extends PHPUnit\Framework\TestCase
     {
         return new Swift_Plugins_PopBeforeSmtpPlugin($host, $port, $crypto);
     }
+
+    public function testPluginImplementsTransportChangeListener()
+    {
+        $plugin = $this->createPlugin('pop.host.tld', 110);
+        $this->assertInstanceOf(Swift_Events_TransportChangeListener::class, $plugin);
+    }
+
+    public function testPluginImplementsPop3Connection()
+    {
+        $plugin = $this->createPlugin('pop.host.tld', 110);
+        $this->assertInstanceOf(Swift_Plugins_Pop_Pop3Connection::class, $plugin);
+    }
+
+    public function testSetConnectionReturnsSelf()
+    {
+        $connection = $this->createConnection();
+        $plugin     = $this->createPlugin('pop.host.tld', 110);
+
+        $result = $plugin->setConnection($connection);
+        $this->assertSame($plugin, $result);
+    }
+
+    public function testSetTimeoutReturnsSelf()
+    {
+        $plugin = $this->createPlugin('pop.host.tld', 110);
+        $result = $plugin->setTimeout(30);
+        $this->assertSame($plugin, $result);
+    }
+
+    public function testSetUsernameReturnsSelf()
+    {
+        $plugin = $this->createPlugin('pop.host.tld', 110);
+        $result = $plugin->setUsername('user');
+        $this->assertSame($plugin, $result);
+    }
+
+    public function testSetPasswordReturnsSelf()
+    {
+        $plugin = $this->createPlugin('pop.host.tld', 110);
+        $result = $plugin->setPassword('pass');
+        $this->assertSame($plugin, $result);
+    }
+
+    public function testTransportStartedIsNoop()
+    {
+        $plugin    = $this->createPlugin('pop.host.tld', 110);
+        $transport = $this->createTransport();
+        $evt       = $this->createTransportChangeEvent($transport);
+
+        // Should not throw
+        $plugin->transportStarted($evt);
+        $this->assertTrue(true);
+    }
+
+    public function testBeforeTransportStoppedIsNoop()
+    {
+        $plugin    = $this->createPlugin('pop.host.tld', 110);
+        $transport = $this->createTransport();
+        $evt       = $this->createTransportChangeEvent($transport);
+
+        // Should not throw
+        $plugin->beforeTransportStopped($evt);
+        $this->assertTrue(true);
+    }
+
+    public function testTransportStoppedIsNoop()
+    {
+        $plugin    = $this->createPlugin('pop.host.tld', 110);
+        $transport = $this->createTransport();
+        $evt       = $this->createTransportChangeEvent($transport);
+
+        // Should not throw
+        $plugin->transportStopped($evt);
+        $this->assertTrue(true);
+    }
+
+    public function testConstructorAcceptsCryptoParameter()
+    {
+        // Should not throw
+        $plugin = $this->createPlugin('pop.host.tld', 995, 'ssl');
+        $this->assertInstanceOf(Swift_Plugins_PopBeforeSmtpPlugin::class, $plugin);
+    }
+
+    public function testDefaultPortIs110()
+    {
+        // Constructor signature has default 110
+        $plugin = new Swift_Plugins_PopBeforeSmtpPlugin('pop.host.tld');
+        $this->assertInstanceOf(Swift_Plugins_PopBeforeSmtpPlugin::class, $plugin);
+    }
 }

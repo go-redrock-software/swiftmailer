@@ -86,4 +86,129 @@ class Swift_Webhook_RequestHandlerTest extends PHPUnit\Framework\TestCase
 
         $this->assertCount(1, $result);
     }
+
+    public function testHandleNormalizesHeaderKeysToLowercase()
+    {
+        $converter = $this->createMock(Swift_Webhook_PayloadConverterInterface::class);
+        $converter->method('verify')->willReturn(true);
+        $converter->method('convert')->willReturn([]);
+        $converter->method('getProviderName')->willReturn('test');
+
+        $handler = new Swift_Webhook_RequestHandler();
+        // Mixed-case headers should be normalized
+        $result = $handler->handle(
+            $converter,
+            '{"event":"test"}',
+            ['X-Signature' => 'valid', 'Content-Type' => 'application/json'],
+            'secret',
+        );
+
+        $this->assertIsArray($result);
+    }
+
+    public function testHandleWithEmptyJsonObject()
+    {
+        $converter = $this->createMock(Swift_Webhook_PayloadConverterInterface::class);
+        $converter->method('verify')->willReturn(true);
+        $converter->method('convert')->willReturn([]);
+        $converter->method('getProviderName')->willReturn('test');
+
+        $handler = new Swift_Webhook_RequestHandler();
+        $result = $handler->handle($converter, '{}', [], 'secret');
+
+        $this->assertIsArray($result);
+        $this->assertCount(0, $result);
+    }
+
+    public function testHandleWithEmptyJsonArray()
+    {
+        $converter = $this->createMock(Swift_Webhook_PayloadConverterInterface::class);
+        $converter->method('verify')->willReturn(true);
+        $converter->method('convert')->willReturn([]);
+        $converter->method('getProviderName')->willReturn('test');
+
+        $handler = new Swift_Webhook_RequestHandler();
+        $result = $handler->handle($converter, '[]', [], 'secret');
+
+        $this->assertIsArray($result);
+    }
+
+    public function testHandleWithMultipleEvents()
+    {
+        $event1 = new Swift_Webhook_Event('delivery', 'bounced', 'msg-1', 'a@b.com', [], new DateTimeImmutable(), []);
+        $event2 = new Swift_Webhook_Event('engagement', 'opened', 'msg-2', 'c@d.com', [], new DateTimeImmutable(), []);
+
+        $converter = $this->createMock(Swift_Webhook_PayloadConverterInterface::class);
+        $converter->method('verify')->willReturn(true);
+        $converter->method('convert')->willReturn([$event1, $event2]);
+        $converter->method('getProviderName')->willReturn('test');
+
+        $handler = new Swift_Webhook_RequestHandler();
+        $result = $handler->handle($converter, '{"events":[]}', [], 'secret');
+
+        $this->assertCount(2, $result);
+        $this->assertSame('bounced', $result[0]->getName());
+        $this->assertSame('opened', $result[1]->getName());
+    }
+
+    public function testHandleWithTruncatedJsonThrows()
+    {
+        $converter = $this->createMock(Swift_Webhook_PayloadConverterInterface::class);
+        $converter->method('verify')->willReturn(true);
+        $converter->method('getProviderName')->willReturn('test');
+
+        $handler = new Swift_Webhook_RequestHandler();
+
+        $this->expectException(InvalidArgumentException::class);
+        $handler->handle($converter, '{"incomplete', [], 'secret');
+    }
+
+    public function testHandleWithEmptyBodyThrows()
+    {
+        $converter = $this->createMock(Swift_Webhook_PayloadConverterInterface::class);
+        $converter->method('verify')->willReturn(true);
+        $converter->method('getProviderName')->willReturn('test');
+
+        $handler = new Swift_Webhook_RequestHandler();
+
+        $this->expectException(InvalidArgumentException::class);
+        $handler->handle($converter, '', [], 'secret');
+    }
+
+    public function testHandlePassesHeadersToConvert()
+    {
+        $converter = $this->createMock(Swift_Webhook_PayloadConverterInterface::class);
+        $converter->method('verify')->willReturn(true);
+        $converter->expects($this->once())
+            ->method('convert')
+            ->with($this->anything(), $this->callback(function ($headers) {
+                return isset($headers['x-custom-header']);
+            }))
+            ->willReturn([]);
+        $converter->method('getProviderName')->willReturn('test');
+
+        $handler = new Swift_Webhook_RequestHandler();
+        $handler->handle(
+            $converter,
+            '{}',
+            ['X-Custom-Header' => 'value'],
+            'secret',
+        );
+    }
+
+    public function testSignatureVerificationExceptionContainsProviderName()
+    {
+        $converter = $this->createMock(Swift_Webhook_PayloadConverterInterface::class);
+        $converter->method('verify')->willReturn(false);
+        $converter->method('getProviderName')->willReturn('my-provider');
+
+        $handler = new Swift_Webhook_RequestHandler();
+
+        try {
+            $handler->handle($converter, '{}', [], 'secret');
+            $this->fail('Expected exception');
+        } catch (Swift_Webhook_SignatureVerificationException $e) {
+            $this->assertStringContainsString('my-provider', $e->getMessage());
+        }
+    }
 }

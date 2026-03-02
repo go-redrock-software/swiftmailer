@@ -153,4 +153,204 @@ class Swift_Webhook_Converter_SendgridConverterTest extends PHPUnit\Framework\Te
             $this->converter->verify('{}', [], 'some-key'),
         );
     }
+
+    public function testConvertDeferredEvent()
+    {
+        $payload = [
+            [
+                'event'         => 'deferred',
+                'email'         => 'user@example.com',
+                'sg_message_id' => 'msg-006',
+                'timestamp'     => 1706000000,
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+
+        $this->assertCount(1, $events);
+        $this->assertSame('delivery', $events[0]->getType());
+        $this->assertSame('deferred', $events[0]->getName());
+    }
+
+    public function testConvertDroppedEvent()
+    {
+        $payload = [
+            [
+                'event'         => 'dropped',
+                'email'         => 'user@example.com',
+                'sg_message_id' => 'msg-007',
+                'timestamp'     => 1706000000,
+                'reason'        => 'Bounced Address',
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+
+        $this->assertSame('dropped', $events[0]->getName());
+        $this->assertSame('Bounced Address', $events[0]->getMetadata()['reason']);
+    }
+
+    public function testConvertUnsubscribeEvent()
+    {
+        $payload = [
+            [
+                'event'         => 'unsubscribe',
+                'email'         => 'user@example.com',
+                'sg_message_id' => 'msg-008',
+                'timestamp'     => 1706000000,
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+
+        $this->assertSame('engagement', $events[0]->getType());
+        $this->assertSame('unsubscribed', $events[0]->getName());
+    }
+
+    public function testConvertEmptyPayload()
+    {
+        $events = $this->converter->convert([], []);
+        $this->assertCount(0, $events);
+    }
+
+    public function testConvertStripsFilterSuffixFromMessageId()
+    {
+        $payload = [
+            [
+                'event'         => 'delivered',
+                'email'         => 'user@example.com',
+                'sg_message_id' => 'abc-123.filter0002.34567.p1',
+                'timestamp'     => 1706000000,
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertSame('abc-123', $events[0]->getMessageId());
+    }
+
+    public function testConvertMessageIdWithoutFilterSuffix()
+    {
+        $payload = [
+            [
+                'event'         => 'delivered',
+                'email'         => 'user@example.com',
+                'sg_message_id' => 'plain-id',
+                'timestamp'     => 1706000000,
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertSame('plain-id', $events[0]->getMessageId());
+    }
+
+    public function testConvertPreservesMetadata()
+    {
+        $payload = [
+            [
+                'event'         => 'click',
+                'email'         => 'user@example.com',
+                'sg_message_id' => 'msg-m',
+                'timestamp'     => 1706000000,
+                'url'           => 'https://example.com',
+                'useragent'     => 'Mozilla/5.0',
+                'ip'            => '192.168.1.1',
+                'category'      => ['marketing', 'newsletter'],
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $meta = $events[0]->getMetadata();
+
+        $this->assertSame('https://example.com', $meta['url']);
+        $this->assertSame('Mozilla/5.0', $meta['user_agent']);
+        $this->assertSame('192.168.1.1', $meta['ip']);
+        $this->assertSame(['marketing', 'newsletter'], $meta['categories']);
+    }
+
+    public function testVerifyMissingTimestampHeader()
+    {
+        $this->assertFalse($this->converter->verify(
+            '{}',
+            ['x-twilio-email-event-webhook-signature' => 'sig'],
+            'key',
+        ));
+    }
+
+    public function testVerifyMissingSignatureHeader()
+    {
+        $this->assertFalse($this->converter->verify(
+            '{}',
+            ['x-twilio-email-event-webhook-timestamp' => '123'],
+            'key',
+        ));
+    }
+
+    public function testVerifyInvalidBase64Signature()
+    {
+        $this->assertFalse($this->converter->verify(
+            '{}',
+            [
+                'x-twilio-email-event-webhook-signature' => '!!!invalid-base64!!!',
+                'x-twilio-email-event-webhook-timestamp' => '123',
+            ],
+            'key',
+        ));
+    }
+
+    public function testConvertMixedKnownAndUnknownEvents()
+    {
+        $payload = [
+            [
+                'event'         => 'delivered',
+                'email'         => 'a@example.com',
+                'sg_message_id' => 'msg-a',
+                'timestamp'     => 1706000000,
+            ],
+            [
+                'event'         => 'unknown_custom_event',
+                'email'         => 'b@example.com',
+                'sg_message_id' => 'msg-b',
+                'timestamp'     => 1706000000,
+            ],
+            [
+                'event'         => 'open',
+                'email'         => 'c@example.com',
+                'sg_message_id' => 'msg-c',
+                'timestamp'     => 1706000000,
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertCount(2, $events);
+        $this->assertSame('delivered', $events[0]->getName());
+        $this->assertSame('opened', $events[1]->getName());
+    }
+
+    public function testConvertMissingEmailField()
+    {
+        $payload = [
+            [
+                'event'         => 'delivered',
+                'sg_message_id' => 'msg-x',
+                'timestamp'     => 1706000000,
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertSame('', $events[0]->getRecipient());
+    }
+
+    public function testConvertMissingMessageId()
+    {
+        $payload = [
+            [
+                'event'     => 'delivered',
+                'email'     => 'user@example.com',
+                'timestamp' => 1706000000,
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertSame('', $events[0]->getMessageId());
+    }
 }

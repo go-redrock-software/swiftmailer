@@ -342,6 +342,103 @@ class Swift_Mime_Headers_UnstructuredHeaderTest extends SwiftMailerTestCase
         $this->assertEquals('test', $header->getFieldBodyModel());
     }
 
+    public function testEmptyValueProducesEmptyFieldBody()
+    {
+        $header = $this->getHeader('X-Test', $this->getEncoder('Q', true));
+        $header->setValue('');
+        $this->assertEquals('', $header->getFieldBody());
+    }
+
+    public function testNullValueGetValueReturnsNull()
+    {
+        $header = $this->getHeader('X-Test', $this->getEncoder('Q', true));
+        $this->assertNull($header->getValue());
+    }
+
+    public function testSetValueOverwritesPrevious()
+    {
+        $header = $this->getHeader('Subject', $this->getEncoder('Q', true));
+        $header->setValue('first');
+        $header->setValue('second');
+        $this->assertEquals('second', $header->getValue());
+    }
+
+    public function testFieldTypeIsText()
+    {
+        $header = $this->getHeader('X-Custom', $this->getEncoder('Q', true));
+        $this->assertEquals(Swift_Mime_Header::TYPE_TEXT, $header->getFieldType());
+    }
+
+    public function testFieldNameReturnsExactName()
+    {
+        $header = $this->getHeader('X-Custom-Header', $this->getEncoder('Q', true));
+        $this->assertEquals('X-Custom-Header', $header->getFieldName());
+    }
+
+    public function testToStringWithSimpleValue()
+    {
+        $header = $this->getHeader('X-Foo', $this->getEncoder('Q', true));
+        $header->setValue('bar');
+        $this->assertEquals("X-Foo: bar\r\n", $header->toString());
+    }
+
+    public function testSetFieldBodyModelSameAsSetValue()
+    {
+        $header = $this->getHeader('Subject', $this->getEncoder('Q', true));
+        $header->setFieldBodyModel('via model');
+        $this->assertEquals('via model', $header->getValue());
+    }
+
+    public function testGetFieldBodyModelSameAsGetValue()
+    {
+        $header = $this->getHeader('Subject', $this->getEncoder('Q', true));
+        $header->setValue('direct');
+        $this->assertEquals('direct', $header->getFieldBodyModel());
+    }
+
+    public function testMaxLineLengthCanBeSet()
+    {
+        $header = $this->getHeader('X-Test', $this->getEncoder('Q', true));
+        $header->setMaxLineLength(998);
+        $header->setValue('short');
+        $this->assertEquals("X-Test: short\r\n", $header->toString());
+    }
+
+    public function testCharsetCanBeChanged()
+    {
+        $header = $this->getHeader('Subject', $this->getEncoder('Q', true));
+        $header->setCharset('iso-8859-1');
+        $header->setValue('test');
+        $this->assertEquals("Subject: test\r\n", $header->toString());
+    }
+
+    public function testGetLanguageReturnsNullByDefault()
+    {
+        $header = $this->getHeader('Subject', $this->getEncoder('Q', true));
+        $this->assertNull($header->getLanguage());
+    }
+
+    public function testSetLanguageAndGetLanguage()
+    {
+        $header = $this->getHeader('Subject', $this->getEncoder('Q', true));
+        $header->setLanguage('en');
+        $this->assertEquals('en', $header->getLanguage());
+    }
+
+    public function testValueWithSpecialCharsNotEncoded()
+    {
+        $header = $this->getHeader('X-Test', $this->getEncoder('Q', true));
+        $header->setValue('Hello, World!');
+        $this->assertEquals("X-Test: Hello, World!\r\n", $header->toString());
+    }
+
+    public function testFieldBodyMatchesValue()
+    {
+        $header = $this->getHeader('X-Test', $this->getEncoder('Q', true));
+        $header->setValue('my value');
+        $this->assertEquals('my value', $header->getFieldBody());
+    }
+
     private function getHeader($name, $encoder)
     {
         $header = new Swift_Mime_Headers_UnstructuredHeader($name, $encoder);

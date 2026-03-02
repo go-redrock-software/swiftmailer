@@ -169,6 +169,69 @@ class Swift_Plugins_RedirectingPluginTest extends PHPUnit\Framework\TestCase
         $this->assertEquals($message->getBcc(), ['fabien@example.com' => 'Fabien']);
     }
 
+    public function testWhitelistCanBeSetAndFetched()
+    {
+        $plugin = new Swift_Plugins_RedirectingPlugin('god@example.com');
+        $this->assertEquals([], $plugin->getWhitelist());
+        $patterns = ['/^.*@internal\.com$/'];
+        $plugin->setWhitelist($patterns);
+        $this->assertEquals($patterns, $plugin->getWhitelist());
+    }
+
+    public function testPluginImplementsSendListener()
+    {
+        $plugin = new Swift_Plugins_RedirectingPlugin('test@example.com');
+        $this->assertInstanceOf(Swift_Events_SendListener::class, $plugin);
+    }
+
+    public function testEmptyWhitelistRedirectsEverything()
+    {
+        $message = (new Swift_Message())
+            ->setSubject('...')
+            ->setFrom(['john@example.com' => 'John Doe'])
+            ->setTo([
+                'alice@example.com' => 'Alice',
+                'bob@example.com'   => 'Bob',
+            ])
+            ->setBody('...');
+
+        $plugin = new Swift_Plugins_RedirectingPlugin('redirect@example.com');
+        $evt = $this->createSendEvent($message);
+
+        $plugin->beforeSendPerformed($evt);
+
+        $to = $message->getTo();
+        $this->assertArrayHasKey('redirect@example.com', $to);
+        $this->assertArrayNotHasKey('alice@example.com', $to);
+        $this->assertArrayNotHasKey('bob@example.com', $to);
+    }
+
+    public function testRecipientCanBeChangedBetweenSends()
+    {
+        $plugin = new Swift_Plugins_RedirectingPlugin('first@example.com');
+        $this->assertEquals('first@example.com', $plugin->getRecipient());
+
+        $plugin->setRecipient('second@example.com');
+        $this->assertEquals('second@example.com', $plugin->getRecipient());
+    }
+
+    public function testMessageWithOnlyBcc()
+    {
+        $message = (new Swift_Message())
+            ->setSubject('...')
+            ->setFrom(['john@example.com' => 'John Doe'])
+            ->setBcc(['secret@example.com' => 'Secret'])
+            ->setBody('...');
+
+        $plugin = new Swift_Plugins_RedirectingPlugin('redirect@example.com');
+        $evt = $this->createSendEvent($message);
+
+        $plugin->beforeSendPerformed($evt);
+
+        $this->assertArrayHasKey('redirect@example.com', $message->getTo());
+        $this->assertEquals([], $message->getBcc());
+    }
+
     private function createSendEvent(Swift_Mime_SimpleMessage $message)
     {
         $evt = $this->getMockBuilder('Swift_Events_SendEvent')

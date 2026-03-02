@@ -648,4 +648,125 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
         ;
         $this->assertEquals($ref, $smtp);
     }
+
+    public function testDefaultHostIsLocalhost()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+        $this->assertEquals('localhost', $smtp->getHost());
+    }
+
+    public function testDefaultPort()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+        $this->assertEquals(25, $smtp->getPort());
+    }
+
+    public function testDefaultTimeout()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+        $this->assertEquals(30, $smtp->getTimeout());
+    }
+
+    public function testSetHostReturnsTransport()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+        $result = $smtp->setHost('mail.example.com');
+        $this->assertSame($smtp, $result);
+    }
+
+    public function testSetPortReturnsTransport()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+        $result = $smtp->setPort(587);
+        $this->assertSame($smtp, $result);
+    }
+
+    public function testSetEncryptionReturnsTransport()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+        $result = $smtp->setEncryption(CONNECTION_ENCRYPTION_MODE_STARTTLS);
+        $this->assertSame($smtp, $result);
+    }
+
+    public function testSetTimeoutReturnsTransport()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+        $buf->shouldReceive('setParam')
+            ->once()
+            ->with('timeout', 60);
+        $result = $smtp->setTimeout(60);
+        $this->assertSame($smtp, $result);
+    }
+
+    public function testSetPipeliningReturnsTransport()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+        $result = $smtp->setPipelining(true);
+        $this->assertSame($smtp, $result);
+    }
+
+    public function testGetPipeliningReturnsNullByDefault()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+        $this->assertNull($smtp->getPipelining());
+    }
+
+    public function testSetPipeliningToNull()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+        $smtp->setPipelining(true);
+        $smtp->setPipelining(null);
+        $this->assertNull($smtp->getPipelining());
+    }
+
+    public function testSetPipeliningToTrue()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+        $smtp->setPipelining(true);
+        $this->assertTrue($smtp->getPipelining());
+    }
+
+    public function testSetPipeliningToFalse()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+        $smtp->setPipelining(false);
+        $this->assertFalse($smtp->getPipelining());
+    }
+
+    public function testGetEncryptionReturnsTcpByDefault()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+        $this->assertEquals('tcp', $smtp->getEncryption());
+    }
+
+    public function testHostCanBeChanged()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+        $smtp->setHost('first.example.com');
+        $smtp->setHost('second.example.com');
+        $this->assertEquals('second.example.com', $smtp->getHost());
+    }
+
+    public function testPortCanBeChanged()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+        $smtp->setPort(25);
+        $smtp->setPort(587);
+        $this->assertEquals(587, $smtp->getPort());
+    }
 }

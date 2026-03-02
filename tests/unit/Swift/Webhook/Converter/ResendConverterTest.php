@@ -168,4 +168,152 @@ class Swift_Webhook_Converter_ResendConverterTest extends PHPUnit\Framework\Test
     {
         $this->assertFalse($this->converter->verify('{}', [], 'whsec_dGVzdA=='));
     }
+
+    public function testVerifyWithoutWhsecPrefix()
+    {
+        $secretRaw = \random_bytes(32);
+        $secret    = \base64_encode($secretRaw);
+        $svixId    = 'msg_test456';
+        $timestamp = '1706000000';
+        $body      = '{}';
+
+        $signedContent = $svixId.'.'.$timestamp.'.'.$body;
+        $signature     = \base64_encode(\hash_hmac('sha256', $signedContent, $secretRaw, true));
+
+        $headers = [
+            'svix-id'        => $svixId,
+            'svix-timestamp' => $timestamp,
+            'svix-signature' => 'v1,'.$signature,
+        ];
+
+        $this->assertTrue($this->converter->verify($body, $headers, $secret));
+    }
+
+    public function testVerifyWithMultipleSignatures()
+    {
+        $secretRaw = \random_bytes(32);
+        $secret    = 'whsec_'.\base64_encode($secretRaw);
+        $svixId    = 'msg_multi';
+        $timestamp = '1706000000';
+        $body      = '{"type":"email.delivered"}';
+
+        $signedContent = $svixId.'.'.$timestamp.'.'.$body;
+        $validSig      = \base64_encode(\hash_hmac('sha256', $signedContent, $secretRaw, true));
+
+        $headers = [
+            'svix-id'        => $svixId,
+            'svix-timestamp' => $timestamp,
+            'svix-signature' => 'v1,invalidsig v1,'.$validSig,
+        ];
+
+        $this->assertTrue($this->converter->verify($body, $headers, $secret));
+    }
+
+    public function testVerifyWithInvalidBase64Secret()
+    {
+        $headers = [
+            'svix-id'        => 'msg_test',
+            'svix-timestamp' => '123',
+            'svix-signature' => 'v1,sig',
+        ];
+
+        $this->assertFalse($this->converter->verify('{}', $headers, 'whsec_!!!invalid!!!'));
+    }
+
+    public function testVerifyPartialHeaders()
+    {
+        $this->assertFalse($this->converter->verify('{}', ['svix-id' => 'x'], 'whsec_dGVzdA=='));
+        $this->assertFalse($this->converter->verify('{}', ['svix-id' => 'x', 'svix-timestamp' => '1'], 'whsec_dGVzdA=='));
+    }
+
+    public function testConvertMissingType()
+    {
+        $payload = [
+            'created_at' => '2026-01-15T10:30:00.000Z',
+            'data'       => ['email_id' => 'msg-x', 'to' => ['user@example.com']],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertCount(0, $events);
+    }
+
+    public function testConvertEmptyPayload()
+    {
+        $events = $this->converter->convert([], []);
+        $this->assertCount(0, $events);
+    }
+
+    public function testConvertMissingData()
+    {
+        $payload = [
+            'type'       => 'email.delivered',
+            'created_at' => '2026-01-15T10:30:00.000Z',
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertSame('', $events[0]->getMessageId());
+        $this->assertSame('', $events[0]->getRecipient());
+    }
+
+    public function testConvertExtractsSubject()
+    {
+        $payload = [
+            'type'       => 'email.delivered',
+            'created_at' => '2026-01-15T10:30:00.000Z',
+            'data'       => [
+                'email_id' => 'msg-410',
+                'to'       => ['user@example.com'],
+                'subject'  => 'Test Subject',
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertSame('Test Subject', $events[0]->getMetadata()['subject']);
+    }
+
+    public function testConvertExtractsFrom()
+    {
+        $payload = [
+            'type'       => 'email.delivered',
+            'created_at' => '2026-01-15T10:30:00.000Z',
+            'data'       => [
+                'email_id' => 'msg-411',
+                'to'       => ['user@example.com'],
+                'from'     => 'sender@example.com',
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertSame('sender@example.com', $events[0]->getMetadata()['from']);
+    }
+
+    public function testConvertExtractsTags()
+    {
+        $payload = [
+            'type'       => 'email.delivered',
+            'created_at' => '2026-01-15T10:30:00.000Z',
+            'data'       => [
+                'email_id' => 'msg-412',
+                'to'       => ['user@example.com'],
+                'tags'     => ['marketing', 'campaign-1'],
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertSame(['marketing', 'campaign-1'], $events[0]->getMetadata()['tags']);
+    }
+
+    public function testConvertMissingToArray()
+    {
+        $payload = [
+            'type'       => 'email.delivered',
+            'created_at' => '2026-01-15T10:30:00.000Z',
+            'data'       => [
+                'email_id' => 'msg-413',
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertSame('', $events[0]->getRecipient());
+    }
 }

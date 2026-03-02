@@ -49,4 +49,67 @@ class Swift_Plugins_SentMessagePluginTest extends PHPUnit\Framework\TestCase
         $this->assertNull($plugin->getLastSentMessage());
         $this->assertEquals([], $plugin->getSentMessages());
     }
+
+    public function testImplementsSentMessageListener()
+    {
+        $plugin = new Swift_Plugins_SentMessagePlugin();
+        $this->assertInstanceOf(Swift_Events_SentMessageListener::class, $plugin);
+    }
+
+    public function testResetThenCaptureAgainWorks()
+    {
+        $plugin = new Swift_Plugins_SentMessagePlugin();
+        $transport = $this->createMock(Swift_Transport::class);
+        $message = (new Swift_Message())->setTo(['a@b.com' => 'A']);
+        $sentMessage = new Swift_SentMessage($message, $transport, ['message_id' => 'id-1']);
+
+        $plugin->sentMessage(new Swift_Events_SentMessageEvent($transport, $sentMessage));
+        $plugin->reset();
+
+        $sentMessage2 = new Swift_SentMessage($message, $transport, ['message_id' => 'id-2']);
+        $plugin->sentMessage(new Swift_Events_SentMessageEvent($transport, $sentMessage2));
+
+        $this->assertSame($sentMessage2, $plugin->getLastSentMessage());
+        $this->assertCount(1, $plugin->getSentMessages());
+    }
+
+    public function testGetLastSentMessageReturnsLatest()
+    {
+        $plugin = new Swift_Plugins_SentMessagePlugin();
+        $transport = $this->createMock(Swift_Transport::class);
+        $message = (new Swift_Message())->setTo(['a@b.com' => 'A']);
+
+        for ($i = 1; $i <= 10; ++$i) {
+            $sentMessage = new Swift_SentMessage($message, $transport, ['message_id' => 'id-'.$i]);
+            $plugin->sentMessage(new Swift_Events_SentMessageEvent($transport, $sentMessage));
+        }
+
+        $this->assertSame('id-10', $plugin->getLastSentMessage()->getMessageId());
+        $this->assertCount(10, $plugin->getSentMessages());
+    }
+
+    public function testGetSentMessagesPreservesOrder()
+    {
+        $plugin = new Swift_Plugins_SentMessagePlugin();
+        $transport = $this->createMock(Swift_Transport::class);
+        $message = (new Swift_Message())->setTo(['a@b.com' => 'A']);
+
+        $sentMsg1 = new Swift_SentMessage($message, $transport, ['message_id' => 'first']);
+        $sentMsg2 = new Swift_SentMessage($message, $transport, ['message_id' => 'second']);
+
+        $plugin->sentMessage(new Swift_Events_SentMessageEvent($transport, $sentMsg1));
+        $plugin->sentMessage(new Swift_Events_SentMessageEvent($transport, $sentMsg2));
+
+        $messages = $plugin->getSentMessages();
+        $this->assertSame('first', $messages[0]->getMessageId());
+        $this->assertSame('second', $messages[1]->getMessageId());
+    }
+
+    public function testResetOnEmptyPluginIsNoOp()
+    {
+        $plugin = new Swift_Plugins_SentMessagePlugin();
+        $plugin->reset();
+        $this->assertNull($plugin->getLastSentMessage());
+        $this->assertEquals([], $plugin->getSentMessages());
+    }
 }

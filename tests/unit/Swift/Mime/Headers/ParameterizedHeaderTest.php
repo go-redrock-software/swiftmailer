@@ -403,6 +403,136 @@ class Swift_Mime_Headers_ParameterizedHeaderTest extends SwiftMailerTestCase
         $this->assertEquals('utf-8', $header->getParameter('charset'));
     }
 
+    public function testFieldTypeIsParameterized()
+    {
+        $header = $this->getHeader(
+            'Content-Type',
+            $this->getHeaderEncoder('Q', true),
+            $this->getParameterEncoder(true),
+        );
+        $this->assertEquals(Swift_Mime_Header::TYPE_PARAMETERIZED, $header->getFieldType());
+    }
+
+    public function testGetParameterReturnsNullForMissing()
+    {
+        $header = $this->getHeader(
+            'Content-Type',
+            $this->getHeaderEncoder('Q', true),
+            $this->getParameterEncoder(true),
+        );
+        $header->setParameters(['charset' => 'utf-8']);
+        $this->assertNull($header->getParameter('nonexistent'));
+    }
+
+    public function testSetParameterAddsNewParam()
+    {
+        $header = $this->getHeader(
+            'Content-Type',
+            $this->getHeaderEncoder('Q', true),
+            $this->getParameterEncoder(true),
+        );
+        $header->setParameters([]);
+        $header->setParameter('charset', 'utf-8');
+        $this->assertEquals('utf-8', $header->getParameter('charset'));
+    }
+
+    public function testMultipleParametersInFieldBody()
+    {
+        $header = $this->getHeader(
+            'Content-Type',
+            $this->getHeaderEncoder('Q', true),
+            $this->getParameterEncoder(true),
+        );
+        $header->setValue('text/plain');
+        $header->setParameters(['charset' => 'utf-8', 'delsp' => 'yes']);
+        $body = $header->getFieldBody();
+        $this->assertStringContainsString('charset=utf-8', $body);
+        $this->assertStringContainsString('delsp=yes', $body);
+    }
+
+    public function testEmptyParametersProduceNoSemicolon()
+    {
+        $header = $this->getHeader(
+            'Content-Type',
+            $this->getHeaderEncoder('Q', true),
+            $this->getParameterEncoder(true),
+        );
+        $header->setValue('text/plain');
+        $header->setParameters([]);
+        $this->assertEquals('text/plain', $header->getFieldBody());
+    }
+
+    public function testSetValueOverwritesPrevious()
+    {
+        $header = $this->getHeader(
+            'Content-Type',
+            $this->getHeaderEncoder('Q', true),
+            $this->getParameterEncoder(true),
+        );
+        $header->setValue('text/plain');
+        $header->setValue('text/html');
+        $this->assertEquals('text/html', $header->getValue());
+    }
+
+    public function testGetFieldNameReturnsCorrectName()
+    {
+        $header = $this->getHeader(
+            'Content-Disposition',
+            $this->getHeaderEncoder('Q', true),
+            $this->getParameterEncoder(true),
+        );
+        $this->assertEquals('Content-Disposition', $header->getFieldName());
+    }
+
+    public function testSetParametersOverwritesPrevious()
+    {
+        $header = $this->getHeader(
+            'Content-Type',
+            $this->getHeaderEncoder('Q', true),
+            $this->getParameterEncoder(true),
+        );
+        $header->setParameters(['a' => '1', 'b' => '2']);
+        $header->setParameters(['c' => '3']);
+        $this->assertEquals(['c' => '3'], $header->getParameters());
+    }
+
+    public function testLanguageCanBeSetAndRetrieved()
+    {
+        $header = $this->getHeader(
+            'Content-Type',
+            $this->getHeaderEncoder('Q', true),
+            $this->getParameterEncoder(true),
+        );
+        $header->setLanguage('en-us');
+        $this->assertEquals('en-us', $header->getLanguage());
+    }
+
+    public function testParamValueWithSemicolonIsQuoted()
+    {
+        $header = $this->getHeader(
+            'Content-Type',
+            $this->getHeaderEncoder('Q', true),
+            $this->getParameterEncoder(true),
+        );
+        $header->setValue('text/plain');
+        $header->setParameters(['name' => 'val;ue']);
+        $body = $header->getFieldBody();
+        $this->assertStringContainsString('"val;ue"', $body);
+    }
+
+    public function testParamValueWithEqualsIsQuoted()
+    {
+        $header = $this->getHeader(
+            'Content-Type',
+            $this->getHeaderEncoder('Q', true),
+            $this->getParameterEncoder(true),
+        );
+        $header->setValue('text/plain');
+        $header->setParameters(['name' => 'key=value']);
+        $body = $header->getFieldBody();
+        $this->assertStringContainsString('"key=value"', $body);
+    }
+
     private function getHeader($name, $encoder, $paramEncoder)
     {
         $header = new Swift_Mime_Headers_ParameterizedHeader($name, $encoder, $paramEncoder);

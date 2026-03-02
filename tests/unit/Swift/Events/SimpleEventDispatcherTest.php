@@ -221,6 +221,191 @@ class Swift_Events_SimpleEventDispatcherTest extends PHPUnit\Framework\TestCase
         $this->dispatcher->dispatchEvent($evtA, 'sendPerformed');
     }
 
+    public function testBindingSameListenerTwiceHasNoEffect()
+    {
+        $transport = $this->getMockBuilder('Swift_Transport')->getMock();
+        $message   = $this->getMockBuilder('Swift_Mime_SimpleMessage')->disableOriginalConstructor()->getMock();
+
+        $evt = $this->dispatcher->createSendEvent($transport, $message);
+
+        $listener = $this->getMockBuilder('Swift_Events_SendListener')->getMock();
+        $this->dispatcher->bindEventListener($listener);
+        $this->dispatcher->bindEventListener($listener);
+
+        $listener->expects($this->once())
+            ->method('sendPerformed')
+            ->with($evt);
+
+        $this->dispatcher->dispatchEvent($evt, 'sendPerformed');
+    }
+
+    public function testCommandListenersAreNotifiedOfDispatch()
+    {
+        $transport = $this->getMockBuilder('Swift_Transport')->getMock();
+        $evt = $this->dispatcher->createCommandEvent($transport, "EHLO\r\n", [250]);
+
+        $listener = $this->getMockBuilder('Swift_Events_CommandListener')->getMock();
+        $this->dispatcher->bindEventListener($listener);
+
+        $listener->expects($this->once())
+            ->method('commandSent')
+            ->with($evt);
+
+        $this->dispatcher->dispatchEvent($evt, 'commandSent');
+    }
+
+    public function testResponseListenersAreNotifiedOfDispatch()
+    {
+        $transport = $this->getMockBuilder('Swift_Transport')->getMock();
+        $evt = $this->dispatcher->createResponseEvent($transport, "250 Ok\r\n", true);
+
+        $listener = $this->getMockBuilder('Swift_Events_ResponseListener')->getMock();
+        $this->dispatcher->bindEventListener($listener);
+
+        $listener->expects($this->once())
+            ->method('responseReceived')
+            ->with($evt);
+
+        $this->dispatcher->dispatchEvent($evt, 'responseReceived');
+    }
+
+    public function testTransportExceptionListenersAreNotifiedOfDispatch()
+    {
+        $transport = $this->getMockBuilder('Swift_Transport')->getMock();
+        $ex  = new Swift_TransportException('Error');
+        $evt = $this->dispatcher->createTransportExceptionEvent($transport, $ex);
+
+        $listener = $this->getMockBuilder('Swift_Events_TransportExceptionListener')->getMock();
+        $this->dispatcher->bindEventListener($listener);
+
+        $listener->expects($this->once())
+            ->method('exceptionThrown')
+            ->with($evt);
+
+        $this->dispatcher->dispatchEvent($evt, 'exceptionThrown');
+    }
+
+    public function testTransportChangeBeforeStartListenersAreNotified()
+    {
+        $transport = $this->getMockBuilder('Swift_Transport')->getMock();
+        $evt = $this->dispatcher->createTransportChangeEvent($transport);
+
+        $listener = $this->getMockBuilder('Swift_Events_TransportChangeListener')->getMock();
+        $this->dispatcher->bindEventListener($listener);
+
+        $listener->expects($this->once())
+            ->method('beforeTransportStarted')
+            ->with($evt);
+
+        $this->dispatcher->dispatchEvent($evt, 'beforeTransportStarted');
+    }
+
+    public function testTransportChangeBeforeStopListenersAreNotified()
+    {
+        $transport = $this->getMockBuilder('Swift_Transport')->getMock();
+        $evt = $this->dispatcher->createTransportChangeEvent($transport);
+
+        $listener = $this->getMockBuilder('Swift_Events_TransportChangeListener')->getMock();
+        $this->dispatcher->bindEventListener($listener);
+
+        $listener->expects($this->once())
+            ->method('beforeTransportStopped')
+            ->with($evt);
+
+        $this->dispatcher->dispatchEvent($evt, 'beforeTransportStopped');
+    }
+
+    public function testTransportStoppedListenersAreNotified()
+    {
+        $transport = $this->getMockBuilder('Swift_Transport')->getMock();
+        $evt = $this->dispatcher->createTransportChangeEvent($transport);
+
+        $listener = $this->getMockBuilder('Swift_Events_TransportChangeListener')->getMock();
+        $this->dispatcher->bindEventListener($listener);
+
+        $listener->expects($this->once())
+            ->method('transportStopped')
+            ->with($evt);
+
+        $this->dispatcher->dispatchEvent($evt, 'transportStopped');
+    }
+
+    public function testBeforeSendPerformedListenersAreNotified()
+    {
+        $transport = $this->getMockBuilder('Swift_Transport')->getMock();
+        $message   = $this->getMockBuilder('Swift_Mime_SimpleMessage')->disableOriginalConstructor()->getMock();
+        $evt = $this->dispatcher->createSendEvent($transport, $message);
+
+        $listener = $this->getMockBuilder('Swift_Events_SendListener')->getMock();
+        $this->dispatcher->bindEventListener($listener);
+
+        $listener->expects($this->once())
+            ->method('beforeSendPerformed')
+            ->with($evt);
+
+        $this->dispatcher->dispatchEvent($evt, 'beforeSendPerformed');
+    }
+
+    public function testMultipleListenersOfDifferentTypes()
+    {
+        $transport = $this->getMockBuilder('Swift_Transport')->getMock();
+        $message   = $this->getMockBuilder('Swift_Mime_SimpleMessage')->disableOriginalConstructor()->getMock();
+
+        $sendEvent = $this->dispatcher->createSendEvent($transport, $message);
+        $cmdEvent  = $this->dispatcher->createCommandEvent($transport, "EHLO\r\n");
+
+        $sendListener = $this->getMockBuilder('Swift_Events_SendListener')->getMock();
+        $cmdListener  = $this->getMockBuilder('Swift_Events_CommandListener')->getMock();
+
+        $this->dispatcher->bindEventListener($sendListener);
+        $this->dispatcher->bindEventListener($cmdListener);
+
+        $sendListener->expects($this->once())->method('sendPerformed');
+        $cmdListener->expects($this->never())->method('commandSent');
+
+        $this->dispatcher->dispatchEvent($sendEvent, 'sendPerformed');
+    }
+
+    public function testNoListenersBoundDoesNotCrash()
+    {
+        $transport = $this->getMockBuilder('Swift_Transport')->getMock();
+        $evt = $this->dispatcher->createTransportChangeEvent($transport);
+
+        // Should not throw
+        $this->dispatcher->dispatchEvent($evt, 'transportStarted');
+        $this->assertFalse($evt->bubbleCancelled());
+    }
+
+    public function testDispatchEventWithUnknownMethodDoesNotCrash()
+    {
+        $transport = $this->getMockBuilder('Swift_Transport')->getMock();
+        $evt = $this->dispatcher->createTransportChangeEvent($transport);
+
+        // Non-existent method on listeners should be silently ignored
+        $this->dispatcher->dispatchEvent($evt, 'nonExistentMethod');
+        $this->assertFalse($evt->bubbleCancelled());
+    }
+
+    public function testCreateSendEventSetsCorrectDefaultResult()
+    {
+        $transport = $this->getMockBuilder('Swift_Transport')->getMock();
+        $message   = $this->getMockBuilder('Swift_Mime_SimpleMessage')->disableOriginalConstructor()->getMock();
+        $evt       = $this->dispatcher->createSendEvent($transport, $message);
+
+        $this->assertSame(Swift_Events_SendEvent::RESULT_PENDING, $evt->getResult());
+    }
+
+    public function testNewDispatcherHasNoListeners()
+    {
+        $dispatcher = new Swift_Events_SimpleEventDispatcher();
+        $transport  = $this->getMockBuilder('Swift_Transport')->getMock();
+        $evt        = $dispatcher->createTransportChangeEvent($transport);
+
+        // Should not throw with no listeners
+        $dispatcher->dispatchEvent($evt, 'transportStarted');
+        $this->assertTrue(true);
+    }
+
     private function createDispatcher(array $map)
     {
         return new Swift_Events_SimpleEventDispatcher($map);

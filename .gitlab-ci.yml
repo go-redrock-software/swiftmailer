@@ -1,4 +1,32 @@
+stages:
+  - quality
+  - test
+
+# ---------------------------------------------------------------------------
+# Shared configuration for test-stage jobs
+# ---------------------------------------------------------------------------
+.test-job:
+  stage: test
+  image: php:8.5-cli
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq git unzip libicu-dev libzip-dev libxml2-dev libcurl4-openssl-dev > /dev/null
+    - docker-php-ext-install intl iconv mbstring zip dom curl > /dev/null 2>&1 || true
+    - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+    - composer update --no-interaction --no-progress --classmap-authoritative
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}-composer"
+    paths:
+      - vendor/
+    policy: pull-push
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && ($CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "main")'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
+# ---------------------------------------------------------------------------
+# Quality stage — existing Qodana job (develop only)
+# ---------------------------------------------------------------------------
 qodana:
+  stage: quality
   only:
     - develop
   variables:
@@ -11,23 +39,38 @@ qodana:
   tags:
     - t5-fast-shell
 
-
-phpunit:
-  image: docker.trac.cloud/trac/backdrop/8.3-xdebug-image:latest
-  variables:
-    GIT_SUBMODULE_STRATEGY: recursive
-    GIT_STRATEGY: clone
-    DISABLE_AUTO_INSTALL: "true"
+# ---------------------------------------------------------------------------
+# Test stage — 4 parallel jobs
+# ---------------------------------------------------------------------------
+validate:
+  stage: test
+  image: php:8.5-cli
+  before_script:
+    - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
   script:
-    - composer install -q --no-interaction --no-progress --classmap-authoritative --ignore-platform-reqs
-    - ./vendor/bin/simple-phpunit --version
-    - ./vendor/bin/phpunit --do-not-cache-result --log-junit phpunit-report.xml
+    - composer validate --strict --no-check-publish
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && ($CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "main")'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
+code-style:
+  extends: .test-job
+  script:
+    - vendor/bin/php-cs-fixer fix --config=.php-cs-fixer.dist.php --dry-run --diff --verbose
+
+phpstan:
+  extends: .test-job
+  script:
+    - vendor/bin/phpstan analyse --configuration=phpstan.neon.dist --no-progress --memory-limit=1G
+
+tests:
+  extends: .test-job
+  script:
+    - vendor/bin/simple-phpunit --testsuite="SwiftMailer unit tests" --verbose --log-junit phpunit-report.xml
   artifacts:
     when: always
+    paths:
+      - phpunit-report.xml
     reports:
       junit: phpunit-report.xml
-    expire_in: 14 days
-  tags:
-    - t5-aws-docker
-
-
+    expire_in: 30 days

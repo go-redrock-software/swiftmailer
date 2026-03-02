@@ -164,4 +164,58 @@ class Swift_Webhook_Converter_AhaSendConverterTest extends PHPUnit\Framework\Tes
     {
         $this->assertFalse($this->converter->verify('{}', [], \base64_encode('secret')));
     }
+
+    public function testConvertEmptyPayload()
+    {
+        $events = $this->converter->convert([], []);
+        $this->assertCount(0, $events);
+    }
+
+    public function testConvertMissingType()
+    {
+        $payload = [
+            'timestamp' => '2026-01-15T10:30:00.000000Z',
+            'data'      => ['message_id_header' => 'msg-x', 'recipient' => 'user@example.com'],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertCount(0, $events);
+    }
+
+    public function testConvertMissingData()
+    {
+        $payload = [
+            'type'      => 'message.delivered',
+            'timestamp' => '2026-01-15T10:30:00.000000Z',
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertSame('', $events[0]->getMessageId());
+        $this->assertSame('', $events[0]->getRecipient());
+    }
+
+    public function testVerifyPartialHeaders()
+    {
+        $this->assertFalse($this->converter->verify('{}', ['webhook-id' => 'x'], \base64_encode('secret')));
+    }
+
+    public function testVerifyWithMultipleSignatures()
+    {
+        $secretRaw = \random_bytes(32);
+        $secret    = \base64_encode($secretRaw);
+        $id        = 'wh_multi';
+        $timestamp = '1706000000';
+        $body      = '{}';
+
+        $signedContent = $id.'.'.$timestamp.'.'.$body;
+        $validSig      = \base64_encode(\hash_hmac('sha256', $signedContent, $secretRaw, true));
+
+        $headers = [
+            'webhook-id'        => $id,
+            'webhook-timestamp' => $timestamp,
+            'webhook-signature' => 'v1,invalid v1,'.$validSig,
+        ];
+
+        $this->assertTrue($this->converter->verify($body, $headers, $secret));
+    }
 }

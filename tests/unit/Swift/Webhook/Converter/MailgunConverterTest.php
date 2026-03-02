@@ -154,4 +154,157 @@ class Swift_Webhook_Converter_MailgunConverterTest extends PHPUnit\Framework\Tes
 
         $this->assertFalse($this->converter->verify($rawBody, [], 'my-secret'));
     }
+
+    public function testConvertUnsubscribedEvent()
+    {
+        $payload = [
+            'event-data' => [
+                'event'     => 'unsubscribed',
+                'recipient' => 'user@example.com',
+                'message'   => ['headers' => ['message-id' => 'msg-106']],
+                'timestamp' => 1706000000.0,
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertSame('engagement', $events[0]->getType());
+        $this->assertSame('unsubscribed', $events[0]->getName());
+    }
+
+    public function testConvertEmptyEventData()
+    {
+        $payload = ['event-data' => []];
+        $events = $this->converter->convert($payload, []);
+        $this->assertCount(0, $events);
+    }
+
+    public function testConvertMissingEventData()
+    {
+        $payload = [];
+        $events = $this->converter->convert($payload, []);
+        $this->assertCount(0, $events);
+    }
+
+    public function testConvertUnknownEvent()
+    {
+        $payload = [
+            'event-data' => [
+                'event'     => 'stored',
+                'recipient' => 'user@example.com',
+                'message'   => ['headers' => ['message-id' => 'msg-107']],
+                'timestamp' => 1706000000.0,
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertCount(0, $events);
+    }
+
+    public function testMetadataExtractsUrl()
+    {
+        $payload = [
+            'event-data' => [
+                'event'     => 'clicked',
+                'recipient' => 'user@example.com',
+                'message'   => ['headers' => ['message-id' => 'msg-108']],
+                'timestamp' => 1706000000.0,
+                'url'       => 'https://example.com/tracked',
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertSame('https://example.com/tracked', $events[0]->getMetadata()['url']);
+    }
+
+    public function testMetadataExtractsDeliveryStatusReason()
+    {
+        $payload = [
+            'event-data' => [
+                'event'           => 'failed',
+                'severity'        => 'permanent',
+                'recipient'       => 'user@example.com',
+                'message'         => ['headers' => ['message-id' => 'msg-109']],
+                'timestamp'       => 1706000000.0,
+                'delivery-status' => ['message' => '550 Mailbox not found'],
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertSame('550 Mailbox not found', $events[0]->getMetadata()['reason']);
+    }
+
+    public function testMetadataExtractsClientInfo()
+    {
+        $payload = [
+            'event-data' => [
+                'event'       => 'opened',
+                'recipient'   => 'user@example.com',
+                'message'     => ['headers' => ['message-id' => 'msg-110']],
+                'timestamp'   => 1706000000.0,
+                'client-info' => ['client-os' => 'macOS', 'user-agent' => 'Thunderbird'],
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertArrayHasKey('client_info', $events[0]->getMetadata());
+    }
+
+    public function testMetadataExtractsTags()
+    {
+        $payload = [
+            'event-data' => [
+                'event'     => 'delivered',
+                'recipient' => 'user@example.com',
+                'message'   => ['headers' => ['message-id' => 'msg-111']],
+                'timestamp' => 1706000000.0,
+                'tags'      => ['transactional', 'welcome'],
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertSame(['transactional', 'welcome'], $events[0]->getMetadata()['tags']);
+    }
+
+    public function testVerifyMissingSignatureFields()
+    {
+        $rawBody = \json_encode(['signature' => []]);
+        $this->assertFalse($this->converter->verify($rawBody, [], 'secret'));
+    }
+
+    public function testVerifyMissingSignatureKey()
+    {
+        $rawBody = \json_encode([]);
+        $this->assertFalse($this->converter->verify($rawBody, [], 'secret'));
+    }
+
+    public function testFailedWithDefaultSeverity()
+    {
+        $payload = [
+            'event-data' => [
+                'event'     => 'failed',
+                'recipient' => 'user@example.com',
+                'message'   => ['headers' => ['message-id' => 'msg-112']],
+                'timestamp' => 1706000000.0,
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        // Default severity is 'permanent' => 'bounced'
+        $this->assertSame('bounced', $events[0]->getName());
+    }
+
+    public function testConvertMissingMessageHeaders()
+    {
+        $payload = [
+            'event-data' => [
+                'event'     => 'delivered',
+                'recipient' => 'user@example.com',
+                'message'   => [],
+                'timestamp' => 1706000000.0,
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+        $this->assertSame('', $events[0]->getMessageId());
+    }
 }
