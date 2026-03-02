@@ -1,13 +1,15 @@
 {
   "name": "swiftmailer/swiftmailer",
   "type": "library",
-  "description": "Swiftmailer, free feature-rich PHP mailer",
+  "description": "Swiftmailer, free feature-rich PHP mailer -- maintained by Redrock Software Corporation with Symfony Mailer features back-ported for legacy and enterprise applications",
   "keywords": [
     "mail",
     "mailer",
-    "email"
+    "email",
+    "smtp",
+    "api"
   ],
-  "homepage": "https://swiftmailer.symfony.com",
+  "homepage": "https://www.go-redrock.com/",
   "license": "MIT",
   "authors": [
     {
@@ -16,6 +18,10 @@
     {
       "name": "Fabien Potencier",
       "email": "fabien@symfony.com"
+    },
+    {
+      "name": "Redrock Software Corporation",
+      "homepage": "https://www.go-redrock.com/"
     }
   ],
   "require": {
