@@ -56,6 +56,14 @@ types of Transport in Swift Mailer, all of which implement the
   ``sendmail`` executable (Linux/UNIX). Quick time-to-run; Provides
   less-accurate feedback than SMTP; Requires ``sendmail`` installation;
 
+* ``Swift_Transport_Api_*``: HTTP API transports for 21 email providers
+  (SendGrid, Mailgun, Postmark, Brevo, Amazon SES, Gmail API, Microsoft Graph,
+  and more). Faster and more reliable than SMTP for supported providers.
+  See `doc/api-transports.md <api-transports.md>`_ for the full list.
+
+* ``Swift_Transport_RetryTransport``: Wraps any transport with automatic retry
+  logic and exponential backoff for resilient delivery.
+
 * ``Swift_LoadBalancedTransport``: Cycles through a collection of the other
   Transports to manage load-reduction. Provides graceful fallback if one
   Transport fails (e.g. an SMTP server is down); Keeps the load on remote
@@ -64,6 +72,9 @@ types of Transport in Swift Mailer, all of which implement the
 * ``Swift_FailoverTransport``: Works in conjunction with a collection of the
   other Transports to provide high-availability. Provides graceful fallback if
   one Transport fails (e.g. an SMTP server is down).
+
+You can also create any transport from a DSN connection string using
+``Swift_Transport_DsnTransportFactory``. See `doc/dsn.md <dsn.md>`_ for syntax.
 
 The SMTP Transport
 ..................

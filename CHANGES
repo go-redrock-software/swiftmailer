@@ -1,9 +1,10 @@
 Changelog
 =========
 
-Maintained by Redrock Software Corporation since 2022. This fork continues
-Swiftmailer development for legacy and enterprise applications that cannot
-migrate to Symfony Mailer.
+Maintained by `Redrock Software Corporation <https://www.go-redrock.com/>`_ since
+2022. This fork continues Swiftmailer development for legacy and enterprise
+applications that cannot migrate to Symfony Mailer, integrating features from
+Symfony Mailer while preserving full backward compatibility.
 
 6.4.0 (2026-02-28)
 ------------------

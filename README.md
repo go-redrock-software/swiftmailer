@@ -2,6 +2,37 @@
 
 A component-based PHP mailing library, maintained by [Redrock Software Corporation](https://www.go-redrock.com/). This fork integrates features from Symfony Mailer back into SwiftMailer for legacy and enterprise applications that cannot migrate to Symfony Mailer.
 
+## About This Fork
+
+The original SwiftMailer was abandoned by its creators in November 2021. [Redrock Software Corporation](https://www.go-redrock.com/) picked up maintenance in 2022 to serve the many legacy and enterprise PHP applications that depend on SwiftMailer and cannot practically migrate to Symfony Mailer.
+
+### What We've Done
+
+Since taking over, Redrock has shipped a major modernization of SwiftMailer (v6.4.0) that back-ports the most valuable Symfony Mailer capabilities while preserving full backward compatibility:
+
+- **21 HTTP API transports** -- SendGrid, Mailgun, Postmark, Brevo, Amazon SES, Azure, Gmail API, Microsoft Graph, Resend, Scaleway, InfoBip, MailPace, Mandrill, MailerSend, Mailjet, AhaSend, Mailomat, Mailtrap, Postal, Sweego, and more
+- **DSN transport factory** -- create any transport from a connection string, with `failover()`, `roundrobin()`, and `retry()` wrappers
+- **Webhook system** -- process inbound delivery/bounce/engagement webhooks from 14 providers with signature verification
+- **New events** -- `SentMessageEvent` and `FailedMessageEvent` for post-send tracking
+- **New plugins** -- `AllowlistPlugin` (dev/staging safety), `CssInlinerPlugin` (auto CSS inlining), `SentMessagePlugin` (post-send inspection)
+- **DKIM enhancements** -- Ed25519-SHA256 signing, header oversigning
+- **SMTP improvements** -- Auto TLS, Smart SMTPUTF8, explicit envelope control via `Swift_Envelope`
+- **RetryTransport** -- automatic retries with exponential backoff for any transport
+- **Security hardening** -- `#[SensitiveParameter]` on API keys, Guzzle exception sanitization, serialization blocking
+- **Modern tooling** -- PHP 8.1+ baseline, PHPStan static analysis, CI pipeline with GitHub Actions, Infection mutation testing, PHP-CS-Fixer
+- **CLI test tool** -- `bin/swiftmailer-test` for validating transport configuration from the command line
+
+### The Future of SwiftMailer
+
+SwiftMailer is not dead -- it's actively maintained and developed. Our roadmap includes:
+
+- **Continued Symfony Mailer parity** -- closing the remaining feature gaps (see [docs/SYMFONY_MAILER_PARITY.md](docs/SYMFONY_MAILER_PARITY.md))
+- **Additional API transports** -- expanding provider coverage as new services emerge
+- **PHP version support** -- staying current with the latest PHP releases
+- **Community contributions** -- we welcome pull requests, bug reports, and feature requests
+
+If your application uses SwiftMailer, you don't have to migrate. Upgrade to this fork and get modern features with zero code changes to your existing mail code.
+
 ## Requirements
 
 - PHP 8.1+
@@ -162,9 +193,12 @@ The `bin/swiftmailer-test` command-line tool validates your transport configurat
 ./bin/swiftmailer-test 'sendgrid://SG.your-key@default'
 ```
 
-### CI & Static Analysis
+### CI & Quality
 
-The project includes a CI pipeline with PHPStan for static analysis, ensuring type safety across the codebase.
+- GitHub Actions CI pipeline with PHP 8.1--8.4 test matrix
+- PHPStan level 5 static analysis
+- Infection mutation testing
+- PHP-CS-Fixer code style enforcement
 
 ## Documentation
 

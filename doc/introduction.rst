@@ -1,22 +1,24 @@
 Swift Mailer: A feature-rich PHP Mailer
 =======================================
 
-Swift Mailer is a component based library for sending e-mails from PHP applications.
+Swift Mailer is a component-based library for sending e-mails from PHP
+applications, maintained by `Redrock Software Corporation <https://www.go-redrock.com/>`_.
 
-**Swift Mailer will stop being maintained at the end of November 2021.**
-
-Please, move to `Symfony Mailer <https://symfony.com/doc/current/mailer.html>`_ at your earliest convenience.
-`Symfony Mailer <https://symfony.com/doc/current/mailer.html>`_ is the next evolution of Swift Mailer.
-It provides the same features with support for modern PHP code and support for third-party providers.
+This fork continues Swiftmailer development for legacy and enterprise
+applications that cannot migrate to Symfony Mailer. It integrates features
+from Symfony Mailer -- including 21 HTTP API transports, a DSN factory,
+webhook processing, and more -- while preserving full backward compatibility
+with stock SwiftMailer 6.x.
 
 System Requirements
 -------------------
 
-Swift Mailer supports PHP 7.0 to PHP 8.1 included (``proc_*`` functions must be
-available).
+Swift Mailer requires PHP 8.1 or later with the following extensions:
 
-Swift Mailer does not work when used with function overloading as implemented
-by ``mbstring`` when ``mbstring.func_overload`` is set to ``2``.
+* ``iconv``
+* ``mbstring``
+* ``intl``
+* ``openssl``
 
 Installation
 ------------
@@ -25,7 +27,7 @@ The recommended way to install Swiftmailer is via Composer:
 
 .. code-block:: bash
 
-    $ composer require "swiftmailer/swiftmailer:^6.0"
+    $ composer require swiftmailer/swiftmailer
 
 Basic Usage
 -----------
@@ -35,7 +37,7 @@ Here is the simplest way to send emails with Swift Mailer::
     require_once '/path/to/vendor/autoload.php';
 
     // Create the Transport
-    $transport = (new Swift_SmtpTransport('smtp.example.org', 25))
+    $transport = (new Swift_SmtpTransport('smtp.example.org', 587, 'tls'))
       ->setUsername('your username')
       ->setPassword('your password')
     ;
@@ -53,15 +55,27 @@ Here is the simplest way to send emails with Swift Mailer::
     // Send the message
     $result = $mailer->send($message);
 
-You can also use Sendmail as a transport::
+You can also use an HTTP API transport for faster, more reliable delivery::
 
-    // Sendmail
-    $transport = new Swift_SendmailTransport('/usr/sbin/sendmail -bs');
+    // Direct API call instead of SMTP
+    $transport = new Swift_Transport_Api_SendgridTransport('your-api-key');
+    $mailer = new Swift_Mailer($transport);
+    $mailer->send($message);
+
+Or create transports from a DSN connection string::
+
+    $factory = new Swift_Transport_DsnTransportFactory();
+    $transport = $factory->fromDsnString('sendgrid://API_KEY@default');
+    $mailer = new Swift_Mailer($transport);
+
+See the `README <../README.md>`_ for the full feature list, or the
+``doc/`` directory for detailed guides on API transports, DSN syntax,
+webhooks, plugins, and events.
 
 Getting Help
 ------------
 
 For general support, use `Stack Overflow <https://stackoverflow.com>`_.
 
-For bug reports and feature requests, create a new ticket in `GitHub
-<https://github.com/swiftmailer/swiftmailer/issues>`_.
+For bug reports and feature requests, create a new ticket on
+`GitHub <https://github.com/swiftmailer/swiftmailer/issues>`_.
