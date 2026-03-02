@@ -625,10 +625,11 @@ class Swift_Transport_RetryTransportTest extends PHPUnit\Framework\TestCase
         $callCount = 0;
         $inner->method('send')
             ->willReturnCallback(function () use (&$callCount) {
-                $callCount++;
-                if ($callCount === 1) {
+                ++$callCount;
+                if (1 === $callCount) {
                     throw new Swift_TransportException('Connection reset', 0);
                 }
+
                 return 1;
             });
 

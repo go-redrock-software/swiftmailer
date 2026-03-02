@@ -1,6 +1,6 @@
 <?php
 
-class Swift_Transport_FailoverTransportExtraTest extends \PHPUnit\Framework\TestCase
+class Swift_Transport_FailoverTransportExtraTest extends PHPUnit\Framework\TestCase
 {
     public function testImplementsSwiftTransport(): void
     {
@@ -27,7 +27,7 @@ class Swift_Transport_FailoverTransportExtraTest extends \PHPUnit\Framework\Test
 
     public function testIsStartedWhenTransportsExist(): void
     {
-        $t1 = $this->createMock(Swift_Transport::class);
+        $t1        = $this->createMock(Swift_Transport::class);
         $transport = new Swift_Transport_FailoverTransport();
         $transport->setTransports([$t1]);
         $this->assertTrue($transport->isStarted());
@@ -125,8 +125,8 @@ class Swift_Transport_FailoverTransportExtraTest extends \PHPUnit\Framework\Test
         $msg2->setTo(['to@example.com' => 'To']);
 
         $t1SendCount = 0;
-        $t1 = $this->createMock(Swift_Transport::class);
-        $t2 = $this->createMock(Swift_Transport::class);
+        $t1          = $this->createMock(Swift_Transport::class);
+        $t2          = $this->createMock(Swift_Transport::class);
 
         $t1->method('isStarted')->willReturn(true);
         $t1->method('send')->willReturnCallback(function () use (&$t1SendCount) {
@@ -162,8 +162,8 @@ class Swift_Transport_FailoverTransportExtraTest extends \PHPUnit\Framework\Test
 
     public function testRegisterPluginOnAllTransports(): void
     {
-        $t1 = $this->createMock(Swift_Transport::class);
-        $t2 = $this->createMock(Swift_Transport::class);
+        $t1     = $this->createMock(Swift_Transport::class);
+        $t2     = $this->createMock(Swift_Transport::class);
         $plugin = $this->createMock(Swift_Events_EventListener::class);
 
         $t1->expects($this->once())->method('registerPlugin')->with($plugin);
@@ -256,7 +256,7 @@ class Swift_Transport_FailoverTransportExtraTest extends \PHPUnit\Framework\Test
 
         try {
             $transport->send($message);
-        } catch (Swift_TransportException $e) {
+        } catch (Swift_TransportException) {
         }
 
         $this->assertFalse($transport->isStarted());
@@ -268,13 +268,14 @@ class Swift_Transport_FailoverTransportExtraTest extends \PHPUnit\Framework\Test
         $message->setTo(['to@example.com' => 'To']);
 
         $sendCount = 0;
-        $t1 = $this->createMock(Swift_Transport::class);
+        $t1        = $this->createMock(Swift_Transport::class);
         $t1->method('isStarted')->willReturn(true);
         $t1->method('send')->willReturnCallback(function () use (&$sendCount) {
             ++$sendCount;
             if (1 === $sendCount) {
                 throw new Swift_TransportException('first fail');
             }
+
             return 1;
         });
 
@@ -287,7 +288,7 @@ class Swift_Transport_FailoverTransportExtraTest extends \PHPUnit\Framework\Test
 
         try {
             $transport->send($message);
-        } catch (Swift_TransportException $e) {
+        } catch (Swift_TransportException) {
         }
 
         $this->assertFalse($transport->isStarted());

@@ -1,6 +1,6 @@
 <?php
 
-class Swift_Transport_AbstractApiTransportTest extends \PHPUnit\Framework\TestCase
+class Swift_Transport_AbstractApiTransportTest extends PHPUnit\Framework\TestCase
 {
     private $eventDispatcherMock;
 
@@ -57,7 +57,7 @@ class Swift_Transport_AbstractApiTransportTest extends \PHPUnit\Framework\TestCa
     public function testRegisterPluginDelegatesToEventDispatcher(): void
     {
         $transport = $this->createConcreteTransport();
-        $plugin = $this->createMock(Swift_Events_EventListener::class);
+        $plugin    = $this->createMock(Swift_Events_EventListener::class);
 
         $this->eventDispatcherMock->expects($this->once())
             ->method('bindEventListener')
@@ -151,7 +151,7 @@ class Swift_Transport_AbstractApiTransportTest extends \PHPUnit\Framework\TestCa
     public function testSendReturnsOne(): void
     {
         $transport = $this->createConcreteTransport();
-        $message = new Swift_Message();
+        $message   = new Swift_Message();
         $message->setTo(['to@example.com' => 'To']);
         $this->assertSame(1, $transport->send($message));
     }
@@ -168,8 +168,7 @@ class Swift_Transport_AbstractApiTransportTest extends \PHPUnit\Framework\TestCa
             ->method('dispatchEvent')
             ->with($evt, 'exceptionThrown');
 
-        $reflection = new \ReflectionMethod($transport, 'throwException');
-        $reflection->setAccessible(true);
+        $reflection = new ReflectionMethod($transport, 'throwException');
 
         $this->expectException(Swift_TransportException::class);
         $reflection->invoke($transport, $exception);
@@ -185,8 +184,7 @@ class Swift_Transport_AbstractApiTransportTest extends \PHPUnit\Framework\TestCa
         $this->eventDispatcherMock->method('createTransportExceptionEvent')
             ->willReturn($evt);
 
-        $reflection = new \ReflectionMethod($transport, 'throwException');
-        $reflection->setAccessible(true);
+        $reflection = new ReflectionMethod($transport, 'throwException');
 
         // Should NOT throw when bubble is cancelled
         $reflection->invoke($transport, $exception);
@@ -201,8 +199,7 @@ class Swift_Transport_AbstractApiTransportTest extends \PHPUnit\Framework\TestCa
         $this->eventDispatcherMock->method('createTransportExceptionEvent')
             ->willReturn(null);
 
-        $reflection = new \ReflectionMethod($transport, 'throwException');
-        $reflection->setAccessible(true);
+        $reflection = new ReflectionMethod($transport, 'throwException');
 
         $this->expectException(Swift_TransportException::class);
         $reflection->invoke($transport, $exception);

@@ -149,8 +149,8 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
             'dummySelector',
         );
 
-        $triggered       = false;
-        $previousHandler = \set_error_handler(static function (int $errno, string $errstr) use (&$triggered) {
+        $triggered = false;
+        \set_error_handler(static function (int $errno, string $errstr) use (&$triggered) {
             if (\E_USER_DEPRECATED === $errno && \str_contains($errstr, 'rsa-sha1 is deprecated')) {
                 $triggered = true;
 
@@ -306,7 +306,6 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         // Generate an Ed25519 keypair for testing
         $keypair   = \sodium_crypto_sign_keypair();
         $secretKey = \sodium_crypto_sign_secretkey($keypair);
-        $publicKey = \sodium_crypto_sign_publickey($keypair);
 
         $headerSet      = $this->createHeaderSet();
         $messageContent = 'Hello World';
@@ -948,9 +947,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
 
     private function createHeaderSet()
     {
-        $cache          = new Swift_KeyCache_ArrayKeyCache(new Swift_KeyCache_SimpleKeyCacheInputStream());
-        $factory        = new Swift_CharacterReaderFactory_SimpleCharacterReaderFactory();
-        $contentEncoder = new Swift_Mime_ContentEncoder_Base64ContentEncoder();
+        $factory = new Swift_CharacterReaderFactory_SimpleCharacterReaderFactory();
 
         $headerEncoder  = new Swift_Mime_HeaderEncoder_QpHeaderEncoder(new Swift_CharacterStream_ArrayCharacterStream($factory, 'utf-8'));
         $paramEncoder   = new Swift_Encoder_Rfc2231Encoder(new Swift_CharacterStream_ArrayCharacterStream($factory, 'utf-8'));
@@ -962,9 +959,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
 
     private function createHeaderSetWithFrom()
     {
-        $cache          = new Swift_KeyCache_ArrayKeyCache(new Swift_KeyCache_SimpleKeyCacheInputStream());
-        $factory        = new Swift_CharacterReaderFactory_SimpleCharacterReaderFactory();
-        $contentEncoder = new Swift_Mime_ContentEncoder_Base64ContentEncoder();
+        $factory = new Swift_CharacterReaderFactory_SimpleCharacterReaderFactory();
 
         $headerEncoder  = new Swift_Mime_HeaderEncoder_QpHeaderEncoder(new Swift_CharacterStream_ArrayCharacterStream($factory, 'utf-8'));
         $paramEncoder   = new Swift_Encoder_Rfc2231Encoder(new Swift_CharacterStream_ArrayCharacterStream($factory, 'utf-8'));
@@ -980,9 +975,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
 
     private function createHeaderSetWithXTransport()
     {
-        $cache          = new Swift_KeyCache_ArrayKeyCache(new Swift_KeyCache_SimpleKeyCacheInputStream());
-        $factory        = new Swift_CharacterReaderFactory_SimpleCharacterReaderFactory();
-        $contentEncoder = new Swift_Mime_ContentEncoder_Base64ContentEncoder();
+        $factory = new Swift_CharacterReaderFactory_SimpleCharacterReaderFactory();
 
         $headerEncoder  = new Swift_Mime_HeaderEncoder_QpHeaderEncoder(new Swift_CharacterStream_ArrayCharacterStream($factory, 'utf-8'));
         $paramEncoder   = new Swift_Encoder_Rfc2231Encoder(new Swift_CharacterStream_ArrayCharacterStream($factory, 'utf-8'));
@@ -998,10 +991,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
      */
     private function createHeaders()
     {
-        $x              = 0;
-        $cache          = new Swift_KeyCache_ArrayKeyCache(new Swift_KeyCache_SimpleKeyCacheInputStream());
-        $factory        = new Swift_CharacterReaderFactory_SimpleCharacterReaderFactory();
-        $contentEncoder = new Swift_Mime_ContentEncoder_Base64ContentEncoder();
+        $factory = new Swift_CharacterReaderFactory_SimpleCharacterReaderFactory();
 
         $headerEncoder  = new Swift_Mime_HeaderEncoder_QpHeaderEncoder(new Swift_CharacterStream_ArrayCharacterStream($factory, 'utf-8'));
         $paramEncoder   = new Swift_Encoder_Rfc2231Encoder(new Swift_CharacterStream_ArrayCharacterStream($factory, 'utf-8'));

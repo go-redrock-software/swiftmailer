@@ -153,7 +153,7 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
         $this->finishBuffer($buf);
         try {
             $smtp->start();
-        } catch (Exception $e) {
+        } catch (Exception) {
             $this->fail(
                 'Starting Esmtp should fallback to HELO if needed and accept 250 response',
             );
@@ -194,7 +194,7 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
             $this->assertFalse($smtp->isStarted(), '%s: SMTP should begin non-started');
             $smtp->start();
             $this->fail('Non 250 HELO response should raise Exception');
-        } catch (Exception $e) {
+        } catch (Exception) {
             $this->assertFalse($smtp->isStarted(), '%s: SMTP start() should have failed');
         }
     }
@@ -672,24 +672,24 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
 
     public function testSetHostReturnsTransport()
     {
-        $buf  = $this->getBuffer();
-        $smtp = $this->getTransport($buf);
+        $buf    = $this->getBuffer();
+        $smtp   = $this->getTransport($buf);
         $result = $smtp->setHost('mail.example.com');
         $this->assertSame($smtp, $result);
     }
 
     public function testSetPortReturnsTransport()
     {
-        $buf  = $this->getBuffer();
-        $smtp = $this->getTransport($buf);
+        $buf    = $this->getBuffer();
+        $smtp   = $this->getTransport($buf);
         $result = $smtp->setPort(587);
         $this->assertSame($smtp, $result);
     }
 
     public function testSetEncryptionReturnsTransport()
     {
-        $buf  = $this->getBuffer();
-        $smtp = $this->getTransport($buf);
+        $buf    = $this->getBuffer();
+        $smtp   = $this->getTransport($buf);
         $result = $smtp->setEncryption(CONNECTION_ENCRYPTION_MODE_STARTTLS);
         $this->assertSame($smtp, $result);
     }
@@ -707,8 +707,8 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
 
     public function testSetPipeliningReturnsTransport()
     {
-        $buf  = $this->getBuffer();
-        $smtp = $this->getTransport($buf);
+        $buf    = $this->getBuffer();
+        $smtp   = $this->getTransport($buf);
         $result = $smtp->setPipelining(true);
         $this->assertSame($smtp, $result);
     }

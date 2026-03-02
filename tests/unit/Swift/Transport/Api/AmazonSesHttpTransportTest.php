@@ -1,6 +1,6 @@
 <?php
 
-class Swift_Transport_Api_AmazonSesHttpTransportTest extends \PHPUnit\Framework\TestCase
+class Swift_Transport_Api_AmazonSesHttpTransportTest extends PHPUnit\Framework\TestCase
 {
     private $eventDispatcherMock;
 
@@ -62,7 +62,7 @@ class Swift_Transport_Api_AmazonSesHttpTransportTest extends \PHPUnit\Framework\
         $client = new class {
             public function listIdentities(): never
             {
-                throw new \RuntimeException('AWS error');
+                throw new RuntimeException('AWS error');
             }
 
             public function sendEmail($request = null): object
@@ -146,7 +146,7 @@ class Swift_Transport_Api_AmazonSesHttpTransportTest extends \PHPUnit\Framework\
         $client = new class {
             public function sendEmail($request = null): never
             {
-                throw new \RuntimeException('AWS SES error');
+                throw new RuntimeException('AWS SES error');
             }
 
             public function listIdentities(): array
@@ -174,7 +174,7 @@ class Swift_Transport_Api_AmazonSesHttpTransportTest extends \PHPUnit\Framework\
         $client = new class {
             public function sendEmail($request = null): never
             {
-                throw new \RuntimeException('Error');
+                throw new RuntimeException('Error');
             }
 
             public function listIdentities(): array
@@ -218,11 +218,10 @@ class Swift_Transport_Api_AmazonSesHttpTransportTest extends \PHPUnit\Framework\
 
     public function testGetApiConnectionReturnsSesClient(): void
     {
-        $client = $this->createSuccessClient();
+        $client    = $this->createSuccessClient();
         $transport = $this->createTransportWithClient($client);
 
-        $reflection = new \ReflectionMethod($transport, 'getApiConnection');
-        $reflection->setAccessible(true);
+        $reflection = new ReflectionMethod($transport, 'getApiConnection');
         $this->assertSame($client, $reflection->invoke($transport));
     }
 
@@ -234,13 +233,18 @@ class Swift_Transport_Api_AmazonSesHttpTransportTest extends \PHPUnit\Framework\
     private function createSuccessClient(string $messageId = 'test-msg-id'): object
     {
         return new class($messageId) {
-            public function __construct(private readonly string $messageId) {}
+            public function __construct(private readonly string $messageId)
+            {
+            }
 
             public function sendEmail($request = null): object
             {
                 $id = $this->messageId;
+
                 return new class($id) {
-                    public function __construct(private readonly string $id) {}
+                    public function __construct(private readonly string $id)
+                    {
+                    }
 
                     public function getMessageId(): string
                     {
