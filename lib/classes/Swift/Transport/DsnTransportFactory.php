@@ -67,6 +67,9 @@ class Swift_Transport_DsnTransportFactory
             $transport = new Swift_Transport_NullTransport(
                 new Swift_Events_SimpleEventDispatcher(),
             );
+        } elseif (Swift_Transport_SendmailTransport::class === $class) {
+            $command   = $dsn->getParameter('command') ?: '/usr/sbin/sendmail -bs';
+            $transport = new Swift_SendmailTransport($command);
         } elseif (Swift_Transport_EsmtpTransport::class === $class) {
             // SMTP transports
             $transport = $this->createSmtpTransport($dsn);

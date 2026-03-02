@@ -18,6 +18,7 @@ readonly class Swift_Dsn
 {
     private const array TRANSPORT_CLASS_MAP = [
         'null'            => Swift_Transport_NullTransport::class,
+        'sendmail'        => Swift_Transport_SendmailTransport::class,
         'smtp'            => Swift_Transport_EsmtpTransport::class,
         'smtp+tls'        => Swift_Transport_EsmtpTransport::class,
         'smtp+ssl'        => Swift_Transport_EsmtpTransport::class,
