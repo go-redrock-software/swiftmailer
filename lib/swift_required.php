@@ -27,3 +27,6 @@ Swift::registerAutoload(static function () {
     // Load in global library preferences
     require_once __DIR__.'/preferences.php';
 });
+
+// Register namespace aliases (e.g. Swift\Message -> Swift_Message)
+require_once __DIR__.'/class_aliases.php';
