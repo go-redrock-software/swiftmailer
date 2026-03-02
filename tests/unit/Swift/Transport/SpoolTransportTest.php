@@ -1,6 +1,6 @@
 <?php
 
-class Swift_Transport_SpoolTransportTest extends \PHPUnit\Framework\TestCase
+class Swift_Transport_SpoolTransportTest extends PHPUnit\Framework\TestCase
 {
     private $eventDispatcherMock;
 
@@ -11,8 +11,8 @@ class Swift_Transport_SpoolTransportTest extends \PHPUnit\Framework\TestCase
     protected function setUp(): void
     {
         $this->eventDispatcherMock = $this->createMock(Swift_Events_EventDispatcher::class);
-        $this->spoolMock = $this->createMock(Swift_Spool::class);
-        $this->transport = new Swift_Transport_SpoolTransport($this->eventDispatcherMock, $this->spoolMock);
+        $this->spoolMock           = $this->createMock(Swift_Spool::class);
+        $this->transport           = new Swift_Transport_SpoolTransport($this->eventDispatcherMock, $this->spoolMock);
     }
 
     public function testIsAlwaysStarted(): void
@@ -50,7 +50,7 @@ class Swift_Transport_SpoolTransportTest extends \PHPUnit\Framework\TestCase
     public function testSetSpool(): void
     {
         $newSpool = $this->createMock(Swift_Spool::class);
-        $result = $this->transport->setSpool($newSpool);
+        $result   = $this->transport->setSpool($newSpool);
 
         $this->assertSame($newSpool, $this->transport->getSpool());
         $this->assertSame($this->transport, $result); // fluent interface

@@ -19,7 +19,7 @@ class Swift_Plugins_MessageLoggerTest extends PHPUnit\Framework\TestCase
             ->setSubject('Test');
 
         $transport = $this->createMock(Swift_Transport::class);
-        $event = new Swift_Events_SendEvent($transport, $message);
+        $event     = new Swift_Events_SendEvent($transport, $message);
 
         $logger->beforeSendPerformed($event);
 
@@ -28,7 +28,7 @@ class Swift_Plugins_MessageLoggerTest extends PHPUnit\Framework\TestCase
 
     public function testMultipleMessagesAreCaptured()
     {
-        $logger = new Swift_Plugins_MessageLogger();
+        $logger    = new Swift_Plugins_MessageLogger();
         $transport = $this->createMock(Swift_Transport::class);
 
         for ($i = 0; $i < 5; ++$i) {
@@ -47,7 +47,7 @@ class Swift_Plugins_MessageLoggerTest extends PHPUnit\Framework\TestCase
 
     public function testClearRemovesAllMessages()
     {
-        $logger = new Swift_Plugins_MessageLogger();
+        $logger    = new Swift_Plugins_MessageLogger();
         $transport = $this->createMock(Swift_Transport::class);
 
         $message = (new Swift_Message())
@@ -74,7 +74,7 @@ class Swift_Plugins_MessageLoggerTest extends PHPUnit\Framework\TestCase
             ->setSubject('Original Subject');
 
         $transport = $this->createMock(Swift_Transport::class);
-        $event = new Swift_Events_SendEvent($transport, $message);
+        $event     = new Swift_Events_SendEvent($transport, $message);
         $logger->beforeSendPerformed($event);
 
         // Modify original message
@@ -95,7 +95,7 @@ class Swift_Plugins_MessageLoggerTest extends PHPUnit\Framework\TestCase
             ->setSubject('Test');
 
         $transport = $this->createMock(Swift_Transport::class);
-        $event = new Swift_Events_SendEvent($transport, $message);
+        $event     = new Swift_Events_SendEvent($transport, $message);
 
         // sendPerformed should not change anything
         $logger->sendPerformed($event);
@@ -110,7 +110,7 @@ class Swift_Plugins_MessageLoggerTest extends PHPUnit\Framework\TestCase
 
     public function testGetMessagesReturnsArrayOfMessages()
     {
-        $logger = new Swift_Plugins_MessageLogger();
+        $logger    = new Swift_Plugins_MessageLogger();
         $transport = $this->createMock(Swift_Transport::class);
 
         $message = (new Swift_Message())
@@ -128,7 +128,7 @@ class Swift_Plugins_MessageLoggerTest extends PHPUnit\Framework\TestCase
 
     public function testClearThenAddWorks()
     {
-        $logger = new Swift_Plugins_MessageLogger();
+        $logger    = new Swift_Plugins_MessageLogger();
         $transport = $this->createMock(Swift_Transport::class);
 
         $message = (new Swift_Message())

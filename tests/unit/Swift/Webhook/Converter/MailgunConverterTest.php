@@ -174,14 +174,14 @@ class Swift_Webhook_Converter_MailgunConverterTest extends PHPUnit\Framework\Tes
     public function testConvertEmptyEventData()
     {
         $payload = ['event-data' => []];
-        $events = $this->converter->convert($payload, []);
+        $events  = $this->converter->convert($payload, []);
         $this->assertCount(0, $events);
     }
 
     public function testConvertMissingEventData()
     {
         $payload = [];
-        $events = $this->converter->convert($payload, []);
+        $events  = $this->converter->convert($payload, []);
         $this->assertCount(0, $events);
     }
 

@@ -35,7 +35,7 @@ class Swift_Events_TransportChangeEventTest extends PHPUnit\Framework\TestCase
     public function testGetTransportAndGetSourceReturnSameObject()
     {
         $transport = $this->createTransport();
-        $evt = $this->createEvent($transport);
+        $evt       = $this->createEvent($transport);
         $this->assertSame($evt->getTransport(), $evt->getSource());
     }
 

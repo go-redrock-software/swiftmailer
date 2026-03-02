@@ -107,7 +107,7 @@ class Swift_Webhook_AbstractPayloadConverterTest extends PHPUnit\Framework\TestC
 
         $method = new ReflectionMethod($converter, 'verifyHmac');
         $secret = 'test-key';
-        $sig = \hash_hmac('sha256', '', $secret);
+        $sig    = \hash_hmac('sha256', '', $secret);
 
         $this->assertTrue($method->invoke($converter, '', $sig, $secret, 'sha256'));
     }
@@ -119,8 +119,8 @@ class Swift_Webhook_AbstractPayloadConverterTest extends PHPUnit\Framework\TestC
         );
 
         $method = new ReflectionMethod($converter, 'verifyHmac');
-        $data = 'some-data';
-        $sig = \hash_hmac('sha256', $data, '');
+        $data   = 'some-data';
+        $sig    = \hash_hmac('sha256', $data, '');
 
         $this->assertTrue($method->invoke($converter, $data, $sig, '', 'sha256'));
     }
@@ -181,9 +181,9 @@ class Swift_Webhook_AbstractPayloadConverterTest extends PHPUnit\Framework\TestC
             Swift_Webhook_AbstractPayloadConverter::class,
         );
 
-        $method = new ReflectionMethod($converter, 'createDeliveryEvent');
+        $method    = new ReflectionMethod($converter, 'createDeliveryEvent');
         $timestamp = new DateTimeImmutable('2026-06-01');
-        $raw = ['some' => 'raw data'];
+        $raw       = ['some' => 'raw data'];
 
         $event = $method->invoke(
             $converter,
@@ -210,7 +210,7 @@ class Swift_Webhook_AbstractPayloadConverterTest extends PHPUnit\Framework\TestC
             Swift_Webhook_AbstractPayloadConverter::class,
         );
 
-        $method = new ReflectionMethod($converter, 'createEngagementEvent');
+        $method    = new ReflectionMethod($converter, 'createEngagementEvent');
         $timestamp = new DateTimeImmutable('2026-06-01');
 
         $event = $method->invoke(

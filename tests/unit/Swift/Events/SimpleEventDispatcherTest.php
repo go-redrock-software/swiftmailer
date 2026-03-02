@@ -242,7 +242,7 @@ class Swift_Events_SimpleEventDispatcherTest extends PHPUnit\Framework\TestCase
     public function testCommandListenersAreNotifiedOfDispatch()
     {
         $transport = $this->getMockBuilder('Swift_Transport')->getMock();
-        $evt = $this->dispatcher->createCommandEvent($transport, "EHLO\r\n", [250]);
+        $evt       = $this->dispatcher->createCommandEvent($transport, "EHLO\r\n", [250]);
 
         $listener = $this->getMockBuilder('Swift_Events_CommandListener')->getMock();
         $this->dispatcher->bindEventListener($listener);
@@ -257,7 +257,7 @@ class Swift_Events_SimpleEventDispatcherTest extends PHPUnit\Framework\TestCase
     public function testResponseListenersAreNotifiedOfDispatch()
     {
         $transport = $this->getMockBuilder('Swift_Transport')->getMock();
-        $evt = $this->dispatcher->createResponseEvent($transport, "250 Ok\r\n", true);
+        $evt       = $this->dispatcher->createResponseEvent($transport, "250 Ok\r\n", true);
 
         $listener = $this->getMockBuilder('Swift_Events_ResponseListener')->getMock();
         $this->dispatcher->bindEventListener($listener);
@@ -272,8 +272,8 @@ class Swift_Events_SimpleEventDispatcherTest extends PHPUnit\Framework\TestCase
     public function testTransportExceptionListenersAreNotifiedOfDispatch()
     {
         $transport = $this->getMockBuilder('Swift_Transport')->getMock();
-        $ex  = new Swift_TransportException('Error');
-        $evt = $this->dispatcher->createTransportExceptionEvent($transport, $ex);
+        $ex        = new Swift_TransportException('Error');
+        $evt       = $this->dispatcher->createTransportExceptionEvent($transport, $ex);
 
         $listener = $this->getMockBuilder('Swift_Events_TransportExceptionListener')->getMock();
         $this->dispatcher->bindEventListener($listener);
@@ -288,7 +288,7 @@ class Swift_Events_SimpleEventDispatcherTest extends PHPUnit\Framework\TestCase
     public function testTransportChangeBeforeStartListenersAreNotified()
     {
         $transport = $this->getMockBuilder('Swift_Transport')->getMock();
-        $evt = $this->dispatcher->createTransportChangeEvent($transport);
+        $evt       = $this->dispatcher->createTransportChangeEvent($transport);
 
         $listener = $this->getMockBuilder('Swift_Events_TransportChangeListener')->getMock();
         $this->dispatcher->bindEventListener($listener);
@@ -303,7 +303,7 @@ class Swift_Events_SimpleEventDispatcherTest extends PHPUnit\Framework\TestCase
     public function testTransportChangeBeforeStopListenersAreNotified()
     {
         $transport = $this->getMockBuilder('Swift_Transport')->getMock();
-        $evt = $this->dispatcher->createTransportChangeEvent($transport);
+        $evt       = $this->dispatcher->createTransportChangeEvent($transport);
 
         $listener = $this->getMockBuilder('Swift_Events_TransportChangeListener')->getMock();
         $this->dispatcher->bindEventListener($listener);
@@ -318,7 +318,7 @@ class Swift_Events_SimpleEventDispatcherTest extends PHPUnit\Framework\TestCase
     public function testTransportStoppedListenersAreNotified()
     {
         $transport = $this->getMockBuilder('Swift_Transport')->getMock();
-        $evt = $this->dispatcher->createTransportChangeEvent($transport);
+        $evt       = $this->dispatcher->createTransportChangeEvent($transport);
 
         $listener = $this->getMockBuilder('Swift_Events_TransportChangeListener')->getMock();
         $this->dispatcher->bindEventListener($listener);
@@ -334,7 +334,7 @@ class Swift_Events_SimpleEventDispatcherTest extends PHPUnit\Framework\TestCase
     {
         $transport = $this->getMockBuilder('Swift_Transport')->getMock();
         $message   = $this->getMockBuilder('Swift_Mime_SimpleMessage')->disableOriginalConstructor()->getMock();
-        $evt = $this->dispatcher->createSendEvent($transport, $message);
+        $evt       = $this->dispatcher->createSendEvent($transport, $message);
 
         $listener = $this->getMockBuilder('Swift_Events_SendListener')->getMock();
         $this->dispatcher->bindEventListener($listener);
@@ -369,7 +369,7 @@ class Swift_Events_SimpleEventDispatcherTest extends PHPUnit\Framework\TestCase
     public function testNoListenersBoundDoesNotCrash()
     {
         $transport = $this->getMockBuilder('Swift_Transport')->getMock();
-        $evt = $this->dispatcher->createTransportChangeEvent($transport);
+        $evt       = $this->dispatcher->createTransportChangeEvent($transport);
 
         // Should not throw
         $this->dispatcher->dispatchEvent($evt, 'transportStarted');
@@ -379,7 +379,7 @@ class Swift_Events_SimpleEventDispatcherTest extends PHPUnit\Framework\TestCase
     public function testDispatchEventWithUnknownMethodDoesNotCrash()
     {
         $transport = $this->getMockBuilder('Swift_Transport')->getMock();
-        $evt = $this->dispatcher->createTransportChangeEvent($transport);
+        $evt       = $this->dispatcher->createTransportChangeEvent($transport);
 
         // Non-existent method on listeners should be silently ignored
         $this->dispatcher->dispatchEvent($evt, 'nonExistentMethod');

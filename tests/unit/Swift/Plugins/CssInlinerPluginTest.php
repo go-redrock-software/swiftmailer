@@ -87,7 +87,7 @@ class Swift_Plugins_CssInlinerPluginTest extends PHPUnit\Framework\TestCase
             ->setBody('Just plain text');
 
         $transport = $this->createMock(Swift_Transport::class);
-        $event = new Swift_Events_SendEvent($transport, $message);
+        $event     = new Swift_Events_SendEvent($transport, $message);
 
         // Should not throw
         $plugin->sendPerformed($event);
@@ -103,7 +103,7 @@ class Swift_Plugins_CssInlinerPluginTest extends PHPUnit\Framework\TestCase
 
     public function testPlainTextBodyIsNotModified()
     {
-        $plugin = new Swift_Plugins_CssInlinerPlugin();
+        $plugin       = new Swift_Plugins_CssInlinerPlugin();
         $originalBody = 'This is plain text content with no HTML';
 
         $message = (new Swift_Message())
@@ -113,7 +113,7 @@ class Swift_Plugins_CssInlinerPluginTest extends PHPUnit\Framework\TestCase
             ->setBody($originalBody);
 
         $transport = $this->createMock(Swift_Transport::class);
-        $event = new Swift_Events_SendEvent($transport, $message);
+        $event     = new Swift_Events_SendEvent($transport, $message);
         $plugin->beforeSendPerformed($event);
 
         $this->assertSame($originalBody, $message->getBody());
@@ -126,7 +126,7 @@ class Swift_Plugins_CssInlinerPluginTest extends PHPUnit\Framework\TestCase
         }
 
         $plugin = new Swift_Plugins_CssInlinerPlugin();
-        $html = '<html><body><p>No styles here</p></body></html>';
+        $html   = '<html><body><p>No styles here</p></body></html>';
 
         $message = (new Swift_Message())
             ->setFrom(['a@b.com' => 'A'])
@@ -135,7 +135,7 @@ class Swift_Plugins_CssInlinerPluginTest extends PHPUnit\Framework\TestCase
             ->setBody($html, 'text/html');
 
         $transport = $this->createMock(Swift_Transport::class);
-        $event = new Swift_Events_SendEvent($transport, $message);
+        $event     = new Swift_Events_SendEvent($transport, $message);
         $plugin->beforeSendPerformed($event);
 
         // Body should still be valid HTML even with no styles to inline

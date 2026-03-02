@@ -186,7 +186,7 @@ class Swift_Events_SendEventTest extends PHPUnit\Framework\TestCase
     public function testGetTransportReturnsSameAsGetSource()
     {
         $transport = $this->createTransport();
-        $evt = $this->createEvent($transport, $this->createMessage());
+        $evt       = $this->createEvent($transport, $this->createMessage());
         $this->assertSame($evt->getTransport(), $evt->getSource());
     }
 
@@ -209,7 +209,7 @@ class Swift_Events_SendEventTest extends PHPUnit\Framework\TestCase
 
     public function testEnvelopeCanBeSetToNull()
     {
-        $evt = $this->createEvent($this->createTransport(), $this->createMessage());
+        $evt      = $this->createEvent($this->createTransport(), $this->createMessage());
         $envelope = new Swift_Envelope('sender@example.com', ['to@example.com']);
         $evt->setEnvelope($envelope);
         $this->assertNotNull($evt->getEnvelope());
@@ -219,7 +219,7 @@ class Swift_Events_SendEventTest extends PHPUnit\Framework\TestCase
 
     public function testEnvelopeSender()
     {
-        $evt = $this->createEvent($this->createTransport(), $this->createMessage());
+        $evt      = $this->createEvent($this->createTransport(), $this->createMessage());
         $envelope = new Swift_Envelope('sender@example.com', ['to@example.com']);
         $evt->setEnvelope($envelope);
         $this->assertSame('sender@example.com', $evt->getEnvelope()->getSender());
@@ -227,7 +227,7 @@ class Swift_Events_SendEventTest extends PHPUnit\Framework\TestCase
 
     public function testEnvelopeRecipients()
     {
-        $evt = $this->createEvent($this->createTransport(), $this->createMessage());
+        $evt      = $this->createEvent($this->createTransport(), $this->createMessage());
         $envelope = new Swift_Envelope('sender@example.com', ['a@b.com', 'c@d.com']);
         $evt->setEnvelope($envelope);
         $this->assertCount(2, $evt->getEnvelope()->getRecipients());

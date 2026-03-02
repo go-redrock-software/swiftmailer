@@ -48,7 +48,7 @@ class Swift_Mime_ContentEncoder_NullContentEncoderTest extends PHPUnit\Framework
     public function testEncodeStringWithUtf8Content()
     {
         $encoder = new Swift_Mime_ContentEncoder_NullContentEncoder('8bit');
-        $utf8    = "Héllo wörld";
+        $utf8    = 'Héllo wörld';
         $this->assertEquals($utf8, $encoder->encodeString($utf8));
     }
 
@@ -138,7 +138,7 @@ class Swift_Mime_ContentEncoder_NullContentEncoderTest extends PHPUnit\Framework
     public function testEncodeStringWithLongLine()
     {
         $encoder = new Swift_Mime_ContentEncoder_NullContentEncoder('7bit');
-        $long    = str_repeat('a', 1000);
+        $long    = \str_repeat('a', 1000);
         $this->assertEquals($long, $encoder->encodeString($long));
     }
 }

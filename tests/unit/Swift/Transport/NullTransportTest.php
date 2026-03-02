@@ -1,6 +1,6 @@
 <?php
 
-class Swift_Transport_NullTransportTest extends \PHPUnit\Framework\TestCase
+class Swift_Transport_NullTransportTest extends PHPUnit\Framework\TestCase
 {
     private $eventDispatcherMock;
 
@@ -9,7 +9,7 @@ class Swift_Transport_NullTransportTest extends \PHPUnit\Framework\TestCase
     protected function setUp(): void
     {
         $this->eventDispatcherMock = $this->createMock(Swift_Events_EventDispatcher::class);
-        $this->transport = new Swift_Transport_NullTransport($this->eventDispatcherMock);
+        $this->transport           = new Swift_Transport_NullTransport($this->eventDispatcherMock);
     }
 
     public function testIsAlwaysStarted(): void
@@ -224,7 +224,7 @@ class Swift_Transport_NullTransportTest extends \PHPUnit\Framework\TestCase
     public function testSendWithLargeRecipientList(): void
     {
         $message = $this->createMessage();
-        $to = [];
+        $to      = [];
         for ($i = 0; $i < 50; ++$i) {
             $to["user{$i}@example.com"] = "User {$i}";
         }

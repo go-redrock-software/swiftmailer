@@ -1,6 +1,6 @@
 <?php
 
-class Swift_Transport_LoadBalancedTransportExtraTest extends \PHPUnit\Framework\TestCase
+class Swift_Transport_LoadBalancedTransportExtraTest extends PHPUnit\Framework\TestCase
 {
     public function testImplementsSwiftTransport(): void
     {
@@ -21,7 +21,7 @@ class Swift_Transport_LoadBalancedTransportExtraTest extends \PHPUnit\Framework\
 
     public function testIsStartedReturnsTrueWhenTransportsExist(): void
     {
-        $t1 = $this->createMock(Swift_Transport::class);
+        $t1        = $this->createMock(Swift_Transport::class);
         $transport = new Swift_Transport_LoadBalancedTransport();
         $transport->setTransports([$t1]);
 
@@ -43,7 +43,7 @@ class Swift_Transport_LoadBalancedTransportExtraTest extends \PHPUnit\Framework\
     public function testSetTransportsResetsDead(): void
     {
         $transport = new Swift_Transport_LoadBalancedTransport();
-        $t1 = $this->createMock(Swift_Transport::class);
+        $t1        = $this->createMock(Swift_Transport::class);
         $transport->setTransports([$t1]);
         $this->assertCount(1, $transport->getTransports());
 
@@ -67,8 +67,8 @@ class Swift_Transport_LoadBalancedTransportExtraTest extends \PHPUnit\Framework\
 
     public function testRegisterPluginOnAllTransports(): void
     {
-        $t1 = $this->createMock(Swift_Transport::class);
-        $t2 = $this->createMock(Swift_Transport::class);
+        $t1     = $this->createMock(Swift_Transport::class);
+        $t2     = $this->createMock(Swift_Transport::class);
         $plugin = $this->createMock(Swift_Events_EventListener::class);
 
         $t1->expects($this->once())->method('registerPlugin')->with($plugin);
@@ -96,10 +96,12 @@ class Swift_Transport_LoadBalancedTransportExtraTest extends \PHPUnit\Framework\
         $callOrder = [];
         $t1->method('send')->willReturnCallback(function () use (&$callOrder) {
             $callOrder[] = 't1';
+
             return 1;
         });
         $t2->method('send')->willReturnCallback(function () use (&$callOrder) {
             $callOrder[] = 't2';
+
             return 1;
         });
 
@@ -203,8 +205,8 @@ class Swift_Transport_LoadBalancedTransportExtraTest extends \PHPUnit\Framework\
 
     public function testStartRestoredDeadTransports(): void
     {
-        $t1 = $this->createMock(Swift_Transport::class);
-        $t2 = $this->createMock(Swift_Transport::class);
+        $t1      = $this->createMock(Swift_Transport::class);
+        $t2      = $this->createMock(Swift_Transport::class);
         $message = new Swift_Message();
         $message->setTo(['to@example.com' => 'To']);
 

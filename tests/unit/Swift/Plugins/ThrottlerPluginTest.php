@@ -114,7 +114,7 @@ class Swift_Plugins_ThrottlerPluginTest extends SwiftMailerTestCase
         $sleeper->shouldReceive('sleep')->twice()->with(1);
 
         $message = $this->createMessageWithByteCount(10);
-        $evt = $this->createSendEvent($message);
+        $evt     = $this->createSendEvent($message);
 
         for ($i = 0; $i < 4; ++$i) {
             $plugin->beforeSendPerformed($evt);
@@ -164,7 +164,7 @@ class Swift_Plugins_ThrottlerPluginTest extends SwiftMailerTestCase
 
     public function testGetTimestampUsesSystemTimeWhenNoTimer()
     {
-        $plugin = new Swift_Plugins_ThrottlerPlugin(100);
+        $plugin    = new Swift_Plugins_ThrottlerPlugin(100);
         $timestamp = $plugin->getTimestamp();
         // Should be approximately current time
         $this->assertEqualsWithDelta(\time(), $timestamp, 2);

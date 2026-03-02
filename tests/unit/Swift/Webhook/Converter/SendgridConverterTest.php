@@ -259,7 +259,7 @@ class Swift_Webhook_Converter_SendgridConverterTest extends PHPUnit\Framework\Te
         ];
 
         $events = $this->converter->convert($payload, []);
-        $meta = $events[0]->getMetadata();
+        $meta   = $events[0]->getMetadata();
 
         $this->assertSame('https://example.com', $meta['url']);
         $this->assertSame('Mozilla/5.0', $meta['user_agent']);

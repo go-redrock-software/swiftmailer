@@ -1,10 +1,10 @@
 <?php
 
-class Swift_SentMessageExtraTest extends \PHPUnit\Framework\TestCase
+class Swift_SentMessageExtraTest extends PHPUnit\Framework\TestCase
 {
     public function testFromResultNamedConstructor(): void
     {
-        $message = (new Swift_Message())->setTo(['to@example.com' => 'To']);
+        $message   = (new Swift_Message())->setTo(['to@example.com' => 'To']);
         $transport = $this->createMock(Swift_Transport::class);
 
         $sentMessage = Swift_SentMessage::fromResult($message, $transport, [
@@ -18,7 +18,7 @@ class Swift_SentMessageExtraTest extends \PHPUnit\Framework\TestCase
 
     public function testGetOriginalMessage(): void
     {
-        $message = (new Swift_Message())->setTo(['to@example.com' => 'To']);
+        $message   = (new Swift_Message())->setTo(['to@example.com' => 'To']);
         $transport = $this->createMock(Swift_Transport::class);
 
         $sentMessage = new Swift_SentMessage($message, $transport);
@@ -27,7 +27,7 @@ class Swift_SentMessageExtraTest extends \PHPUnit\Framework\TestCase
 
     public function testGetTransport(): void
     {
-        $message = (new Swift_Message())->setTo(['to@example.com' => 'To']);
+        $message   = (new Swift_Message())->setTo(['to@example.com' => 'To']);
         $transport = $this->createMock(Swift_Transport::class);
 
         $sentMessage = new Swift_SentMessage($message, $transport);
@@ -36,7 +36,7 @@ class Swift_SentMessageExtraTest extends \PHPUnit\Framework\TestCase
 
     public function testDefaultMessageIdIsNull(): void
     {
-        $message = (new Swift_Message())->setTo(['to@example.com' => 'To']);
+        $message   = (new Swift_Message())->setTo(['to@example.com' => 'To']);
         $transport = $this->createMock(Swift_Transport::class);
 
         $sentMessage = new Swift_SentMessage($message, $transport);
@@ -45,7 +45,7 @@ class Swift_SentMessageExtraTest extends \PHPUnit\Framework\TestCase
 
     public function testDefaultRecipientCountIsZero(): void
     {
-        $message = (new Swift_Message())->setTo(['to@example.com' => 'To']);
+        $message   = (new Swift_Message())->setTo(['to@example.com' => 'To']);
         $transport = $this->createMock(Swift_Transport::class);
 
         $sentMessage = new Swift_SentMessage($message, $transport);
@@ -54,7 +54,7 @@ class Swift_SentMessageExtraTest extends \PHPUnit\Framework\TestCase
 
     public function testDefaultDebugIsEmpty(): void
     {
-        $message = (new Swift_Message())->setTo(['to@example.com' => 'To']);
+        $message   = (new Swift_Message())->setTo(['to@example.com' => 'To']);
         $transport = $this->createMock(Swift_Transport::class);
 
         $sentMessage = new Swift_SentMessage($message, $transport);
@@ -63,7 +63,7 @@ class Swift_SentMessageExtraTest extends \PHPUnit\Framework\TestCase
 
     public function testDefaultFailedRecipientsIsEmpty(): void
     {
-        $message = (new Swift_Message())->setTo(['to@example.com' => 'To']);
+        $message   = (new Swift_Message())->setTo(['to@example.com' => 'To']);
         $transport = $this->createMock(Swift_Transport::class);
 
         $sentMessage = new Swift_SentMessage($message, $transport);
@@ -72,7 +72,7 @@ class Swift_SentMessageExtraTest extends \PHPUnit\Framework\TestCase
 
     public function testMessageIdFromResult(): void
     {
-        $message = (new Swift_Message())->setTo(['to@example.com' => 'To']);
+        $message   = (new Swift_Message())->setTo(['to@example.com' => 'To']);
         $transport = $this->createMock(Swift_Transport::class);
 
         $sentMessage = new Swift_SentMessage($message, $transport, [
@@ -83,7 +83,7 @@ class Swift_SentMessageExtraTest extends \PHPUnit\Framework\TestCase
 
     public function testRecipientCountFromResult(): void
     {
-        $message = (new Swift_Message())->setTo(['to@example.com' => 'To']);
+        $message   = (new Swift_Message())->setTo(['to@example.com' => 'To']);
         $transport = $this->createMock(Swift_Transport::class);
 
         $sentMessage = new Swift_SentMessage($message, $transport, [
@@ -94,7 +94,7 @@ class Swift_SentMessageExtraTest extends \PHPUnit\Framework\TestCase
 
     public function testDebugFromResult(): void
     {
-        $message = (new Swift_Message())->setTo(['to@example.com' => 'To']);
+        $message   = (new Swift_Message())->setTo(['to@example.com' => 'To']);
         $transport = $this->createMock(Swift_Transport::class);
 
         $sentMessage = new Swift_SentMessage($message, $transport, [
@@ -105,7 +105,7 @@ class Swift_SentMessageExtraTest extends \PHPUnit\Framework\TestCase
 
     public function testFailedRecipientsFromResult(): void
     {
-        $message = (new Swift_Message())->setTo(['to@example.com' => 'To']);
+        $message   = (new Swift_Message())->setTo(['to@example.com' => 'To']);
         $transport = $this->createMock(Swift_Transport::class);
 
         $sentMessage = new Swift_SentMessage($message, $transport, [
@@ -116,13 +116,13 @@ class Swift_SentMessageExtraTest extends \PHPUnit\Framework\TestCase
 
     public function testAllResultFieldsTogether(): void
     {
-        $message = (new Swift_Message())->setTo(['to@example.com' => 'To']);
+        $message   = (new Swift_Message())->setTo(['to@example.com' => 'To']);
         $transport = $this->createMock(Swift_Transport::class);
 
         $sentMessage = new Swift_SentMessage($message, $transport, [
-            'message_id' => 'full-test',
-            'recipients' => 3,
-            'debug' => ['raw' => 'data'],
+            'message_id'        => 'full-test',
+            'recipients'        => 3,
+            'debug'             => ['raw' => 'data'],
             'failed_recipients' => ['fail@example.com'],
         ]);
 
@@ -140,7 +140,7 @@ class Swift_SentMessageExtraTest extends \PHPUnit\Framework\TestCase
 
     public function testFromResultReturnsSameType(): void
     {
-        $message = (new Swift_Message())->setTo(['to@example.com' => 'To']);
+        $message   = (new Swift_Message())->setTo(['to@example.com' => 'To']);
         $transport = $this->createMock(Swift_Transport::class);
 
         $sentMessage = Swift_SentMessage::fromResult($message, $transport, []);
@@ -149,7 +149,7 @@ class Swift_SentMessageExtraTest extends \PHPUnit\Framework\TestCase
 
     public function testFromResultPreservesMessageReference(): void
     {
-        $message = (new Swift_Message())->setTo(['to@example.com' => 'To']);
+        $message   = (new Swift_Message())->setTo(['to@example.com' => 'To']);
         $transport = $this->createMock(Swift_Transport::class);
 
         $sentMessage = Swift_SentMessage::fromResult($message, $transport, []);
@@ -158,7 +158,7 @@ class Swift_SentMessageExtraTest extends \PHPUnit\Framework\TestCase
 
     public function testFromResultPreservesTransportReference(): void
     {
-        $message = (new Swift_Message())->setTo(['to@example.com' => 'To']);
+        $message   = (new Swift_Message())->setTo(['to@example.com' => 'To']);
         $transport = $this->createMock(Swift_Transport::class);
 
         $sentMessage = Swift_SentMessage::fromResult($message, $transport, []);

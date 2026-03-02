@@ -38,7 +38,7 @@ class Swift_Events_ResponseEventTest extends PHPUnit\Framework\TestCase
     public function testDefaultValidIsFalse()
     {
         $transport = $this->createTransport();
-        $evt = new Swift_Events_ResponseEvent($transport, "550 Failed\r\n");
+        $evt       = new Swift_Events_ResponseEvent($transport, "550 Failed\r\n");
         $this->assertFalse($evt->isValid());
     }
 
@@ -65,7 +65,7 @@ class Swift_Events_ResponseEventTest extends PHPUnit\Framework\TestCase
     public function testMultiLineResponse()
     {
         $response = "250-SIZE 35882577\r\n250-8BITMIME\r\n250 DSN\r\n";
-        $evt = $this->createEvent($this->createTransport(), $response, true);
+        $evt      = $this->createEvent($this->createTransport(), $response, true);
         $this->assertEquals($response, $evt->getResponse());
     }
 

@@ -1,6 +1,6 @@
 <?php
 
-class Swift_SendResultExtraTest extends \PHPUnit\Framework\TestCase
+class Swift_SendResultExtraTest extends PHPUnit\Framework\TestCase
 {
     public function testPendingValue(): void
     {
@@ -88,8 +88,8 @@ class Swift_SendResultExtraTest extends \PHPUnit\Framework\TestCase
 
     public function testValuesAreDistinct(): void
     {
-        $values = array_map(fn ($c) => $c->value, Swift_SendResult::cases());
-        $this->assertSame($values, array_unique($values));
+        $values = \array_map(fn ($c) => $c->value, Swift_SendResult::cases());
+        $this->assertSame($values, \array_unique($values));
     }
 
     public function testCompatibilityWithSendEventConstants(): void

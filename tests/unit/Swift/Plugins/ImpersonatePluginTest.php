@@ -13,7 +13,7 @@ class Swift_Plugins_ImpersonatePluginTest extends PHPUnit\Framework\TestCase
             ->setReturnPath('original@example.com');
 
         $transport = $this->createMock(Swift_Transport::class);
-        $event = new Swift_Events_SendEvent($transport, $message);
+        $event     = new Swift_Events_SendEvent($transport, $message);
 
         $plugin->beforeSendPerformed($event);
 
@@ -31,7 +31,7 @@ class Swift_Plugins_ImpersonatePluginTest extends PHPUnit\Framework\TestCase
             ->setReturnPath('original@example.com');
 
         $transport = $this->createMock(Swift_Transport::class);
-        $event = new Swift_Events_SendEvent($transport, $message);
+        $event     = new Swift_Events_SendEvent($transport, $message);
 
         $plugin->beforeSendPerformed($event);
 
@@ -49,7 +49,7 @@ class Swift_Plugins_ImpersonatePluginTest extends PHPUnit\Framework\TestCase
             ->setReturnPath('original@example.com');
 
         $transport = $this->createMock(Swift_Transport::class);
-        $event = new Swift_Events_SendEvent($transport, $message);
+        $event     = new Swift_Events_SendEvent($transport, $message);
 
         $plugin->beforeSendPerformed($event);
         $this->assertSame('impersonate@example.com', $message->getReturnPath());
@@ -69,7 +69,7 @@ class Swift_Plugins_ImpersonatePluginTest extends PHPUnit\Framework\TestCase
             ->setReturnPath('original@example.com');
 
         $transport = $this->createMock(Swift_Transport::class);
-        $event = new Swift_Events_SendEvent($transport, $message);
+        $event     = new Swift_Events_SendEvent($transport, $message);
 
         $plugin->beforeSendPerformed($event);
         $plugin->sendPerformed($event);
@@ -88,7 +88,7 @@ class Swift_Plugins_ImpersonatePluginTest extends PHPUnit\Framework\TestCase
             ->setReturnPath('original@example.com');
 
         $transport = $this->createMock(Swift_Transport::class);
-        $event = new Swift_Events_SendEvent($transport, $message);
+        $event     = new Swift_Events_SendEvent($transport, $message);
 
         // sendPerformed without prior beforeSendPerformed should not crash
         $plugin->sendPerformed($event);
@@ -104,7 +104,7 @@ class Swift_Plugins_ImpersonatePluginTest extends PHPUnit\Framework\TestCase
 
     public function testMultipleMessagesCanBeImpersonated()
     {
-        $plugin = new Swift_Plugins_ImpersonatePlugin('impersonate@example.com');
+        $plugin    = new Swift_Plugins_ImpersonatePlugin('impersonate@example.com');
         $transport = $this->createMock(Swift_Transport::class);
 
         // First message
@@ -144,7 +144,7 @@ class Swift_Plugins_ImpersonatePluginTest extends PHPUnit\Framework\TestCase
             ->setSubject('Test');
 
         $transport = $this->createMock(Swift_Transport::class);
-        $event = new Swift_Events_SendEvent($transport, $message);
+        $event     = new Swift_Events_SendEvent($transport, $message);
 
         $plugin->beforeSendPerformed($event);
         $this->assertSame('impersonate@example.com', $message->getReturnPath());

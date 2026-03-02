@@ -209,18 +209,18 @@ class Swift_Webhook_Converter_MailjetConverterTest extends PHPUnit\Framework\Tes
     public function testConvertExtractsAllMetadata()
     {
         $payload = [
-            'event'          => 'click',
-            'time'           => 1706000000,
-            'email'          => 'user@example.com',
-            'Message_GUID'   => 'msg-meta',
-            'url'            => 'https://example.com',
-            'ip'             => '1.2.3.4',
-            'agent'          => 'Mozilla/5.0',
-            'geo'            => 'US',
-            'error'          => 'some error',
+            'event'            => 'click',
+            'time'             => 1706000000,
+            'email'            => 'user@example.com',
+            'Message_GUID'     => 'msg-meta',
+            'url'              => 'https://example.com',
+            'ip'               => '1.2.3.4',
+            'agent'            => 'Mozilla/5.0',
+            'geo'              => 'US',
+            'error'            => 'some error',
             'error_related_to' => 'system',
-            'CustomID'       => 'custom-123',
-            'Payload'        => 'payload-data',
+            'CustomID'         => 'custom-123',
+            'Payload'          => 'payload-data',
         ];
 
         $events   = $this->converter->convert($payload, []);

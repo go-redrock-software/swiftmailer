@@ -1,6 +1,6 @@
 <?php
 
-class Swift_Transport_RetryTransportExtraTest extends \PHPUnit\Framework\TestCase
+class Swift_Transport_RetryTransportExtraTest extends PHPUnit\Framework\TestCase
 {
     public function testImplementsSwiftTransport(): void
     {
@@ -66,7 +66,7 @@ class Swift_Transport_RetryTransportExtraTest extends \PHPUnit\Framework\TestCas
 
     public function testRegisterPluginDelegatesToInner(): void
     {
-        $inner = $this->createMock(Swift_Transport::class);
+        $inner  = $this->createMock(Swift_Transport::class);
         $plugin = $this->createMock(Swift_Events_EventListener::class);
         $inner->expects($this->once())->method('registerPlugin')->with($plugin);
         $retry = new Swift_Transport_RetryTransport($inner);
@@ -75,7 +75,7 @@ class Swift_Transport_RetryTransportExtraTest extends \PHPUnit\Framework\TestCas
 
     public function testSendDelegatesToInner(): void
     {
-        $inner = $this->createMock(Swift_Transport::class);
+        $inner   = $this->createMock(Swift_Transport::class);
         $message = $this->createMessage();
         $inner->expects($this->once())->method('send')->willReturn(1);
 
@@ -85,7 +85,7 @@ class Swift_Transport_RetryTransportExtraTest extends \PHPUnit\Framework\TestCas
 
     public function testSendReturnsInnerResult(): void
     {
-        $inner = $this->createMock(Swift_Transport::class);
+        $inner   = $this->createMock(Swift_Transport::class);
         $message = $this->createMessage();
         $inner->method('send')->willReturn(5);
 
@@ -95,7 +95,7 @@ class Swift_Transport_RetryTransportExtraTest extends \PHPUnit\Framework\TestCas
 
     public function testDefaultMaxRetriesIsThree(): void
     {
-        $inner = $this->createMock(Swift_Transport::class);
+        $inner   = $this->createMock(Swift_Transport::class);
         $message = $this->createMessage();
 
         // Default = 3 retries = 4 total attempts
@@ -111,7 +111,7 @@ class Swift_Transport_RetryTransportExtraTest extends \PHPUnit\Framework\TestCas
 
     public function testCustomMaxRetries(): void
     {
-        $inner = $this->createMock(Swift_Transport::class);
+        $inner   = $this->createMock(Swift_Transport::class);
         $message = $this->createMessage();
 
         // maxRetries=1 = 2 total attempts
@@ -127,7 +127,7 @@ class Swift_Transport_RetryTransportExtraTest extends \PHPUnit\Framework\TestCas
 
     public function testCustomMaxRetries5(): void
     {
-        $inner = $this->createMock(Swift_Transport::class);
+        $inner   = $this->createMock(Swift_Transport::class);
         $message = $this->createMessage();
 
         // maxRetries=5 = 6 total attempts
@@ -143,7 +143,7 @@ class Swift_Transport_RetryTransportExtraTest extends \PHPUnit\Framework\TestCas
 
     public function testRetryThenSucceed(): void
     {
-        $inner = $this->createMock(Swift_Transport::class);
+        $inner   = $this->createMock(Swift_Transport::class);
         $message = $this->createMessage();
 
         $inner->expects($this->exactly(2))
@@ -159,7 +159,7 @@ class Swift_Transport_RetryTransportExtraTest extends \PHPUnit\Framework\TestCas
 
     public function testRetryTwiceThenSucceed(): void
     {
-        $inner = $this->createMock(Swift_Transport::class);
+        $inner   = $this->createMock(Swift_Transport::class);
         $message = $this->createMessage();
 
         $inner->expects($this->exactly(3))
@@ -176,7 +176,7 @@ class Swift_Transport_RetryTransportExtraTest extends \PHPUnit\Framework\TestCas
 
     public function testDoesNotRetryOnPermanentFailure(): void
     {
-        $inner = $this->createMock(Swift_Transport::class);
+        $inner   = $this->createMock(Swift_Transport::class);
         $message = $this->createMessage();
 
         $inner->expects($this->once())
@@ -192,7 +192,7 @@ class Swift_Transport_RetryTransportExtraTest extends \PHPUnit\Framework\TestCas
 
     public function testDoesNotRetrySmtp550(): void
     {
-        $inner = $this->createMock(Swift_Transport::class);
+        $inner   = $this->createMock(Swift_Transport::class);
         $message = $this->createMessage();
 
         $inner->expects($this->once())
@@ -207,7 +207,7 @@ class Swift_Transport_RetryTransportExtraTest extends \PHPUnit\Framework\TestCas
 
     public function testRetriesSmtp421(): void
     {
-        $inner = $this->createMock(Swift_Transport::class);
+        $inner   = $this->createMock(Swift_Transport::class);
         $message = $this->createMessage();
 
         $inner->expects($this->exactly(2))
@@ -223,7 +223,7 @@ class Swift_Transport_RetryTransportExtraTest extends \PHPUnit\Framework\TestCas
 
     public function testRetriesHttp429(): void
     {
-        $inner = $this->createMock(Swift_Transport::class);
+        $inner   = $this->createMock(Swift_Transport::class);
         $message = $this->createMessage();
 
         $inner->expects($this->exactly(2))
@@ -239,7 +239,7 @@ class Swift_Transport_RetryTransportExtraTest extends \PHPUnit\Framework\TestCas
 
     public function testRetriesHttp500(): void
     {
-        $inner = $this->createMock(Swift_Transport::class);
+        $inner   = $this->createMock(Swift_Transport::class);
         $message = $this->createMessage();
 
         $inner->expects($this->exactly(2))
@@ -255,18 +255,19 @@ class Swift_Transport_RetryTransportExtraTest extends \PHPUnit\Framework\TestCas
 
     public function testFailedRecipientsPassedThrough(): void
     {
-        $inner = $this->createMock(Swift_Transport::class);
+        $inner   = $this->createMock(Swift_Transport::class);
         $message = $this->createMessage();
 
         $inner->method('send')
             ->willReturnCallback(function ($msg, &$failed = null) {
                 $failed = ['fail@example.com'];
+
                 return 0;
             });
 
         $failedRecipients = [];
-        $retry = new Swift_Transport_RetryTransport($inner, baseDelayMs: 0);
-        $result = $retry->send($message, $failedRecipients);
+        $retry            = new Swift_Transport_RetryTransport($inner, baseDelayMs: 0);
+        $result           = $retry->send($message, $failedRecipients);
 
         $this->assertSame(0, $result);
         $this->assertSame(['fail@example.com'], $failedRecipients);
@@ -274,7 +275,7 @@ class Swift_Transport_RetryTransportExtraTest extends \PHPUnit\Framework\TestCas
 
     public function testCustomClassifierNeverRetries(): void
     {
-        $inner = $this->createMock(Swift_Transport::class);
+        $inner   = $this->createMock(Swift_Transport::class);
         $message = $this->createMessage();
 
         $classifier = new class implements Swift_Transport_RetryClassifier {
@@ -296,7 +297,7 @@ class Swift_Transport_RetryTransportExtraTest extends \PHPUnit\Framework\TestCas
 
     public function testCustomClassifierAlwaysRetries(): void
     {
-        $inner = $this->createMock(Swift_Transport::class);
+        $inner   = $this->createMock(Swift_Transport::class);
         $message = $this->createMessage();
 
         $classifier = new class implements Swift_Transport_RetryClassifier {
@@ -320,9 +321,9 @@ class Swift_Transport_RetryTransportExtraTest extends \PHPUnit\Framework\TestCas
     public function testRestartsTransportAfterFailure(): void
     {
         $startCount = 0;
-        $sendCount = 0;
+        $sendCount  = 0;
 
-        $inner = $this->createMock(Swift_Transport::class);
+        $inner   = $this->createMock(Swift_Transport::class);
         $message = $this->createMessage();
 
         $inner->method('isStarted')->willReturn(false);
@@ -334,10 +335,11 @@ class Swift_Transport_RetryTransportExtraTest extends \PHPUnit\Framework\TestCas
             if (1 === $sendCount) {
                 throw new Swift_TransportException('Connection lost', 0);
             }
+
             return 1;
         });
 
-        $retry = new Swift_Transport_RetryTransport($inner, maxRetries: 3, baseDelayMs: 0);
+        $retry  = new Swift_Transport_RetryTransport($inner, maxRetries: 3, baseDelayMs: 0);
         $result = $retry->send($message);
 
         $this->assertSame(1, $result);
@@ -346,8 +348,8 @@ class Swift_Transport_RetryTransportExtraTest extends \PHPUnit\Framework\TestCas
 
     public function testEnvelopeIsPassedThrough(): void
     {
-        $inner = $this->createMock(Swift_Transport::class);
-        $message = $this->createMessage();
+        $inner    = $this->createMock(Swift_Transport::class);
+        $message  = $this->createMessage();
         $envelope = new Swift_Envelope('sender@example.com', ['to@example.com']);
 
         $inner->expects($this->once())
@@ -361,7 +363,7 @@ class Swift_Transport_RetryTransportExtraTest extends \PHPUnit\Framework\TestCas
 
     public function testSendWithZeroMaxRetries(): void
     {
-        $inner = $this->createMock(Swift_Transport::class);
+        $inner   = $this->createMock(Swift_Transport::class);
         $message = $this->createMessage();
 
         // maxRetries=0 means no retries at all, just one attempt
@@ -377,7 +379,7 @@ class Swift_Transport_RetryTransportExtraTest extends \PHPUnit\Framework\TestCas
 
     public function testSendSucceedsOnFirstAttempt(): void
     {
-        $inner = $this->createMock(Swift_Transport::class);
+        $inner   = $this->createMock(Swift_Transport::class);
         $message = $this->createMessage();
 
         $inner->expects($this->once())->method('send')->willReturn(3);
@@ -388,7 +390,7 @@ class Swift_Transport_RetryTransportExtraTest extends \PHPUnit\Framework\TestCas
 
     public function testLastExceptionIsThrown(): void
     {
-        $inner = $this->createMock(Swift_Transport::class);
+        $inner   = $this->createMock(Swift_Transport::class);
         $message = $this->createMessage();
 
         $inner->expects($this->exactly(2))

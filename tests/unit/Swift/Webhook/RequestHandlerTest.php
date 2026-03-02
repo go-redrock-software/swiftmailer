@@ -114,7 +114,7 @@ class Swift_Webhook_RequestHandlerTest extends PHPUnit\Framework\TestCase
         $converter->method('getProviderName')->willReturn('test');
 
         $handler = new Swift_Webhook_RequestHandler();
-        $result = $handler->handle($converter, '{}', [], 'secret');
+        $result  = $handler->handle($converter, '{}', [], 'secret');
 
         $this->assertIsArray($result);
         $this->assertCount(0, $result);
@@ -128,7 +128,7 @@ class Swift_Webhook_RequestHandlerTest extends PHPUnit\Framework\TestCase
         $converter->method('getProviderName')->willReturn('test');
 
         $handler = new Swift_Webhook_RequestHandler();
-        $result = $handler->handle($converter, '[]', [], 'secret');
+        $result  = $handler->handle($converter, '[]', [], 'secret');
 
         $this->assertIsArray($result);
     }
@@ -144,7 +144,7 @@ class Swift_Webhook_RequestHandlerTest extends PHPUnit\Framework\TestCase
         $converter->method('getProviderName')->willReturn('test');
 
         $handler = new Swift_Webhook_RequestHandler();
-        $result = $handler->handle($converter, '{"events":[]}', [], 'secret');
+        $result  = $handler->handle($converter, '{"events":[]}', [], 'secret');
 
         $this->assertCount(2, $result);
         $this->assertSame('bounced', $result[0]->getName());

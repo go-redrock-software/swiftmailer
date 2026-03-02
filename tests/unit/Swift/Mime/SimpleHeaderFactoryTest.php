@@ -246,7 +246,7 @@ class Swift_Mime_SimpleHeaderFactoryTest extends PHPUnit\Framework\TestCase
 
     public function testCloneProducesIndependentCopy()
     {
-        $clone = clone $this->factory;
+        $clone   = clone $this->factory;
         $header1 = $this->factory->createTextHeader('X-Foo', 'bar');
         $header2 = $clone->createTextHeader('X-Foo', 'baz');
         $this->assertEquals('bar', $header1->getFieldBodyModel());

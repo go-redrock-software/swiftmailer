@@ -3,7 +3,6 @@
 namespace Swift\Transport;
 
 use GuzzleHttp\ClientInterface;
-use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\TestCase;
 
 class Swift_Transport_AbstractHttpApiTransportExtraTest extends TestCase
@@ -14,7 +13,7 @@ class Swift_Transport_AbstractHttpApiTransportExtraTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->httpClientMock = $this->createMock(ClientInterface::class);
+        $this->httpClientMock      = $this->createMock(ClientInterface::class);
         $this->eventDispatcherMock = $this->createMock(\Swift_Events_EventDispatcher::class);
     }
 
@@ -111,14 +110,14 @@ class Swift_Transport_AbstractHttpApiTransportExtraTest extends TestCase
     public function testCountRecipientsWithToOnly(): void
     {
         $transport = $this->createConcreteTransport();
-        $message = (new \Swift_Message())->setTo(['to@example.com' => 'To']);
+        $message   = (new \Swift_Message())->setTo(['to@example.com' => 'To']);
         $this->assertSame(1, $transport->testCountRecipients($message));
     }
 
     public function testCountRecipientsWithToCcBcc(): void
     {
         $transport = $this->createConcreteTransport();
-        $message = (new \Swift_Message())
+        $message   = (new \Swift_Message())
             ->setTo(['to@example.com' => 'To'])
             ->setCc(['cc@example.com' => 'CC'])
             ->setBcc(['bcc@example.com' => 'BCC']);
@@ -128,7 +127,7 @@ class Swift_Transport_AbstractHttpApiTransportExtraTest extends TestCase
     public function testCountRecipientsWithMultipleTo(): void
     {
         $transport = $this->createConcreteTransport();
-        $message = (new \Swift_Message())
+        $message   = (new \Swift_Message())
             ->setTo(['a@example.com' => 'A', 'b@example.com' => 'B', 'c@example.com' => 'C']);
         $this->assertSame(3, $transport->testCountRecipients($message));
     }
@@ -136,7 +135,7 @@ class Swift_Transport_AbstractHttpApiTransportExtraTest extends TestCase
     public function testCountRecipientsWithNoRecipients(): void
     {
         $transport = $this->createConcreteTransport();
-        $message = new \Swift_Message();
+        $message   = new \Swift_Message();
         $this->assertSame(0, $transport->testCountRecipients($message));
     }
 
@@ -145,14 +144,14 @@ class Swift_Transport_AbstractHttpApiTransportExtraTest extends TestCase
     public function testCollectRecipientsWithToOnly(): void
     {
         $transport = $this->createConcreteTransport();
-        $message = (new \Swift_Message())->setTo(['to@example.com' => 'To']);
+        $message   = (new \Swift_Message())->setTo(['to@example.com' => 'To']);
         $this->assertSame(['to@example.com'], $transport->testCollectRecipients($message));
     }
 
     public function testCollectRecipientsWithToCcBcc(): void
     {
         $transport = $this->createConcreteTransport();
-        $message = (new \Swift_Message())
+        $message   = (new \Swift_Message())
             ->setTo(['to@example.com' => 'To'])
             ->setCc(['cc@example.com' => 'CC'])
             ->setBcc(['bcc@example.com' => 'BCC']);
@@ -166,7 +165,7 @@ class Swift_Transport_AbstractHttpApiTransportExtraTest extends TestCase
     public function testCollectRecipientsWithNoRecipients(): void
     {
         $transport = $this->createConcreteTransport();
-        $message = new \Swift_Message();
+        $message   = new \Swift_Message();
         $this->assertSame([], $transport->testCollectRecipients($message));
     }
 
@@ -175,14 +174,14 @@ class Swift_Transport_AbstractHttpApiTransportExtraTest extends TestCase
     public function testGetEnvelopeSenderFromMessage(): void
     {
         $transport = $this->createConcreteTransport();
-        $message = (new \Swift_Message())->setFrom(['from@example.com' => 'From']);
+        $message   = (new \Swift_Message())->setFrom(['from@example.com' => 'From']);
         $this->assertSame('from@example.com', $transport->testGetEnvelopeSender($message));
     }
 
     public function testGetEnvelopeSenderReturnsNullWhenNoFrom(): void
     {
         $transport = $this->createConcreteTransport();
-        $message = new \Swift_Message();
+        $message   = new \Swift_Message();
         $this->assertNull($transport->testGetEnvelopeSender($message));
     }
 
@@ -218,14 +217,14 @@ class Swift_Transport_AbstractHttpApiTransportExtraTest extends TestCase
     public function testFormatAddressesSingle(): void
     {
         $transport = $this->createConcreteTransport();
-        $result = $transport->testFormatAddresses(['test@example.com' => 'Test']);
+        $result    = $transport->testFormatAddresses(['test@example.com' => 'Test']);
         $this->assertSame(['Test <test@example.com>'], $result);
     }
 
     public function testFormatAddressesMultiple(): void
     {
         $transport = $this->createConcreteTransport();
-        $result = $transport->testFormatAddresses([
+        $result    = $transport->testFormatAddresses([
             'a@example.com' => 'Alice',
             'b@example.com' => 'Bob',
         ]);
@@ -235,7 +234,7 @@ class Swift_Transport_AbstractHttpApiTransportExtraTest extends TestCase
     public function testFormatAddressesWithNullNames(): void
     {
         $transport = $this->createConcreteTransport();
-        $result = $transport->testFormatAddresses([
+        $result    = $transport->testFormatAddresses([
             'a@example.com' => null,
             'b@example.com' => null,
         ]);
@@ -253,7 +252,7 @@ class Swift_Transport_AbstractHttpApiTransportExtraTest extends TestCase
     public function testGetMessageBodyPlainText(): void
     {
         $transport = $this->createConcreteTransport();
-        $message = (new \Swift_Message())
+        $message   = (new \Swift_Message())
             ->setTo(['to@example.com' => 'To'])
             ->setBody('Hello plain', 'text/plain');
         $result = $transport->testGetMessageBody($message);
@@ -264,7 +263,7 @@ class Swift_Transport_AbstractHttpApiTransportExtraTest extends TestCase
     public function testGetMessageBodyHtml(): void
     {
         $transport = $this->createConcreteTransport();
-        $message = (new \Swift_Message())
+        $message   = (new \Swift_Message())
             ->setTo(['to@example.com' => 'To'])
             ->setBody('<p>Hello</p>', 'text/html');
         $result = $transport->testGetMessageBody($message);
@@ -275,7 +274,7 @@ class Swift_Transport_AbstractHttpApiTransportExtraTest extends TestCase
     public function testGetMessageBodyWithAlternativeParts(): void
     {
         $transport = $this->createConcreteTransport();
-        $message = (new \Swift_Message())
+        $message   = (new \Swift_Message())
             ->setTo(['to@example.com' => 'To'])
             ->setBody('Plain text', 'text/plain')
             ->addPart('<p>HTML</p>', 'text/html');
@@ -289,15 +288,15 @@ class Swift_Transport_AbstractHttpApiTransportExtraTest extends TestCase
     public function testExtractTagsNoTags(): void
     {
         $transport = $this->createConcreteTransport();
-        $message = (new \Swift_Message())->setTo(['to@example.com' => 'To']);
-        $tags = $transport->testExtractTags($message);
+        $message   = (new \Swift_Message())->setTo(['to@example.com' => 'To']);
+        $tags      = $transport->testExtractTags($message);
         $this->assertSame([], $tags);
     }
 
     public function testExtractTagsSingleTag(): void
     {
         $transport = $this->createConcreteTransport();
-        $message = (new \Swift_Message())->setTo(['to@example.com' => 'To']);
+        $message   = (new \Swift_Message())->setTo(['to@example.com' => 'To']);
         $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'campaign-1');
         $tags = $transport->testExtractTags($message);
         $this->assertSame(['campaign-1'], $tags);
@@ -306,7 +305,7 @@ class Swift_Transport_AbstractHttpApiTransportExtraTest extends TestCase
     public function testExtractTagsMultipleTags(): void
     {
         $transport = $this->createConcreteTransport();
-        $message = (new \Swift_Message())->setTo(['to@example.com' => 'To']);
+        $message   = (new \Swift_Message())->setTo(['to@example.com' => 'To']);
         $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'tag-1');
         $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'tag-2');
         $tags = $transport->testExtractTags($message);
@@ -316,7 +315,7 @@ class Swift_Transport_AbstractHttpApiTransportExtraTest extends TestCase
     public function testExtractTagsRemovesHeaders(): void
     {
         $transport = $this->createConcreteTransport();
-        $message = (new \Swift_Message())->setTo(['to@example.com' => 'To']);
+        $message   = (new \Swift_Message())->setTo(['to@example.com' => 'To']);
         $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'tag-1');
         $transport->testExtractTags($message);
         $this->assertFalse($message->getHeaders()->has('X-Mailer-Tag'));
@@ -327,15 +326,15 @@ class Swift_Transport_AbstractHttpApiTransportExtraTest extends TestCase
     public function testExtractMetadataNoMetadata(): void
     {
         $transport = $this->createConcreteTransport();
-        $message = (new \Swift_Message())->setTo(['to@example.com' => 'To']);
-        $metadata = $transport->testExtractMetadata($message);
+        $message   = (new \Swift_Message())->setTo(['to@example.com' => 'To']);
+        $metadata  = $transport->testExtractMetadata($message);
         $this->assertSame([], $metadata);
     }
 
     public function testExtractMetadataSingle(): void
     {
         $transport = $this->createConcreteTransport();
-        $message = (new \Swift_Message())->setTo(['to@example.com' => 'To']);
+        $message   = (new \Swift_Message())->setTo(['to@example.com' => 'To']);
         $message->getHeaders()->addTextHeader('X-Mailer-Metadata-user_id', '123');
         $metadata = $transport->testExtractMetadata($message);
         $this->assertSame(['user_id' => '123'], $metadata);
@@ -344,7 +343,7 @@ class Swift_Transport_AbstractHttpApiTransportExtraTest extends TestCase
     public function testExtractMetadataMultiple(): void
     {
         $transport = $this->createConcreteTransport();
-        $message = (new \Swift_Message())->setTo(['to@example.com' => 'To']);
+        $message   = (new \Swift_Message())->setTo(['to@example.com' => 'To']);
         $message->getHeaders()->addTextHeader('X-Mailer-Metadata-user_id', '123');
         $message->getHeaders()->addTextHeader('X-Mailer-Metadata-env', 'prod');
         $metadata = $transport->testExtractMetadata($message);
@@ -355,7 +354,7 @@ class Swift_Transport_AbstractHttpApiTransportExtraTest extends TestCase
     public function testExtractMetadataRemovesHeaders(): void
     {
         $transport = $this->createConcreteTransport();
-        $message = (new \Swift_Message())->setTo(['to@example.com' => 'To']);
+        $message   = (new \Swift_Message())->setTo(['to@example.com' => 'To']);
         $message->getHeaders()->addTextHeader('X-Mailer-Metadata-user_id', '123');
         $transport->testExtractMetadata($message);
         $this->assertFalse($message->getHeaders()->has('X-Mailer-Metadata-user_id'));
@@ -466,13 +465,13 @@ class Swift_Transport_AbstractHttpApiTransportExtraTest extends TestCase
 
     public function testSendAutoStarts(): void
     {
-        $evt = $this->createMock(\Swift_Events_TransportChangeEvent::class);
+        $evt     = $this->createMock(\Swift_Events_TransportChangeEvent::class);
         $sendEvt = $this->createMock(\Swift_Events_SendEvent::class);
         $this->eventDispatcherMock->method('createTransportChangeEvent')->willReturn($evt);
         $this->eventDispatcherMock->method('createSendEvent')->willReturn($sendEvt);
 
         $transport = $this->createConcreteTransport();
-        $message = (new \Swift_Message())
+        $message   = (new \Swift_Message())
             ->setFrom(['from@example.com' => 'Sender'])
             ->setTo(['to@example.com' => 'Recipient'])
             ->setSubject('Test');
@@ -484,14 +483,14 @@ class Swift_Transport_AbstractHttpApiTransportExtraTest extends TestCase
 
     public function testSendReturnsZeroWhenBubbleCancelled(): void
     {
-        $evt = $this->createMock(\Swift_Events_TransportChangeEvent::class);
+        $evt     = $this->createMock(\Swift_Events_TransportChangeEvent::class);
         $sendEvt = $this->createMock(\Swift_Events_SendEvent::class);
         $sendEvt->method('bubbleCancelled')->willReturn(true);
         $this->eventDispatcherMock->method('createTransportChangeEvent')->willReturn($evt);
         $this->eventDispatcherMock->method('createSendEvent')->willReturn($sendEvt);
 
         $transport = $this->createConcreteTransport();
-        $message = (new \Swift_Message())
+        $message   = (new \Swift_Message())
             ->setFrom(['from@example.com' => 'Sender'])
             ->setTo(['to@example.com' => 'Recipient'])
             ->setSubject('Test');
@@ -502,7 +501,7 @@ class Swift_Transport_AbstractHttpApiTransportExtraTest extends TestCase
 
     public function testSendThrowsOnDoSendException(): void
     {
-        $evt = $this->createMock(\Swift_Events_TransportChangeEvent::class);
+        $evt     = $this->createMock(\Swift_Events_TransportChangeEvent::class);
         $sendEvt = $this->createMock(\Swift_Events_SendEvent::class);
         $this->eventDispatcherMock->method('createTransportChangeEvent')->willReturn($evt);
         $this->eventDispatcherMock->method('createSendEvent')->willReturn($sendEvt);
@@ -547,13 +546,13 @@ class Swift_Transport_AbstractHttpApiTransportExtraTest extends TestCase
 
     public function testActiveEnvelopeIsNullAfterSend(): void
     {
-        $evt = $this->createMock(\Swift_Events_TransportChangeEvent::class);
+        $evt     = $this->createMock(\Swift_Events_TransportChangeEvent::class);
         $sendEvt = $this->createMock(\Swift_Events_SendEvent::class);
         $this->eventDispatcherMock->method('createTransportChangeEvent')->willReturn($evt);
         $this->eventDispatcherMock->method('createSendEvent')->willReturn($sendEvt);
 
         $transport = $this->createConcreteTransport();
-        $message = (new \Swift_Message())
+        $message   = (new \Swift_Message())
             ->setFrom(['from@example.com' => 'Sender'])
             ->setTo(['to@example.com' => 'Recipient'])
             ->setSubject('Test');

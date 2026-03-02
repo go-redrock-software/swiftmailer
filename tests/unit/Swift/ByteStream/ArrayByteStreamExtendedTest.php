@@ -175,7 +175,7 @@ class Swift_ByteStream_ArrayByteStreamExtendedTest extends PHPUnit\Framework\Tes
     public function testLargeWrite()
     {
         $stream = new Swift_ByteStream_ArrayByteStream();
-        $data   = str_repeat('x', 10000);
+        $data   = \str_repeat('x', 10000);
         $stream->write($data);
         $result = '';
         while (false !== $chunk = $stream->read(1024)) {

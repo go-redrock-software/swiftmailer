@@ -5,7 +5,7 @@ class Swift_Signers_DomainKeySignerTest extends PHPUnit\Framework\TestCase
     private function createSigner(): Swift_Signers_DomainKeySigner
     {
         return new Swift_Signers_DomainKeySigner(
-            file_get_contents(dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
             'dummy.nxdomain.be',
             'dummySelector',
         );

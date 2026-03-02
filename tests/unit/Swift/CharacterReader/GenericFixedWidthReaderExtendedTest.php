@@ -82,10 +82,10 @@ class Swift_CharacterReader_GenericFixedWidthReaderExtendedTest extends PHPUnit\
 
     public function testGetCharPositionsSingleByte()
     {
-        $reader = new Swift_CharacterReader_GenericFixedWidthReader(1);
-        $map    = null;
+        $reader  = new Swift_CharacterReader_GenericFixedWidthReader(1);
+        $map     = null;
         $ignored = null;
-        $count  = $reader->getCharPositions('abcde', 0, $map, $ignored);
+        $count   = $reader->getCharPositions('abcde', 0, $map, $ignored);
         $this->assertEquals(5, $count);
         $this->assertEquals(1, $map);
     }

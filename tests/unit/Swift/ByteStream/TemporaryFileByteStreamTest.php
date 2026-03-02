@@ -63,15 +63,15 @@ class Swift_ByteStream_TemporaryFileByteStreamTest extends PHPUnit\Framework\Tes
     public function testPathIsInSystemTempDir()
     {
         $stream  = new Swift_ByteStream_TemporaryFileByteStream();
-        $tempDir = realpath(sys_get_temp_dir());
-        $path    = realpath(dirname($stream->getPath()));
+        $tempDir = \realpath(\sys_get_temp_dir());
+        $path    = \realpath(\dirname($stream->getPath()));
         $this->assertStringStartsWith($tempDir, $path);
     }
 
     public function testPathContainsFileByteStreamPrefix()
     {
         $stream   = new Swift_ByteStream_TemporaryFileByteStream();
-        $basename = basename($stream->getPath());
+        $basename = \basename($stream->getPath());
         $this->assertStringStartsWith('FileByteStream', $basename);
     }
 

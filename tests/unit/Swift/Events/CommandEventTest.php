@@ -43,7 +43,7 @@ class Swift_Events_CommandEventTest extends PHPUnit\Framework\TestCase
     public function testInheritsEventObject()
     {
         $transport = $this->createTransport();
-        $evt = $this->createEvent($transport, "QUIT\r\n");
+        $evt       = $this->createEvent($transport, "QUIT\r\n");
         $this->assertInstanceOf(Swift_Events_EventObject::class, $evt);
     }
 
@@ -58,14 +58,14 @@ class Swift_Events_CommandEventTest extends PHPUnit\Framework\TestCase
     public function testCommandWithSpecialCharacters()
     {
         $command = "AUTH LOGIN dXNlcm5hbWU=\r\n";
-        $evt = $this->createEvent($this->createTransport(), $command);
+        $evt     = $this->createEvent($this->createTransport(), $command);
         $this->assertEquals($command, $evt->getCommand());
     }
 
     public function testLongCommand()
     {
-        $command = 'DATA '.str_repeat('x', 500)."\r\n";
-        $evt = $this->createEvent($this->createTransport(), $command);
+        $command = 'DATA '.\str_repeat('x', 500)."\r\n";
+        $evt     = $this->createEvent($this->createTransport(), $command);
         $this->assertEquals($command, $evt->getCommand());
     }
 

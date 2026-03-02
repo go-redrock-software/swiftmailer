@@ -142,7 +142,7 @@ class Swift_KeyCache_ArrayKeyCacheExtendedTest extends PHPUnit\Framework\TestCas
     public function testLargeData()
     {
         $cache = $this->createCache();
-        $data  = str_repeat('x', 50000);
+        $data  = \str_repeat('x', 50000);
         $cache->setString('ns', 'key', $data, Swift_KeyCache::MODE_WRITE);
         $this->assertEquals($data, $cache->getString('ns', 'key'));
     }

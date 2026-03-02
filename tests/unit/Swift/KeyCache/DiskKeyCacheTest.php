@@ -6,8 +6,8 @@ class Swift_KeyCache_DiskKeyCacheTest extends PHPUnit\Framework\TestCase
 
     protected function setUp(): void
     {
-        $this->cachePath = sys_get_temp_dir().'/swift_test_disk_cache_'.uniqid();
-        mkdir($this->cachePath);
+        $this->cachePath = \sys_get_temp_dir().'/swift_test_disk_cache_'.\uniqid();
+        \mkdir($this->cachePath);
     }
 
     protected function tearDown(): void
@@ -18,26 +18,27 @@ class Swift_KeyCache_DiskKeyCacheTest extends PHPUnit\Framework\TestCase
 
     private function removeDir(string $dir): void
     {
-        if (!is_dir($dir)) {
+        if (!\is_dir($dir)) {
             return;
         }
-        foreach (scandir($dir) as $item) {
+        foreach (\scandir($dir) as $item) {
             if ('.' === $item || '..' === $item) {
                 continue;
             }
             $path = $dir.'/'.$item;
-            if (is_dir($path)) {
+            if (\is_dir($path)) {
                 $this->removeDir($path);
             } else {
-                @unlink($path);
+                @\unlink($path);
             }
         }
-        @rmdir($dir);
+        @\rmdir($dir);
     }
 
     private function createCache(): Swift_KeyCache_DiskKeyCache
     {
         $stream = new Swift_KeyCache_SimpleKeyCacheInputStream();
+
         return new Swift_KeyCache_DiskKeyCache($stream, $this->cachePath);
     }
 
@@ -197,7 +198,7 @@ class Swift_KeyCache_DiskKeyCacheTest extends PHPUnit\Framework\TestCase
     public function testSetStringLargeContent()
     {
         $cache   = $this->createCache();
-        $content = str_repeat('x', 100000);
+        $content = \str_repeat('x', 100000);
         $cache->setString('ns1', 'key1', $content, Swift_KeyCache::MODE_WRITE);
         $this->assertEquals($content, $cache->getString('ns1', 'key1'));
     }

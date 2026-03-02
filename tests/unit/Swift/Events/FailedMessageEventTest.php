@@ -33,7 +33,7 @@ class Swift_Events_FailedMessageEventTest extends PHPUnit\Framework\TestCase
     public function testInheritsEventObject()
     {
         $transport = $this->createMock(Swift_Transport::class);
-        $message = (new Swift_Message())->setTo(['a@b.com' => 'A']);
+        $message   = (new Swift_Message())->setTo(['a@b.com' => 'A']);
         $exception = new Swift_TransportException('error');
 
         $event = new Swift_Events_FailedMessageEvent($transport, $message, $exception);
@@ -43,7 +43,7 @@ class Swift_Events_FailedMessageEventTest extends PHPUnit\Framework\TestCase
     public function testBubbleCancellation()
     {
         $transport = $this->createMock(Swift_Transport::class);
-        $message = (new Swift_Message())->setTo(['a@b.com' => 'A']);
+        $message   = (new Swift_Message())->setTo(['a@b.com' => 'A']);
         $exception = new Swift_TransportException('error');
 
         $event = new Swift_Events_FailedMessageEvent($transport, $message, $exception);
@@ -55,7 +55,7 @@ class Swift_Events_FailedMessageEventTest extends PHPUnit\Framework\TestCase
     public function testGetTransportReturnsSameAsGetSource()
     {
         $transport = $this->createMock(Swift_Transport::class);
-        $message = (new Swift_Message())->setTo(['a@b.com' => 'A']);
+        $message   = (new Swift_Message())->setTo(['a@b.com' => 'A']);
         $exception = new Swift_TransportException('error');
 
         $event = new Swift_Events_FailedMessageEvent($transport, $message, $exception);
@@ -65,12 +65,14 @@ class Swift_Events_FailedMessageEventTest extends PHPUnit\Framework\TestCase
     public function testMultipleFailedRecipients()
     {
         $transport = $this->createMock(Swift_Transport::class);
-        $message = (new Swift_Message())->setTo(['a@b.com' => 'A']);
+        $message   = (new Swift_Message())->setTo(['a@b.com' => 'A']);
         $exception = new Swift_TransportException('error');
 
         $event = new Swift_Events_FailedMessageEvent(
-            $transport, $message, $exception,
-            ['a@b.com', 'c@d.com', 'e@f.com']
+            $transport,
+            $message,
+            $exception,
+            ['a@b.com', 'c@d.com', 'e@f.com'],
         );
 
         $this->assertCount(3, $event->getFailedRecipients());
@@ -80,7 +82,7 @@ class Swift_Events_FailedMessageEventTest extends PHPUnit\Framework\TestCase
     public function testExceptionMessagePreserved()
     {
         $transport = $this->createMock(Swift_Transport::class);
-        $message = (new Swift_Message())->setTo(['a@b.com' => 'A']);
+        $message   = (new Swift_Message())->setTo(['a@b.com' => 'A']);
         $exception = new Swift_TransportException('Connection refused', 111);
 
         $event = new Swift_Events_FailedMessageEvent($transport, $message, $exception);

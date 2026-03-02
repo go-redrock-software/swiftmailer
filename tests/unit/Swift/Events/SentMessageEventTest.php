@@ -19,8 +19,8 @@ class Swift_Events_SentMessageEventTest extends PHPUnit\Framework\TestCase
 
     public function testInheritsEventObject()
     {
-        $transport = $this->createMock(Swift_Transport::class);
-        $message = (new Swift_Message())->setTo(['a@b.com' => 'A']);
+        $transport   = $this->createMock(Swift_Transport::class);
+        $message     = (new Swift_Message())->setTo(['a@b.com' => 'A']);
         $sentMessage = new Swift_SentMessage($message, $transport);
 
         $event = new Swift_Events_SentMessageEvent($transport, $sentMessage);
@@ -29,8 +29,8 @@ class Swift_Events_SentMessageEventTest extends PHPUnit\Framework\TestCase
 
     public function testBubbleCancellation()
     {
-        $transport = $this->createMock(Swift_Transport::class);
-        $message = (new Swift_Message())->setTo(['a@b.com' => 'A']);
+        $transport   = $this->createMock(Swift_Transport::class);
+        $message     = (new Swift_Message())->setTo(['a@b.com' => 'A']);
         $sentMessage = new Swift_SentMessage($message, $transport);
 
         $event = new Swift_Events_SentMessageEvent($transport, $sentMessage);
@@ -41,8 +41,8 @@ class Swift_Events_SentMessageEventTest extends PHPUnit\Framework\TestCase
 
     public function testGetTransportReturnsSameAsGetSource()
     {
-        $transport = $this->createMock(Swift_Transport::class);
-        $message = (new Swift_Message())->setTo(['a@b.com' => 'A']);
+        $transport   = $this->createMock(Swift_Transport::class);
+        $message     = (new Swift_Message())->setTo(['a@b.com' => 'A']);
         $sentMessage = new Swift_SentMessage($message, $transport);
 
         $event = new Swift_Events_SentMessageEvent($transport, $sentMessage);
@@ -51,8 +51,8 @@ class Swift_Events_SentMessageEventTest extends PHPUnit\Framework\TestCase
 
     public function testSentMessageWithMetadata()
     {
-        $transport = $this->createMock(Swift_Transport::class);
-        $message = (new Swift_Message())->setTo(['a@b.com' => 'A']);
+        $transport   = $this->createMock(Swift_Transport::class);
+        $message     = (new Swift_Message())->setTo(['a@b.com' => 'A']);
         $sentMessage = new Swift_SentMessage($message, $transport, ['message_id' => 'test-id-123', 'status' => 'sent']);
 
         $event = new Swift_Events_SentMessageEvent($transport, $sentMessage);

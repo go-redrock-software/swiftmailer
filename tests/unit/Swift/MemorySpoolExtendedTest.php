@@ -133,9 +133,10 @@ class Swift_MemorySpoolExtendedTest extends TestCase
         $callCount = 0;
         $transport->method('send')->willReturnCallback(function () use (&$callCount) {
             ++$callCount;
-            if ($callCount === 1) {
+            if (1 === $callCount) {
                 throw new Swift_TransportException('Temporary failure');
             }
+
             return 1;
         });
 

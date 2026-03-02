@@ -36,7 +36,7 @@ class Swift_Events_TransportExceptionEventTest extends PHPUnit\Framework\TestCas
 
     public function testExceptionMessageIsPreserved()
     {
-        $ex = new Swift_TransportException('Connection timed out');
+        $ex  = new Swift_TransportException('Connection timed out');
         $evt = $this->createEvent($this->createTransport(), $ex);
         $this->assertSame('Connection timed out', $evt->getException()->getMessage());
     }
@@ -51,7 +51,7 @@ class Swift_Events_TransportExceptionEventTest extends PHPUnit\Framework\TestCas
 
     public function testExceptionCodeIsPreserved()
     {
-        $ex = new Swift_TransportException('Failure', 500);
+        $ex  = new Swift_TransportException('Failure', 500);
         $evt = $this->createEvent($this->createTransport(), $ex);
         $this->assertSame(500, $evt->getException()->getCode());
     }
@@ -59,8 +59,8 @@ class Swift_Events_TransportExceptionEventTest extends PHPUnit\Framework\TestCas
     public function testExceptionWithPreviousException()
     {
         $previous = new RuntimeException('Network error');
-        $ex = new Swift_TransportException('Transport failed', 0, $previous);
-        $evt = $this->createEvent($this->createTransport(), $ex);
+        $ex       = new Swift_TransportException('Transport failed', 0, $previous);
+        $evt      = $this->createEvent($this->createTransport(), $ex);
         $this->assertSame($previous, $evt->getException()->getPrevious());
     }
 

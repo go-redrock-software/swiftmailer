@@ -58,9 +58,9 @@ class Swift_Plugins_SentMessagePluginTest extends PHPUnit\Framework\TestCase
 
     public function testResetThenCaptureAgainWorks()
     {
-        $plugin = new Swift_Plugins_SentMessagePlugin();
-        $transport = $this->createMock(Swift_Transport::class);
-        $message = (new Swift_Message())->setTo(['a@b.com' => 'A']);
+        $plugin      = new Swift_Plugins_SentMessagePlugin();
+        $transport   = $this->createMock(Swift_Transport::class);
+        $message     = (new Swift_Message())->setTo(['a@b.com' => 'A']);
         $sentMessage = new Swift_SentMessage($message, $transport, ['message_id' => 'id-1']);
 
         $plugin->sentMessage(new Swift_Events_SentMessageEvent($transport, $sentMessage));
@@ -75,9 +75,9 @@ class Swift_Plugins_SentMessagePluginTest extends PHPUnit\Framework\TestCase
 
     public function testGetLastSentMessageReturnsLatest()
     {
-        $plugin = new Swift_Plugins_SentMessagePlugin();
+        $plugin    = new Swift_Plugins_SentMessagePlugin();
         $transport = $this->createMock(Swift_Transport::class);
-        $message = (new Swift_Message())->setTo(['a@b.com' => 'A']);
+        $message   = (new Swift_Message())->setTo(['a@b.com' => 'A']);
 
         for ($i = 1; $i <= 10; ++$i) {
             $sentMessage = new Swift_SentMessage($message, $transport, ['message_id' => 'id-'.$i]);
@@ -90,9 +90,9 @@ class Swift_Plugins_SentMessagePluginTest extends PHPUnit\Framework\TestCase
 
     public function testGetSentMessagesPreservesOrder()
     {
-        $plugin = new Swift_Plugins_SentMessagePlugin();
+        $plugin    = new Swift_Plugins_SentMessagePlugin();
         $transport = $this->createMock(Swift_Transport::class);
-        $message = (new Swift_Message())->setTo(['a@b.com' => 'A']);
+        $message   = (new Swift_Message())->setTo(['a@b.com' => 'A']);
 
         $sentMsg1 = new Swift_SentMessage($message, $transport, ['message_id' => 'first']);
         $sentMsg2 = new Swift_SentMessage($message, $transport, ['message_id' => 'second']);

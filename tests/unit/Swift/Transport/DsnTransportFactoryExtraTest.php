@@ -1,6 +1,6 @@
 <?php
 
-class Swift_Transport_DsnTransportFactoryExtraTest extends \PHPUnit\Framework\TestCase
+class Swift_Transport_DsnTransportFactoryExtraTest extends PHPUnit\Framework\TestCase
 {
     private Swift_Transport_DsnTransportFactory $factory;
 
@@ -21,6 +21,20 @@ class Swift_Transport_DsnTransportFactoryExtraTest extends \PHPUnit\Framework\Te
     {
         $transport = $this->factory->fromDsnString('null://default');
         $this->assertTrue($transport->isStarted());
+    }
+
+    // --- Sendmail Transport ---
+
+    public function testCreateSendmailTransport(): void
+    {
+        $transport = $this->factory->fromDsnString('sendmail://default');
+        $this->assertInstanceOf(Swift_SendmailTransport::class, $transport);
+    }
+
+    public function testSendmailTransportWithCustomCommand(): void
+    {
+        $transport = $this->factory->fromDsnString('sendmail://default?command=/usr/sbin/sendmail+-oi+-t');
+        $this->assertInstanceOf(Swift_SendmailTransport::class, $transport);
     }
 
     // --- SMTP Transports ---

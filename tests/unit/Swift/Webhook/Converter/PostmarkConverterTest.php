@@ -224,7 +224,7 @@ class Swift_Webhook_Converter_PostmarkConverterTest extends PHPUnit\Framework\Te
     public function testVerifyTimingSafe()
     {
         // Ensure token comparison is timing-safe (using hash_equals)
-        $token = 'correct-token';
+        $token   = 'correct-token';
         $headers = ['x-postmark-webhook-token' => $token];
 
         // Matching token

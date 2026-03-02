@@ -113,7 +113,7 @@ class Swift_Plugins_AntiFloodPluginTest extends PHPUnit\Framework\TestCase
         $transport->expects($this->once())->method('start');
         $transport->expects($this->once())->method('stop');
 
-        $evt = $this->createSendEvent($transport);
+        $evt    = $this->createSendEvent($transport);
         $plugin = new Swift_Plugins_AntiFloodPlugin(5);
 
         for ($i = 0; $i < 5; ++$i) {
@@ -127,7 +127,7 @@ class Swift_Plugins_AntiFloodPluginTest extends PHPUnit\Framework\TestCase
         $transport->expects($this->never())->method('start');
         $transport->expects($this->never())->method('stop');
 
-        $evt = $this->createSendEvent($transport);
+        $evt    = $this->createSendEvent($transport);
         $plugin = new Swift_Plugins_AntiFloodPlugin(10);
 
         for ($i = 0; $i < 9; ++$i) {
@@ -141,7 +141,7 @@ class Swift_Plugins_AntiFloodPluginTest extends PHPUnit\Framework\TestCase
         $sleeper->expects($this->never())->method('sleep');
 
         $transport = $this->createTransport();
-        $evt = $this->createSendEvent($transport);
+        $evt       = $this->createSendEvent($transport);
 
         $plugin = new Swift_Plugins_AntiFloodPlugin(2, 0, $sleeper);
         for ($i = 0; $i < 3; ++$i) {
@@ -155,7 +155,7 @@ class Swift_Plugins_AntiFloodPluginTest extends PHPUnit\Framework\TestCase
         $transport->expects($this->exactly(5))->method('start');
         $transport->expects($this->exactly(5))->method('stop');
 
-        $evt = $this->createSendEvent($transport);
+        $evt    = $this->createSendEvent($transport);
         $plugin = new Swift_Plugins_AntiFloodPlugin(1);
 
         for ($i = 0; $i < 5; ++$i) {

@@ -313,15 +313,15 @@ class Swift_Webhook_Converter_MailtrapConverterTest extends PHPUnit\Framework\Te
         $payload = [
             'events' => [
                 [
-                    'event'           => 'bounce',
-                    'timestamp'       => 1706000000,
-                    'message_id'      => 'msg-bounce-meta',
-                    'email'           => 'user@example.com',
-                    'event_id'        => 'evt-meta',
-                    'response'        => '550 User not found',
-                    'response_code'   => 550,
-                    'bounce_category' => 'spam',
-                    'sending_stream'  => 'transactional',
+                    'event'               => 'bounce',
+                    'timestamp'           => 1706000000,
+                    'message_id'          => 'msg-bounce-meta',
+                    'email'               => 'user@example.com',
+                    'event_id'            => 'evt-meta',
+                    'response'            => '550 User not found',
+                    'response_code'       => 550,
+                    'bounce_category'     => 'spam',
+                    'sending_stream'      => 'transactional',
                     'sending_domain_name' => 'example.com',
                 ],
             ],
@@ -339,14 +339,14 @@ class Swift_Webhook_Converter_MailtrapConverterTest extends PHPUnit\Framework\Te
         $payload = [
             'events' => [
                 [
-                    'event'      => 'click',
-                    'timestamp'  => 1706000000,
-                    'message_id' => 'msg-click-meta',
-                    'email'      => 'user@example.com',
-                    'event_id'   => 'evt-click',
-                    'url'        => 'https://example.com/tracked',
-                    'ip'         => '10.0.0.1',
-                    'user_agent' => 'Chrome/120',
+                    'event'               => 'click',
+                    'timestamp'           => 1706000000,
+                    'message_id'          => 'msg-click-meta',
+                    'email'               => 'user@example.com',
+                    'event_id'            => 'evt-click',
+                    'url'                 => 'https://example.com/tracked',
+                    'ip'                  => '10.0.0.1',
+                    'user_agent'          => 'Chrome/120',
                     'sending_stream'      => 'transactional',
                     'sending_domain_name' => 'example.com',
                 ],
@@ -365,13 +365,13 @@ class Swift_Webhook_Converter_MailtrapConverterTest extends PHPUnit\Framework\Te
         $payload = [
             'events' => [
                 [
-                    'event'            => 'delivery',
-                    'timestamp'        => 1706000000,
-                    'message_id'       => 'msg-custom-vars',
-                    'email'            => 'user@example.com',
-                    'event_id'         => 'evt-cv',
-                    'custom_variables' => ['key1' => 'val1', 'key2' => 'val2'],
-                    'sending_stream'   => 'transactional',
+                    'event'               => 'delivery',
+                    'timestamp'           => 1706000000,
+                    'message_id'          => 'msg-custom-vars',
+                    'email'               => 'user@example.com',
+                    'event_id'            => 'evt-cv',
+                    'custom_variables'    => ['key1' => 'val1', 'key2' => 'val2'],
+                    'sending_stream'      => 'transactional',
                     'sending_domain_name' => 'example.com',
                 ],
             ],
@@ -387,9 +387,9 @@ class Swift_Webhook_Converter_MailtrapConverterTest extends PHPUnit\Framework\Te
         $payload = [
             'events' => [
                 [
-                    'event'     => 'delivery',
-                    'timestamp' => 1706000000,
-                    'event_id'  => 'evt-missing',
+                    'event'               => 'delivery',
+                    'timestamp'           => 1706000000,
+                    'event_id'            => 'evt-missing',
                     'sending_stream'      => 'transactional',
                     'sending_domain_name' => 'example.com',
                 ],
@@ -420,11 +420,11 @@ class Swift_Webhook_Converter_MailtrapConverterTest extends PHPUnit\Framework\Te
             $payload = [
                 'events' => [
                     [
-                        'event'      => $mailtrapEvent,
-                        'timestamp'  => 1706000000,
-                        'message_id' => "msg-{$expectedName}",
-                        'email'      => 'user@example.com',
-                        'event_id'   => 'evt-all',
+                        'event'               => $mailtrapEvent,
+                        'timestamp'           => 1706000000,
+                        'message_id'          => "msg-{$expectedName}",
+                        'email'               => 'user@example.com',
+                        'event_id'            => 'evt-all',
                         'sending_stream'      => 'transactional',
                         'sending_domain_name' => 'example.com',
                     ],
@@ -443,12 +443,12 @@ class Swift_Webhook_Converter_MailtrapConverterTest extends PHPUnit\Framework\Te
         $payload = [
             'events' => [
                 [
-                    'event'      => 'suspension',
-                    'timestamp'  => 1706000000,
-                    'message_id' => 'msg-susp',
-                    'email'      => 'user@example.com',
-                    'event_id'   => 'evt-susp',
-                    'reason'     => 'Daily limit reached',
+                    'event'               => 'suspension',
+                    'timestamp'           => 1706000000,
+                    'message_id'          => 'msg-susp',
+                    'email'               => 'user@example.com',
+                    'event_id'            => 'evt-susp',
+                    'reason'              => 'Daily limit reached',
                     'sending_stream'      => 'transactional',
                     'sending_domain_name' => 'example.com',
                 ],

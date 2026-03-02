@@ -44,7 +44,7 @@ class Swift_Mailer_ArrayRecipientIteratorExtendedTest extends PHPUnit\Framework\
 
     public function testRecipientWithNullName()
     {
-        $it = new Swift_Mailer_ArrayRecipientIterator(['test@test.com' => null]);
+        $it     = new Swift_Mailer_ArrayRecipientIterator(['test@test.com' => null]);
         $result = $it->nextRecipient();
         $this->assertArrayHasKey('test@test.com', $result);
         $this->assertNull($result['test@test.com']);

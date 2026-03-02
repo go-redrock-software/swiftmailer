@@ -32,15 +32,15 @@ class Swift_Mime_IdGeneratorExtendedTest extends PHPUnit\Framework\TestCase
     {
         $gen   = new Swift_Mime_IdGenerator('example.com');
         $id    = $gen->generateId();
-        $parts = explode('@', $id);
-        $this->assertEquals(32, strlen($parts[0]));
+        $parts = \explode('@', $id);
+        $this->assertEquals(32, \strlen($parts[0]));
     }
 
     public function testGenerateIdLeftPartIsHex()
     {
         $gen   = new Swift_Mime_IdGenerator('example.com');
         $id    = $gen->generateId();
-        $parts = explode('@', $id);
+        $parts = \explode('@', $id);
         $this->assertMatchesRegularExpression('/^[0-9a-f]{32}$/', $parts[0]);
     }
 
@@ -51,7 +51,7 @@ class Swift_Mime_IdGeneratorExtendedTest extends PHPUnit\Framework\TestCase
         for ($i = 0; $i < 100; ++$i) {
             $ids[] = $gen->generateId();
         }
-        $this->assertCount(100, array_unique($ids));
+        $this->assertCount(100, \array_unique($ids));
     }
 
     public function testImplementsIdGeneratorInterface()

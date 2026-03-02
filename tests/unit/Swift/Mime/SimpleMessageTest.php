@@ -946,7 +946,7 @@ class Swift_Mime_SimpleMessageTest extends Swift_Mime_MimePartTest
 
     public function testAttachSameChildTwice()
     {
-        $child = $this->createChild();
+        $child   = $this->createChild();
         $message = $this->createMessage(
             $this->createHeaderSet(),
             $this->createEncoder(),
@@ -960,8 +960,8 @@ class Swift_Mime_SimpleMessageTest extends Swift_Mime_MimePartTest
 
     public function testDetachNonAttachedChildDoesNothing()
     {
-        $child1 = $this->createChild();
-        $child2 = $this->createChild();
+        $child1  = $this->createChild();
+        $child2  = $this->createChild();
         $message = $this->createMessage(
             $this->createHeaderSet(),
             $this->createEncoder(),
@@ -1230,7 +1230,7 @@ class Swift_Mime_SimpleMessageTest extends Swift_Mime_MimePartTest
 
     public function testAttachReturnsMessage()
     {
-        $child = $this->createChild();
+        $child   = $this->createChild();
         $message = $this->createMessage(
             $this->createHeaderSet(),
             $this->createEncoder(),
@@ -1242,7 +1242,7 @@ class Swift_Mime_SimpleMessageTest extends Swift_Mime_MimePartTest
 
     public function testDetachReturnsMessage()
     {
-        $child = $this->createChild();
+        $child   = $this->createChild();
         $message = $this->createMessage(
             $this->createHeaderSet(),
             $this->createEncoder(),

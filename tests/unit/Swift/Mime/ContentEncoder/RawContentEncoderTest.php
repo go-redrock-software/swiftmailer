@@ -36,7 +36,7 @@ class Swift_Mime_ContentEncoder_RawContentEncoderTest extends PHPUnit\Framework\
     public function testEncodeStringWithUtf8()
     {
         $encoder = new Swift_Mime_ContentEncoder_RawContentEncoder();
-        $utf8    = "Привет мир";
+        $utf8    = 'Привет мир';
         $this->assertEquals($utf8, $encoder->encodeString($utf8));
     }
 

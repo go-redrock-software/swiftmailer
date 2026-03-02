@@ -48,8 +48,13 @@ class Swift_Webhook_EventTest extends PHPUnit\Framework\TestCase
     public function testDeliveryTypeIsValid()
     {
         $event = new Swift_Webhook_Event(
-            'delivery', 'bounced', 'msg-1', 'user@example.com',
-            [], new DateTimeImmutable(), [],
+            'delivery',
+            'bounced',
+            'msg-1',
+            'user@example.com',
+            [],
+            new DateTimeImmutable(),
+            [],
         );
         $this->assertTrue($event->isDelivery());
         $this->assertFalse($event->isEngagement());
@@ -58,8 +63,13 @@ class Swift_Webhook_EventTest extends PHPUnit\Framework\TestCase
     public function testEngagementTypeIsValid()
     {
         $event = new Swift_Webhook_Event(
-            'engagement', 'opened', 'msg-1', 'user@example.com',
-            [], new DateTimeImmutable(), [],
+            'engagement',
+            'opened',
+            'msg-1',
+            'user@example.com',
+            [],
+            new DateTimeImmutable(),
+            [],
         );
         $this->assertTrue($event->isEngagement());
         $this->assertFalse($event->isDelivery());
@@ -68,8 +78,13 @@ class Swift_Webhook_EventTest extends PHPUnit\Framework\TestCase
     public function testEmptyMetadata()
     {
         $event = new Swift_Webhook_Event(
-            'delivery', 'delivered', 'msg-1', 'user@example.com',
-            [], new DateTimeImmutable(), [],
+            'delivery',
+            'delivered',
+            'msg-1',
+            'user@example.com',
+            [],
+            new DateTimeImmutable(),
+            [],
         );
         $this->assertSame([], $event->getMetadata());
     }
@@ -77,19 +92,29 @@ class Swift_Webhook_EventTest extends PHPUnit\Framework\TestCase
     public function testMetadataWithMultipleKeys()
     {
         $metadata = ['key1' => 'val1', 'key2' => 'val2', 'nested' => ['a' => 'b']];
-        $event = new Swift_Webhook_Event(
-            'delivery', 'delivered', 'msg-1', 'user@example.com',
-            $metadata, new DateTimeImmutable(), [],
+        $event    = new Swift_Webhook_Event(
+            'delivery',
+            'delivered',
+            'msg-1',
+            'user@example.com',
+            $metadata,
+            new DateTimeImmutable(),
+            [],
         );
         $this->assertSame($metadata, $event->getMetadata());
     }
 
     public function testRawPayloadIsPreserved()
     {
-        $raw = ['event' => 'bounce', 'email' => 'test@example.com', 'nested' => ['data' => true]];
+        $raw   = ['event' => 'bounce', 'email' => 'test@example.com', 'nested' => ['data' => true]];
         $event = new Swift_Webhook_Event(
-            'delivery', 'bounced', 'msg-1', 'test@example.com',
-            [], new DateTimeImmutable(), $raw,
+            'delivery',
+            'bounced',
+            'msg-1',
+            'test@example.com',
+            [],
+            new DateTimeImmutable(),
+            $raw,
         );
         $this->assertSame($raw, $event->getRawPayload());
     }
@@ -97,9 +122,14 @@ class Swift_Webhook_EventTest extends PHPUnit\Framework\TestCase
     public function testTimestampIsPreserved()
     {
         $timestamp = new DateTimeImmutable('2026-06-15 12:00:00');
-        $event = new Swift_Webhook_Event(
-            'delivery', 'delivered', 'msg-1', 'user@example.com',
-            [], $timestamp, [],
+        $event     = new Swift_Webhook_Event(
+            'delivery',
+            'delivered',
+            'msg-1',
+            'user@example.com',
+            [],
+            $timestamp,
+            [],
         );
         $this->assertSame($timestamp, $event->getTimestamp());
         $this->assertSame('2026-06-15', $event->getTimestamp()->format('Y-m-d'));
@@ -108,8 +138,13 @@ class Swift_Webhook_EventTest extends PHPUnit\Framework\TestCase
     public function testEmptyMessageId()
     {
         $event = new Swift_Webhook_Event(
-            'delivery', 'delivered', '', 'user@example.com',
-            [], new DateTimeImmutable(), [],
+            'delivery',
+            'delivered',
+            '',
+            'user@example.com',
+            [],
+            new DateTimeImmutable(),
+            [],
         );
         $this->assertSame('', $event->getMessageId());
     }
@@ -117,8 +152,13 @@ class Swift_Webhook_EventTest extends PHPUnit\Framework\TestCase
     public function testEmptyRecipient()
     {
         $event = new Swift_Webhook_Event(
-            'delivery', 'delivered', 'msg-1', '',
-            [], new DateTimeImmutable(), [],
+            'delivery',
+            'delivered',
+            'msg-1',
+            '',
+            [],
+            new DateTimeImmutable(),
+            [],
         );
         $this->assertSame('', $event->getRecipient());
     }
@@ -128,8 +168,13 @@ class Swift_Webhook_EventTest extends PHPUnit\Framework\TestCase
         $names = ['bounced', 'delivered', 'deferred', 'dropped'];
         foreach ($names as $name) {
             $event = new Swift_Webhook_Event(
-                'delivery', $name, 'msg-1', 'user@example.com',
-                [], new DateTimeImmutable(), [],
+                'delivery',
+                $name,
+                'msg-1',
+                'user@example.com',
+                [],
+                new DateTimeImmutable(),
+                [],
             );
             $this->assertSame($name, $event->getName());
         }
@@ -140,8 +185,13 @@ class Swift_Webhook_EventTest extends PHPUnit\Framework\TestCase
         $names = ['opened', 'clicked', 'unsubscribed', 'complained'];
         foreach ($names as $name) {
             $event = new Swift_Webhook_Event(
-                'engagement', $name, 'msg-1', 'user@example.com',
-                [], new DateTimeImmutable(), [],
+                'engagement',
+                $name,
+                'msg-1',
+                'user@example.com',
+                [],
+                new DateTimeImmutable(),
+                [],
             );
             $this->assertSame($name, $event->getName());
         }
@@ -151,8 +201,13 @@ class Swift_Webhook_EventTest extends PHPUnit\Framework\TestCase
     {
         $this->expectException(InvalidArgumentException::class);
         new Swift_Webhook_Event(
-            'deliveries', 'bounced', 'msg-1', 'user@example.com',
-            [], new DateTimeImmutable(), [],
+            'deliveries',
+            'bounced',
+            'msg-1',
+            'user@example.com',
+            [],
+            new DateTimeImmutable(),
+            [],
         );
     }
 
@@ -160,8 +215,13 @@ class Swift_Webhook_EventTest extends PHPUnit\Framework\TestCase
     {
         $this->expectException(InvalidArgumentException::class);
         new Swift_Webhook_Event(
-            '', 'bounced', 'msg-1', 'user@example.com',
-            [], new DateTimeImmutable(), [],
+            '',
+            'bounced',
+            'msg-1',
+            'user@example.com',
+            [],
+            new DateTimeImmutable(),
+            [],
         );
     }
 }

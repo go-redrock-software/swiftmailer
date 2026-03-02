@@ -1,6 +1,6 @@
 <?php
 
-class Swift_Transport_DefaultRetryClassifierExtraTest extends \PHPUnit\Framework\TestCase
+class Swift_Transport_DefaultRetryClassifierExtraTest extends PHPUnit\Framework\TestCase
 {
     private Swift_Transport_DefaultRetryClassifier $classifier;
 

@@ -80,8 +80,8 @@ class Swift_Mime_Headers_OpenDKIMHeaderTest extends PHPUnit\Framework\TestCase
     public function testValueIsNotEncoded()
     {
         $header = new Swift_Mime_Headers_OpenDKIMHeader('X-Test');
-        $header->setValue("special chars: =?utf-8?Q?test?=");
-        $this->assertEquals("special chars: =?utf-8?Q?test?=", $header->getFieldBody());
+        $header->setValue('special chars: =?utf-8?Q?test?=');
+        $this->assertEquals('special chars: =?utf-8?Q?test?=', $header->getFieldBody());
     }
 
     public function testCustomFieldName()

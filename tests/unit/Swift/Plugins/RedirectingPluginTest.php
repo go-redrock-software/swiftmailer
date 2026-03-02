@@ -196,7 +196,7 @@ class Swift_Plugins_RedirectingPluginTest extends PHPUnit\Framework\TestCase
             ->setBody('...');
 
         $plugin = new Swift_Plugins_RedirectingPlugin('redirect@example.com');
-        $evt = $this->createSendEvent($message);
+        $evt    = $this->createSendEvent($message);
 
         $plugin->beforeSendPerformed($evt);
 
@@ -224,7 +224,7 @@ class Swift_Plugins_RedirectingPluginTest extends PHPUnit\Framework\TestCase
             ->setBody('...');
 
         $plugin = new Swift_Plugins_RedirectingPlugin('redirect@example.com');
-        $evt = $this->createSendEvent($message);
+        $evt    = $this->createSendEvent($message);
 
         $plugin->beforeSendPerformed($evt);
 

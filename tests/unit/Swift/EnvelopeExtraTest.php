@@ -1,6 +1,6 @@
 <?php
 
-class Swift_EnvelopeExtraTest extends \PHPUnit\Framework\TestCase
+class Swift_EnvelopeExtraTest extends PHPUnit\Framework\TestCase
 {
     public function testGetSenderReturnsSender(): void
     {
@@ -73,11 +73,11 @@ class Swift_EnvelopeExtraTest extends \PHPUnit\Framework\TestCase
     {
         $message = $this->createConfiguredMock(Swift_Mime_SimpleMessage::class, [
             'getReturnPath' => 'bounce@example.com',
-            'getSender' => ['sender@example.com' => 'Sender'],
-            'getFrom' => ['from@example.com' => 'From'],
-            'getTo' => ['to@example.com' => 'To'],
-            'getCc' => [],
-            'getBcc' => [],
+            'getSender'     => ['sender@example.com' => 'Sender'],
+            'getFrom'       => ['from@example.com' => 'From'],
+            'getTo'         => ['to@example.com' => 'To'],
+            'getCc'         => [],
+            'getBcc'        => [],
         ]);
 
         $envelope = Swift_Envelope::fromMessage($message);
@@ -88,11 +88,11 @@ class Swift_EnvelopeExtraTest extends \PHPUnit\Framework\TestCase
     {
         $message = $this->createConfiguredMock(Swift_Mime_SimpleMessage::class, [
             'getReturnPath' => null,
-            'getSender' => ['sender@example.com' => 'Sender'],
-            'getFrom' => ['from@example.com' => 'From'],
-            'getTo' => ['to@example.com' => 'To'],
-            'getCc' => [],
-            'getBcc' => [],
+            'getSender'     => ['sender@example.com' => 'Sender'],
+            'getFrom'       => ['from@example.com' => 'From'],
+            'getTo'         => ['to@example.com' => 'To'],
+            'getCc'         => [],
+            'getBcc'        => [],
         ]);
 
         $envelope = Swift_Envelope::fromMessage($message);
@@ -103,11 +103,11 @@ class Swift_EnvelopeExtraTest extends \PHPUnit\Framework\TestCase
     {
         $message = $this->createConfiguredMock(Swift_Mime_SimpleMessage::class, [
             'getReturnPath' => null,
-            'getSender' => null,
-            'getFrom' => ['from@example.com' => 'From'],
-            'getTo' => ['to@example.com' => 'To'],
-            'getCc' => [],
-            'getBcc' => [],
+            'getSender'     => null,
+            'getFrom'       => ['from@example.com' => 'From'],
+            'getTo'         => ['to@example.com' => 'To'],
+            'getCc'         => [],
+            'getBcc'        => [],
         ]);
 
         $envelope = Swift_Envelope::fromMessage($message);
@@ -118,11 +118,11 @@ class Swift_EnvelopeExtraTest extends \PHPUnit\Framework\TestCase
     {
         $message = $this->createConfiguredMock(Swift_Mime_SimpleMessage::class, [
             'getReturnPath' => null,
-            'getSender' => null,
-            'getFrom' => ['from@example.com' => null],
-            'getTo' => ['to@example.com' => null],
-            'getCc' => ['cc@example.com' => null],
-            'getBcc' => ['bcc@example.com' => null],
+            'getSender'     => null,
+            'getFrom'       => ['from@example.com' => null],
+            'getTo'         => ['to@example.com' => null],
+            'getCc'         => ['cc@example.com' => null],
+            'getBcc'        => ['bcc@example.com' => null],
         ]);
 
         $envelope = Swift_Envelope::fromMessage($message);
@@ -133,11 +133,11 @@ class Swift_EnvelopeExtraTest extends \PHPUnit\Framework\TestCase
     {
         $message = $this->createConfiguredMock(Swift_Mime_SimpleMessage::class, [
             'getReturnPath' => null,
-            'getSender' => null,
-            'getFrom' => null,
-            'getTo' => ['to@example.com' => null],
-            'getCc' => [],
-            'getBcc' => [],
+            'getSender'     => null,
+            'getFrom'       => null,
+            'getTo'         => ['to@example.com' => null],
+            'getCc'         => [],
+            'getBcc'        => [],
         ]);
 
         $this->expectException(Swift_SwiftException::class);
@@ -149,11 +149,11 @@ class Swift_EnvelopeExtraTest extends \PHPUnit\Framework\TestCase
     {
         $message = $this->createConfiguredMock(Swift_Mime_SimpleMessage::class, [
             'getReturnPath' => null,
-            'getSender' => null,
-            'getFrom' => ['from@example.com' => null],
-            'getTo' => [],
-            'getCc' => [],
-            'getBcc' => [],
+            'getSender'     => null,
+            'getFrom'       => ['from@example.com' => null],
+            'getTo'         => [],
+            'getCc'         => [],
+            'getBcc'        => [],
         ]);
 
         $this->expectException(Swift_SwiftException::class);
@@ -171,11 +171,11 @@ class Swift_EnvelopeExtraTest extends \PHPUnit\Framework\TestCase
     {
         $message = $this->createConfiguredMock(Swift_Mime_SimpleMessage::class, [
             'getReturnPath' => null,
-            'getSender' => null,
-            'getFrom' => ['from@example.com' => null],
-            'getTo' => [],
-            'getCc' => ['cc@example.com' => null],
-            'getBcc' => [],
+            'getSender'     => null,
+            'getFrom'       => ['from@example.com' => null],
+            'getTo'         => [],
+            'getCc'         => ['cc@example.com' => null],
+            'getBcc'        => [],
         ]);
 
         $envelope = Swift_Envelope::fromMessage($message);
@@ -186,11 +186,11 @@ class Swift_EnvelopeExtraTest extends \PHPUnit\Framework\TestCase
     {
         $message = $this->createConfiguredMock(Swift_Mime_SimpleMessage::class, [
             'getReturnPath' => null,
-            'getSender' => null,
-            'getFrom' => ['from@example.com' => null],
-            'getTo' => [],
-            'getCc' => [],
-            'getBcc' => ['bcc@example.com' => null],
+            'getSender'     => null,
+            'getFrom'       => ['from@example.com' => null],
+            'getTo'         => [],
+            'getCc'         => [],
+            'getBcc'        => ['bcc@example.com' => null],
         ]);
 
         $envelope = Swift_Envelope::fromMessage($message);
@@ -201,11 +201,11 @@ class Swift_EnvelopeExtraTest extends \PHPUnit\Framework\TestCase
     {
         $message = $this->createConfiguredMock(Swift_Mime_SimpleMessage::class, [
             'getReturnPath' => null,
-            'getSender' => null,
-            'getFrom' => ['from@example.com' => null],
-            'getTo' => ['to1@example.com' => null, 'to2@example.com' => null],
-            'getCc' => ['cc1@example.com' => null, 'cc2@example.com' => null],
-            'getBcc' => ['bcc1@example.com' => null],
+            'getSender'     => null,
+            'getFrom'       => ['from@example.com' => null],
+            'getTo'         => ['to1@example.com' => null, 'to2@example.com' => null],
+            'getCc'         => ['cc1@example.com' => null, 'cc2@example.com' => null],
+            'getBcc'        => ['bcc1@example.com' => null],
         ]);
 
         $envelope = Swift_Envelope::fromMessage($message);
@@ -216,11 +216,11 @@ class Swift_EnvelopeExtraTest extends \PHPUnit\Framework\TestCase
     {
         $message = $this->createConfiguredMock(Swift_Mime_SimpleMessage::class, [
             'getReturnPath' => '',
-            'getSender' => ['sender@example.com' => 'Sender'],
-            'getFrom' => ['from@example.com' => 'From'],
-            'getTo' => ['to@example.com' => 'To'],
-            'getCc' => [],
-            'getBcc' => [],
+            'getSender'     => ['sender@example.com' => 'Sender'],
+            'getFrom'       => ['from@example.com' => 'From'],
+            'getTo'         => ['to@example.com' => 'To'],
+            'getCc'         => [],
+            'getBcc'        => [],
         ]);
 
         $envelope = Swift_Envelope::fromMessage($message);
@@ -231,11 +231,11 @@ class Swift_EnvelopeExtraTest extends \PHPUnit\Framework\TestCase
     {
         $message = $this->createConfiguredMock(Swift_Mime_SimpleMessage::class, [
             'getReturnPath' => '',
-            'getSender' => [],
-            'getFrom' => ['from@example.com' => 'From'],
-            'getTo' => ['to@example.com' => 'To'],
-            'getCc' => [],
-            'getBcc' => [],
+            'getSender'     => [],
+            'getFrom'       => ['from@example.com' => 'From'],
+            'getTo'         => ['to@example.com' => 'To'],
+            'getCc'         => [],
+            'getBcc'        => [],
         ]);
 
         $envelope = Swift_Envelope::fromMessage($message);

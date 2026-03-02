@@ -243,7 +243,7 @@ class Swift_DependencyContainerTest extends PHPUnit\Framework\TestCase
 
     public function testValueCanBeObject()
     {
-        $obj = new \stdClass();
+        $obj       = new stdClass();
         $obj->name = 'test';
         $this->container->register('obj')->asValue($obj);
         $this->assertSame($obj, $this->container->lookup('obj'));
@@ -477,7 +477,7 @@ class Swift_DependencyContainerTest extends PHPUnit\Framework\TestCase
         $this->container->register('shared')->asSharedInstanceOf('One')
             ->addConstructorValue('initial');
 
-        $first  = $this->container->lookup('shared');
+        $first       = $this->container->lookup('shared');
         $first->arg2 = 'modified';
 
         $second = $this->container->lookup('shared');

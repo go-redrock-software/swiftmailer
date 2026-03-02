@@ -38,7 +38,7 @@ class Swift_Webhook_SignatureVerificationExceptionTest extends PHPUnit\Framework
     public function testExceptionIsThrowable()
     {
         $exception = new Swift_Webhook_SignatureVerificationException('test');
-        $this->assertInstanceOf(\Throwable::class, $exception);
+        $this->assertInstanceOf(Throwable::class, $exception);
     }
 
     public function testExceptionCanBeCaught()

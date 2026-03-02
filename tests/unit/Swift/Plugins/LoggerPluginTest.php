@@ -238,7 +238,7 @@ class Swift_Plugins_LoggerPluginTest extends SwiftMailerTestCase
         $plugin = $this->createPlugin($logger);
 
         $transport = $this->createTransport();
-        $message = $this->getMockBuilder('Swift_Mime_SimpleMessage')
+        $message   = $this->getMockBuilder('Swift_Mime_SimpleMessage')
             ->disableOriginalConstructor()
             ->getMock();
         $event = new Swift_Events_SendEvent($transport, $message);
@@ -255,7 +255,7 @@ class Swift_Plugins_LoggerPluginTest extends SwiftMailerTestCase
         $plugin = $this->createPlugin($logger);
 
         $transport = $this->createTransport();
-        $message = $this->getMockBuilder('Swift_Mime_SimpleMessage')
+        $message   = $this->getMockBuilder('Swift_Mime_SimpleMessage')
             ->disableOriginalConstructor()
             ->getMock();
         $event = new Swift_Events_SendEvent($transport, $message);
@@ -273,7 +273,7 @@ class Swift_Plugins_LoggerPluginTest extends SwiftMailerTestCase
         $plugin = new Swift_Plugins_LoggerPlugin($logger);
 
         $transport = $this->createTransport();
-        $message = $this->getMockBuilder('Swift_Mime_SimpleMessage')
+        $message   = $this->getMockBuilder('Swift_Mime_SimpleMessage')
             ->disableOriginalConstructor()
             ->getMock();
         $event = new Swift_Events_SendEvent($transport, $message);
@@ -304,9 +304,9 @@ class Swift_Plugins_LoggerPluginTest extends SwiftMailerTestCase
             ->method('dump')
             ->willReturn('log contents here');
 
-        $plugin = new Swift_Plugins_LoggerPlugin($logger);
+        $plugin    = new Swift_Plugins_LoggerPlugin($logger);
         $transport = $this->createTransport();
-        $ex = new Swift_TransportException('Original error');
+        $ex        = new Swift_TransportException('Original error');
 
         $evt = $this->getMockBuilder('Swift_Events_TransportExceptionEvent')
             ->disableOriginalConstructor()
@@ -328,7 +328,7 @@ class Swift_Plugins_LoggerPluginTest extends SwiftMailerTestCase
 
     public function testCommandEventFormatsWithPrefix()
     {
-        $evt = $this->createCommandEvent("EHLO localhost\r\n");
+        $evt    = $this->createCommandEvent("EHLO localhost\r\n");
         $logger = $this->createLogger();
         $logger->expects($this->once())
             ->method('add')
@@ -340,7 +340,7 @@ class Swift_Plugins_LoggerPluginTest extends SwiftMailerTestCase
 
     public function testResponseEventFormatsWithPrefix()
     {
-        $evt = $this->createResponseEvent("220 smtp.example.com\r\n");
+        $evt    = $this->createResponseEvent("220 smtp.example.com\r\n");
         $logger = $this->createLogger();
         $logger->expects($this->once())
             ->method('add')

@@ -18,9 +18,10 @@ class Swift_CharacterStream_NgCharacterStreamTest extends PHPUnit\Framework\Test
         $reader->method('getMapType')->willReturn(Swift_CharacterReader::MAP_TYPE_FIXED_LEN);
         $reader->method('getCharPositions')->willReturnCallback(
             function ($string, $startOffset, &$currentMap, &$ignoredChars) use ($width) {
-                $currentMap    = $width;
+                $currentMap   = $width;
                 $ignoredChars = '';
-                return (int) (strlen($string) / $width);
+
+                return (int) (\strlen($string) / $width);
             },
         );
 

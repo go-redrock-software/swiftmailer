@@ -2,7 +2,7 @@
 
 use Nyholm\Dsn\Configuration\Dsn;
 
-class Swift_DsnExtraTest extends \PHPUnit\Framework\TestCase
+class Swift_DsnExtraTest extends PHPUnit\Framework\TestCase
 {
     public function testGetSchemeReturnsNullScheme(): void
     {
@@ -21,32 +21,33 @@ class Swift_DsnExtraTest extends \PHPUnit\Framework\TestCase
     public function testGetTransportClassForAllSchemes(): void
     {
         $schemes = [
-            'null' => Swift_Transport_NullTransport::class,
-            'smtp' => Swift_Transport_EsmtpTransport::class,
-            'smtp+tls' => Swift_Transport_EsmtpTransport::class,
-            'smtp+ssl' => Swift_Transport_EsmtpTransport::class,
-            'sendgrid' => Swift_Transport_Api_SendgridTransport::class,
-            'mailgun' => Swift_Transport_Api_MailGunTransport::class,
-            'postmark' => Swift_Transport_Api_PostMarkTransport::class,
-            'brevo' => Swift_Transport_Api_BrevoTransport::class,
-            'resend' => Swift_Transport_Api_ResendTransport::class,
-            'mailjet' => Swift_Transport_Api_MailJetTransport::class,
-            'infobip' => Swift_Transport_Api_InfoBipTransport::class,
-            'mailpace' => Swift_Transport_Api_MailPaceTransport::class,
-            'mailchimp' => Swift_Transport_Api_MailChimpTransport::class,
-            'mailersend' => Swift_Transport_Api_MailerSendTransport::class,
-            'scaleway' => Swift_Transport_Api_ScalewayTransport::class,
-            'azure' => Swift_Transport_Api_AzureTransport::class,
-            'amazon+api' => Swift_Transport_Api_AmazonSesApiTransport::class,
-            'amazon+http' => Swift_Transport_Api_AmazonSesHttpTransport::class,
-            'gmail+api' => Swift_Transport_Api_GoogleTransport::class,
-            'gmail+smtp' => Swift_Transport_EsmtpTransport::class,
+            'null'            => Swift_Transport_NullTransport::class,
+            'sendmail'        => Swift_Transport_SendmailTransport::class,
+            'smtp'            => Swift_Transport_EsmtpTransport::class,
+            'smtp+tls'        => Swift_Transport_EsmtpTransport::class,
+            'smtp+ssl'        => Swift_Transport_EsmtpTransport::class,
+            'sendgrid'        => Swift_Transport_Api_SendgridTransport::class,
+            'mailgun'         => Swift_Transport_Api_MailGunTransport::class,
+            'postmark'        => Swift_Transport_Api_PostMarkTransport::class,
+            'brevo'           => Swift_Transport_Api_BrevoTransport::class,
+            'resend'          => Swift_Transport_Api_ResendTransport::class,
+            'mailjet'         => Swift_Transport_Api_MailJetTransport::class,
+            'infobip'         => Swift_Transport_Api_InfoBipTransport::class,
+            'mailpace'        => Swift_Transport_Api_MailPaceTransport::class,
+            'mailchimp'       => Swift_Transport_Api_MailChimpTransport::class,
+            'mailersend'      => Swift_Transport_Api_MailerSendTransport::class,
+            'scaleway'        => Swift_Transport_Api_ScalewayTransport::class,
+            'azure'           => Swift_Transport_Api_AzureTransport::class,
+            'amazon+api'      => Swift_Transport_Api_AmazonSesApiTransport::class,
+            'amazon+http'     => Swift_Transport_Api_AmazonSesHttpTransport::class,
+            'gmail+api'       => Swift_Transport_Api_GoogleTransport::class,
+            'gmail+smtp'      => Swift_Transport_EsmtpTransport::class,
             'microsoft-graph' => Swift_Transport_Api_MicrosoftGraphTransport::class,
-            'ahasend' => Swift_Transport_Api_AhaSendTransport::class,
-            'mailomat' => Swift_Transport_Api_MailomatTransport::class,
-            'mailtrap' => Swift_Transport_Api_MailtrapTransport::class,
-            'postal' => Swift_Transport_Api_PostalTransport::class,
-            'sweego' => Swift_Transport_Api_SweegoTransport::class,
+            'ahasend'         => Swift_Transport_Api_AhaSendTransport::class,
+            'mailomat'        => Swift_Transport_Api_MailomatTransport::class,
+            'mailtrap'        => Swift_Transport_Api_MailtrapTransport::class,
+            'postal'          => Swift_Transport_Api_PostalTransport::class,
+            'sweego'          => Swift_Transport_Api_SweegoTransport::class,
         ];
 
         foreach ($schemes as $scheme => $expectedClass) {
@@ -151,7 +152,7 @@ class Swift_DsnExtraTest extends \PHPUnit\Framework\TestCase
     public function testGetParametersWithMultipleParams(): void
     {
         $params = ['retries' => '3', 'retry_delay' => '1000', 'verify_peer' => 'false'];
-        $dsn = $this->createMock(Dsn::class);
+        $dsn    = $this->createMock(Dsn::class);
         $dsn->method('getScheme')->willReturn('smtp');
         $dsn->method('getUser')->willReturn('user');
         $dsn->method('getPassword')->willReturn('pass');

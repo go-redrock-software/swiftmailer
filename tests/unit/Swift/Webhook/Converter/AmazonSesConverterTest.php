@@ -148,7 +148,7 @@ class Swift_Webhook_Converter_AmazonSesConverterTest extends PHPUnit\Framework\T
                     'bounceType'        => 'Permanent',
                     'bouncedRecipients' => [
                         [
-                            'emailAddress'  => 'user@example.com',
+                            'emailAddress'   => 'user@example.com',
                             'diagnosticCode' => 'smtp; 550 5.1.1 User unknown',
                         ],
                     ],
@@ -169,7 +169,7 @@ class Swift_Webhook_Converter_AmazonSesConverterTest extends PHPUnit\Framework\T
             'Message' => \json_encode([
                 'notificationType' => 'Complaint',
                 'complaint'        => [
-                    'complainedRecipients'  => [
+                    'complainedRecipients' => [
                         ['emailAddress' => 'user@example.com'],
                     ],
                     'timestamp'             => '2026-01-15T10:30:00.000Z',
@@ -264,7 +264,7 @@ class Swift_Webhook_Converter_AmazonSesConverterTest extends PHPUnit\Framework\T
             'Type'    => 'Notification',
             'Message' => \json_encode([
                 'notificationType' => 'Unknown',
-                'mail' => ['messageId' => 'ses-msg-316'],
+                'mail'             => ['messageId' => 'ses-msg-316'],
             ]),
         ];
 

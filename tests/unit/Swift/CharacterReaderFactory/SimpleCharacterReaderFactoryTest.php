@@ -44,7 +44,7 @@ class Swift_CharacterReaderFactory_SimpleCharacterReaderFactoryTest extends PHPU
         $this->assertInstanceOf(Swift_CharacterReader_GenericFixedWidthReader::class, $reader);
     }
 
-    public function testReturnsFixedWidthReaderForIso8859_1()
+    public function testReturnsFixedWidthReaderForIso88591()
     {
         $reader = $this->factory->getReaderFor('iso-8859-1');
         $this->assertInstanceOf(Swift_CharacterReader_GenericFixedWidthReader::class, $reader);

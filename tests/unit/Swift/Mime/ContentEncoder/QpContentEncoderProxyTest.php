@@ -4,7 +4,7 @@ class Swift_Mime_ContentEncoder_QpContentEncoderProxyTest extends PHPUnit\Framew
 {
     private function createProxy(?string $charset = 'utf-8'): Swift_Mime_ContentEncoder_QpContentEncoderProxy
     {
-        $safeEncoder  = $this->createMock(Swift_Mime_ContentEncoder_QpContentEncoder::class);
+        $safeEncoder   = $this->createMock(Swift_Mime_ContentEncoder_QpContentEncoder::class);
         $nativeEncoder = $this->createMock(Swift_Mime_ContentEncoder_NativeQpContentEncoder::class);
 
         return new Swift_Mime_ContentEncoder_QpContentEncoderProxy($safeEncoder, $nativeEncoder, $charset);
