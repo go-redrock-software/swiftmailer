@@ -25,7 +25,7 @@
     }
   ],
   "require": {
-    "php": ">=8.5.0",
+    "php": ">=8.2.0",
     "ext-iconv": "*",
     "ext-mbstring": "*",
     "ext-intl": "*",
@@ -79,7 +79,8 @@
   "config": {
     "allow-plugins": {
       "php-http/discovery": true,
-      "infection/extension-installer": true
+      "infection/extension-installer": true,
+      "tbachert/spi": true
     }
   },
   "scripts": {
