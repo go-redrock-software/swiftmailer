@@ -1,6 +1,7 @@
 stages:
   - quality
   - test
+  - integration
 
 # ---------------------------------------------------------------------------
 # Shared configuration for test-stage jobs
@@ -74,3 +75,28 @@ tests:
     reports:
       junit: phpunit-report.xml
     expire_in: 30 days
+
+# ---------------------------------------------------------------------------
+# Integration stage — smoke tests against Mailpit
+# ---------------------------------------------------------------------------
+smoke-tests:
+  stage: integration
+  image: php:8.5-cli
+  services:
+    - name: axllent/mailpit:latest
+      alias: mailpit
+  variables:
+    MAILPIT_SMTP_HOST: mailpit
+    MAILPIT_SMTP_PORT: "1025"
+    MAILPIT_API_URL: "http://mailpit:8025"
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq git unzip libicu-dev libzip-dev libxml2-dev libcurl4-openssl-dev > /dev/null
+    - docker-php-ext-install intl iconv mbstring zip dom curl > /dev/null 2>&1 || true
+    - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+    - composer update --no-interaction --no-progress --classmap-authoritative
+  script:
+    - vendor/bin/simple-phpunit tests/smoke/Swift/Smoke/MailpitSmokeTest.php --verbose
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && ($CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "main")'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  allow_failure: true
