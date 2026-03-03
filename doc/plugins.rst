@@ -1,6 +1,13 @@
 Plugins
 =======
 
+.. note::
+
+    This file documents the original upstream SwiftMailer plugins. For
+    comprehensive documentation covering **all** plugins -- including the
+    AllowlistPlugin, CssInlinerPlugin, and SentMessagePlugin added by the
+    Redrock Software fork -- see `plugins.md <plugins.md>`_.
+
 Plugins exist to extend, or modify the behaviour of Swift Mailer. They respond
 to Events that are fired within the Transports during sending.
 
@@ -82,10 +89,11 @@ Many shared hosts don't open their SMTP servers as a free-for-all. Usually they
 have policies in place (probably to discourage spammers) that only allow you to
 send a fixed number of emails per-hour/day.
 
-The Throttler plugin supports two modes of rate-limiting and with each, you
-will need to do that math to figure out the values you want. The plugin can
-limit based on the number of emails per minute, or the number of
-bytes-transferred per-minute.
+The Throttler plugin supports three modes of rate-limiting and with each, you
+will need to do the math to figure out the values you want. The plugin can
+limit based on the number of emails per minute, the number of emails per
+second (useful for Amazon SES), or the number of bytes-transferred
+per-minute.
 
 Using the Throttler Plugin
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -114,6 +122,11 @@ the rate::
       1024 * 1024 * 10, Swift_Plugins_ThrottlerPlugin::BYTES_PER_MINUTE
     ));
 
+    // Rate limit to 14 messages per-second (Amazon SES)
+    $mailer->registerPlugin(new Swift_Plugins_ThrottlerPlugin(
+      14, Swift_Plugins_ThrottlerPlugin::MESSAGES_PER_SECOND
+    ));
+
     // Continue sending as normal
     for ($lotsOfRecipients as $recipient) {
       ...
@@ -124,7 +137,7 @@ the rate::
 Logger Plugin
 -------------
 
-The Logger plugins helps with debugging during the process of sending. It can
+The Logger plugin helps with debugging during the process of sending. It can
 help to identify why an SMTP server is rejecting addresses, or any other
 hard-to-find problems that may arise.
 

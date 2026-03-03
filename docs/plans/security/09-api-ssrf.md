@@ -114,6 +114,21 @@ $transport = new Swift_Transport_Api_InfoBipTransport('key', 'api.infobip.com');
 $this->assertStringStartsWith('https://', $transport->getEndpoint());
 ```
 
+## Implementation Status (2026-03-02)
+
+| Mitigation | Status | Evidence |
+|-|-|-|
+| Most API endpoints hardcoded | **EXISTING** | SendGrid, Mailgun, Brevo, etc. use hardcoded `https://` URLs |
+| DSN scheme validation | **EXISTING** | `Swift_Dsn` validates against known scheme allowlist |
+| InfoBip configurable `baseUrl` unvalidated | **NOT FIXED** | `InfoBipTransport.php:22-31`: `$baseUrl` accepted directly, only `rtrim()` applied |
+| Azure connection string unvalidated | **NOT FIXED** | `AzureTransport.php:30`: `$connectionString` parsed without URL validation |
+| Postal configurable endpoint unvalidated | **NOT FIXED** | `PostalTransport.php:25`: self-hosted endpoint accepted without validation |
+| URL validation helper | **PENDING** | No `Swift_Transport_UrlValidator` class exists |
+| Internal network blocking | **PENDING** | No checks against `127.0.0.1`, `10.0.0.0/8`, `169.254.169.254` |
+| HTTPS enforcement for custom endpoints | **PENDING** | InfoBip hardcodes `https://` prefix in `getEndpoint()` (line 66), but baseUrl is not validated against internal IPs |
+
+**Overall Status:** NOT STARTED -- Configurable endpoints (InfoBip, Azure, Postal) accept arbitrary values without URL validation or internal network blocking.
+
 ## Risk After Mitigation
 
 **Residual Risk:** LOW — With URL validation, internal network blocking, and HTTPS enforcement, SSRF is limited to valid external endpoints.

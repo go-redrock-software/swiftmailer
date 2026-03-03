@@ -78,6 +78,18 @@ $message->getHeaders()->addTextHeader('X-Custom', "value\r\nBcc: hidden@evil.com
 // Expected: value = "value Bcc: hidden@evil.com" or exception
 ```
 
+## Implementation Status (2026-03-02)
+
+| Mitigation | Status | Evidence |
+|-|-|-|
+| CRLF stripping in UnstructuredHeader | **PENDING** | No CRLF filtering found in `lib/classes/Swift/Mime/Headers/UnstructuredHeader.php` |
+| CRLF stripping in SimpleHeaderSet | **PENDING** | No control character filtering in header registration |
+| Header injection regression tests | **PENDING** | No dedicated injection test cases found |
+| Encoding layer provides partial mitigation | **EXISTING** | Base64/QP encoding in `Swift_Mime_HeaderEncoder` naturally encodes some control characters |
+| RFC 2822 email validation | **EXISTING** | `egulias/email-validator` used in `MailboxHeader::assertValidAddress()` |
+
+**Overall Status:** NOT STARTED -- All Phase 1-3 mitigations remain pending. Existing encoding layer provides partial but incomplete protection.
+
 ## Risk After Mitigation
 
 **Residual Risk:** LOW — With CRLF stripping and comprehensive tests, injection becomes infeasible.

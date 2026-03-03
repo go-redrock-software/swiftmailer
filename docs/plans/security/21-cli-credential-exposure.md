@@ -86,6 +86,20 @@ $this->expectException(InvalidArgumentException::class);
 $args = $parser->parse(['bin/swiftmailer-test', 'smtp://host', '--to=not-an-email']);
 ```
 
+## Implementation Status (2026-03-02)
+
+| Mitigation | Status | Evidence |
+|-|-|-|
+| DSN display masking in console output | **EXISTING** | `swiftmailer-test` line 46: regex redacts password in displayed output |
+| Downstream message/header validation | **EXISTING** | `Swift_Message` and header classes perform some validation |
+| Environment variable DSN support | **NOT DONE** | No `SWIFTMAILER_DSN` env var support; DSN passed as positional CLI argument |
+| Process list credential warning | **NOT DONE** | No warning about credentials visible in `ps aux` |
+| Terminal escape injection prevention | **NOT DONE** | `ConsoleOutput.php:53,62`: ANSI escape codes injected without sanitizing user-controlled content |
+| CLI email address validation | **NOT DONE** | `ArgumentParser.php:19-56`: no input validation on `--to`/`--from` |
+| CLI subject/body sanitization | **NOT DONE** | No control character filtering on `--subject`/`--body` |
+
+**Overall Status:** NOT STARTED -- All proposed mitigations remain pending. DSN credentials are exposed in process list and terminal output is not sanitized.
+
 ## Risk After Mitigation
 
 **Residual Risk:** LOW -- With env-var DSN, terminal sanitization, and input validation, the CLI tool's attack surface is minimal. The tool is intended for testing only.

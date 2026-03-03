@@ -13,14 +13,15 @@ Maintained by `Redrock Software Corporation <https://www.go-redrock.com/>`_.
     plugins
     japanese
 
-Additional Documentation (Markdown)
-------------------------------------
+Redrock Fork Documentation (Markdown)
+--------------------------------------
 
-These guides cover the features added by the Redrock fork:
+These guides cover features added by the Redrock fork. They are written in
+Markdown and live alongside the legacy RST documentation.
 
+* `Upgrading <upgrading.md>`_ -- migration guide from stock SwiftMailer 6.x
 * `API Transports <api-transports.md>`_ -- all 21 HTTP API transports
 * `DSN Syntax <dsn.md>`_ -- DSN connection strings and scheme reference
-* `Webhooks <webhooks.md>`_ -- webhook processing for delivery and engagement events
-* `Plugins <plugins.md>`_ -- AllowlistPlugin, CssInlinerPlugin, SentMessagePlugin
 * `Events <events.md>`_ -- SentMessageEvent, FailedMessageEvent, event lifecycle
-* `Upgrading <upgrading.md>`_ -- migration guide from stock SwiftMailer 6.x
+* `New Plugins <plugins.md>`_ -- AllowlistPlugin, CssInlinerPlugin, SentMessagePlugin
+* `Webhooks <webhooks.md>`_ -- webhook processing for delivery and engagement events

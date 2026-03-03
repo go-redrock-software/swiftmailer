@@ -101,6 +101,21 @@ $messageId = $message->getId();
 $this->assertStringNotContainsString($_SERVER['SERVER_NAME'] ?? '', $messageId);
 ```
 
+## Implementation Status (2026-03-02)
+
+| Mitigation | Status | Evidence |
+|-|-|-|
+| Swiftmailer-specific exception classes | **EXISTING** | Exceptions use typed classes |
+| `#[SensitiveParameter]` on some constructors | **EXISTING** | Present on API transport and webhook constructors |
+| `$_SERVER['SERVER_NAME']` validation in transport_deps | **EXISTING** | `transport_deps.php:5-8`: regex validation before use |
+| `$_SERVER['SERVER_NAME']` validation in mime_deps | **EXISTING** | `mime_deps.php:14-17`: regex validation, fallback to `swift.generated` |
+| Error message sanitization | **PENDING** | Raw SMTP server responses still passed to `TransportException` messages |
+| Log level filtering in LoggerPlugin | **PENDING** | All commands/responses logged at same verbosity |
+| LoggerPlugin exception dump | **NOT FIXED** | `LoggerPlugin.php:132`: full log dump appended to exception message |
+| Provider API error sanitization | **PENDING** | Error responses from providers may include account-specific info |
+
+**Overall Status:** PARTIALLY IMPLEMENTED -- `$_SERVER['SERVER_NAME']` has validation and safe fallbacks. However, error messages still contain unsanitized server responses and LoggerPlugin appends full log dumps to exceptions.
+
 ## Risk After Mitigation
 
 **Residual Risk:** LOW — With sanitized error messages, log level filtering, and hostname hardening, information leakage is limited to what is inherently necessary for SMTP protocol operation.

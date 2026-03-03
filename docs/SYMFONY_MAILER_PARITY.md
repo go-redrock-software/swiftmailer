@@ -15,7 +15,7 @@ Sources: [Symfony Mailer 7.4 Docs](https://symfony.com/doc/7.4/mailer.html), [Sy
 | Symfony Mailer Provider | Symfony DSN Scheme(s) | Swiftmailer Equivalent | Swiftmailer DSN Scheme | Status |
 |-|-|-|-|-|
 | **SMTP (ESMTP)** | `smtp://` | `Swift_Transport_EsmtpTransport` | `smtp`, `smtp+tls`, `smtp+ssl` | Ported |
-| **Sendmail** | `sendmail://default` | `Swift_Transport_SendmailTransport` | (no DSN entry) | Ported (no DSN) |
+| **Sendmail** | `sendmail://default` | `Swift_Transport_SendmailTransport` | `sendmail` | Ported |
 | **Null** | `null://` | `Swift_Transport_NullTransport` | `null` | Ported |
 | **Amazon SES (API)** | `ses+api://` | `Swift_Transport_Api_AmazonSesApiTransport` | `amazon+api` | Ported |
 | **Amazon SES (HTTP)** | `ses+https://` | `Swift_Transport_Api_AmazonSesHttpTransport` | `amazon+http` | Ported |
@@ -69,6 +69,10 @@ Sources: [Symfony Mailer 7.4 Docs](https://symfony.com/doc/7.4/mailer.html), [Sy
 | Message builder pattern | `Swift_Message::newInstance()` | Fluent message construction |
 | Embedded images | `Swift_Message::embed()` | Inline image attachments |
 | MIME parts | `Swift_Mime_SimpleMessage` | Multipart message construction |
+| Envelope class | `Swift_Envelope` | Standalone readonly envelope with `fromMessage()` factory; accepted by `Swift_Mailer::send()` |
+| Webhook / RemoteEvent handling | `Swift_Webhook_RequestHandler` + 14 converters | Payload parsing and signature verification for 14 providers |
+| XOAuth2 SMTP authenticator | `Swift_Transport_Esmtp_Auth_XOAuth2Authenticator` | OAuth2 bearer-token SMTP authentication |
+| Sent-message plugin | `Swift_Plugins_SentMessagePlugin` | Captures last sent message (analogous to Symfony `SentMessage`) |
 
 ---
 
@@ -79,7 +83,6 @@ Sources: [Symfony Mailer 7.4 Docs](https://symfony.com/doc/7.4/mailer.html), [Sy
 | Symfony Mailer Feature | Description | Complexity | Notes |
 |-|-|-|-|
 | Native transport (`native://default`) | Uses PHP's `sendmail_path` from php.ini | Low | Symfony ships this as a built-in; Swiftmailer has SendmailTransport but no `native` DSN scheme |
-| Sendmail DSN scheme | `sendmail://default` in DSN map | Low | `Swift_Transport_SendmailTransport` exists but has no DSN entry in `TRANSPORT_CLASS_MAP` |
 | Provider SMTP variants in DSN map | Many providers support `+smtp` schemes (e.g., `brevo+smtp`, `sendgrid+smtp`) that route through provider SMTP servers | Medium | Swiftmailer only maps API schemes for most providers; users must manually configure SMTP |
 | Amazon SES SMTP variant | `ses+smtp://` | Low | SES API/HTTP exist but `ses+smtp` (or `amazon+smtp`) is missing from DSN map |
 | Mailtrap sandbox mode | `mailtrap+sandbox://` DSN for testing environments | Low | Mailtrap API transport exists but no sandbox variant |
@@ -90,11 +93,9 @@ Sources: [Symfony Mailer 7.4 Docs](https://symfony.com/doc/7.4/mailer.html), [Sy
 | Symfony Mailer Feature | Description | Complexity | Notes |
 |-|-|-|-|
 | S/MIME encryption | Encrypt entire message with recipient certificates | Medium | Swiftmailer has S/MIME signing but not encryption (`SMimeEncrypter`) |
-| Global envelope configuration | Default sender/recipients applied to all outgoing messages | Low | Symfony configures via framework YAML; Swiftmailer would need equivalent |
-| Webhook / RemoteEvent integration | Receive delivery/engagement webhooks from providers | High | Symfony uses `RemoteEvent` component + `MailerDeliveryEvent` / `MailerEngagementEvent`; 11 providers support it |
+| Global envelope configuration | Default sender/recipients applied to all outgoing messages | Low | Symfony configures via framework YAML; Swiftmailer has `Swift_Envelope` but no global default envelope |
 | `retry_period` for failover/round-robin | Configurable period before retrying a failed transport | Low | Symfony 7.3+; Swiftmailer's FailoverTransport does not expose this |
 | `source_ip` binding | Bind SMTP connection to specific IPv4/IPv6 address | Low | Symfony 7.3+; useful for multi-homed servers |
-| Non-ASCII email address support | UTF-8 characters in email addresses | Medium | Symfony 7.2+; RFC 6531 (SMTPUTF8) |
 | Draft email support | `DraftEmail` class for `.eml` download | Low | Niche feature; build emails for download without sending |
 
 ### Low Priority
@@ -104,7 +105,6 @@ Sources: [Symfony Mailer 7.4 Docs](https://symfony.com/doc/7.4/mailer.html), [Sy
 | Twig templating integration | `TemplatedEmail` for Twig-based email templates | N/A | Framework-specific; Swiftmailer is framework-agnostic |
 | Inky email framework | `inky_to_html` filter for responsive email | N/A | Twig integration; framework-specific |
 | Markdown-to-HTML | `markdown_to_html` Twig filter | N/A | Twig integration; framework-specific |
-| Custom SMTP authenticators | `XOAuth2Authenticator` and pluggable auth | Medium | Swiftmailer's ESMTP auth handlers may already cover this partially |
 | `X-Transport` header routing | Select named transport via message header | Low | Symfony's multi-transport config concept |
 
 ---
@@ -137,7 +137,7 @@ In Symfony Mailer, the `Envelope` class (`Symfony\Component\Mailer\Envelope`) re
 - **Recipients**: The RCPT TO addresses (actual delivery targets)
 - Symfony allows configuring a global envelope with default sender/recipients that apply to all outgoing messages
 
-**Swiftmailer equivalent**: `Swift_Message` handles return-path via `setReturnPath()` and recipients are derived from To/Cc/Bcc headers. There is no standalone Envelope class, but the concept is embedded in `Swift_Transport_AbstractSmtpTransport` which extracts envelope information from the message during SMTP delivery.
+**Swiftmailer equivalent**: `Swift_Envelope` is a standalone readonly class that mirrors Symfony's `Envelope`. It accepts an explicit sender and recipients array, or can be built from a message via `Swift_Envelope::fromMessage()`. The `Swift_Mailer::send()` method accepts an optional `?Swift_Envelope $envelope` parameter to override envelope addresses independently of message headers.
 
 ### MessageBus / Async Sending
 
@@ -173,7 +173,7 @@ Symfony 6.3+ introduced the Webhook and RemoteEvent components for processing de
 - Providers authenticate webhooks via signature verification
 - 11 providers support webhooks in Symfony 7.4: AhaSend, Brevo, Mailchimp, MailerSend, Mailgun, Mailjet, Mailomat, Mailtrap, Postmark, Resend, Sweego
 
-**Swiftmailer equivalent**: No webhook support. The event system (`Swift_Events_*`) only covers local send lifecycle events, not remote provider callbacks.
+**Swiftmailer equivalent**: `Swift_Webhook_RequestHandler` with 14 provider-specific converters (in `Swift_Webhook_Converter_*`). Supports payload parsing and signature verification for: AhaSend, Amazon SES, Brevo, MailerSend, Mailgun, Mailjet, Mailomat, MailPace, Mailtrap, Mandrill, Postmark, Resend, Sendgrid, and Sweego. Webhook events are represented by `Swift_Webhook_Event`.
 
 ---
 
@@ -184,8 +184,9 @@ Symfony 6.3+ introduced the Webhook and RemoteEvent components for processing de
 | Symfony Mailer third-party providers | 21 (19 bridge packages + SMTP + Sendmail) |
 | Swiftmailer API transports | 21 |
 | Providers with full parity | 21 (API mode) |
+| Webhook converters | 14 |
 | Providers missing SMTP DSN variants | ~15 |
-| Missing DSN scheme entries | 2 (sendmail, native) |
-| High-priority missing features | 6 |
-| Medium-priority missing features | 7 |
+| Missing DSN scheme entries | 1 (native) |
+| High-priority missing features | 5 |
+| Medium-priority missing features | 5 |
 | Not-applicable features | 9 |

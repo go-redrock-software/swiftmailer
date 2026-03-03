@@ -492,7 +492,7 @@ The added header will appear in the message when it is sent::
 
     // Adding a custom header to an attachment
     $attachment = Swift_Attachment::fromPath('/path/to/doc.pdf');
-    $attachment->getHeaders()->addDateHeader('X-Created-Time', time());
+    $attachment->getHeaders()->addDateHeader('X-Created-Time', new DateTimeImmutable());
 
 Retrieving Headers
 ~~~~~~~~~~~~~~~~~~

@@ -110,6 +110,21 @@ $attachment->setFilename(str_repeat('a', 300) . '.pdf');
 $this->assertLessThanOrEqual(255, strlen($attachment->getFilename()));
 ```
 
+## Implementation Status (2026-03-02)
+
+| Mitigation | Status | Evidence |
+|-|-|-|
+| RFC 2231 encoding in ParameterizedHeader | **EXISTING** | Non-ASCII characters encoded |
+| Token regex validation | **EXISTING** | Some special characters prevented |
+| JSON encoding for API payloads | **EXISTING** | `json_encode()` escapes special characters |
+| Path traversal prevention (`/`, `\` stripping) | **PENDING** | `Attachment.php:91`: `setFilename()` accepts arbitrary strings |
+| Null byte filtering | **PENDING** | No `\0` rejection |
+| Filename length limit | **PENDING** | No length check |
+| Unicode directional override detection | **PENDING** | No RTL override stripping |
+| DangerousAttachmentPlugin | **PENDING** | No extension-based blocking |
+
+**Overall Status:** NOT STARTED -- `setFilename()` accepts arbitrary strings without sanitization. All proposed mitigations are pending.
+
 ## Risk After Mitigation
 
 **Residual Risk:** LOW — With path traversal prevention, control character stripping, and length limits, filename-based attacks are mitigated. Downstream mail client vulnerabilities remain outside scope.

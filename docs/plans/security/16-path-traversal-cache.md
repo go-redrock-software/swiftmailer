@@ -111,6 +111,22 @@ $this->expectException(Swift_IoException::class);
 $stream->write(str_repeat('x', 100 * 1024 * 1024)); // 100 MB
 ```
 
+## Implementation Status (2026-03-02)
+
+| Mitigation | Status | Evidence |
+|-|-|-|
+| Cache keys internally generated (hex-encoded) | **EXISTING** | Typical usage uses hex-encoded message IDs |
+| `tempnam()` for unique names | **EXISTING** | `TemporaryFileByteStream` uses `tempnam()` |
+| `__destruct` cleanup | **EXISTING** | Temporary file cleanup in destructors |
+| Transport `__sleep()`/`__wakeup()` throw | **EXISTING** | Limits POP chain exploitation |
+| DiskKeyCache key sanitization | **NOT DONE** | `DiskKeyCache.php:195,206,257`: `$nsKey`/`$itemKey` concatenated into paths without sanitization |
+| Directory permission hardening | **NOT DONE** | `DiskKeyCache.php:241`: `prepareCache()` uses `mkdir()` with no explicit permissions |
+| Stream context option allowlist | **NOT DONE** | `StreamBuffer.php:258-259`: arbitrary `stream_context_options` accepted |
+| `ArrayByteStream` memory limit | **NOT DONE** | `str_split($bytes)` creates 72x memory amplification with no size limit |
+| Temp file permission setting | **NOT DONE** | No `chmod(0600)` after `tempnam()` |
+
+**Overall Status:** NOT STARTED -- DiskKeyCache path traversal via unsanitized keys remains the primary vulnerability. All proposed mitigations are pending.
+
 ## Risk After Mitigation
 
 **Residual Risk:** LOW -- With key sanitization, permission hardening, context validation, and memory limits, path traversal and injection attacks are blocked.

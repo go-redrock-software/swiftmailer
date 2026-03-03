@@ -93,6 +93,20 @@ $handler->setPreferredAuthMechanisms(['XOAUTH2', 'PLAIN']);
 // Assert XOAUTH2 is selected
 ```
 
+## Implementation Status (2026-03-02)
+
+| Mitigation | Status | Evidence |
+|-|-|-|
+| `setAuthMode()` for explicit mode selection | **EXISTING** | `AuthHandler.php:128` |
+| XOAUTH2 bearer token support | **EXISTING** | `XOAuth2Authenticator.php` present |
+| TLS 1.2/1.3 when configured | **EXISTING** | `StreamBuffer.php:89-92` |
+| TLS enforcement before auth | **PENDING** | `AuthHandler::afterEhlo()` (line 168) attempts auth without checking TLS status |
+| CRAM-MD5 deprecation notice | **PENDING** | No deprecation warning when CRAM-MD5 is selected |
+| Mechanism priority ordering | **PENDING** | No `setPreferredAuthMechanisms()` method |
+| Anti-downgrade protection | **PENDING** | Default "try all" behavior in `getAuthenticatorsForAgent()` (line 262) |
+
+**Overall Status:** NOT STARTED -- Existing controls are minimal. No TLS-before-auth enforcement, no CRAM-MD5 deprecation, and no mechanism priority ordering.
+
 ## Risk After Mitigation
 
 **Residual Risk:** LOW — With TLS enforcement before auth, mechanism deprecation, and priority ordering, credential exposure via weak auth is prevented.

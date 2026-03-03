@@ -141,6 +141,22 @@ $lb->start();
 // $deadTransport should still be in dead pool
 ```
 
+## Implementation Status (2026-03-02)
+
+| Mitigation | Status | Evidence |
+|-|-|-|
+| `FailoverTransport` throws after exhausting all transports | **EXISTING** | `FailoverTransport.php:85`: final exception thrown |
+| `RetryTransport` configurable max retries | **EXISTING** | `RetryTransport.php:42`: default 3 retries |
+| Failover logging | **NOT DONE** | `FailoverTransport.php:79-81`: `catch (Swift_TransportException $e)` with no logging |
+| Transport security policy | **NOT DONE** | No `Swift_Transport_SecurityPolicy` class |
+| `RetryTransport` parameter validation | **NOT DONE** | `maxRetries` and `baseDelayMs` accept any integer (no range check) |
+| Dead transport ping-before-resurrection | **NOT DONE** | `LoadBalancedTransport.php:92-93`: dead transports merged back without validation |
+| Silent exception swallowing | **NOT DONE** | `LoadBalancedTransport.php:191-193`: `catch (Exception $e) {}` swallows all errors |
+| Non-deterministic load balancing | **NOT DONE** | Deterministic round-robin via `array_shift`/`array_push` |
+| FailoverEvent for plugins | **NOT DONE** | No failover event type exists |
+
+**Overall Status:** NOT STARTED -- All proposed mitigations remain pending. Failover silently swallows exceptions with no logging, and no security policy enforcement exists.
+
 ## Risk After Mitigation
 
 **Residual Risk:** LOW -- With security policy enforcement, failover logging, parameter validation, and randomized selection, transport downgrade attacks require both network-level access and knowledge of the transport pool configuration.

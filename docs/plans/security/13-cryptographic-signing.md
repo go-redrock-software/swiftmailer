@@ -87,6 +87,27 @@ $this->expectException(Swift_SwiftException::class);
 $signer->setSignCertificate('/path/to/expired.pem', '/path/to/key.pem');
 ```
 
+## Implementation Status (2026-03-02)
+
+| Mitigation | Status | Evidence |
+|-|-|-|
+| DKIM `rsa-sha256` as default | **IMPLEMENTED** | `DKIMSigner.php` defaults to `rsa-sha256` |
+| DKIM `rsa-sha1` deprecation notice | **IMPLEMENTED** | `DKIMSigner.php:247-252`: `trigger_error()` with `E_USER_DEPRECATED` when `rsa-sha1` selected |
+| Ed25519 signing support | **IMPLEMENTED** | `ed25519-sha256` option in `setHashAlgorithm()` |
+| `#[SensitiveParameter]` on DKIM passphrase | **IMPLEMENTED** | Present on constructor parameter |
+| DKIM `ignoreHeader('from')` blocked | **IMPLEMENTED** | Blocked in `DKIMSigner` (but NOT in `DomainKeySigner`) |
+| `DomainKeySigner` always uses SHA-1 | **NOT FIXED** | `DomainKeySigner.php:255`: `setHashAlgorithm()` ignores argument, hardcodes `'rsa-sha1'` |
+| `DomainKeySigner` `ignoreHeader('from')` not blocked | **NOT FIXED** | `DomainKeySigner.php:346-351`: no protection |
+| DKIM oversigning disabled by default | **NOT FIXED** | `DKIMSigner.php:72`: `$oversigning = false` |
+| DKIM `rsa-sha1` still functional | **NOT FIXED** | `DKIMSigner.php:252`: deprecation only, still accepted and usable |
+| DKIM `setBodySignedLen()` still available | **NOT FIXED** | `DKIMSigner.php:330-344`: `l=` tag enabling content injection risk |
+| S/MIME no certificate validation | **NOT FIXED** | `SMimeSigner.php:88-105`: no expiry, revocation, or key strength checks |
+| S/MIME `getSignPrivateKey()` public | **NOT FIXED** | `SMimeSigner.php:148`: public getter exposes key path + passphrase |
+| OpenSSL error string in exceptions | **NOT FIXED** | `DKIMSigner.php:126`: `openssl_error_string()` in exception messages |
+| S/MIME default cipher AES-128-CBC | **NOT FIXED** | `SMimeSigner.php:73`: could be upgraded to AES-256-CBC |
+
+**Overall Status:** PARTIALLY IMPLEMENTED -- DKIM `rsa-sha256` default and deprecation notice for `rsa-sha1` are in place. However, DomainKeySigner is entirely broken (SHA-1 only), oversigning is off by default, `l=` tag is still available, and S/MIME has no certificate validation.
+
 ## Risk After Mitigation
 
 **Residual Risk:** LOW -- With SHA-1 removal, `l=` tag removal, default oversigning, and S/MIME validation, signing provides strong authenticity guarantees.

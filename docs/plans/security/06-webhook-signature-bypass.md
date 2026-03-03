@@ -118,6 +118,23 @@ $this->expectException(Swift_Webhook_SignatureVerificationException::class);
 $handler->handle($converter, $oldPayload, $validHeaders, 'valid-secret', maxAge: 300);
 ```
 
+## Implementation Status (2026-03-02)
+
+| Mitigation | Status | Evidence |
+|-|-|-|
+| `hash_equals()` in HMAC verification | **IMPLEMENTED** | `AbstractPayloadConverter.php:24`: timing-safe comparison |
+| `#[SensitiveParameter]` on secrets | **IMPLEMENTED** | `RequestHandler.php:40`, all converter `verify()` methods |
+| `SignatureVerificationException` | **IMPLEMENTED** | Thrown when signature is invalid |
+| JSON decoding validation | **IMPLEMENTED** | `json_last_error()` check present |
+| Null secret bypass still possible | **NOT FIXED** | `RequestHandler.php:46`: `if (null !== $secret)` skips verification entirely |
+| Mailjet `verify()` always returns true | **NOT FIXED** | `MailjetConverter.php:41`: `return true;` -- no actual verification |
+| Amazon SES `verify()` is header-only check | **NOT FIXED** | `AmazonSesConverter.php:34`: only checks `isset($headers['x-amz-sns-message-type'])` -- no real SNS signature verification |
+| Timestamp validation | **NOT IMPLEMENTED** | No replay prevention |
+| IP allowlisting | **NOT IMPLEMENTED** | No source IP validation |
+| Event deduplication | **NOT IMPLEMENTED** | No deduplication interface |
+
+**Overall Status:** PARTIALLY IMPLEMENTED -- Core HMAC infrastructure is solid. However, null-secret bypass remains, Mailjet has no real verification, and Amazon SES only checks for a header presence (trivially forged).
+
 ## Risk After Mitigation
 
 **Residual Risk:** LOW — With mandatory verification, timestamp validation, and converter auditing, forged webhooks require possession of the signing secret.

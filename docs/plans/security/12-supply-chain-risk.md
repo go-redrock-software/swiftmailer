@@ -111,12 +111,26 @@ Swiftmailer depends on multiple third-party packages for HTTP communication, DSN
 }
 ```
 
+## Implementation Status (2026-03-02)
+
+| Mitigation | Status | Evidence |
+|-|-|-|
+| `composer.lock` version pinning | **IMPLEMENTED** | `composer.lock` present in repository |
+| PSR interface abstraction boundaries | **IMPLEMENTED** | PSR-7, PSR-18 used |
+| `roave/security-advisories` in dev deps | **IMPLEMENTED** | `composer.json:51`: `"roave/security-advisories": "dev-master"` |
+| `composer audit` in CI | **PENDING** | Not verified in CI configuration |
+| Dependabot/Renovate | **PENDING** | No automated dependency update tool detected |
+| SBOM generation | **PENDING** | No CycloneDX or SPDX SBOM in release pipeline |
+| Vendor namespace isolation | **PENDING** | No `php-scoper` or similar |
+
+**Overall Status:** PARTIALLY IMPLEMENTED -- `roave/security-advisories` is installed. Lockfile pinning is in place. CI audit, Dependabot, and SBOM remain pending.
+
 ## Monitoring Checklist
 
+- [x] `roave/security-advisories` in dev dependencies
 - [ ] `composer audit` in CI (blocking)
 - [ ] Dependabot/Renovate enabled
 - [ ] Security advisory notifications configured
-- [ ] `roave/security-advisories` in dev dependencies
 - [ ] Quarterly manual review of dependency tree
 - [ ] SBOM generation in release pipeline
 

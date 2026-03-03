@@ -91,6 +91,22 @@ $this->assertTrue($options['ssl']['verify_peer'] ?? true);
 // (mock Guzzle client and verify options)
 ```
 
+## Implementation Status (2026-03-02)
+
+| Mitigation | Status | Evidence |
+|-|-|-|
+| TLS 1.2/1.3 enforcement | **IMPLEMENTED** | `StreamBuffer.php:89-92`: `STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT \| TLSv1_3_CLIENT` |
+| `verify_peer` DSN parsing | **IMPLEMENTED** | `DsnTransportFactory.php:115-118`: parses and applies `verify_peer` |
+| Peer fingerprint support | **IMPLEMENTED** | DSN `peer_fingerprint` parameter supported |
+| HTTPS for all API endpoints | **IMPLEMENTED** | All 21 API transports use hardcoded `https://` URLs |
+| Guzzle defaults to `verify => true` | **IMPLEMENTED** | Guzzle 7+ default behavior |
+| Warning when `verify_peer=false` set | **PENDING** | No `trigger_error()` or log warning when `verify_peer=false` is used |
+| Auto-TLS implementation | **PENDING** | Plan exists at `docs/plans/2026-02-26-auto-tls.md` but not shipped |
+| `require_tls` parameter | **PENDING** | No STARTTLS requirement option |
+| Explicit `verify => true` in API transports | **PENDING** | `AbstractHttpApiTransport` does not explicitly set `verify` on Guzzle requests |
+
+**Overall Status:** PARTIALLY IMPLEMENTED -- TLS 1.2/1.3 is enforced when enabled, and API endpoints use HTTPS. However, no warning for `verify_peer=false`, no auto-TLS, and no STARTTLS requirement.
+
 ## Risk After Mitigation
 
 **Residual Risk:** LOW-MEDIUM — With default `verify_peer=true`, auto-TLS, and warnings, the attack surface is limited to deliberate misconfiguration.

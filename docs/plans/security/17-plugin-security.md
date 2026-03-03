@@ -107,6 +107,23 @@ $plugin = new Swift_Plugins_PopBeforeSmtpPlugin('host', 110, 'tls');
 $this->assertStringNotContainsString('mypassword', $exception->getMessage());
 ```
 
+## Implementation Status (2026-03-02)
+
+| Mitigation | Status | Evidence |
+|-|-|-|
+| RedirectingPlugin Bcc leak via `X-Swift-Bcc` | **NOT FIXED** | `RedirectingPlugin.php:93`: Bcc stored in `X-Swift-Bcc` message header during transit |
+| AllowlistPlugin Bcc leak via `X-Original-To` | **NOT FIXED** | `AllowlistPlugin.php:136-138`: all original recipients (including Bcc) concatenated into `X-Original-To` header |
+| ImpersonatePlugin unconstrained spoofing | **NOT FIXED** | `ImpersonatePlugin.php:39-49`: no validation on sender string |
+| EchoLogger XSS in non-HTML mode | **NOT FIXED** | `EchoLogger.php:42`: `printf('%s%s', $entry, PHP_EOL)` -- unescaped output when `$isHtml=false` |
+| EchoLogger XSS in HTML mode | **EXISTING** | `EchoLogger.php:40`: uses `htmlspecialchars()` when `$isHtml=true` |
+| PopBeforeSmtpPlugin plaintext password | **NOT FIXED** | `PopBeforeSmtpPlugin.php:153`: `PASS` sent over unencrypted `fsockopen()` |
+| PopBeforeSmtpPlugin password in exceptions | **NOT FIXED** | Password may appear in exception messages from `command()` |
+| MessageLogger/SentMessagePlugin unbounded | **NOT FIXED** | No `$maxMessages` limit on stored messages |
+| DecoratorPlugin template injection | **NOT FIXED** | No input sanitization on replacement values |
+| RedirectingPlugin unanchored regex | **NOT FIXED** | `preg_match($pattern, $recipient)` with caller-supplied unanchored patterns |
+
+**Overall Status:** NOT STARTED -- All plugin security issues remain unfixed. Bcc leakage, XSS in EchoLogger, and plaintext POP3 passwords are the highest-priority items.
+
 ## Risk After Mitigation
 
 **Residual Risk:** LOW -- With Bcc privacy fix, XSS prevention, POP3 TLS enforcement, and storage limits, plugin-mediated attacks are prevented.

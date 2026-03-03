@@ -112,6 +112,22 @@ $header = $factory->createPathHeader('Return-Path');
 // Verify encoder is used
 ```
 
+## Implementation Status (2026-03-02)
+
+| Mitigation | Status | Evidence |
+|-|-|-|
+| `egulias/email-validator` with `RFCValidation` | **EXISTING** | Used in `MailboxHeader::assertValidAddress()` |
+| `AutoAddressEncoder` capability switching | **EXISTING** | Switches between IDN and UTF-8 based on server |
+| RFC 2047 encoding for non-ASCII | **EXISTING** | Header encoding present |
+| Utf8AddressEncoder zero validation | **NOT FIXED** | `Utf8AddressEncoder.php:33-35`: `return $address;` -- returns input verbatim with no UTF-8 validity check, no control character filtering |
+| IdnAddressEncoder `idn_to_ascii()` failure unchecked | **NOT FIXED** | `IdnAddressEncoder.php:45`: return value from `idn_to_ascii()` not checked for `false` |
+| Factory encoder inconsistency | **NOT FIXED** | `SimpleHeaderFactory` passes encoder to `MailboxHeader` but not `PathHeader` or `IdentificationHeader` |
+| Null byte filtering in IDN encoder | **NOT FIXED** | Regex `/[^\x00-\x7F]/` permits `\x00` through `\x1F` in local-part |
+| RFC 5321 length enforcement | **NOT FIXED** | No 64-byte local-part or 255-byte domain limits |
+| IDN homograph detection | **NOT IMPLEMENTED** | No `Spoofchecker` integration |
+
+**Overall Status:** NOT STARTED -- `Utf8AddressEncoder` performs zero validation and `IdnAddressEncoder` silently corrupts addresses on `idn_to_ascii()` failure.
+
 ## Risk After Mitigation
 
 **Residual Risk:** LOW -- With validation in all encoders, IDN error handling, factory consistency, and stricter validation, address-based injection is blocked.

@@ -146,19 +146,226 @@ $sentPlugin->reset();
 | `getDebug()` | `array` | Raw result data from the transport |
 | `getFailedRecipients()` | `array` | List of failed recipient addresses |
 
-## Existing Plugins (from upstream)
+## Upstream Plugins
 
-These plugins exist in the original SwiftMailer and continue to work:
+These plugins exist in the original SwiftMailer and continue to work in the Redrock fork.
 
-| Plugin | Purpose |
+### AntiFloodPlugin
+
+Disconnects and reconnects the transport after a configurable number of emails to stay within server connection limits.
+
+**Class:** `Swift_Plugins_AntiFloodPlugin`
+**Implements:** `Swift_Events_SendListener`
+
+```php
+// Restart transport every 100 emails
+$mailer->registerPlugin(new Swift_Plugins_AntiFloodPlugin(100));
+
+// Restart every 100 emails, pausing 30 seconds between reconnects
+$mailer->registerPlugin(new Swift_Plugins_AntiFloodPlugin(100, 30));
+```
+
+Constructor: `__construct(int $threshold = 99, int $sleep = 0, ?Swift_Plugins_Sleeper $sleeper = null)`
+
+### ThrottlerPlugin
+
+Rate-limits sending to avoid exceeding server quotas. Supports three modes:
+
+**Class:** `Swift_Plugins_ThrottlerPlugin` (extends `Swift_Plugins_BandwidthMonitorPlugin`)
+**Implements:** `Swift_Events_SendListener`, `Swift_Plugins_Sleeper`, `Swift_Plugins_Timer`
+
+| Constant | Description |
 |-|-|
-| `Swift_Plugins_AntiFloodPlugin` | Restart transport after N messages to avoid connection limits |
-| `Swift_Plugins_ThrottlerPlugin` | Rate-limit sending (messages/min or bytes/min) |
-| `Swift_Plugins_LoggerPlugin` | Log SMTP commands and transport events |
-| `Swift_Plugins_RedirectingPlugin` | Redirect all emails to a specific address |
-| `Swift_Plugins_DecoratorPlugin` | Per-recipient message personalization (template variables) |
-| `Swift_Plugins_ImpersonatePlugin` | Override the From address |
-| `Swift_Plugins_BandwidthMonitorPlugin` | Track bytes sent/received |
-| `Swift_Plugins_MessageLogger` | Log full message content |
+| `BYTES_PER_MINUTE` | Throttle by total bytes transferred per minute |
+| `MESSAGES_PER_MINUTE` | Throttle by number of messages per minute |
+| `MESSAGES_PER_SECOND` | Throttle by number of messages per second (useful for Amazon SES) |
 
-See the legacy [doc/plugins.rst](plugins.rst) for detailed documentation of these plugins.
+```php
+// 100 emails per minute
+$mailer->registerPlugin(new Swift_Plugins_ThrottlerPlugin(
+    100, Swift_Plugins_ThrottlerPlugin::MESSAGES_PER_MINUTE
+));
+
+// 10 MB per minute
+$mailer->registerPlugin(new Swift_Plugins_ThrottlerPlugin(
+    1024 * 1024 * 10, Swift_Plugins_ThrottlerPlugin::BYTES_PER_MINUTE
+));
+
+// 14 messages per second (Amazon SES limit)
+$mailer->registerPlugin(new Swift_Plugins_ThrottlerPlugin(
+    14, Swift_Plugins_ThrottlerPlugin::MESSAGES_PER_SECOND
+));
+```
+
+Constructor: `__construct(int $rate, int $mode = self::BYTES_PER_MINUTE, ?Swift_Plugins_Sleeper $sleeper = null, ?Swift_Plugins_Timer $timer = null)`
+
+### LoggerPlugin
+
+Logs SMTP commands, responses, transport lifecycle events, sent messages, and failed messages. Enriches exception messages with the full SMTP transcript for debugging.
+
+**Class:** `Swift_Plugins_LoggerPlugin`
+**Implements:** `Swift_Events_CommandListener`, `Swift_Events_ResponseListener`, `Swift_Events_TransportChangeListener`, `Swift_Events_TransportExceptionListener`, `Swift_Events_SendListener`, `Swift_Events_SentMessageListener`, `Swift_Events_FailedMessageListener`, `Swift_Plugins_Logger`
+
+Available loggers:
+- `Swift_Plugins_Loggers_ArrayLogger` -- stores log entries in an array; retrieve with `dump()`, clear with `clear()`
+- `Swift_Plugins_Loggers_EchoLogger` -- prints log entries to stdout in real time
+
+```php
+// Array logger (capture for later)
+$logger = new Swift_Plugins_Loggers_ArrayLogger();
+$mailer->registerPlugin(new Swift_Plugins_LoggerPlugin($logger));
+
+$mailer->send($message);
+echo $logger->dump();
+
+// Echo logger (real-time output)
+$logger = new Swift_Plugins_Loggers_EchoLogger();
+$mailer->registerPlugin(new Swift_Plugins_LoggerPlugin($logger));
+```
+
+Constructor: `__construct(Swift_Plugins_Logger $logger)`
+
+### DecoratorPlugin
+
+Per-recipient message personalization using template placeholders. The plugin intercepts sending, looks up the To address in a replacement map, and substitutes placeholders in the body, subject, and headers.
+
+**Class:** `Swift_Plugins_DecoratorPlugin`
+**Implements:** `Swift_Events_SendListener`, `Swift_Plugins_Decorator_Replacements`
+
+```php
+$replacements = [
+    'alice@example.com' => ['{name}' => 'Alice', '{code}' => '1234'],
+    'bob@example.com'   => ['{name}' => 'Bob',   '{code}' => '5678'],
+];
+
+$mailer->registerPlugin(new Swift_Plugins_DecoratorPlugin($replacements));
+
+$message = (new Swift_Message('Hello {name}'))
+    ->setBody('Your code is {code}.');
+```
+
+You can also pass a `Swift_Plugins_Decorator_Replacements` implementation for on-the-fly lookups (e.g., from a database):
+
+```php
+class DbReplacements implements Swift_Plugins_Decorator_Replacements {
+    public function getReplacementsFor($address) {
+        // Query your database and return ['{placeholder}' => 'value', ...]
+    }
+}
+
+$mailer->registerPlugin(new Swift_Plugins_DecoratorPlugin(new DbReplacements()));
+```
+
+Constructor: `__construct(array|Swift_Plugins_Decorator_Replacements $replacements)`
+
+### RedirectingPlugin
+
+Redirects all emails to a specified recipient. Useful in development/staging to prevent accidental sends. Supports a whitelist of regex patterns for addresses that should still receive mail normally.
+
+**Class:** `Swift_Plugins_RedirectingPlugin`
+**Implements:** `Swift_Events_SendListener`
+
+```php
+// Redirect everything to the dev team
+$mailer->registerPlugin(new Swift_Plugins_RedirectingPlugin('dev@example.com'));
+
+// Redirect everything except @mycompany.com addresses
+$mailer->registerPlugin(new Swift_Plugins_RedirectingPlugin(
+    'dev@example.com',
+    ['/.*@mycompany\.com$/']
+));
+```
+
+Original recipients are stored in `X-Swift-To`, `X-Swift-Cc`, and `X-Swift-Bcc` headers during sending, then restored on the message object afterward.
+
+Constructor: `__construct(string|array $recipient, array $whitelist = [])`
+
+### ImpersonatePlugin
+
+Overrides the message's return-path (envelope sender) with a fixed address. The original return-path is restored after sending.
+
+**Class:** `Swift_Plugins_ImpersonatePlugin`
+**Implements:** `Swift_Events_SendListener`
+
+```php
+$mailer->registerPlugin(new Swift_Plugins_ImpersonatePlugin('bounces@example.com'));
+```
+
+Constructor: `__construct(string $sender)`
+
+### BandwidthMonitorPlugin
+
+Tracks the total bytes sent to and received from the SMTP server. Used internally by `ThrottlerPlugin` and can be used standalone for monitoring.
+
+**Class:** `Swift_Plugins_BandwidthMonitorPlugin`
+**Implements:** `Swift_Events_SendListener`, `Swift_Events_CommandListener`, `Swift_Events_ResponseListener`, `Swift_InputByteStream`
+
+```php
+$monitor = new Swift_Plugins_BandwidthMonitorPlugin();
+$mailer->registerPlugin($monitor);
+
+$mailer->send($message);
+
+echo $monitor->getBytesOut(); // Total bytes sent
+echo $monitor->getBytesIn();  // Total bytes received
+
+$monitor->reset(); // Reset counters to zero
+```
+
+### MessageLogger
+
+Stores clones of all messages passed to the transport. Useful for testing or auditing the exact message content that was sent.
+
+**Class:** `Swift_Plugins_MessageLogger`
+**Implements:** `Swift_Events_SendListener`
+
+```php
+$messageLogger = new Swift_Plugins_MessageLogger();
+$mailer->registerPlugin($messageLogger);
+
+$mailer->send($message);
+
+$messages = $messageLogger->getMessages();  // Swift_Mime_SimpleMessage[]
+$count    = $messageLogger->countMessages();
+$messageLogger->clear();                    // Empty the stored messages
+```
+
+### ReporterPlugin
+
+Reports per-recipient pass/fail delivery results to a `Swift_Plugins_Reporter` backend after each send.
+
+**Class:** `Swift_Plugins_ReporterPlugin`
+**Implements:** `Swift_Events_SendListener`
+
+Available reporters:
+- `Swift_Plugins_Reporters_HitReporter` -- collects failed recipient addresses
+- `Swift_Plugins_Reporters_HtmlReporter` -- generates HTML-formatted delivery reports
+
+```php
+$reporter = new Swift_Plugins_Reporters_HitReporter();
+$mailer->registerPlugin(new Swift_Plugins_ReporterPlugin($reporter));
+
+$mailer->send($message);
+
+// Get addresses that failed delivery
+$failures = $reporter->getFailedRecipients();
+```
+
+Constructor: `__construct(Swift_Plugins_Reporter $reporter)`
+
+### PopBeforeSmtpPlugin
+
+Authenticates with a POP3 server before starting the SMTP transport. Some legacy mail servers require this authentication sequence.
+
+**Class:** `Swift_Plugins_PopBeforeSmtpPlugin`
+**Implements:** `Swift_Events_TransportChangeListener`
+
+```php
+$pop = new Swift_Plugins_PopBeforeSmtpPlugin('pop.example.com', 110);
+$pop->setUsername('user');
+$pop->setPassword('pass');
+
+$mailer->registerPlugin($pop);
+```
+
+Constructor: `__construct(string $host, int $port = 110, ?string $crypto = null)`

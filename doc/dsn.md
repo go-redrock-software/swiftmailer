@@ -28,6 +28,7 @@ postmark://pmk-xxxxxxxxxxxx@default
 | Scheme | Transport Class | Auth |
 |-|-|-|
 | `null` | `Swift_Transport_NullTransport` | None |
+| `sendmail` | `Swift_Transport_SendmailTransport` | None (local sendmail binary) |
 | `smtp` | `Swift_Transport_EsmtpTransport` | user:password in DSN |
 | `smtp+tls` | `Swift_Transport_EsmtpTransport` | user:password, forced TLS |
 | `smtp+ssl` | `Swift_Transport_EsmtpTransport` | user:password, forced SSL (port 465) |
@@ -56,7 +57,19 @@ postmark://pmk-xxxxxxxxxxxx@default
 
 **Note:** Transports marked "not DSN-constructible" require SDK client objects and must be instantiated directly. The DSN factory passes the DSN user/password as the API key for all other transports.
 
-## SMTP DSN Parameters
+### Sendmail DSN
+
+The `sendmail` scheme creates a `Swift_Transport_SendmailTransport` using the local sendmail binary. You can customize the sendmail command via the `command` query parameter:
+
+```
+sendmail://default?command=/usr/sbin/sendmail%20-bs
+```
+
+If omitted, the command defaults to `/usr/sbin/sendmail -bs`.
+
+## DSN Query Parameters
+
+### SMTP Parameters
 
 SMTP schemes accept query-string parameters:
 
@@ -70,6 +83,22 @@ smtp+tls://user:pass@mail.example.com:587?verify_peer=false&source_ip=10.0.0.1&s
 | `peer_fingerprint` | string | Expected TLS peer certificate fingerprint |
 | `source_ip` | string | Local IP address to bind the SMTP connection to |
 | `smtputf8` | bool | Set to `false` to disable SMTPUTF8 and use IDN encoding instead |
+
+### Retry Parameters (all schemes)
+
+Any DSN can include retry parameters in the query string. When present, the factory wraps the transport in a `Swift_Transport_RetryTransport` with exponential backoff:
+
+```
+sendgrid://SG.your-key@default?retries=3&retry_delay=1000
+smtp+tls://user:pass@mail.example.com:587?retries=2&retry_delay=500
+```
+
+| Parameter | Type | Default | Description |
+|-|-|-|-|
+| `retries` | int | none | Number of retry attempts. If absent or 0, no retry wrapper is applied |
+| `retry_delay` | int | 1000 | Base delay between retries in milliseconds |
+
+This is an alternative to the `retry()` meta-transport wrapper. The difference: query-string retry parameters give you control over the retry count and delay, while `retry(dsn)` uses the `RetryTransport` defaults.
 
 ## Meta-Transport Wrappers
 

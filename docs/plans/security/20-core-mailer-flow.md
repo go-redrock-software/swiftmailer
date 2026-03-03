@@ -118,6 +118,22 @@ $this->expectException(InvalidArgumentException::class);
 Swift_Preferences::getInstance()->setCacheType('../../evil');
 ```
 
+## Implementation Status (2026-03-02)
+
+| Mitigation | Status | Evidence |
+|-|-|-|
+| `DependencyContainer` set during bootstrap | **EXISTING** | Entries typically set at initialization |
+| `Swift_Envelope` readonly class | **EXISTING** | Immutable after construction |
+| `SentMessage` clones original message | **EXISTING** | Message cloned in `SentMessage` |
+| `createMessage()` service name validation | **NOT DONE** | `Mailer.php:38-41`: `$service` concatenated into `'message.'.$service` with no validation |
+| `Preferences::setCacheType()` validation | **NOT DONE** | `Preferences.php:75-77`: `$type` concatenated into `'cache.'.$type` with no allowlist |
+| `SentMessage::getTransport()` credential exposure | **NOT DONE** | `SentMessage.php:91`: returns full transport object including `$apiKey` |
+| `SentMessage __debugInfo()` | **NOT DONE** | No debug info redaction |
+| Envelope auditing (strict mode) | **NOT DONE** | No envelope-to-header recipient validation |
+| Default rate limiting | **NOT DONE** | No built-in rate limit in `Swift_Mailer` |
+
+**Overall Status:** NOT STARTED -- Container lookup injection via `createMessage()` and `setCacheType()` remain open. `SentMessage` exposes transport credentials.
+
 ## Risk After Mitigation
 
 **Residual Risk:** LOW -- With input validation, credential protection, envelope auditing, and rate limiting, the core send flow is hardened against abuse.

@@ -98,6 +98,22 @@ $info = print_r($transport, true);
 $this->assertStringNotContainsString('sk-test-key-123', $info);
 ```
 
+## Implementation Status (2026-03-02)
+
+| Mitigation | Status | Evidence |
+|-|-|-|
+| `#[SensitiveParameter]` on API key constructors | **IMPLEMENTED** | `lib/classes/Swift/Transport/AbstractHttpApiTransport.php:32`, plus per-transport constructors (MailGun:27, Mailtrap:27, InfoBip:25, Postal:25, Azure:30, Scaleway:19, MailJet:25-26) |
+| `#[SensitiveParameter]` on webhook secrets | **IMPLEMENTED** | `lib/classes/Swift/Webhook/RequestHandler.php:40`, `AbstractPayloadConverter.php:21` |
+| `__sleep()`/`__wakeup()` on transports | **IMPLEMENTED** | `AbstractSmtpTransport.php:581-586`, `AbstractApiTransport.php:95-100` |
+| Readonly `Swift_Dsn` class | **IMPLEMENTED** | `Swift_Dsn` is readonly |
+| LoggerPlugin AUTH command redaction | **PENDING** | `LoggerPlugin::commandSent()` at line 64 still logs commands verbatim; no AUTH filtering |
+| `#[SensitiveParameter]` on AuthHandler | **PENDING** | No `#[SensitiveParameter]` on `setPassword()`/`setUsername()` in AuthHandler |
+| `__debugInfo()` on transport classes | **PENDING** | No `__debugInfo()` found on any transport class |
+| API key visibility change | **PENDING** | `$apiKey` remains `public protected(set)` on `AbstractHttpApiTransport` |
+| Exception message sanitization | **PENDING** | No credential redaction in `TransportException` messages |
+
+**Overall Status:** PARTIALLY IMPLEMENTED -- PHP 8.2 `#[SensitiveParameter]` and serialization prevention are in place. Log redaction, `__debugInfo()`, and property visibility changes are pending.
+
 ## Risk After Mitigation
 
 **Residual Risk:** LOW — With log redaction, `__debugInfo()`, and `#[SensitiveParameter]` coverage, credential exposure requires deliberate circumvention.

@@ -121,6 +121,21 @@ $this->expectException(Swift_IoException::class);
 $spool->flushQueue($transport);
 ```
 
+## Implementation Status (2026-03-02)
+
+| Mitigation | Status | Evidence |
+|-|-|-|
+| Transport `__sleep()`/`__wakeup()` throw | **IMPLEMENTED** | `AbstractSmtpTransport.php:581-586`, `AbstractApiTransport.php:95-100` |
+| Atomic file operations | **IMPLEMENTED** | `FileSpool.php` uses `fopen(..., 'xb')` for exclusive creation |
+| Rename-based locking | **IMPLEMENTED** | `FileSpool.php:165`: `rename($file, $file.'.sending')` |
+| `unserialize()` with `allowed_classes` | **NOT IMPLEMENTED** | `FileSpool.php:166`: raw `\unserialize(\file_get_contents($file.'.sending'))` with NO `allowed_classes` restriction |
+| HMAC integrity verification | **NOT IMPLEMENTED** | No signing key or HMAC on spool files |
+| File permission enforcement | **NOT IMPLEMENTED** | No permission validation on spool directory |
+| Alternative spool format (JSON) | **NOT IMPLEMENTED** | No `JsonFileSpool` or `DatabaseSpool` exists |
+| Longer random filenames | **NOT IMPLEMENTED** | Still uses 10-char random strings |
+
+**Overall Status:** NOT STARTED -- The critical `allowed_classes` restriction on `unserialize()` has NOT been implemented. This remains a **CRITICAL** vulnerability. `FileSpool.php:166` deserializes untrusted data without any class restriction.
+
 ## Risk After Mitigation
 
 **Residual Risk:** LOW — With `allowed_classes` restriction, HMAC integrity checks, and file permission hardening, deserialization-based RCE is effectively eliminated.

@@ -104,6 +104,23 @@ $this->expectException(Swift_DependencyException::class);
 $container->lookup('a');
 ```
 
+## Implementation Status (2026-03-02)
+
+| Mitigation | Status | Evidence |
+|-|-|-|
+| Events carry `$source` transport reference | **EXISTING** | `SendEvent` includes source for listener filtering |
+| `registerPlugin()` type enforcement | **EXISTING** | Only `EventListener` implementations accepted |
+| `SendEvent::reject()` explicit rejection | **EXISTING** | Sets `RESULT_REJECTED` |
+| Immutable envelope in SendEvent | **NOT DONE** | `SendEvent.php:174`: `setEnvelope()` is public; no envelope cloning |
+| Bubble cancellation still allows send suppression | **NOT DONE** | `SendEvent.php:149`: `cancelBubble(true)` callable by any listener |
+| Exception suppression logging | **NOT DONE** | Exceptions can be silently swallowed via bubble cancellation |
+| AUTH command redaction in CommandEvent | **NOT DONE** | Raw SMTP commands exposed to all `CommandListener` plugins |
+| DependencyContainer alias cycle detection | **NOT DONE** | No maximum depth counter; potential stack overflow |
+| DependencyContainer class name allowlist | **NOT DONE** | Arbitrary class instantiation possible |
+| Listener priority ordering | **NOT DONE** | No priority parameter on `bindEventListener()` |
+
+**Overall Status:** NOT STARTED -- All proposed mitigations remain pending. The event system allows recipient redirection, silent send cancellation, and exception suppression.
+
 ## Risk After Mitigation
 
 **Residual Risk:** LOW -- With immutable envelopes, mandatory exception logging, credential redaction, and cycle detection, the event system cannot be silently abused.

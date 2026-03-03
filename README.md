@@ -19,7 +19,7 @@ Since taking over, Redrock has shipped a major modernization of SwiftMailer (v6.
 - **SMTP improvements** -- Auto TLS, Smart SMTPUTF8, explicit envelope control via `Swift_Envelope`
 - **RetryTransport** -- automatic retries with exponential backoff for any transport
 - **Security hardening** -- `#[SensitiveParameter]` on API keys, Guzzle exception sanitization, serialization blocking
-- **Modern tooling** -- PHP 8.1+ baseline, PHPStan static analysis, CI pipeline with GitHub Actions, Infection mutation testing, PHP-CS-Fixer
+- **Modern tooling** -- PHP 8.2+ baseline, PHPStan static analysis, CI pipeline with GitHub Actions, Infection mutation testing, PHP-CS-Fixer
 - **CLI test tool** -- `bin/swiftmailer-test` for validating transport configuration from the command line
 
 ### The Future of SwiftMailer
@@ -35,7 +35,7 @@ If your application uses SwiftMailer, you don't have to migrate. Upgrade to this
 
 ## Requirements
 
-- PHP 8.1+
+- PHP 8.2+
 - Extensions: `iconv`, `mbstring`, `intl`, `openssl`
 
 ## Installation
@@ -195,7 +195,7 @@ The `bin/swiftmailer-test` command-line tool validates your transport configurat
 
 ### CI & Quality
 
-- GitHub Actions CI pipeline with PHP 8.1--8.4 test matrix
+- GitHub Actions CI pipeline with PHP 8.2--8.4 test matrix
 - PHPStan level 5 static analysis
 - Infection mutation testing
 - PHP-CS-Fixer code style enforcement

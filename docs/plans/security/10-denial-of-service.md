@@ -106,6 +106,23 @@ $this->expectException(Swift_IoException::class);
 $spool->queueMessage($largeMessage);
 ```
 
+## Implementation Status (2026-03-02)
+
+| Mitigation | Status | Evidence |
+|-|-|-|
+| `AntiFloodPlugin` batch pausing | **EXISTING** | Plugin limits messages per connection |
+| `ThrottlerPlugin` rate limiting | **EXISTING** | Plugin rate-limits by time or byte count |
+| SMTP connection timeout | **EXISTING** | Default 30 seconds |
+| `RetryTransport` max retries | **EXISTING** | Default 3 retries with exponential backoff (`RetryTransport.php:42-48`) |
+| Message size limit | **PENDING** | No `Swift_MessageLimits` class or size validation |
+| Attachment count/size limit | **PENDING** | No limits on attachment count or size |
+| Recipient count limit | **PENDING** | No maximum for To/Cc/Bcc |
+| FileSpool quota | **PENDING** | No disk usage limit on spool directory |
+| PHRASE_PATTERN regex audit | **PENDING** | No catastrophic backtracking audit performed |
+| RetryTransport parameter validation | **PENDING** | `maxRetries` and `baseDelayMs` accept any integer including negative values |
+
+**Overall Status:** NOT STARTED -- Existing plugins provide opt-in rate limiting, but no built-in size/count guards exist. `RetryTransport` lacks parameter validation.
+
 ## Risk After Mitigation
 
 **Residual Risk:** LOW — With size/count limits and spool quotas, resource exhaustion requires deliberate bypass of the validation layer.

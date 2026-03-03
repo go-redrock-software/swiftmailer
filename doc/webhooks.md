@@ -22,7 +22,8 @@ HTTP Request  -->  Swift_Webhook_RequestHandler
 | `Swift_Webhook_RequestHandler` | Orchestrates verification, decoding, conversion |
 | `Swift_Webhook_PayloadConverterInterface` | Interface for provider converters |
 | `Swift_Webhook_AbstractPayloadConverter` | Base class with HMAC helpers and event factories |
-| `Swift_Webhook_Event` | Normalized event value object |
+| `Swift_Webhook_Event` | Normalized event value object (readonly) |
+| `Swift_Webhook_SignatureVerificationException` | Thrown when signature verification fails |
 
 ## Event Types
 
@@ -139,9 +140,21 @@ $events = $handler->handle($converter, $rawBody, $headers, $verificationKey);
 
 **Converter:** `Swift_Webhook_Converter_MailgunConverter`
 
-**Signature verification:** HMAC-SHA256. Mailgun sends `timestamp`, `token`, and `signature` in the payload.
+**Signature verification:** HMAC-SHA256 of `timestamp + token` (from the `signature` field in the JSON payload) compared against the `signature` value. The signing data comes from the payload body, not the HTTP headers.
 
-**Secret:** Your Mailgun webhook signing key.
+**Secret:** Your Mailgun webhook signing key (found in Mailgun dashboard under Webhooks).
+
+**Event mapping:**
+
+| Mailgun Event | Webhook Event |
+|-|-|
+| `delivered` | delivery / delivered |
+| `failed` (permanent) | delivery / bounced |
+| `failed` (temporary) | delivery / deferred |
+| `opened` | engagement / opened |
+| `clicked` | engagement / clicked |
+| `unsubscribed` | engagement / unsubscribed |
+| `complained` | engagement / complained |
 
 ```php
 $converter = new Swift_Webhook_Converter_MailgunConverter();
@@ -152,18 +165,44 @@ $events = $handler->handle($converter, $rawBody, $headers, $signingKey);
 
 **Converter:** `Swift_Webhook_Converter_PostmarkConverter`
 
-**Signature verification:** Provider-specific. Check the converter source for details.
+**Signature verification:** Compares the `X-Postmark-Webhook-Token` header against your configured secret using timing-safe comparison. This is a shared-secret token, not HMAC.
+
+**Secret:** The webhook token you configured in Postmark's webhook settings.
+
+**Event mapping:**
+
+| Postmark RecordType | Webhook Event |
+|-|-|
+| `Bounce` | delivery / bounced |
+| `Delivery` | delivery / delivered |
+| `Open` | engagement / opened |
+| `Click` | engagement / clicked |
+| `SpamComplaint` | engagement / complained |
+| `SubscriptionChange` | engagement / unsubscribed |
 
 ```php
 $converter = new Swift_Webhook_Converter_PostmarkConverter();
-$events = $handler->handle($converter, $rawBody, $headers, $secret);
+$events = $handler->handle($converter, $rawBody, $headers, $webhookToken);
 ```
 
 ### Amazon SES
 
 **Converter:** `Swift_Webhook_Converter_AmazonSesConverter`
 
-**Signature verification:** SNS message signature verification.
+**Signature verification:** Basic validation only -- checks for the `X-Amz-Sns-Message-Type` header. For production use, validate SNS signatures using the AWS SDK or a dedicated SNS verification library.
+
+**Note:** SES sends notifications through SNS. The converter automatically skips `SubscriptionConfirmation` and `UnsubscribeConfirmation` message types -- you must handle SNS subscription confirmation separately. The inner SES `Message` JSON is decoded and mapped by `notificationType`.
+
+**Event mapping:**
+
+| SES notificationType | Webhook Event |
+|-|-|
+| `Bounce` (Permanent) | delivery / bounced |
+| `Bounce` (Transient) | delivery / deferred |
+| `Delivery` | delivery / delivered |
+| `Complaint` | engagement / complained |
+
+SES bounces and deliveries may contain multiple recipients; the converter emits one event per recipient.
 
 ```php
 $converter = new Swift_Webhook_Converter_AmazonSesConverter();

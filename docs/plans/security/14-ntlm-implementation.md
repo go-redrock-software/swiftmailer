@@ -91,6 +91,23 @@ $ref = new ReflectionMethod($authenticator, 'debug');
 $this->assertTrue($ref->isPrivate());
 ```
 
+## Implementation Status (2026-03-02)
+
+| Mitigation | Status | Evidence |
+|-|-|-|
+| NTLMv2 as default | **EXISTING** | `NTLMAuthenticator.php:197`: `$v2 = true` default parameter |
+| `phpseclib` for crypto operations | **EXISTING** | DES/MD4 delegated to phpseclib |
+| NTLMv1 code path removal | **NOT DONE** | `NTLMAuthenticator.php:203`: `if (!$v2)` branch still exists; `createLMPassword()` at line 331 still present |
+| Type 2 message bounds checking | **NOT DONE** | `parseMessage2()` at line 119 uses fixed-offset `substr()` with no length validation |
+| `readSubBlock` unbounded read fix | **NOT DONE** | Line 153: `$blockLength` not capped to remaining buffer size |
+| `debug()` method removal/restriction | **NOT DONE** | Line 649: `protected function debug()` still exists, echoes HTML with credential data |
+| Integer precision fix (`si2bin`) | **NOT DONE** | Uses `2 ** 63` which exceeds PHP integer precision |
+| `getDomainAndUsername()` parsing fix | **NOT DONE** | `explode('\\', $name)` without limit parameter |
+| MIC support | **NOT DONE** | No Message Integrity Code in Type 3 messages |
+| Channel binding / EPA | **NOT DONE** | No Extended Protection for Authentication |
+
+**Overall Status:** NOT STARTED -- All proposed mitigations remain pending. NTLMv1 code paths, unbounded reads, and the `debug()` credential leak are all still present.
+
 ## Risk After Mitigation
 
 **Residual Risk:** MEDIUM -- NTLM is inherently weak (no forward secrecy, relay-vulnerable). With NTLMv1 removed and bounds checking added, implementation-level risks are addressed, but protocol-level risks remain. Recommend migration to XOAUTH2 where possible.

@@ -28,7 +28,7 @@ composer update swiftmailer/swiftmailer
 
 ## Step 2 -- Verify PHP Version
 
-The fork requires **PHP 8.1+** (the original required PHP 7.0+). Ensure your environment meets this requirement.
+The fork requires **PHP 8.2+** (the original required PHP 7.0+). Ensure your environment meets this requirement.
 
 ### Required Extensions
 
@@ -47,7 +47,7 @@ The fork maintains full backward compatibility with stock SwiftMailer 6.x for ex
 
 - `Swift_SmtpTransport`, `Swift_SendmailTransport`, `Swift_NullTransport` work identically
 - `Swift_Message` API is unchanged
-- `Swift_Mailer::send()` signature and return value are unchanged
+- `Swift_Mailer::send()` return value is unchanged; the signature adds an optional third `?Swift_Envelope $envelope` parameter (backward compatible)
 - All existing plugins (AntiFlood, Throttler, Logger, Redirecting, Decorator) work as before
 - PSR-0 autoloading with `Swift_` prefix is preserved
 
@@ -57,9 +57,13 @@ The fork adds required dependencies that were not in the original:
 
 | Package | Purpose |
 |-|-|
+| `egulias/email-validator` | Email address validation |
 | `nyholm/dsn` | DSN string parsing |
 | `google/apiclient` | Gmail API transport |
 | `microsoft/microsoft-graph` | Microsoft Graph transport |
+| `stevenmaguire/oauth2-microsoft` | OAuth2 for Microsoft Graph |
+| `league/oauth2-client` | OAuth2 client library |
+| `league/oauth2-google` | OAuth2 for Google/Gmail |
 | `async-aws/ses` | Amazon SES transport |
 | `guzzlehttp/guzzle` | HTTP client for API transports |
 | `phpseclib/phpseclib` | Cryptographic operations |

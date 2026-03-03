@@ -104,6 +104,19 @@ $transport->setCommand('/usr/sbin/sendmail -bs');
 $this->assertSame('/usr/sbin/sendmail -bs', $transport->getCommand());
 ```
 
+## Implementation Status (2026-03-02)
+
+| Mitigation | Status | Evidence |
+|-|-|-|
+| `escapeshellarg()` on reverse path | **IMPLEMENTED** | `SendmailTransport.php:127`: `-f` flag uses `\escapeshellarg()` |
+| Default hardcoded command | **IMPLEMENTED** | Default `/usr/sbin/sendmail -bs` is hardcoded |
+| `-bs`/`-t` mode validation | **IMPLEMENTED** | Mode checking exists at send time |
+| Shell metacharacter rejection in `setCommand()` | **PENDING** | `setCommand()` at line 73 accepts arbitrary string with no validation |
+| DSN `command` parameter validation/allowlist | **PENDING** | `DsnTransportFactory.php:71` passes `command` parameter directly |
+| Binary path validation (`is_executable()`) | **PENDING** | No binary path verification |
+
+**Overall Status:** PARTIALLY IMPLEMENTED -- `escapeshellarg()` protects the `-f` flag, but `setCommand()` and DSN `command` parameter lack input validation.
+
 ## Risk After Mitigation
 
 **Residual Risk:** LOW — With command validation, allowlisted binaries, and shell metacharacter rejection, injection requires modifying code rather than input.

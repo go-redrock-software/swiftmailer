@@ -46,7 +46,7 @@ Transport Types
 Transports are the classes in Swift Mailer that are responsible for
 communicating with a service in order to deliver a Message. There are several
 types of Transport in Swift Mailer, all of which implement the
-``Swift_Transport`` interface::
+``Swift_Transport`` interface:
 
 * ``Swift_SmtpTransport``: Sends messages over SMTP; Supports Authentication;
   Supports Encryption. Very portable; Pleasingly predictable results; Provides
@@ -56,10 +56,10 @@ types of Transport in Swift Mailer, all of which implement the
   ``sendmail`` executable (Linux/UNIX). Quick time-to-run; Provides
   less-accurate feedback than SMTP; Requires ``sendmail`` installation;
 
-* ``Swift_Transport_Api_*``: HTTP API transports for 21 email providers
+* ``Swift_Transport_Api_*``: 21 HTTP API transports for 20 email providers
   (SendGrid, Mailgun, Postmark, Brevo, Amazon SES, Gmail API, Microsoft Graph,
-  and more). Faster and more reliable than SMTP for supported providers.
-  See `doc/api-transports.md <api-transports.md>`_ for the full list.
+  Resend, Mailtrap, and more). Faster and more reliable than SMTP for supported
+  providers. See `doc/api-transports.md <api-transports.md>`_ for the full list.
 
 * ``Swift_Transport_RetryTransport``: Wraps any transport with automatic retry
   logic and exponential backoff for resilient delivery.
@@ -106,8 +106,9 @@ within your application and adjust the settings accordingly if the code is
 moved or if the SMTP server is changed.
 
 Some SMTP servers -- Google for example -- use encryption for security reasons.
-Swift Mailer supports using both ``ssl`` (SMTPS = SMTP over TLS) and ``tls``
-(SMTP with STARTTLS) encryption settings.
+Swift Mailer supports using both ``CONNECTION_ENCRYPTION_MODE_TLS`` (SMTPS =
+SMTP over TLS, value ``'ssl'``) and ``CONNECTION_ENCRYPTION_MODE_STARTTLS``
+(SMTP with STARTTLS, value ``'tls'``) encryption constants.
 
 Using the SMTP Transport
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -141,14 +142,15 @@ A connection to the SMTP server will be established upon the first call to
 Encrypted SMTP
 ^^^^^^^^^^^^^^
 
-You can use ``ssl`` (SMTPS) or ``tls`` (STARTTLS) encryption with the SMTP Transport
-by specifying it as a parameter or with a method call::
+You can use ``CONNECTION_ENCRYPTION_MODE_TLS`` (SMTPS) or
+``CONNECTION_ENCRYPTION_MODE_STARTTLS`` (STARTTLS) encryption with the SMTP
+Transport by specifying it as a constructor parameter::
 
     // Create the Transport
     // Option #1: SMTPS = SMTP over TLS (always encrypted):
-    $transport = new Swift_SmtpTransport('smtp.example.org', 587, CONNECTION_MODE_TLS);
+    $transport = new Swift_SmtpTransport('smtp.example.org', 465, CONNECTION_ENCRYPTION_MODE_TLS);
     // Option #2: SMTP with STARTTLS (best effort encryption):
-    $transport = new Swift_SmtpTransport('smtp.example.org', 587, CONNECTION_MODE_STARTTLS);
+    $transport = new Swift_SmtpTransport('smtp.example.org', 587, CONNECTION_ENCRYPTION_MODE_STARTTLS);
 
     // Create the Mailer using your created Transport
     $mailer = new Swift_Mailer($transport);
@@ -168,8 +170,8 @@ settings.
     for the ``Swift_SmtpTransport``, since Mailcatcher does not support encryption.
 
 .. note::
-    When in doubt, try ``ssl`` first for higher security, since the communication
-    is always encrypted.
+    When in doubt, try ``CONNECTION_ENCRYPTION_MODE_TLS`` (SMTPS) first for
+    higher security, since the communication is always encrypted.
 
 .. note::
     Usually, port 587 or 465 is used for encrypted SMTP. Check the documentation
@@ -303,12 +305,35 @@ The ``send()`` method of the ``Swift_Mailer`` class sends a message using
 exactly the same logic as your Desktop mail client would use. Just pass it a
 Message and get a result.
 
+The full method signature is::
+
+    public function send(
+        Swift_Mime_SimpleMessage $message,
+        &$failedRecipients = null,
+        ?Swift_Envelope $envelope = null
+    )
+
 The message will be sent just like it would be sent if you used your mail
 client. An integer is returned which includes the number of successful
 recipients. If none of the recipients could be sent to then zero will be
 returned, which equates to a boolean ``false``. If you set two
 ``To:`` recipients and three ``Bcc:`` recipients in the message and all of the
-recipients are delivered to successfully then the value 5 will be returned::
+recipients are delivered to successfully then the value 5 will be returned.
+
+The optional ``$envelope`` parameter accepts a ``Swift_Envelope`` instance that
+lets you override the SMTP envelope sender and recipients independently of the
+message headers. This is useful for sender rewriting or recipient overriding
+without modifying the message itself::
+
+    $envelope = new Swift_Envelope('bounce@example.org', [
+        'actual-recipient@example.org',
+    ]);
+    $numSent = $mailer->send($message, $failures, $envelope);
+
+If no envelope is provided, the sender and recipients are derived from the
+message headers (Return-Path/Sender/From and To/Cc/Bcc respectively).
+
+Here is a basic usage example::
 
     // Create the Transport
     $transport = new Swift_SmtpTransport('localhost', 25);
@@ -443,7 +468,7 @@ simple as passing a variable name to the method call::
         'receiver@bad-domain.org' => 'Receiver Name',
         'other@domain.org' => 'A name',
         'other-receiver@bad-domain.org' => 'Other Name'
-      ))
+      ])
       ->setBody( ... )
       ;
 

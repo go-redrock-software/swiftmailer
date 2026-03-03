@@ -113,6 +113,22 @@ $this->expectException(BadMethodCallException::class);
 unserialize($serialized);
 ```
 
+## Implementation Status (2026-03-02)
+
+| Mitigation | Status | Evidence |
+|-|-|-|
+| Default encoders (Base64/QP) used by SimpleMimeEntity | **EXISTING** | `RawContentEncoder`/`NullContentEncoder` not used by default |
+| Content-Transfer-Encoding header matches encoder | **EXISTING** | Correct header set by default |
+| `QpEncoder` has `__sleep()`/`__wakeup()` | **EXISTING** | `QpEncoder.php:121-126` -- but `__wakeup()` repopulates state rather than throwing |
+| `firstLineOffset` negative value validation | **NOT DONE** | No validation in `QpEncoder`, `Base64Encoder`, or `Rfc2231Encoder` |
+| Charset case normalization | **NOT DONE** | `QpContentEncoderProxy` uses strict `'utf-8' === $this->charset` comparison |
+| MIME boundary scanning in passthrough encoders | **NOT DONE** | `RawContentEncoder.php:32` and `NullContentEncoder.php:46` return input verbatim |
+| `NativeQpContentEncoder` memory limit | **NOT DONE** | Reads entire stream into memory before encoding |
+| `QpEncoder` deserialization hardening | **NOT DONE** | `__wakeup()` repopulates state instead of throwing; usable as gadget |
+| PlainContentEncoder line length enforcement | **NOT DONE** | No force-break for lines exceeding 998 bytes |
+
+**Overall Status:** NOT STARTED -- All proposed mitigations are pending. `QpEncoder` deserialization gadget and charset case-sensitivity bug remain.
+
 ## Risk After Mitigation
 
 **Residual Risk:** LOW -- With input validation, charset normalization, memory limits, and deserialization prevention, encoding-based attacks are mitigated.

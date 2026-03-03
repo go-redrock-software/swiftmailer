@@ -570,8 +570,8 @@ of the recipient.
 ``Cc:`` recipients are visible in the message headers and will be seen by the
 other recipients::
 
-    // Using setTo() to set all recipients in one go
-    $message->setTo([
+    // Using setCc() to set all recipients in one go
+    $message->setCc([
       'person1@example.org',
       'person2@otherdomain.org' => 'Person 2 Name',
       'person3@example.org',
