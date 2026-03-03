@@ -25,34 +25,37 @@
 
 ## Threat Summary Table
 
-| # | Threat | STRIDE | Severity | Likelihood | Implementation Status | Plan File |
-|-|-|-|-|-|-|-|
-| 1 | SMTP Header Injection | T, I | HIGH | Medium | NOT STARTED | `01-header-injection.md` |
-| 2 | Credential Exposure in Logs/Errors | I | CRITICAL | High | PARTIAL | `02-credential-exposure.md` |
-| 3 | Sendmail Command Injection | T, E | HIGH | Low | PARTIAL | `03-sendmail-command-injection.md` |
-| 4 | TLS Downgrade / Man-in-the-Middle | T, I | HIGH | Medium | PARTIAL | `04-tls-downgrade-mitm.md` |
-| 5 | Insecure Deserialization (FileSpool) | T, E | CRITICAL | Medium | NOT STARTED | `05-insecure-deserialization.md` |
-| 6 | Webhook Signature Bypass | S, T | HIGH | Medium | PARTIAL | `06-webhook-signature-bypass.md` |
-| 7 | Attachment Filename Injection | T, I | MEDIUM | Medium | NOT STARTED | `07-attachment-filename-injection.md` |
-| 8 | Weak Authentication Mechanisms | S, I | MEDIUM | Medium | NOT STARTED | `08-weak-authentication.md` |
-| 9 | API Transport SSRF | S, T | MEDIUM | Low | NOT STARTED | `09-api-ssrf.md` |
-| 10 | Denial of Service via Resource Exhaustion | D | MEDIUM | Medium | NOT STARTED | `10-denial-of-service.md` |
-| 11 | Information Disclosure in Error Messages | I | MEDIUM | High | PARTIAL | `11-information-disclosure.md` |
-| 12 | Supply Chain / Dependency Risk | T, E | MEDIUM | Low | PARTIAL | `12-supply-chain-risk.md` |
-| 13 | Cryptographic Signing (DKIM/DomainKey/S-MIME) | T, I | HIGH | Medium | PARTIAL | `13-cryptographic-signing.md` |
-| 14 | NTLM Implementation Vulnerabilities | S, I, E | HIGH | Medium | NOT STARTED | `14-ntlm-implementation.md` |
-| 15 | Event System Abuse & Plugin-Mediated Attacks | T, I, D | MEDIUM | Medium | NOT STARTED | `15-event-system-abuse.md` |
-| 16 | Path Traversal in Cache & Stream Buffers | T, I | HIGH | Low | NOT STARTED | `16-path-traversal-cache.md` |
-| 17 | Plugin-Specific Security Issues | I, T, S | MEDIUM-HIGH | Medium | NOT STARTED | `17-plugin-security.md` |
-| 18 | Email Address Validation Gaps | T, I | MEDIUM | Medium | NOT STARTED | `18-email-validation-gaps.md` |
-| 19 | Content Encoding Bypass & MIME Attacks | T | MEDIUM | Low | NOT STARTED | `19-encoding-bypass.md` |
-| 20 | Core Mailer Flow & Recipient Integrity | T, I | MEDIUM | Low | NOT STARTED | `20-core-mailer-flow.md` |
-| 21 | CLI Credential Exposure & Terminal Injection | I, T | MEDIUM | Medium | NOT STARTED | `21-cli-credential-exposure.md` |
-| 22 | Failover Transport Security Downgrade | T, I | MEDIUM | Medium | NOT STARTED | `22-failover-security-policy.md` |
-| 23 | ReDoS via PHRASE_PATTERN in Header Parsing | D | MEDIUM | Medium | NOT STARTED | `23-redos-header-parsing.md` |
-| 24 | Unbounded API Response Body Consumption | D | MEDIUM | Medium | NOT STARTED | `24-unbounded-api-response.md` |
-| 25 | DSN Parameter Injection Disables TLS | T | HIGH | Medium | NOT STARTED | `25-dsn-parameter-injection.md` |
-| 26 | Retry Transport Amplification | D | MEDIUM | Low | NOT STARTED | `26-retry-transport-amplification.md` |
+> **Audit Status** (2026-03-03): All 26 threats verified against source code. 16 confirmed REAL,
+> 10 found EXAGGERATED (code references accurate but severity/exploitability overstated), 0 fabricated.
+
+| # | Threat | STRIDE | Severity | Likelihood | Audit | Implementation Status | Plan File |
+|-|-|-|-|-|-|-|-|
+| 1 | SMTP Header Injection | T, I | LOW | Low | EXAGGERATED | NOT STARTED | `01-header-injection.md` |
+| 2 | Credential Exposure in Logs/Errors | I | CRITICAL | High | REAL | PARTIAL | `02-credential-exposure.md` |
+| 3 | Sendmail Command Injection | T, E | HIGH | Low | REAL | PARTIAL | `03-sendmail-command-injection.md` |
+| 4 | TLS Downgrade / Man-in-the-Middle | T, I | MEDIUM | Low | EXAGGERATED | PARTIAL | `04-tls-downgrade-mitm.md` |
+| 5 | Insecure Deserialization (FileSpool) | T, E | CRITICAL | Medium | REAL | NOT STARTED | `05-insecure-deserialization.md` |
+| 6 | Webhook Signature Bypass | S, T | HIGH | Medium | REAL | PARTIAL | `06-webhook-signature-bypass.md` |
+| 7 | Attachment Filename Injection | T, I | MEDIUM | Medium | REAL | NOT STARTED | `07-attachment-filename-injection.md` |
+| 8 | Weak Authentication Mechanisms | S, I | LOW | Low | EXAGGERATED | NOT STARTED | `08-weak-authentication.md` |
+| 9 | API Transport SSRF | S, T | LOW | Low | EXAGGERATED | NOT STARTED | `09-api-ssrf.md` |
+| 10 | Denial of Service via Resource Exhaustion | D | LOW | Low | EXAGGERATED | NOT STARTED | `10-denial-of-service.md` |
+| 11 | Information Disclosure in Error Messages | I | MEDIUM | High | REAL | PARTIAL | `11-information-disclosure.md` |
+| 12 | Supply Chain / Dependency Risk | T, E | LOW | Low | EXAGGERATED | PARTIAL | `12-supply-chain-risk.md` |
+| 13 | Cryptographic Signing (DKIM/DomainKey/S-MIME) | T, I | HIGH | Medium | REAL | PARTIAL | `13-cryptographic-signing.md` |
+| 14 | NTLM Implementation Vulnerabilities | S, I, E | HIGH | Medium | REAL | NOT STARTED | `14-ntlm-implementation.md` |
+| 15 | Event System Abuse & Plugin-Mediated Attacks | T, I, D | LOW | Low | EXAGGERATED | NOT STARTED | `15-event-system-abuse.md` |
+| 16 | Path Traversal in Cache & Stream Buffers | T, I | MEDIUM | Low | EXAGGERATED | NOT STARTED | `16-path-traversal-cache.md` |
+| 17 | Plugin-Specific Security Issues | I, T, S | MEDIUM-HIGH | Medium | REAL | NOT STARTED | `17-plugin-security.md` |
+| 18 | Email Address Validation Gaps | T, I | MEDIUM | Medium | REAL | NOT STARTED | `18-email-validation-gaps.md` |
+| 19 | Content Encoding Bypass & MIME Attacks | T | LOW | Low | EXAGGERATED | NOT STARTED | `19-encoding-bypass.md` |
+| 20 | Core Mailer Flow & Recipient Integrity | T, I | LOW | Low | EXAGGERATED | NOT STARTED | `20-core-mailer-flow.md` |
+| 21 | CLI Credential Exposure & Terminal Injection | I, T | MEDIUM | Medium | REAL | NOT STARTED | `21-cli-credential-exposure.md` |
+| 22 | Failover Transport Security Downgrade | T, I | LOW | Low | EXAGGERATED | NOT STARTED | `22-failover-security-policy.md` |
+| 23 | ReDoS via PHRASE_PATTERN in Header Parsing | D | MEDIUM | Medium | REAL | NOT STARTED | `23-redos-header-parsing.md` |
+| 24 | Unbounded API Response Body Consumption | D | MEDIUM | Low | REAL | NOT STARTED | `24-unbounded-api-response.md` |
+| 25 | DSN Parameter Injection Disables TLS | T | HIGH | Medium | REAL | NOT STARTED | `25-dsn-parameter-injection.md` |
+| 26 | Retry Transport Amplification | D | MEDIUM | Low | REAL | NOT STARTED | `26-retry-transport-amplification.md` |
 
 ---
 
@@ -75,25 +78,41 @@
 5. **HIGH: Webhook (#6) null-secret bypass remains.** Mailjet `verify()` always returns `true`. Amazon SES only checks header existence.
 6. **Positive: `roave/security-advisories` installed.** `#[SensitiveParameter]` on API transports. TLS 1.2/1.3 enforced when encryption enabled. `escapeshellarg()` on sendmail `-f` flag.
 
+### Audit Notes (2026-03-03)
+
+All 26 threats were verified against source code. Key audit adjustments:
+
+- **#1 Header Injection downgraded HIGH → LOW.** `AbstractHeader::tokenNeedsEncoding()` explicitly matches `\r\n` and triggers RFC 2047 encoding, neutralizing CRLF injection at output time. Defense-in-depth gap only.
+- **#4 TLS Downgrade downgraded HIGH → MEDIUM.** `verify_peer=false` requires explicit developer opt-in via DSN. Missing auto-TLS is a feature gap, not a vulnerability.
+- **#8 Weak Auth downgraded MEDIUM → LOW.** CRAM-MD5 using MD5 is per RFC 2195. PLAIN/LOGIN over TLS is industry standard. These are protocol behaviors, not library bugs.
+- **#9 SSRF downgraded MEDIUM → LOW.** Unvalidated base URLs are developer-supplied config, not user input.
+- **#10 DoS downgraded MEDIUM → LOW.** Swiftmailer is a library; PHP `memory_limit` and calling app own input validation. Retry amplification mitigated by 60s cap.
+- **#12 Supply Chain downgraded MEDIUM → LOW.** Process recommendations (CI audit, Dependabot), not exploitable code vulnerabilities.
+- **#15 Event System downgraded MEDIUM → LOW.** Requires malicious plugin installed by the developer -- at that point the entire app is already compromised.
+- **#16 Path Traversal downgraded HIGH → MEDIUM.** Cache keys are internally generated (hex-encoded message IDs). External exploitation requires unusual code path.
+- **#19 Encoding Bypass downgraded MEDIUM → LOW.** Requires non-default encoder selection or untrusted deserialization -- unlikely preconditions.
+- **#20 Core Mailer Flow downgraded MEDIUM → LOW.** Envelope override is standard SMTP behavior. Container lookup requires developer-controlled strings.
+- **#22 Failover Downgrade downgraded MEDIUM → LOW.** Admin explicitly configures which transports are in the pool. Silent exception swallowing is a design weakness, not a TLS vulnerability.
+
 ---
 
 ## Risk Score Summary
 
-**Overall Risk Score: 74/100 (HIGH)**
+**Overall Risk Score: 58/100 (MEDIUM)** *(revised from 74 after audit)*
 
 ```
 | Severity | Count | Threats |
 |-|-|-|
 | CRITICAL | 2 | Credential Exposure (#2), Insecure Deserialization (#5) |
-| HIGH | 8 | Header Injection (#1), Sendmail Cmd Injection (#3), TLS Downgrade (#4), |
-|          |   | Webhook Bypass (#6), Crypto Signing (#13), NTLM (#14), Path Traversal (#16), |
-|          |   | DSN Parameter Injection (#25) |
-| MEDIUM   | 16 | Attachment Filenames (#7), Weak Auth (#8), SSRF (#9), DoS (#10), |
-|          |    | Info Disclosure (#11), Supply Chain (#12), Event System (#15), |
-|          |    | Plugin Security (#17), Email Validation (#18), Encoding (#19), |
-|          |    | Core Mailer Flow (#20), CLI Exposure (#21), Failover Downgrade (#22), |
-|          |    | ReDoS Header Parsing (#23), API Response DoS (#24), Retry Amplification (#26) |
-| LOW | 0 | — |
+| HIGH | 5 | Sendmail Cmd Injection (#3), Webhook Bypass (#6), Crypto Signing (#13), |
+|          |   | NTLM (#14), DSN Parameter Injection (#25) |
+| MEDIUM   | 10 | TLS Config (#4), Attachment Filenames (#7), Info Disclosure (#11), |
+|          |    | Path Traversal (#16), Plugin Security (#17), Email Validation (#18), |
+|          |    | CLI Exposure (#21), ReDoS (#23), API Response DoS (#24), |
+|          |    | Retry Amplification (#26) |
+| LOW      | 9  | Header Injection (#1), Weak Auth (#8), SSRF (#9), DoS (#10), |
+|          |    | Supply Chain (#12), Event System (#15), Encoding (#19), |
+|          |    | Core Mailer Flow (#20), Failover Downgrade (#22) |
 ```
 
 ---
@@ -142,23 +161,42 @@
 
 ## Recommended Priority Order
 
-1. **Insecure Deserialization (#5)** — Direct RCE vector via FileSpool
-2. **Sendmail Command Injection (#3)** — RCE via DSN command parameter
-3. **Credential Exposure (#2)** — API keys/passwords in logs, errors, var_dump
-4. **TLS Downgrade (#4)** — verify_peer=false too easy to set, no auto-TLS
-5. **Webhook Signature Bypass (#6)** — Forged delivery events (Amazon SES fake, Mailjet always-true)
-6. **Header Injection (#1)** — Classic email security vulnerability
-7. **Cryptographic Signing (#13)** — DomainKey SHA-1, DKIM body length injection, S/MIME gaps
-8. **NTLM Implementation (#14)** — NTLMv1 removal, bounds checking, debug credential leak
-9. **Path Traversal (#16)** — DiskKeyCache arbitrary file read/write/delete
-10. **Plugin Security (#17)** — Bcc leakage, EchoLogger XSS, PopBeforeSmtp plaintext
-11. **Email Validation (#18)** — Utf8AddressEncoder passthrough, IDN corruption
-12. **Event System (#15)** — Silent send cancellation, recipient redirection
-13. **DSN Parameter Injection (#25)** — Silent TLS disable via verify_peer=false
-14. **Retry Amplification (#26)** — Uncapped retry/delay DoS via DSN params
-15. **ReDoS Header Parsing (#23)** — Catastrophic backtracking in PHRASE_PATTERN
-16. **API Response DoS (#24)** — Unbounded response body memory consumption
-17. **Remaining MEDIUM threats (#7-12, #19-20)** — Address in order of deployment context
+*Revised after 2026-03-03 audit. LOW-severity items moved to optional backlog.*
+
+### CRITICAL / HIGH — Fix before release
+
+1. **Insecure Deserialization (#5)** — Direct RCE vector via FileSpool. Trivial fix (`allowed_classes`).
+2. **Sendmail Command Injection (#3)** — RCE via DSN command parameter. Allowlist validation needed.
+3. **Credential Exposure (#2)** — LoggerPlugin logs AUTH verbatim, API keys are public properties.
+4. **Webhook Signature Bypass (#6)** — Mailjet `verify()` is literally `return true`. SES checks header existence only.
+5. **Cryptographic Signing (#13)** — DomainKeySigner hardcodes SHA-1 ignoring `setHashAlgorithm()`. DKIM oversigning off.
+6. **NTLM Implementation (#14)** — NTLMv1 paths reachable, `debug()` echoes credentials as HTML, unbounded Type 2 parsing.
+7. **DSN Parameter Injection (#25)** — `verify_peer=false` silently disables TLS cert verification with no warning.
+
+### MEDIUM — Address in order of deployment context
+
+8. **Plugin Security (#17)** — Bcc leakage in `X-Swift-Bcc`/`X-Original-To`, PopBeforeSmtp plaintext password in exceptions.
+9. **Email Validation (#18)** — `Utf8AddressEncoder` returns input verbatim. `idn_to_ascii()` failure unchecked.
+10. **Path Traversal (#16)** — DiskKeyCache key concatenation unsanitized (low exploitability due to internal key generation).
+11. **TLS Config (#4)** — `verify_peer=false` opt-in too easy via DSN. Feature gap, not vulnerability.
+12. **Attachment Filenames (#7)** — No sanitization in `setFilename()`, passed raw to API transports.
+13. **Information Disclosure (#11)** — LoggerPlugin dumps full log into exception messages.
+14. **CLI Credential Exposure (#21)** — DSN visible in process list. Test utility, not production component.
+15. **ReDoS Header Parsing (#23)** — Recursive PHRASE_PATTERN regex. Mitigated by `pcre.backtrack_limit`.
+16. **API Response DoS (#24)** — No size limit on response body. Requires MITM to exploit.
+17. **Retry Amplification (#26)** — Uncapped retry count via DSN. Individual delay capped at 60s.
+
+### LOW — Optional backlog (exaggerated or minimal risk)
+
+18. **Header Injection (#1)** — Encoding layer already neutralizes CRLF. Defense-in-depth only.
+19. **Weak Auth (#8)** — Standard SMTP protocol behaviors per RFC 2195.
+20. **SSRF (#9)** — Developer-supplied config values, not user input.
+21. **DoS (#10)** — Library-level; PHP `memory_limit` and calling app own input validation.
+22. **Supply Chain (#12)** — Process recommendations, not code vulnerabilities.
+23. **Event System (#15)** — Requires malicious plugin installed by developer.
+24. **Encoding Bypass (#19)** — Requires non-default encoder selection.
+25. **Core Mailer Flow (#20)** — Standard SMTP envelope behavior and developer-facing APIs.
+26. **Failover Downgrade (#22)** — Admin-configured transport pools working as intended.
 
 ---
 
