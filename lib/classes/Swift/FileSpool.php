@@ -92,7 +92,7 @@ class Swift_FileSpool extends Swift_ConfigurableSpool
     public function queueMessage(Swift_Mime_SimpleMessage $message)
     {
         $ser      = \serialize($message);
-        $fileName = $this->path.'/'.$this->getRandomString(10);
+        $fileName = $this->path.'/'.$this->getRandomString(32);
         for ($i = 0; $i < $this->retryLimit; ++$i) {
             /* We try an exclusive creation of the file. This is an atomic operation, it avoid locking mechanism */
             $fp = @\fopen($fileName.'.message', 'xb');
@@ -130,6 +130,82 @@ class Swift_FileSpool extends Swift_ConfigurableSpool
     }
 
     /**
+     * Classes allowed during unserialization of spooled messages.
+     *
+     * This allowlist prevents arbitrary object instantiation (CWE-502) while
+     * permitting all classes that a legitimately serialized Swift_Message may contain.
+     */
+    private const UNSERIALIZE_ALLOWED_CLASSES = [
+        // Core message and entity classes
+        'Swift_Message',
+        'Swift_Mime_SimpleMessage',
+        'Swift_Mime_SimpleMimeEntity',
+        'Swift_Mime_MimePart',
+        'Swift_Mime_Attachment',
+        'Swift_Mime_EmbeddedFile',
+        'Swift_MimePart',
+        'Swift_Attachment',
+        'Swift_EmbeddedFile',
+        'Swift_Image',
+        // Header classes
+        'Swift_Mime_SimpleHeaderSet',
+        'Swift_Mime_SimpleHeaderFactory',
+        'Swift_Mime_Headers_DateHeader',
+        'Swift_Mime_Headers_IdentificationHeader',
+        'Swift_Mime_Headers_MailboxHeader',
+        'Swift_Mime_Headers_ParameterizedHeader',
+        'Swift_Mime_Headers_PathHeader',
+        'Swift_Mime_Headers_UnstructuredHeader',
+        'Swift_Mime_Headers_OpenDKIMHeader',
+        // Content encoders
+        'Swift_Mime_ContentEncoder_Base64ContentEncoder',
+        'Swift_Mime_ContentEncoder_NativeQpContentEncoder',
+        'Swift_Mime_ContentEncoder_NullContentEncoder',
+        'Swift_Mime_ContentEncoder_PlainContentEncoder',
+        'Swift_Mime_ContentEncoder_QpContentEncoder',
+        'Swift_Mime_ContentEncoder_QpContentEncoderProxy',
+        'Swift_Mime_ContentEncoder_RawContentEncoder',
+        // Header encoders
+        'Swift_Mime_HeaderEncoder_Base64HeaderEncoder',
+        'Swift_Mime_HeaderEncoder_QpHeaderEncoder',
+        // Base encoders
+        'Swift_Encoder_Base64Encoder',
+        'Swift_Encoder_QpEncoder',
+        'Swift_Encoder_Rfc2231Encoder',
+        // Character and stream classes
+        'Swift_CharacterStream_ArrayCharacterStream',
+        'Swift_CharacterStream_NgCharacterStream',
+        'Swift_CharacterReader_GenericFixedWidthReader',
+        'Swift_CharacterReader_UsAsciiReader',
+        'Swift_CharacterReader_Utf8Reader',
+        'Swift_CharacterReaderFactory_SimpleCharacterReaderFactory',
+        // Note: Swift_ByteStream_* classes are intentionally excluded.
+        // They never appear in legitimately serialized messages, and
+        // TemporaryFileByteStream has a __destruct() that deletes files,
+        // making it an arbitrary file deletion gadget (CWE-502).
+        // Address encoders
+        'Swift_AddressEncoder_IdnAddressEncoder',
+        'Swift_AddressEncoder_Utf8AddressEncoder',
+        'Swift_AddressEncoder_AutoAddressEncoder',
+        // Cache and ID generation
+        'Swift_KeyCache_ArrayKeyCache',
+        'Swift_KeyCache_DiskKeyCache',
+        'Swift_KeyCache_NullKeyCache',
+        'Swift_KeyCache_SimpleKeyCacheInputStream',
+        'Swift_Mime_IdGenerator',
+        // Stream filters
+        'Swift_StreamFilters_ByteArrayReplacementFilter',
+        'Swift_StreamFilters_StringReplacementFilter',
+        'Swift_StreamFilters_StringReplacementFilterFactory',
+        // Third-party classes used by headers
+        'DateTimeImmutable',
+        'DateTime',
+        'Egulias\EmailValidator\EmailValidator',
+        'Egulias\EmailValidator\EmailLexer',
+        'Doctrine\Common\Lexer\Token',
+    ];
+
+    /**
      * Sends messages using the given transport instance.
      *
      * @param Swift_Transport $transport        A transport instance
@@ -163,11 +239,25 @@ class Swift_FileSpool extends Swift_ConfigurableSpool
 
             /* We try a rename, it's an atomic operation, and avoid locking the file */
             if (\rename($file, $file.'.sending')) {
-                $message = \unserialize(\file_get_contents($file.'.sending'));
+                try {
+                    $message = @\unserialize(
+                        \file_get_contents($file.'.sending'),
+                        ['allowed_classes' => self::UNSERIALIZE_ALLOWED_CLASSES],
+                    );
 
-                $count += $transport->send($message, $failedRecipients);
+                    if (!$message instanceof Swift_Mime_SimpleMessage) {
+                        continue;
+                    }
 
-                \unlink($file.'.sending');
+                    $count += $transport->send($message, $failedRecipients);
+                } catch (\Throwable $e) {
+                    // Catch exceptions from __wakeup() or transport failures
+                    // so one bad message doesn't crash the entire queue.
+                } finally {
+                    if (\file_exists($file.'.sending')) {
+                        \unlink($file.'.sending');
+                    }
+                }
             } else {
                 /* This message has just been catched by another process */
                 continue;

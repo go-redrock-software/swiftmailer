@@ -19,15 +19,15 @@ This is a **known critical vulnerability class** in PHP applications and is cons
 2. **Race condition** — Between `queueMessage()` writing and `flushQueue()` reading, an attacker could swap the file contents
 3. **Shared hosting** — In shared environments, other tenants may be able to access the spool directory
 4. **Gadget chains** — Swiftmailer includes `__wakeup()` methods in several classes; combined with framework classes (Guzzle, Monolog, etc.), POP chains are likely available
-5. **Symlink attack** — Spool file path construction (`$this->path.'/'.$this->getRandomString(10)`) could be targeted with directory symlinks
+5. **Symlink attack** — Spool file path construction could be targeted with directory symlinks (filename randomness increased from 10 to 32 chars)
 
 ## Affected Files
 
-| File | Line | Risk |
-|-|-|-|
-| `lib/classes/Swift/FileSpool.php:94` | `serialize($message)` — Serializes message to disk |
-| `lib/classes/Swift/FileSpool.php:166` | `unserialize(file_get_contents($file.'.sending'))` — **Deserializes from disk** |
-| `lib/classes/Swift/FileSpool.php:95` | Random filename generation with only 10 chars |
+| File | Line | Risk | Status |
+|-|-|-|-|
+| `lib/classes/Swift/FileSpool.php:94` | `serialize($message)` — Serializes message to disk | Unchanged |
+| `lib/classes/Swift/FileSpool.php:243` | `@unserialize(...)` with `allowed_classes` — **Deserializes from disk** | **FIXED** |
+| `lib/classes/Swift/FileSpool.php:95` | Random filename generation (32 chars) | **FIXED** |
 
 ## Existing Controls
 
@@ -38,41 +38,25 @@ This is a **known critical vulnerability class** in PHP applications and is cons
 
 ## Control Gaps
 
-1. **`unserialize()` called without `allowed_classes`** — No restriction on which classes can be instantiated during deserialization
+1. ~~**`unserialize()` called without `allowed_classes`**~~ — **FIXED:** Allowlist of ~47 verified classes with `instanceof` type check
 2. **No integrity verification** — No HMAC or signature on spool files to detect tampering
 3. **No file permission enforcement** — Spool directory permissions not validated at construction time
-4. **Short random filenames** — 10 chars of random data may be brute-forceable
-5. **Gadget chain availability** — Classes like `Swift_Message::__wakeup()`, `DiskKeyCache::__wakeup()`, `QpEncoder::__wakeup()` exist as potential chain links
+4. ~~**Short random filenames**~~ — **FIXED:** Increased from 10 to 32 characters
+5. ~~**Gadget chain availability**~~ — **MITIGATED:** `ByteStream_*` classes excluded from allowlist (prevents `TemporaryFileByteStream` file deletion gadget); try/catch prevents `__wakeup()` exceptions from crashing the queue
 6. **No alternative spool format** — No JSON-based or database-backed spool option
 
 ## Mitigation Plan
 
-### Phase 1: Restrict Allowed Classes (Immediate)
-Replace raw `unserialize()` with restricted deserialization:
-```php
-// In flushQueue(), line 166:
-$message = unserialize(
-    file_get_contents($file.'.sending'),
-    ['allowed_classes' => [
-        Swift_Message::class,
-        Swift_Mime_SimpleMessage::class,
-        Swift_Mime_MimePart::class,
-        Swift_Attachment::class,
-        Swift_Image::class,
-        Swift_Mime_SimpleMimeEntity::class,
-        Swift_Mime_Headers_MailboxHeader::class,
-        Swift_Mime_Headers_UnstructuredHeader::class,
-        Swift_Mime_Headers_DateHeader::class,
-        Swift_Mime_Headers_IdentificationHeader::class,
-        Swift_Mime_Headers_ParameterizedHeader::class,
-        Swift_Mime_Headers_PathHeader::class,
-        Swift_Mime_SimpleHeaderSet::class,
-        Swift_Mime_ContentEncoder_QpContentEncoder::class,
-        Swift_Mime_ContentEncoder_Base64ContentEncoder::class,
-        Swift_CharacterReaderFactory_SimpleCharacterReaderFactory::class,
-    ]]
-);
-```
+### Phase 1: Restrict Allowed Classes (Immediate) — IMPLEMENTED
+
+Replaced raw `unserialize()` with restricted deserialization using a comprehensive allowlist of ~47 classes verified by serializing a real `Swift_Message` with attachments, embedded images, and Return-Path headers. Key design decisions:
+
+- **`Swift_ByteStream_*` classes intentionally excluded.** They never appear in legitimately serialized messages (their `__sleep()` throws). `TemporaryFileByteStream` has a `__destruct()` that calls `@unlink($this->getPath())` — an arbitrary file deletion gadget even with the allowlist.
+- **Type check after deserialization.** If the result is not `instanceof Swift_Mime_SimpleMessage`, the `.sending` file is cleaned up and the loop continues.
+- **try/catch/finally around the entire unserialize+send block.** Prevents `__wakeup()` exceptions or transport failures from crashing the queue or orphaning `.sending` files.
+- **Filename randomness increased from 10 to 32 characters.**
+
+See `UNSERIALIZE_ALLOWED_CLASSES` constant in `FileSpool.php` for the full allowlist.
 
 ### Phase 2: Add Integrity Verification (Short-term)
 Add HMAC signing to spool files:
@@ -105,37 +89,38 @@ $message = unserialize($ser, ['allowed_classes' => [...]]);
 
 ## Test Cases
 
-```php
-// unserialize should reject unexpected classes
-$malicious = 'O:19:"SomeDangerousClass":0:{}';
-file_put_contents($spoolDir.'/test.message.sending', $malicious);
-$this->expectException(Swift_IoException::class);
-$spool->flushQueue($transport);
+Tests implemented in `tests/unit/Swift/FileSpoolTest.php` (8 tests):
 
-// HMAC verification should catch tampered files
-$spool->queueMessage($message);
-// Tamper with the file
-$files = glob($spoolDir.'/*.message');
-file_put_contents($files[0], 'tampered' . file_get_contents($files[0]));
-$this->expectException(Swift_IoException::class);
-$spool->flushQueue($transport);
-```
+1. **Round-trip** — `queueMessage()` then `flushQueue()` with mock transport, assert `send()` called with valid message
+2. **Malicious class rejection** — Serialized `stdClass` in spool dir, assert `send()` never called, `.sending` file cleaned up
+3. **Corrupt file handling** — Garbage data in `.message` file, assert no crash, legitimate messages still send
+4. **Message limit** — Queue 5, limit 2, assert exactly 2 sent
+5. **Time limit** — Queue 3, time limit -1, assert only 1 sent
+6. **ByteStream gadget blocked** — Hand-crafted serialized `TemporaryFileByteStream` targeting a file, assert target file NOT deleted
+7. **Transport exception resilience** — Transport throws on first message, assert second message still sends and no orphaned `.sending` files
+8. **Deserialization exception resilience** — Truncated serialized string, assert legitimate messages still send and `.sending` files cleaned up
 
-## Implementation Status (2026-03-02)
+## Implementation Status (2026-03-03)
 
 | Mitigation | Status | Evidence |
 |-|-|-|
 | Transport `__sleep()`/`__wakeup()` throw | **IMPLEMENTED** | `AbstractSmtpTransport.php:581-586`, `AbstractApiTransport.php:95-100` |
 | Atomic file operations | **IMPLEMENTED** | `FileSpool.php` uses `fopen(..., 'xb')` for exclusive creation |
-| Rename-based locking | **IMPLEMENTED** | `FileSpool.php:165`: `rename($file, $file.'.sending')` |
-| `unserialize()` with `allowed_classes` | **NOT IMPLEMENTED** | `FileSpool.php:166`: raw `\unserialize(\file_get_contents($file.'.sending'))` with NO `allowed_classes` restriction |
+| Rename-based locking | **IMPLEMENTED** | `FileSpool.php:240`: `rename($file, $file.'.sending')` |
+| `unserialize()` with `allowed_classes` | **IMPLEMENTED** | `FileSpool.php:243`: `@unserialize(..., ['allowed_classes' => self::UNSERIALIZE_ALLOWED_CLASSES])` with ~47 verified classes |
+| Type check after deserialization | **IMPLEMENTED** | `FileSpool.php:248`: `if (!$message instanceof Swift_Mime_SimpleMessage)` — skips invalid messages |
+| ByteStream gadget prevention | **IMPLEMENTED** | `Swift_ByteStream_*` excluded from allowlist — prevents `TemporaryFileByteStream::__destruct()` file deletion gadget |
+| Exception-safe queue processing | **IMPLEMENTED** | `FileSpool.php:242-260`: try/catch/finally ensures `.sending` cleanup and queue continuation |
+| Longer random filenames | **IMPLEMENTED** | `FileSpool.php:95`: `getRandomString(32)` (was 10) |
 | HMAC integrity verification | **NOT IMPLEMENTED** | No signing key or HMAC on spool files |
 | File permission enforcement | **NOT IMPLEMENTED** | No permission validation on spool directory |
 | Alternative spool format (JSON) | **NOT IMPLEMENTED** | No `JsonFileSpool` or `DatabaseSpool` exists |
-| Longer random filenames | **NOT IMPLEMENTED** | Still uses 10-char random strings |
 
-**Overall Status:** NOT STARTED -- The critical `allowed_classes` restriction on `unserialize()` has NOT been implemented. This remains a **CRITICAL** vulnerability. `FileSpool.php:166` deserializes untrusted data without any class restriction.
+**Overall Status:** PHASE 1 COMPLETE — The critical `allowed_classes` restriction is implemented with a verified allowlist, gadget chain prevention (ByteStream exclusion), exception-safe processing, and 8 unit tests. Phases 2-4 (HMAC, JSON spool, permission hardening) remain future work.
 
-## Risk After Mitigation
+## Risk After Phase 1 Mitigation
 
-**Residual Risk:** LOW — With `allowed_classes` restriction, HMAC integrity checks, and file permission hardening, deserialization-based RCE is effectively eliminated.
+**Residual Risk:** MEDIUM — RCE via arbitrary class instantiation is eliminated. Remaining risks:
+- Without HMAC (Phase 2), an attacker with spool directory write access can still craft messages using allowlisted classes to send emails with attacker-controlled content/recipients
+- Without file permission enforcement (Phase 4), spool directory access is not validated
+- Allowlisted classes are limited to those verified in real serialized messages; gadget classes (`TemporaryFileByteStream`) are excluded

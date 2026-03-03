@@ -34,7 +34,7 @@
 | 2 | Credential Exposure in Logs/Errors | I | CRITICAL | High | REAL | PARTIAL | `02-credential-exposure.md` |
 | 3 | Sendmail Command Injection | T, E | HIGH | Low | REAL | PARTIAL | `03-sendmail-command-injection.md` |
 | 4 | TLS Downgrade / Man-in-the-Middle | T, I | MEDIUM | Low | EXAGGERATED | PARTIAL | `04-tls-downgrade-mitm.md` |
-| 5 | Insecure Deserialization (FileSpool) | T, E | CRITICAL | Medium | REAL | NOT STARTED | `05-insecure-deserialization.md` |
+| 5 | Insecure Deserialization (FileSpool) | T, E | CRITICAL | Medium | REAL | PARTIAL (Phase 1) | `05-insecure-deserialization.md` |
 | 6 | Webhook Signature Bypass | S, T | HIGH | Medium | REAL | PARTIAL | `06-webhook-signature-bypass.md` |
 | 7 | Attachment Filename Injection | T, I | MEDIUM | Medium | REAL | NOT STARTED | `07-attachment-filename-injection.md` |
 | 8 | Weak Authentication Mechanisms | S, I | LOW | Low | EXAGGERATED | NOT STARTED | `08-weak-authentication.md` |
@@ -59,19 +59,19 @@
 
 ---
 
-## Implementation Progress (2026-03-02)
+## Implementation Progress (2026-03-03)
 
-**Overall: 0 of 26 threats fully mitigated. 7 partially addressed. 19 not started.**
+**Overall: 0 of 26 threats fully mitigated. 8 partially addressed. 18 not started.**
 
 | Status | Count | Threats |
 |-|-|-|
-| PARTIAL | 7 | #2 (Credential Exposure), #3 (Sendmail), #4 (TLS), #6 (Webhook), #11 (Info Disclosure), #12 (Supply Chain), #13 (Crypto Signing) |
-| NOT STARTED | 19 | #1, #5, #7, #8, #9, #10, #14, #15, #16, #17, #18, #19, #20, #21, #22, #23, #24, #25, #26 |
+| PARTIAL | 8 | #2 (Credential Exposure), #3 (Sendmail), #4 (TLS), #5 (Deserialization — Phase 1), #6 (Webhook), #11 (Info Disclosure), #12 (Supply Chain), #13 (Crypto Signing) |
+| NOT STARTED | 18 | #1, #7, #8, #9, #10, #14, #15, #16, #17, #18, #19, #20, #21, #22, #23, #24, #25, #26 |
 | COMPLETE | 0 | -- |
 
 ### Key Findings
 
-1. **CRITICAL: FileSpool deserialization (#5) is completely unmitigated.** `unserialize()` at `FileSpool.php:166` has no `allowed_classes` restriction -- direct RCE vector.
+1. **CRITICAL: FileSpool deserialization (#5) Phase 1 complete.** `unserialize()` now uses `allowed_classes` with ~47 verified classes, `ByteStream_*` gadget classes excluded, try/catch/finally for exception safety, `instanceof` type check, and 32-char filenames. HMAC signing (Phase 2) and JSON spool (Phase 3) remain future work.
 2. **CRITICAL: Credential exposure (#2) is only partially addressed.** `#[SensitiveParameter]` on constructors, but LoggerPlugin still logs AUTH commands verbatim and no `__debugInfo()` exists.
 3. **HIGH: NTLM (#14) has zero mitigations.** NTLMv1 code paths, unbounded Type 2 parsing, and the `debug()` credential leak all remain.
 4. **HIGH: DomainKeySigner (#13) still hardcodes SHA-1** and ignores `setHashAlgorithm()` argument. DKIM oversigning is off by default.
@@ -133,7 +133,7 @@ All 26 threats were verified against source code. Key audit adjustments:
 
 ### Gaps
 - No CRLF injection prevention in raw header values
-- `FileSpool` uses `serialize()`/`unserialize()` on untrusted data
+- ~~`FileSpool` uses `serialize()`/`unserialize()` on untrusted data~~ **FIXED (Phase 1):** `allowed_classes` allowlist, type check, gadget prevention, exception safety
 - Webhook signature verification is optional (null secret skips it)
 - No attachment filename sanitization
 - API keys exposed as public properties on transport objects
@@ -223,7 +223,7 @@ If any of these threats materialize:
 
 **Conditional Go** — The package is suitable for production use with the following mandatory mitigations:
 
-1. Replace `FileSpool` deserialization with a safe format (JSON or `allowed_classes`)
+1. ~~Replace `FileSpool` deserialization with a safe format (JSON or `allowed_classes`)~~ **DONE (Phase 1)** — HMAC signing still recommended
 2. Validate/sanitize DSN sendmail `command` parameter against an allowlist
 3. Audit all logging paths for credential leakage; redact AUTH commands
 4. Enforce `verify_peer=true` as default with explicit opt-out documentation
