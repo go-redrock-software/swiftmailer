@@ -250,7 +250,7 @@ class Swift_FileSpool extends Swift_ConfigurableSpool
                     }
 
                     $count += $transport->send($message, $failedRecipients);
-                } catch (\Throwable $e) {
+                } catch (Throwable $e) {
                     // Catch exceptions from __wakeup() or transport failures
                     // so one bad message doesn't crash the entire queue.
                 } finally {

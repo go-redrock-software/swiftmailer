@@ -26,27 +26,29 @@ class Swift_Webhook_RequestHandler
      * @param Swift_Webhook_PayloadConverterInterface $converter Provider-specific converter
      * @param string                                  $rawBody   Raw HTTP request body
      * @param array                                   $headers   HTTP headers (keys lowercased)
-     * @param string|null                             $secret    Signing secret (null to skip verification)
+     * @param string                                  $secret    Signing secret (provider-specific: HMAC key, token, or SNS Topic ARN)
      *
      * @return Swift_Webhook_Event[]
      *
      * @throws Swift_Webhook_SignatureVerificationException If signature is invalid
-     * @throws InvalidArgumentException                     If body is not valid JSON
+     * @throws InvalidArgumentException                     If body is not valid JSON or secret is empty
      */
     public function handle(
         Swift_Webhook_PayloadConverterInterface $converter,
         string $rawBody,
         array $headers,
-        #[SensitiveParameter] ?string $secret,
+        #[SensitiveParameter] string $secret,
     ): array {
+        if ('' === $secret) {
+            throw new InvalidArgumentException('Webhook signing secret must not be empty.');
+        }
+
         // Normalize header keys to lowercase
         $headers = \array_change_key_case($headers, CASE_LOWER);
 
-        // Verify signature if secret provided
-        if (null !== $secret) {
-            if (!$converter->verify($rawBody, $headers, $secret)) {
-                throw new Swift_Webhook_SignatureVerificationException($converter->getProviderName());
-            }
+        // Always verify signature — never skip
+        if (!$converter->verify($rawBody, $headers, $secret)) {
+            throw new Swift_Webhook_SignatureVerificationException($converter->getProviderName());
         }
 
         // Decode JSON

@@ -23,8 +23,11 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
     }
 
     // SHA1 Signing
+    /** @group legacy */
     public function testSigningSHA1()
     {
+        $this->expectDeprecation('rsa-sha1 is deprecated per RFC 8301 and will be removed in a future version. Use rsa-sha256 or ed25519-sha256 instead.');
+
         $headerSet      = $this->createHeaderSet();
         $messageContent = 'Hello World';
         $signer         = new Swift_Signers_DKIMSigner(\file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'), 'dummy.nxdomain.be', 'dummySelector');

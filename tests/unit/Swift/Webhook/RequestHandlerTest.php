@@ -64,7 +64,20 @@ class Swift_Webhook_RequestHandlerTest extends PHPUnit\Framework\TestCase
         $handler->handle($converter, 'not-json{', [], 'secret');
     }
 
-    public function testHandleWithoutSecretSkipsVerification()
+    public function testHandleWithEmptySecretThrowsInvalidArgument()
+    {
+        $converter = $this->createMock(Swift_Webhook_PayloadConverterInterface::class);
+        $converter->method('getProviderName')->willReturn('test');
+
+        $handler = new Swift_Webhook_RequestHandler();
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Webhook signing secret must not be empty');
+
+        $handler->handle($converter, '{}', [], '');
+    }
+
+    public function testHandleAlwaysCallsVerify()
     {
         $event = new Swift_Webhook_Event(
             'engagement',
@@ -77,12 +90,12 @@ class Swift_Webhook_RequestHandlerTest extends PHPUnit\Framework\TestCase
         );
 
         $converter = $this->createMock(Swift_Webhook_PayloadConverterInterface::class);
-        $converter->expects($this->never())->method('verify');
+        $converter->expects($this->once())->method('verify')->willReturn(true);
         $converter->method('convert')->willReturn([$event]);
         $converter->method('getProviderName')->willReturn('test');
 
         $handler = new Swift_Webhook_RequestHandler();
-        $result  = $handler->handle($converter, '{}', [], null);
+        $result  = $handler->handle($converter, '{}', [], 'any-secret');
 
         $this->assertCount(1, $result);
     }

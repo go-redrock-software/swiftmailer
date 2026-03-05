@@ -11,8 +11,10 @@
  * Converts Mailjet Event API webhook payloads into Swift_Webhook_Event objects.
  *
  * Mailjet sends flat JSON objects with an 'event' field.
- * Mailjet does not use a signature header — security is handled via basic HTTP auth
- * on the webhook URL. The verify() method always returns true.
+ * Mailjet does not use a signature header — security is handled via Basic HTTP
+ * Authentication on the webhook URL. The verify() method validates the
+ * Authorization header against the configured secret (which is the password
+ * portion of the Basic Auth credentials).
  *
  * @see https://dev.mailjet.com/email/guides/webhooks/
  */
@@ -36,9 +38,21 @@ class Swift_Webhook_Converter_MailjetConverter extends Swift_Webhook_AbstractPay
     #[Override]
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
-        // Mailjet relies on basic HTTP authentication on the webhook URL.
-        // Signature verification is not provided via headers.
-        return true;
+        $auth = $headers['authorization'] ?? null;
+
+        if (null === $auth || !\str_starts_with($auth, 'Basic ')) {
+            return false;
+        }
+
+        $decoded = \base64_decode(\substr($auth, 6), true);
+
+        if (false === $decoded || !\str_contains($decoded, ':')) {
+            return false;
+        }
+
+        $password = \substr($decoded, \strpos($decoded, ':') + 1);
+
+        return \hash_equals($secret, $password);
     }
 
     #[Override]

@@ -8,20 +8,20 @@ class Swift_FileSpoolTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->spoolDir = sys_get_temp_dir().'/swiftmailer_filespool_test_'.bin2hex(random_bytes(8));
-        mkdir($this->spoolDir, 0777, true);
+        $this->spoolDir = \sys_get_temp_dir().'/swiftmailer_filespool_test_'.\bin2hex(\random_bytes(8));
+        \mkdir($this->spoolDir, 0777, true);
     }
 
     protected function tearDown(): void
     {
         // Clean up all files in spool directory
-        if (is_dir($this->spoolDir)) {
+        if (\is_dir($this->spoolDir)) {
             foreach (new DirectoryIterator($this->spoolDir) as $file) {
                 if (!$file->isDot()) {
-                    unlink($file->getRealPath());
+                    \unlink($file->getRealPath());
                 }
             }
-            rmdir($this->spoolDir);
+            \rmdir($this->spoolDir);
         }
     }
 
@@ -60,8 +60,8 @@ class Swift_FileSpoolTest extends TestCase
         $spool = new Swift_FileSpool($this->spoolDir);
 
         // Write a serialized stdClass directly — this is NOT in the allowlist
-        $malicious = serialize(new \stdClass());
-        file_put_contents($this->spoolDir.'/malicious.message', $malicious);
+        $malicious = \serialize(new stdClass());
+        \file_put_contents($this->spoolDir.'/malicious.message', $malicious);
 
         $transport = $this->createMock(Swift_Transport::class);
         $transport->method('isStarted')->willReturn(true);
@@ -72,8 +72,8 @@ class Swift_FileSpoolTest extends TestCase
 
         // The .sending file should have been cleaned up
         $this->assertEmpty(
-            glob($this->spoolDir.'/*.sending'),
-            'Malicious .sending file should be cleaned up'
+            \glob($this->spoolDir.'/*.sending'),
+            'Malicious .sending file should be cleaned up',
         );
     }
 
@@ -82,7 +82,7 @@ class Swift_FileSpoolTest extends TestCase
         $spool = new Swift_FileSpool($this->spoolDir);
 
         // Write garbage to a .message file
-        file_put_contents($this->spoolDir.'/corrupt.message', 'not-valid-serialized-data');
+        \file_put_contents($this->spoolDir.'/corrupt.message', 'not-valid-serialized-data');
 
         // Queue a legitimate message
         $message = $this->createMessage();
@@ -152,7 +152,7 @@ class Swift_FileSpoolTest extends TestCase
         // This class has a __destruct() that calls unlink() on its path — an
         // arbitrary file deletion gadget. It must NOT be in the allowlist.
         $targetFile = $this->spoolDir.'/should_not_be_deleted.txt';
-        file_put_contents($targetFile, 'important data');
+        \file_put_contents($targetFile, 'important data');
 
         // Hand-craft a serialized TemporaryFileByteStream pointing at our target file.
         // Format: O:<len>:"<class>":<props>:{s:<len>:"<prop>";s:<len>:"<val>";}
@@ -161,9 +161,9 @@ class Swift_FileSpoolTest extends TestCase
         $parentName = 'Swift_ByteStream_FileByteStream';
         // PHP private property name mangling: \0ClassName\0propertyName
         $pathProp = "\0".$parentName."\0path";
-        $payload  = serialize(new \stdClass()); // dummy, we'll replace with crafted string
-        $payload  = 'O:'.strlen($className).':"'.$className.'":1:{s:'.strlen($pathProp).':"'.$pathProp.'";s:'.strlen($targetFile).':"'.$targetFile.'";}';
-        file_put_contents($this->spoolDir.'/gadget.message', $payload);
+        $payload  = \serialize(new stdClass()); // dummy, we'll replace with crafted string
+        $payload  = 'O:'.\strlen($className).':"'.$className.'":1:{s:'.\strlen($pathProp).':"'.$pathProp.'";s:'.\strlen($targetFile).':"'.$targetFile.'";}';
+        \file_put_contents($this->spoolDir.'/gadget.message', $payload);
 
         $transport = $this->createMock(Swift_Transport::class);
         $transport->method('isStarted')->willReturn(true);
@@ -203,8 +203,8 @@ class Swift_FileSpoolTest extends TestCase
 
         // No orphaned .sending files
         $this->assertEmpty(
-            glob($this->spoolDir.'/*.sending'),
-            'All .sending files should be cleaned up even after transport exception'
+            \glob($this->spoolDir.'/*.sending'),
+            'All .sending files should be cleaned up even after transport exception',
         );
     }
 
@@ -226,7 +226,7 @@ class Swift_FileSpoolTest extends TestCase
         // PHP's unserialize with a truncated object can throw.
         // Simplest: a valid-looking but truncated serialized string.
         $truncated = 'O:14:"Swift_Message":1:{s:4:"test";s:100:"';
-        file_put_contents($this->spoolDir.'/truncated.message', $truncated);
+        \file_put_contents($this->spoolDir.'/truncated.message', $truncated);
 
         $transport = $this->createMock(Swift_Transport::class);
         $transport->method('isStarted')->willReturn(true);
@@ -239,8 +239,8 @@ class Swift_FileSpoolTest extends TestCase
 
         // All .sending files cleaned up
         $this->assertEmpty(
-            glob($this->spoolDir.'/*.sending'),
-            'All .sending files should be cleaned up after deserialization failure'
+            \glob($this->spoolDir.'/*.sending'),
+            'All .sending files should be cleaned up after deserialization failure',
         );
     }
 }

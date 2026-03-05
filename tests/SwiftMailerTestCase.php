@@ -1,6 +1,7 @@
 <?php
 
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
+use Symfony\Bridge\PhpUnit\ExpectDeprecationTrait;
 
 /**
  * A base test case with some custom expectations.
@@ -10,6 +11,7 @@ use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
 class SwiftMailerTestCase extends PHPUnit\Framework\TestCase
 {
     use MockeryPHPUnitIntegration;
+    use ExpectDeprecationTrait;
 
     public static function regExp($pattern)
     {

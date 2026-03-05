@@ -13,10 +13,14 @@
  * SES sends notifications through SNS. The outer payload has Type and Message fields.
  * The Message field is a JSON string containing the SES notification with notificationType.
  *
- * Note: Full SNS signature verification requires fetching the signing certificate from AWS.
- * This converter performs basic validation (SNS header presence). For production use,
- * validate SNS signatures using the AWS SDK or a dedicated SNS verification library.
+ * Verification performs full SNS signature validation:
+ *  1. Requires the x-amz-sns-message-type header
+ *  2. Validates the TopicArn against the expected value ($secret)
+ *  3. Validates the SigningCertURL is HTTPS from *.amazonaws.com
+ *  4. Fetches the signing certificate and verifies the RSA signature
+ *  5. Supports SignatureVersion "1" (SHA1) and "2" (SHA256)
  *
+ * @see https://docs.aws.amazon.com/sns/latest/dg/sns-verify-signature-of-message.html
  * @see https://docs.aws.amazon.com/ses/latest/dg/notification-contents.html
  */
 class Swift_Webhook_Converter_AmazonSesConverter extends Swift_Webhook_AbstractPayloadConverter
@@ -30,8 +34,54 @@ class Swift_Webhook_Converter_AmazonSesConverter extends Swift_Webhook_AbstractP
     #[Override]
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
-        // Basic validation: ensure this comes from SNS
-        return isset($headers['x-amz-sns-message-type']);
+        // Require SNS message type header
+        if (!isset($headers['x-amz-sns-message-type'])) {
+            return false;
+        }
+
+        $payload = \json_decode($rawBody, true);
+        if (!\is_array($payload)) {
+            return false;
+        }
+
+        // Validate Topic ARN matches expected value ($secret)
+        $topicArn = $payload['TopicArn'] ?? null;
+        if (null === $topicArn || !\hash_equals($secret, $topicArn)) {
+            return false;
+        }
+
+        // Validate SigningCertURL is from amazonaws.com over HTTPS
+        $certUrl = $payload['SigningCertURL'] ?? '';
+        if (!$this->isValidCertUrl($certUrl)) {
+            return false;
+        }
+
+        // Fetch signing certificate
+        $certPem = $this->fetchSigningCertificate($certUrl);
+        if ('' === $certPem) {
+            return false;
+        }
+
+        $publicKey = \openssl_pkey_get_public($certPem);
+        if (false === $publicKey) {
+            return false;
+        }
+
+        // Build string-to-sign based on message Type
+        $stringToSign = $this->buildStringToSign($payload);
+
+        // Decode the signature
+        $signature = \base64_decode($payload['Signature'] ?? '', true);
+        if (false === $signature) {
+            return false;
+        }
+
+        // Determine hash algorithm from SignatureVersion
+        $algo = ('1' === ($payload['SignatureVersion'] ?? '1'))
+            ? \OPENSSL_ALGO_SHA1
+            : \OPENSSL_ALGO_SHA256;
+
+        return 1 === \openssl_verify($stringToSign, $signature, $publicKey, $algo);
     }
 
     #[Override]
@@ -54,6 +104,69 @@ class Swift_Webhook_Converter_AmazonSesConverter extends Swift_Webhook_AbstractP
             'Complaint' => $this->convertComplaint($message, $messageId),
             default     => [],
         };
+    }
+
+    /**
+     * Validate that the signing certificate URL is an HTTPS endpoint at amazonaws.com.
+     */
+    private function isValidCertUrl(string $url): bool
+    {
+        $parsed = \parse_url($url);
+        if (!$parsed || 'https' !== ($parsed['scheme'] ?? '')) {
+            return false;
+        }
+
+        $host = $parsed['host'] ?? '';
+
+        return (bool) \preg_match('/^sns\.[a-z0-9-]+\.amazonaws\.com$/i', $host);
+    }
+
+    /**
+     * Fetch the PEM-encoded signing certificate from AWS.
+     *
+     * This method is protected so tests can override it to avoid network calls.
+     */
+    protected function fetchSigningCertificate(string $url): string
+    {
+        $context = \stream_context_create([
+            'ssl'  => ['verify_peer' => true, 'verify_peer_name' => true],
+            'http' => ['timeout' => 10],
+        ]);
+
+        $cert = @\file_get_contents($url, false, $context);
+
+        return false === $cert ? '' : $cert;
+    }
+
+    /**
+     * Build the SNS canonical string-to-sign for signature verification.
+     *
+     * @see https://docs.aws.amazon.com/sns/latest/dg/sns-verify-signature-of-message.html
+     */
+    private function buildStringToSign(array $payload): string
+    {
+        $type = $payload['Type'] ?? '';
+
+        // Fields included depend on message type
+        if ('Notification' === $type) {
+            $fields = ['Message', 'MessageId'];
+            if (isset($payload['Subject'])) {
+                $fields[] = 'Subject';
+            }
+            $fields = \array_merge($fields, ['Timestamp', 'TopicArn', 'Type']);
+        } else {
+            // SubscriptionConfirmation / UnsubscribeConfirmation
+            $fields = ['Message', 'MessageId', 'SubscribeURL', 'Timestamp', 'Token', 'TopicArn', 'Type'];
+        }
+
+        $stringToSign = '';
+        foreach ($fields as $field) {
+            if (isset($payload[$field])) {
+                $stringToSign .= $field."\n".$payload[$field]."\n";
+            }
+        }
+
+        return $stringToSign;
     }
 
     /** @return Swift_Webhook_Event[] */

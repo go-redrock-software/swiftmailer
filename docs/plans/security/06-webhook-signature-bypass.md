@@ -118,7 +118,7 @@ $this->expectException(Swift_Webhook_SignatureVerificationException::class);
 $handler->handle($converter, $oldPayload, $validHeaders, 'valid-secret', maxAge: 300);
 ```
 
-## Implementation Status (2026-03-02)
+## Implementation Status (2026-03-04)
 
 | Mitigation | Status | Evidence |
 |-|-|-|
@@ -126,14 +126,14 @@ $handler->handle($converter, $oldPayload, $validHeaders, 'valid-secret', maxAge:
 | `#[SensitiveParameter]` on secrets | **IMPLEMENTED** | `RequestHandler.php:40`, all converter `verify()` methods |
 | `SignatureVerificationException` | **IMPLEMENTED** | Thrown when signature is invalid |
 | JSON decoding validation | **IMPLEMENTED** | `json_last_error()` check present |
-| Null secret bypass still possible | **NOT FIXED** | `RequestHandler.php:46`: `if (null !== $secret)` skips verification entirely |
-| Mailjet `verify()` always returns true | **NOT FIXED** | `MailjetConverter.php:41`: `return true;` -- no actual verification |
-| Amazon SES `verify()` is header-only check | **NOT FIXED** | `AmazonSesConverter.php:34`: only checks `isset($headers['x-amz-sns-message-type'])` -- no real SNS signature verification |
-| Timestamp validation | **NOT IMPLEMENTED** | No replay prevention |
-| IP allowlisting | **NOT IMPLEMENTED** | No source IP validation |
-| Event deduplication | **NOT IMPLEMENTED** | No deduplication interface |
+| Mandatory secret / always verify | **FIXED** | `RequestHandler.php:40`: `string $secret` (non-nullable), empty string throws `InvalidArgumentException`, `verify()` always called |
+| Mailjet Basic Auth verification | **FIXED** | `MailjetConverter.php:39-55`: parses `Authorization: Basic` header, extracts password, compares with `hash_equals()` |
+| Amazon SES SNS signature verification | **FIXED** | `AmazonSesConverter.php:35-85`: validates TopicArn against `$secret`, validates `SigningCertURL` is HTTPS from `sns.*.amazonaws.com`, fetches signing cert, builds canonical string-to-sign, verifies RSA signature with `openssl_verify()`, supports SignatureVersion 1 (SHA1) and 2 (SHA256) |
+| Timestamp validation | **NOT IMPLEMENTED** | No replay prevention (Phase 2) |
+| IP allowlisting | **NOT IMPLEMENTED** | No source IP validation (Phase 4) |
+| Event deduplication | **NOT IMPLEMENTED** | No deduplication interface (Phase 4) |
 
-**Overall Status:** PARTIALLY IMPLEMENTED -- Core HMAC infrastructure is solid. However, null-secret bypass remains, Mailjet has no real verification, and Amazon SES only checks for a header presence (trivially forged).
+**Overall Status:** Phases 1 and 3 COMPLETE. All 14 converters now perform real signature verification. Null-secret bypass eliminated. 25 new tests added (11 Mailjet, 14 AmazonSES). Full unit test suite passes (3033 tests).
 
 ## Risk After Mitigation
 

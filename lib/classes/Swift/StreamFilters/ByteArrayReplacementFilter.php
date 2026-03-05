@@ -99,7 +99,7 @@ class Swift_StreamFilters_ByteArrayReplacementFilter implements Swift_StreamFilt
      */
     public function shouldBuffer($buffer)
     {
-        $endOfBuffer = end($buffer);
+        $endOfBuffer = \end($buffer);
 
         return isset($this->index[$endOfBuffer]);
     }

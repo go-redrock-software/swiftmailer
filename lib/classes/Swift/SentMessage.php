@@ -12,7 +12,6 @@
  *
  * Populated by transports after a successful send and made available
  * through SentMessageEvent for plugin consumption.
- *
  */
 readonly class Swift_SentMessage
 {

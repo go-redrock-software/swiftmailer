@@ -245,7 +245,7 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
     {
         switch ($hash) {
             case 'rsa-sha1':
-                \trigger_error(
+                @\trigger_error(
                     'rsa-sha1 is deprecated per RFC 8301 and will be removed in a future version. Use rsa-sha256 or ed25519-sha256 instead.',
                     \E_USER_DEPRECATED,
                 );
@@ -538,7 +538,7 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
         $headers->addTextHeader('DKIM-Signature', $string);
         // Add the last DKIM-Signature
         $tmp              = $headers->getAll('DKIM-Signature');
-        $this->dkimHeader = end($tmp);
+        $this->dkimHeader = \end($tmp);
         $this->addHeader(\trim($this->dkimHeader->toString() ?? '')."\r\n b=", true);
         if ($this->debugHeaders) {
             $headers->addTextHeader('X-DebugHash', \base64_encode($this->headerHash ?? ''));

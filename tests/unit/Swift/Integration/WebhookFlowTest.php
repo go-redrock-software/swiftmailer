@@ -2,41 +2,33 @@
 
 class Swift_Integration_WebhookFlowTest extends PHPUnit\Framework\TestCase
 {
-    public function testFullSendgridWebhookFlow()
+    public function testFullBrevoWebhookFlow()
     {
         $handler   = new Swift_Webhook_RequestHandler();
-        $converter = new Swift_Webhook_Converter_SendgridConverter();
+        $converter = new Swift_Webhook_Converter_BrevoConverter();
+
+        $secret = 'my-brevo-token';
 
         $rawBody = \json_encode([
-            [
-                'event'         => 'bounce',
-                'email'         => 'bounce@example.com',
-                'sg_message_id' => 'test-msg-001.filter',
-                'timestamp'     => 1706000000,
-                'reason'        => '550 No such user',
-            ],
-            [
-                'event'         => 'open',
-                'email'         => 'reader@example.com',
-                'sg_message_id' => 'test-msg-002',
-                'timestamp'     => 1706000001,
-            ],
+            'event'      => 'hardBounce',
+            'email'      => 'bounce@example.com',
+            'message-id' => '<test-msg-001@example.com>',
+            'ts_epoch'   => 1706000000000,
+            'reason'     => '550 No such user',
         ]);
 
-        // Skip signature verification for integration test
-        $events = $handler->handle($converter, $rawBody, [], null);
+        $events = $handler->handle(
+            $converter,
+            $rawBody,
+            ['x-brevo-webhook-token' => $secret],
+            $secret,
+        );
 
-        $this->assertCount(2, $events);
-
-        // First event: bounce
+        $this->assertCount(1, $events);
         $this->assertTrue($events[0]->isDelivery());
         $this->assertSame('bounced', $events[0]->getName());
-        $this->assertSame('test-msg-001', $events[0]->getMessageId());
+        $this->assertSame('<test-msg-001@example.com>', $events[0]->getMessageId());
         $this->assertSame('550 No such user', $events[0]->getMetadata()['reason']);
-
-        // Second event: open
-        $this->assertTrue($events[1]->isEngagement());
-        $this->assertSame('opened', $events[1]->getName());
     }
 
     public function testFullMailgunWebhookFlow()

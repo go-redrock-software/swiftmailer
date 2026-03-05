@@ -35,7 +35,7 @@
 | 3 | Sendmail Command Injection | T, E | HIGH | Low | REAL | PARTIAL | `03-sendmail-command-injection.md` |
 | 4 | TLS Downgrade / Man-in-the-Middle | T, I | MEDIUM | Low | EXAGGERATED | PARTIAL | `04-tls-downgrade-mitm.md` |
 | 5 | Insecure Deserialization (FileSpool) | T, E | CRITICAL | Medium | REAL | PARTIAL (Phase 1) | `05-insecure-deserialization.md` |
-| 6 | Webhook Signature Bypass | S, T | HIGH | Medium | REAL | PARTIAL | `06-webhook-signature-bypass.md` |
+| 6 | Webhook Signature Bypass | S, T | HIGH | Medium | REAL | MOSTLY COMPLETE | `06-webhook-signature-bypass.md` |
 | 7 | Attachment Filename Injection | T, I | MEDIUM | Medium | REAL | NOT STARTED | `07-attachment-filename-injection.md` |
 | 8 | Weak Authentication Mechanisms | S, I | LOW | Low | EXAGGERATED | NOT STARTED | `08-weak-authentication.md` |
 | 9 | API Transport SSRF | S, T | LOW | Low | EXAGGERATED | NOT STARTED | `09-api-ssrf.md` |
@@ -65,7 +65,8 @@
 
 | Status | Count | Threats |
 |-|-|-|
-| PARTIAL | 8 | #2 (Credential Exposure), #3 (Sendmail), #4 (TLS), #5 (Deserialization — Phase 1), #6 (Webhook), #11 (Info Disclosure), #12 (Supply Chain), #13 (Crypto Signing) |
+| MOSTLY COMPLETE | 1 | #6 (Webhook — mandatory verification, all converters fixed, timestamp validation remaining) |
+| PARTIAL | 7 | #2 (Credential Exposure), #3 (Sendmail), #4 (TLS), #5 (Deserialization — Phase 1), #11 (Info Disclosure), #12 (Supply Chain), #13 (Crypto Signing) |
 | NOT STARTED | 18 | #1, #7, #8, #9, #10, #14, #15, #16, #17, #18, #19, #20, #21, #22, #23, #24, #25, #26 |
 | COMPLETE | 0 | -- |
 
@@ -75,7 +76,7 @@
 2. **CRITICAL: Credential exposure (#2) is only partially addressed.** `#[SensitiveParameter]` on constructors, but LoggerPlugin still logs AUTH commands verbatim and no `__debugInfo()` exists.
 3. **HIGH: NTLM (#14) has zero mitigations.** NTLMv1 code paths, unbounded Type 2 parsing, and the `debug()` credential leak all remain.
 4. **HIGH: DomainKeySigner (#13) still hardcodes SHA-1** and ignores `setHashAlgorithm()` argument. DKIM oversigning is off by default.
-5. **HIGH: Webhook (#6) null-secret bypass remains.** Mailjet `verify()` always returns `true`. Amazon SES only checks header existence.
+5. ~~**HIGH: Webhook (#6) null-secret bypass remains.**~~ **FIXED (2026-03-04):** Secret now mandatory (non-nullable), verify() always called. Mailjet uses Basic Auth verification. Amazon SES uses full SNS RSA signature verification with Topic ARN and cert URL validation. Timestamp validation (replay prevention) remains future work.
 6. **Positive: `roave/security-advisories` installed.** `#[SensitiveParameter]` on API transports. TLS 1.2/1.3 enforced when encryption enabled. `escapeshellarg()` on sendmail `-f` flag.
 
 ### Audit Notes (2026-03-03)
@@ -227,9 +228,9 @@ If any of these threats materialize:
 2. Validate/sanitize DSN sendmail `command` parameter against an allowlist
 3. Audit all logging paths for credential leakage; redact AUTH commands
 4. Enforce `verify_peer=true` as default with explicit opt-out documentation
-5. Make webhook signature verification mandatory (no null-secret bypass)
-6. Fix Amazon SES webhook verification (implement real SNS signature checking)
-7. Fix Mailjet `verify()` (implement actual HMAC verification, not always-true)
+5. ~~Make webhook signature verification mandatory (no null-secret bypass)~~ **DONE** — `$secret` is non-nullable, `verify()` always called
+6. ~~Fix Amazon SES webhook verification (implement real SNS signature checking)~~ **DONE** — full RSA signature verification with TopicArn and cert URL validation
+7. ~~Fix Mailjet `verify()` (implement actual HMAC verification, not always-true)~~ **DONE** — Basic Auth header verification with `hash_equals()`
 8. Add CRLF injection tests and prevention in header construction
 9. Remove DomainKeySigner SHA-1 hardcoding (or remove DomainKeySigner entirely)
 10. Remove NTLMv1 code paths; add Type 2 message bounds checking
