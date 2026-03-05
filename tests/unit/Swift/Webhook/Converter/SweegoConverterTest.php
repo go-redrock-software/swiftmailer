@@ -399,4 +399,12 @@ class Swift_Webhook_Converter_SweegoConverterTest extends PHPUnit\Framework\Test
             $this->assertSame($expectedName, $events[0]->getName(), "Failed for event: {$sweegoEvent}");
         }
     }
+
+    public function testExtractTimestamp()
+    {
+        $headers = ['webhook-timestamp' => '1706000000'];
+
+        $this->assertSame(1706000000, $this->converter->extractTimestamp('{}', $headers));
+        $this->assertNull($this->converter->extractTimestamp('{}', []));
+    }
 }

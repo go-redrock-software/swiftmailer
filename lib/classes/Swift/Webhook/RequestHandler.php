@@ -27,10 +27,11 @@ class Swift_Webhook_RequestHandler
      * @param string                                  $rawBody   Raw HTTP request body
      * @param array                                   $headers   HTTP headers (keys lowercased)
      * @param string                                  $secret    Signing secret (provider-specific: HMAC key, token, or SNS Topic ARN)
+     * @param int                                     $maxAge    Maximum webhook age in seconds (0 to disable timestamp validation)
      *
      * @return Swift_Webhook_Event[]
      *
-     * @throws Swift_Webhook_SignatureVerificationException If signature is invalid
+     * @throws Swift_Webhook_SignatureVerificationException If signature is invalid or timestamp expired
      * @throws InvalidArgumentException                     If body is not valid JSON or secret is empty
      */
     public function handle(
@@ -38,6 +39,7 @@ class Swift_Webhook_RequestHandler
         string $rawBody,
         array $headers,
         #[SensitiveParameter] string $secret,
+        int $maxAge = 300,
     ): array {
         if ('' === $secret) {
             throw new InvalidArgumentException('Webhook signing secret must not be empty.');
@@ -49,6 +51,14 @@ class Swift_Webhook_RequestHandler
         // Always verify signature — never skip
         if (!$converter->verify($rawBody, $headers, $secret)) {
             throw new Swift_Webhook_SignatureVerificationException($converter->getProviderName());
+        }
+
+        // Validate timestamp for replay prevention
+        if ($maxAge > 0 && $converter instanceof Swift_Webhook_TimestampExtractorInterface) {
+            $timestamp = $converter->extractTimestamp($rawBody, $headers);
+            if (null !== $timestamp && \abs(\time() - $timestamp) > $maxAge) {
+                throw new Swift_Webhook_SignatureVerificationException($converter->getProviderName());
+            }
         }
 
         // Decode JSON

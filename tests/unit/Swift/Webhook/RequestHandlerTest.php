@@ -1,5 +1,12 @@
 <?php
 
+/**
+ * Combined interface for testing timestamp-aware converters.
+ */
+interface TimestampAwareTestConverter extends Swift_Webhook_PayloadConverterInterface, Swift_Webhook_TimestampExtractorInterface
+{
+}
+
 class Swift_Webhook_RequestHandlerTest extends PHPUnit\Framework\TestCase
 {
     public function testHandleWithValidSignature()
@@ -208,6 +215,102 @@ class Swift_Webhook_RequestHandlerTest extends PHPUnit\Framework\TestCase
             'secret',
         );
     }
+
+    // ── Timestamp validation tests ────────────────────────────────
+
+    public function testHandleRejectsExpiredTimestamp()
+    {
+        $converter = $this->createMock(TimestampAwareTestConverter::class);
+        $converter->method('verify')->willReturn(true);
+        $converter->method('extractTimestamp')->willReturn(\time() - 600);
+        $converter->method('getProviderName')->willReturn('test');
+
+        $handler = new Swift_Webhook_RequestHandler();
+
+        $this->expectException(Swift_Webhook_SignatureVerificationException::class);
+
+        $handler->handle($converter, '{}', [], 'secret', 300);
+    }
+
+    public function testHandleAcceptsFreshTimestamp()
+    {
+        $event = new Swift_Webhook_Event('delivery', 'delivered', 'msg-t1', 'a@b.com', [], new DateTimeImmutable(), []);
+
+        $converter = $this->createMock(TimestampAwareTestConverter::class);
+        $converter->method('verify')->willReturn(true);
+        $converter->method('extractTimestamp')->willReturn(\time() - 10);
+        $converter->method('convert')->willReturn([$event]);
+        $converter->method('getProviderName')->willReturn('test');
+
+        $handler = new Swift_Webhook_RequestHandler();
+        $result  = $handler->handle($converter, '{}', [], 'secret', 300);
+
+        $this->assertCount(1, $result);
+    }
+
+    public function testHandleSkipsTimestampWhenConverterDoesNotSupportIt()
+    {
+        $event = new Swift_Webhook_Event('delivery', 'delivered', 'msg-t2', 'a@b.com', [], new DateTimeImmutable(), []);
+
+        $converter = $this->createMock(Swift_Webhook_PayloadConverterInterface::class);
+        $converter->method('verify')->willReturn(true);
+        $converter->method('convert')->willReturn([$event]);
+        $converter->method('getProviderName')->willReturn('test');
+
+        $handler = new Swift_Webhook_RequestHandler();
+        $result  = $handler->handle($converter, '{}', [], 'secret', 300);
+
+        $this->assertCount(1, $result);
+    }
+
+    public function testHandleSkipsTimestampWhenExtractorReturnsNull()
+    {
+        $event = new Swift_Webhook_Event('delivery', 'delivered', 'msg-t3', 'a@b.com', [], new DateTimeImmutable(), []);
+
+        $converter = $this->createMock(TimestampAwareTestConverter::class);
+        $converter->method('verify')->willReturn(true);
+        $converter->method('extractTimestamp')->willReturn(null);
+        $converter->method('convert')->willReturn([$event]);
+        $converter->method('getProviderName')->willReturn('test');
+
+        $handler = new Swift_Webhook_RequestHandler();
+        $result  = $handler->handle($converter, '{}', [], 'secret', 300);
+
+        $this->assertCount(1, $result);
+    }
+
+    public function testHandleUsesCustomMaxAge()
+    {
+        $converter = $this->createMock(TimestampAwareTestConverter::class);
+        $converter->method('verify')->willReturn(true);
+        $converter->method('extractTimestamp')->willReturn(\time() - 120);
+        $converter->method('getProviderName')->willReturn('test');
+
+        $handler = new Swift_Webhook_RequestHandler();
+
+        // 120 seconds old — passes with default 300s, fails with 60s
+        $this->expectException(Swift_Webhook_SignatureVerificationException::class);
+
+        $handler->handle($converter, '{}', [], 'secret', 60);
+    }
+
+    public function testHandleWithZeroMaxAgeDisablesTimestampValidation()
+    {
+        $event = new Swift_Webhook_Event('delivery', 'delivered', 'msg-t4', 'a@b.com', [], new DateTimeImmutable(), []);
+
+        $converter = $this->createMock(TimestampAwareTestConverter::class);
+        $converter->method('verify')->willReturn(true);
+        $converter->method('extractTimestamp')->willReturn(\time() - 99999);
+        $converter->method('convert')->willReturn([$event]);
+        $converter->method('getProviderName')->willReturn('test');
+
+        $handler = new Swift_Webhook_RequestHandler();
+        $result  = $handler->handle($converter, '{}', [], 'secret', 0);
+
+        $this->assertCount(1, $result);
+    }
+
+    // ── Other tests ─────────────────────────────────────────────
 
     public function testSignatureVerificationExceptionContainsProviderName()
     {

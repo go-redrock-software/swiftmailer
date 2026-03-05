@@ -34,6 +34,12 @@ class Swift_Webhook_Converter_ResendConverter extends Swift_Webhook_AbstractPayl
     }
 
     #[Override]
+    public function extractTimestamp(string $rawBody, array $headers): ?int
+    {
+        return isset($headers['svix-timestamp']) ? (int) $headers['svix-timestamp'] : null;
+    }
+
+    #[Override]
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
         $svixId    = $headers['svix-id']        ?? null;

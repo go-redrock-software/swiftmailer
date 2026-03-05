@@ -316,4 +316,12 @@ class Swift_Webhook_Converter_ResendConverterTest extends PHPUnit\Framework\Test
         $events = $this->converter->convert($payload, []);
         $this->assertSame('', $events[0]->getRecipient());
     }
+
+    public function testExtractTimestamp()
+    {
+        $headers = ['svix-timestamp' => '1706000000'];
+
+        $this->assertSame(1706000000, $this->converter->extractTimestamp('{}', $headers));
+        $this->assertNull($this->converter->extractTimestamp('{}', []));
+    }
 }

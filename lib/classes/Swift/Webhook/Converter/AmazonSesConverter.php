@@ -32,6 +32,20 @@ class Swift_Webhook_Converter_AmazonSesConverter extends Swift_Webhook_AbstractP
     }
 
     #[Override]
+    public function extractTimestamp(string $rawBody, array $headers): ?int
+    {
+        $decoded = \json_decode($rawBody, true);
+
+        if (!isset($decoded['Timestamp'])) {
+            return null;
+        }
+
+        $ts = \strtotime($decoded['Timestamp']);
+
+        return false === $ts ? null : $ts;
+    }
+
+    #[Override]
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
         // Require SNS message type header

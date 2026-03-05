@@ -39,6 +39,12 @@ class Swift_Webhook_Converter_SendgridConverter extends Swift_Webhook_AbstractPa
     }
 
     #[Override]
+    public function extractTimestamp(string $rawBody, array $headers): ?int
+    {
+        return isset($headers['x-twilio-email-event-webhook-timestamp']) ? (int) $headers['x-twilio-email-event-webhook-timestamp'] : null;
+    }
+
+    #[Override]
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
         $signature = $headers['x-twilio-email-event-webhook-signature'] ?? null;

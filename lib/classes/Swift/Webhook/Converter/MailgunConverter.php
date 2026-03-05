@@ -32,6 +32,14 @@ class Swift_Webhook_Converter_MailgunConverter extends Swift_Webhook_AbstractPay
     }
 
     #[Override]
+    public function extractTimestamp(string $rawBody, array $headers): ?int
+    {
+        $decoded = \json_decode($rawBody, true);
+
+        return isset($decoded['signature']['timestamp']) ? (int) $decoded['signature']['timestamp'] : null;
+    }
+
+    #[Override]
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
         $decoded = \json_decode($rawBody, true);

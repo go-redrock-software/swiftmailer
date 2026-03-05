@@ -38,6 +38,12 @@ class Swift_Webhook_Converter_SweegoConverter extends Swift_Webhook_AbstractPayl
     }
 
     #[Override]
+    public function extractTimestamp(string $rawBody, array $headers): ?int
+    {
+        return isset($headers['webhook-timestamp']) ? (int) $headers['webhook-timestamp'] : null;
+    }
+
+    #[Override]
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
         $webhookId = $headers['webhook-id']        ?? null;

@@ -307,4 +307,12 @@ class Swift_Webhook_Converter_MailomatConverterTest extends PHPUnit\Framework\Te
 
         $this->assertFalse($this->converter->verify('{}', $headers, 'secret'));
     }
+
+    public function testExtractTimestamp()
+    {
+        $headers = ['x-mom-webhook-timestamp' => '1712240232'];
+
+        $this->assertSame(1712240232, $this->converter->extractTimestamp('{}', $headers));
+        $this->assertNull($this->converter->extractTimestamp('{}', []));
+    }
 }

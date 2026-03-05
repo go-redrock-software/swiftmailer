@@ -353,4 +353,12 @@ class Swift_Webhook_Converter_SendgridConverterTest extends PHPUnit\Framework\Te
         $events = $this->converter->convert($payload, []);
         $this->assertSame('', $events[0]->getMessageId());
     }
+
+    public function testExtractTimestamp()
+    {
+        $headers = ['x-twilio-email-event-webhook-timestamp' => '1706000000'];
+
+        $this->assertSame(1706000000, $this->converter->extractTimestamp('{}', $headers));
+        $this->assertNull($this->converter->extractTimestamp('{}', []));
+    }
 }

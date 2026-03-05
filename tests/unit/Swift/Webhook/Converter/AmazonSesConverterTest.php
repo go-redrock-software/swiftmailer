@@ -281,4 +281,15 @@ class Swift_Webhook_Converter_AmazonSesConverterTest extends PHPUnit\Framework\T
 
         $this->assertCount(0, $events);
     }
+
+    public function testExtractTimestamp()
+    {
+        $converter = new TestableAmazonSesConverter('');
+
+        $rawBody = \json_encode(['Timestamp' => '2024-01-01T00:00:00.000Z']);
+        $this->assertSame(\strtotime('2024-01-01T00:00:00.000Z'), $converter->extractTimestamp($rawBody, []));
+
+        $this->assertNull($converter->extractTimestamp('{}', []));
+        $this->assertNull($converter->extractTimestamp('invalid-json', []));
+    }
 }

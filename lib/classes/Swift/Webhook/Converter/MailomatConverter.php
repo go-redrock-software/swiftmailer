@@ -35,6 +35,12 @@ class Swift_Webhook_Converter_MailomatConverter extends Swift_Webhook_AbstractPa
     }
 
     #[Override]
+    public function extractTimestamp(string $rawBody, array $headers): ?int
+    {
+        return isset($headers['x-mom-webhook-timestamp']) ? (int) $headers['x-mom-webhook-timestamp'] : null;
+    }
+
+    #[Override]
     public function verify(string $rawBody, array $headers, #[SensitiveParameter] string $secret): bool
     {
         $id        = $headers['x-mom-webhook-id']        ?? null;

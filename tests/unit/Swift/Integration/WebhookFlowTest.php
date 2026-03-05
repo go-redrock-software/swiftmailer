@@ -37,7 +37,7 @@ class Swift_Integration_WebhookFlowTest extends PHPUnit\Framework\TestCase
         $converter = new Swift_Webhook_Converter_MailgunConverter();
 
         $secret    = 'test-key';
-        $timestamp = '1706000000';
+        $timestamp = (string) \time();
         $token     = 'random-token';
         $signature = \hash_hmac('sha256', $timestamp.$token, $secret);
 
@@ -52,7 +52,7 @@ class Swift_Integration_WebhookFlowTest extends PHPUnit\Framework\TestCase
                 'severity'  => 'permanent',
                 'recipient' => 'bad@example.com',
                 'message'   => ['headers' => ['message-id' => 'mg-msg-001']],
-                'timestamp' => 1706000000.0,
+                'timestamp' => (float) \time(),
             ],
         ]);
 

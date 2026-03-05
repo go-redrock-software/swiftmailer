@@ -129,11 +129,11 @@ $handler->handle($converter, $oldPayload, $validHeaders, 'valid-secret', maxAge:
 | Mandatory secret / always verify | **FIXED** | `RequestHandler.php:40`: `string $secret` (non-nullable), empty string throws `InvalidArgumentException`, `verify()` always called |
 | Mailjet Basic Auth verification | **FIXED** | `MailjetConverter.php:39-55`: parses `Authorization: Basic` header, extracts password, compares with `hash_equals()` |
 | Amazon SES SNS signature verification | **FIXED** | `AmazonSesConverter.php:35-85`: validates TopicArn against `$secret`, validates `SigningCertURL` is HTTPS from `sns.*.amazonaws.com`, fetches signing cert, builds canonical string-to-sign, verifies RSA signature with `openssl_verify()`, supports SignatureVersion 1 (SHA1) and 2 (SHA256) |
-| Timestamp validation | **NOT IMPLEMENTED** | No replay prevention (Phase 2) |
+| Timestamp validation (replay prevention) | **FIXED** | `RequestHandler.php:58-62`: `$maxAge` parameter (default 300s, 0 to disable). `TimestampExtractorInterface` implemented by `AbstractPayloadConverter` (default null). 7 converters override: AhaSend, Resend, Sweego (header), SendGrid (header), Mailgun (body), Mailomat (header), AmazonSES (body). |
 | IP allowlisting | **NOT IMPLEMENTED** | No source IP validation (Phase 4) |
 | Event deduplication | **NOT IMPLEMENTED** | No deduplication interface (Phase 4) |
 
-**Overall Status:** Phases 1 and 3 COMPLETE. All 14 converters now perform real signature verification. Null-secret bypass eliminated. 25 new tests added (11 Mailjet, 14 AmazonSES). Full unit test suite passes (3033 tests).
+**Overall Status:** Phases 1, 2, and 3 COMPLETE. All 14 converters perform real signature verification. Null-secret bypass eliminated. Replay prevention via timestamp validation for 7 providers. Full unit test suite passes (3046 tests).
 
 ## Risk After Mitigation
 

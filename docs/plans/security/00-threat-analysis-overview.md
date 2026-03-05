@@ -65,7 +65,7 @@
 
 | Status | Count | Threats |
 |-|-|-|
-| MOSTLY COMPLETE | 1 | #6 (Webhook — mandatory verification, all converters fixed, timestamp validation remaining) |
+| MOSTLY COMPLETE | 1 | #6 (Webhook — mandatory verification, all converters fixed, timestamp replay prevention; IP allowlisting and event dedup remaining as Phase 4) |
 | PARTIAL | 7 | #2 (Credential Exposure), #3 (Sendmail), #4 (TLS), #5 (Deserialization — Phase 1), #11 (Info Disclosure), #12 (Supply Chain), #13 (Crypto Signing) |
 | NOT STARTED | 18 | #1, #7, #8, #9, #10, #14, #15, #16, #17, #18, #19, #20, #21, #22, #23, #24, #25, #26 |
 | COMPLETE | 0 | -- |

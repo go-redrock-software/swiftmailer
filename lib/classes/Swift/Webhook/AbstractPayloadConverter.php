@@ -10,8 +10,19 @@
 /**
  * Base class for webhook payload converters with HMAC helpers and event factories.
  */
-abstract class Swift_Webhook_AbstractPayloadConverter implements Swift_Webhook_PayloadConverterInterface
+abstract class Swift_Webhook_AbstractPayloadConverter implements Swift_Webhook_PayloadConverterInterface, Swift_Webhook_TimestampExtractorInterface
 {
+    /**
+     * Extract the webhook timestamp for replay prevention.
+     *
+     * Override in subclasses that have access to a timestamp from headers or body.
+     * Returns null by default (no timestamp available, replay check skipped).
+     */
+    public function extractTimestamp(string $rawBody, array $headers): ?int
+    {
+        return null;
+    }
+
     /**
      * Verify an HMAC signature using timing-safe comparison.
      */

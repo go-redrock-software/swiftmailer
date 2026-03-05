@@ -218,4 +218,12 @@ class Swift_Webhook_Converter_AhaSendConverterTest extends PHPUnit\Framework\Tes
 
         $this->assertTrue($this->converter->verify($body, $headers, $secret));
     }
+
+    public function testExtractTimestamp()
+    {
+        $headers = ['webhook-timestamp' => '1706000000'];
+
+        $this->assertSame(1706000000, $this->converter->extractTimestamp('{}', $headers));
+        $this->assertNull($this->converter->extractTimestamp('{}', []));
+    }
 }
