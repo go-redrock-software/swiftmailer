@@ -31,7 +31,7 @@
     "ext-intl": "*",
     "ext-openssl": "*",
     "egulias/email-validator": "^2.0|^3.1|^4.0.2",
-    "phpseclib/phpseclib": "3.0.37",
+    "phpseclib/phpseclib": "3.0.51",
     "nyholm/dsn": "2.*",
     "google/apiclient": "^2.16",
     "microsoft/microsoft-graph": "^2.10",
