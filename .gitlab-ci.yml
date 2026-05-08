@@ -70,6 +70,8 @@ phpstan:
 
 tests:
   extends: .test-job
+  variables:
+    SYMFONY_DEPRECATIONS_HELPER: "max[direct]=0&max[self]=0"
   script:
     - vendor/bin/simple-phpunit --testsuite="SwiftMailer unit tests" --verbose --log-junit phpunit-report.xml
   artifacts:
