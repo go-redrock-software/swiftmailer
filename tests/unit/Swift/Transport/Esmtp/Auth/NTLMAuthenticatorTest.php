@@ -202,7 +202,6 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticatorTest extends SwiftMailerTestCa
     private function invokePrivateMethod($method, $instance, array $args = [])
     {
         $methodC = new ReflectionMethod($instance, \trim($method));
-        $methodC->setAccessible(true);
 
         return $methodC->invokeArgs($instance, $args);
     }

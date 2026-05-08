@@ -378,7 +378,6 @@ class AzureTransportTest extends TestCase
     {
         // Use reflection to call the protected method
         $reflection = new \ReflectionMethod($this->transport, 'getAuthHeaders');
-        $reflection->setAccessible(true);
 
         $this->assertEmpty($reflection->invoke($this->transport));
     }

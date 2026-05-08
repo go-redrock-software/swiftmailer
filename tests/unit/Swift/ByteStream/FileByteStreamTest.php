@@ -110,9 +110,7 @@ class Swift_ByteStream_FileByteStreamTest extends PHPUnit\Framework\TestCase
         $reflection = new ReflectionClass('Swift_ByteStream_FileByteStream');
         $method     = $reflection->getMethod('copyReadStream');
         $method2    = $reflection->getMethod('getReadHandle');
-        $method2->setAccessible(true);
         $method2->invoke($bs);
-        $method->setAccessible(true); // Allow access to the private method
         // Call the method and capture any possible exception
         try {
             $method->invoke($bs);

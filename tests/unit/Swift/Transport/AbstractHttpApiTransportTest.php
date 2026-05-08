@@ -98,7 +98,6 @@ class Swift_Transport_AbstractHttpApiTransportTest extends TestCase
     public function testGetApiConnectionReturnsHttpClient(): void
     {
         $reflection = new \ReflectionMethod($this->transport, 'getApiConnection');
-        $reflection->setAccessible(true);
         $this->assertSame($this->httpClientMock, $reflection->invoke($this->transport));
     }
 
