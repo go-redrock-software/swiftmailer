@@ -509,7 +509,7 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
             }
         }
         // Prepare the DKIM-Signature
-        $params      = ['v' => '1', 'q' => 'dns/txt', 'a' => $this->hashAlgorithm, 'bh' => \base64_encode($this->bodyHash ?? ''), 'd' => $this->domainName, 'h' => \implode(': ', $headerList), 'i' => $this->signerIdentity, 's' => $this->selector];
+        $params      = ['v' => '1', 'q' => 'dns/txt', 'a' => $this->hashAlgorithm, 'bh' => \base64_encode($this->bodyHash), 'd' => $this->domainName, 'h' => \implode(': ', $headerList), 'i' => $this->signerIdentity, 's' => $this->selector];
         $params['c'] = $this->headerCanon.'/'.$this->bodyCanon;
         if ($this->showLen) {
             $params['l'] = $this->bodyLen;

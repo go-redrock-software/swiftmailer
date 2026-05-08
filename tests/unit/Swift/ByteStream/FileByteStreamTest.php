@@ -46,17 +46,19 @@ class Swift_ByteStream_FileByteStreamTest extends PHPUnit\Framework\TestCase
     public function testReadFromNonReadableFileThrowsException()
     {
         \file_put_contents($this->tmpFile, 'test');
-        $ret = \chmod($this->tmpFile, 0000);
-        if (!$ret) {
-            // we failed to set the permissions on the test file
-            $this->fail('Failed to set permissions on the test file');
+        \chmod($this->tmpFile, 0000);
+
+        $this->dropRootIfNeeded();
+
+        try {
+            $bs = new Swift_ByteStream_FileByteStream($this->tmpFile);
+
+            $this->expectException(Swift_IoException::class);
+            $this->expectExceptionMessage('Unable to open file for reading ['.$this->tmpFile.']');
+            $bs->read(4);
+        } finally {
+            $this->restoreRootIfNeeded();
         }
-
-        $bs = new Swift_ByteStream_FileByteStream($this->tmpFile);
-
-        $this->expectException(Swift_IoException::class);
-        $this->expectExceptionMessage('Unable to open file for reading ['.$this->tmpFile.']');
-        $bs->read(4);
     }
 
     public function testWriteToNonWritableFileThrowsException()
@@ -64,11 +66,38 @@ class Swift_ByteStream_FileByteStreamTest extends PHPUnit\Framework\TestCase
         \file_put_contents($this->tmpFile, 'test');
         \chmod($this->tmpFile, 0400);
 
-        $bs = new Swift_ByteStream_FileByteStream($this->tmpFile, true);
+        $this->dropRootIfNeeded();
 
-        $this->expectException(Swift_IoException::class);
-        $this->expectExceptionMessage('Unable to open file for writing ['.$this->tmpFile.']');
-        $bs->write('test2');
+        try {
+            $bs = new Swift_ByteStream_FileByteStream($this->tmpFile, true);
+
+            $this->expectException(Swift_IoException::class);
+            $this->expectExceptionMessage('Unable to open file for writing ['.$this->tmpFile.']');
+            $bs->write('test2');
+        } finally {
+            $this->restoreRootIfNeeded();
+        }
+    }
+
+    private bool $droppedRoot = false;
+
+    private function dropRootIfNeeded(): void
+    {
+        if (\function_exists('posix_getuid') && 0 === \posix_getuid()) {
+            if (!\function_exists('posix_seteuid')) {
+                $this->markTestSkipped('Cannot test file permissions as root without posix_seteuid()');
+            }
+            \posix_seteuid(65534);
+            $this->droppedRoot = true;
+        }
+    }
+
+    private function restoreRootIfNeeded(): void
+    {
+        if ($this->droppedRoot) {
+            \posix_seteuid(0);
+            $this->droppedRoot = false;
+        }
     }
 
     public function testCopyReadStream()
