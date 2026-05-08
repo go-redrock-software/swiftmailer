@@ -733,7 +733,7 @@ class Swift_Mime_SimpleMimeEntity implements Swift_Mime_CharsetObserver, Swift_M
             }
         }
 
-        $realLevel     = $child->getNestingLevel();
+        $realLevel     = $child->getNestingLevel() ?? 0;
         $lowercaseType = \strtolower($child->getContentType() ?? '');
 
         if (isset($filter[$realLevel]) && isset($filter[$realLevel][$lowercaseType])) {
@@ -780,7 +780,7 @@ class Swift_Mime_SimpleMimeEntity implements Swift_Mime_CharsetObserver, Swift_M
             // Group the messages by order of preference
             $sorted = [];
             foreach ($this->immediateChildren as $child) {
-                $type  = $child->getContentType();
+                $type  = $child->getContentType() ?? '';
                 $level = \array_key_exists($type, $this->alternativePartOrder) ? $this->alternativePartOrder[$type] : \max($this->alternativePartOrder) + 1;
 
                 if (empty($sorted[$level])) {
