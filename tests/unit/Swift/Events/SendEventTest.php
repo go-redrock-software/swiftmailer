@@ -139,7 +139,10 @@ class Swift_Events_SendEventTest extends PHPUnit\Framework\TestCase
 
         $evt->setEnvelope($envelope);
 
-        $this->assertSame($envelope, $evt->getEnvelope());
+        $retrieved = $evt->getEnvelope();
+        $this->assertNotNull($retrieved);
+        $this->assertEquals($envelope->getSender(), $retrieved->getSender());
+        $this->assertEquals($envelope->getRecipients(), $retrieved->getRecipients());
     }
 
     public function testDefaultResultIsPending()
@@ -231,6 +234,21 @@ class Swift_Events_SendEventTest extends PHPUnit\Framework\TestCase
         $envelope = new Swift_Envelope('sender@example.com', ['a@b.com', 'c@d.com']);
         $evt->setEnvelope($envelope);
         $this->assertCount(2, $evt->getEnvelope()->getRecipients());
+    }
+
+    public function testSendEventEnvelopeIsCloned()
+    {
+        $evt      = $this->createEvent($this->createTransport(), $this->createMessage());
+        $envelope = new Swift_Envelope('sender@example.com', ['to@example.com']);
+        $evt->setEnvelope($envelope);
+
+        $retrieved = $evt->getEnvelope();
+        $this->assertNotSame($envelope, $retrieved);
+        $this->assertEquals($envelope->getSender(), $retrieved->getSender());
+        $this->assertEquals($envelope->getRecipients(), $retrieved->getRecipients());
+
+        $retrieved2 = $evt->getEnvelope();
+        $this->assertNotSame($retrieved, $retrieved2);
     }
 
     public function testResultConstants()

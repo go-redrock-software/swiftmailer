@@ -33,6 +33,10 @@ class Swift_DependencyContainer
     /** Singleton instance */
     private static $instance;
 
+    private int $lookupDepth = 0;
+
+    private const int MAX_LOOKUP_DEPTH = 20;
+
     /** The data container */
     private $store = [];
 
@@ -103,21 +107,30 @@ class Swift_DependencyContainer
      */
     public function lookup($itemName)
     {
-        if (!$this->has($itemName)) {
-            throw new Swift_DependencyException('Cannot lookup dependency "'.$itemName.'" since it is not registered.');
+        if (++$this->lookupDepth > self::MAX_LOOKUP_DEPTH) {
+            $this->lookupDepth = 0;
+            throw new Swift_DependencyException('Circular dependency detected when resolving: '.$itemName);
         }
 
-        switch ($this->store[$itemName]['lookupType']) {
-            case self::TYPE_ALIAS:
-                return $this->createAlias($itemName);
-            case self::TYPE_VALUE:
-                return $this->getValue($itemName);
-            case self::TYPE_INSTANCE:
-                return $this->createNewInstance($itemName);
-            case self::TYPE_SHARED:
-                return $this->createSharedInstance($itemName);
-            case self::TYPE_ARRAY:
-                return $this->createDependenciesFor($itemName);
+        try {
+            if (!$this->has($itemName)) {
+                throw new Swift_DependencyException('Cannot lookup dependency "'.$itemName.'" since it is not registered.');
+            }
+
+            switch ($this->store[$itemName]['lookupType']) {
+                case self::TYPE_ALIAS:
+                    return $this->createAlias($itemName);
+                case self::TYPE_VALUE:
+                    return $this->getValue($itemName);
+                case self::TYPE_INSTANCE:
+                    return $this->createNewInstance($itemName);
+                case self::TYPE_SHARED:
+                    return $this->createSharedInstance($itemName);
+                case self::TYPE_ARRAY:
+                    return $this->createDependenciesFor($itemName);
+            }
+        } finally {
+            --$this->lookupDepth;
         }
     }
 

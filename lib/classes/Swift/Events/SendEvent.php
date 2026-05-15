@@ -173,7 +173,7 @@ class Swift_Events_SendEvent extends Swift_Events_EventObject
      */
     public function setEnvelope(?Swift_Envelope $envelope): void
     {
-        $this->envelope = $envelope;
+        $this->envelope = null !== $envelope ? clone $envelope : null;
     }
 
     /**
@@ -181,6 +181,6 @@ class Swift_Events_SendEvent extends Swift_Events_EventObject
      */
     public function getEnvelope(): ?Swift_Envelope
     {
-        return $this->envelope;
+        return null !== $this->envelope ? clone $this->envelope : null;
     }
 }

@@ -488,6 +488,28 @@ class Swift_DependencyContainerTest extends PHPUnit\Framework\TestCase
         $this->assertNull($obj->arg2);
     }
 
+    public function testCyclicAliasDependencyThrows()
+    {
+        $this->container->register('a')->asAliasOf('b');
+        $this->container->register('b')->asAliasOf('a');
+
+        $this->expectException(Swift_DependencyException::class);
+        $this->expectExceptionMessage('Circular dependency detected');
+        $this->container->lookup('a');
+    }
+
+    public function testDeeplyNestedAliasChainWithinLimitSucceeds()
+    {
+        $this->container->register('final')->asValue('FOUND');
+        $prev = 'final';
+        for ($i = 1; $i <= 15; ++$i) {
+            $name = 'alias'.$i;
+            $this->container->register($name)->asAliasOf($prev);
+            $prev = $name;
+        }
+        $this->assertSame('FOUND', $this->container->lookup($prev));
+    }
+
     public function testSharedInstancePreservedAcrossLookups()
     {
         $this->container->register('shared')->asSharedInstanceOf('One')
