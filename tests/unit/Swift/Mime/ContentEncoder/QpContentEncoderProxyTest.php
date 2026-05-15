@@ -129,6 +129,23 @@ class Swift_Mime_ContentEncoder_QpContentEncoderProxyTest extends PHPUnit\Framew
         $proxy->encodeString('test', 10, 76);
     }
 
+    public function testCharsetComparisonIsCaseInsensitive()
+    {
+        $safeEncoder   = $this->createMock(Swift_Mime_ContentEncoder_QpContentEncoder::class);
+        $nativeEncoder = $this->createMock(Swift_Mime_ContentEncoder_NativeQpContentEncoder::class);
+
+        $nativeEncoder->expects($this->once())
+            ->method('encodeString')
+            ->with('test', 0, 0)
+            ->willReturn('test');
+
+        $safeEncoder->expects($this->never())
+            ->method('encodeString');
+
+        $proxy = new Swift_Mime_ContentEncoder_QpContentEncoderProxy($safeEncoder, $nativeEncoder, 'UTF-8');
+        $this->assertEquals('test', $proxy->encodeString('test'));
+    }
+
     public function testNullCharsetUsesSafeEncoder()
     {
         $safeEncoder   = $this->createMock(Swift_Mime_ContentEncoder_QpContentEncoder::class);

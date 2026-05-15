@@ -342,12 +342,11 @@ class Swift_Plugins_LoggerPluginTest extends SwiftMailerTestCase
         $this->assertInstanceOf(Swift_Plugins_Logger::class, $plugin);
     }
 
-    public function testExceptionThrownIncludesLogDump()
+    public function testExceptionThrownDoesNotIncludeLogDump()
     {
         $logger = $this->createMock(Swift_Plugins_Logger::class);
-        $logger->expects($this->once())
-            ->method('dump')
-            ->willReturn('log contents here');
+        $logger->expects($this->never())
+            ->method('dump');
 
         $plugin    = new Swift_Plugins_LoggerPlugin($logger);
         $transport = $this->createTransport();
@@ -367,7 +366,7 @@ class Swift_Plugins_LoggerPluginTest extends SwiftMailerTestCase
             $this->fail('Exception should have been thrown');
         } catch (Swift_TransportException $e) {
             $this->assertStringContainsString('Original error', $e->getMessage());
-            $this->assertStringContainsString('log contents here', $e->getMessage());
+            $this->assertStringNotContainsString('Log data:', $e->getMessage());
         }
     }
 

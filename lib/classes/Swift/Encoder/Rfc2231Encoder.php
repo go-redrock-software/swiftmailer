@@ -43,6 +43,10 @@ class Swift_Encoder_Rfc2231Encoder implements Swift_Encoder
     #[Override]
     public function encodeString($string, $firstLineOffset = 0, $maxLineLength = 0)
     {
+        if ($firstLineOffset < 0) {
+            throw new \InvalidArgumentException('firstLineOffset must be non-negative');
+        }
+
         $lines       = [];
         $lineCount   = 0;
         $lines[]     = '';

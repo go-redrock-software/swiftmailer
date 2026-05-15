@@ -113,6 +113,17 @@ class Swift_Encoder_Rfc2231EncoderTest extends SwiftMailerTestCase
         );
     }
 
+    public function testNegativeFirstLineOffsetThrows()
+    {
+        $charStream = $this->getMockery('Swift_CharacterStream');
+        $encoder = new Swift_Encoder_Rfc2231Encoder($charStream);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('firstLineOffset must be non-negative');
+
+        $encoder->encodeString('test', -1);
+    }
+
     public function testFirstLineCanHaveShorterLength()
     {
         $charStream = $this->getMockery('Swift_CharacterStream');

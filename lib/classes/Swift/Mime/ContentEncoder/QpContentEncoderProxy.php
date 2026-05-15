@@ -83,6 +83,6 @@ class Swift_Mime_ContentEncoder_QpContentEncoderProxy implements Swift_Mime_Cont
      */
     private function getEncoder()
     {
-        return 'utf-8' === $this->charset ? $this->nativeEncoder : $this->safeEncoder;
+        return 'utf-8' === strtolower($this->charset ?? '') ? $this->nativeEncoder : $this->safeEncoder;
     }
 }

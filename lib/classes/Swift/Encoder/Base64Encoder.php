@@ -31,6 +31,10 @@ class Swift_Encoder_Base64Encoder implements Swift_Encoder
     #[Override]
     public function encodeString($string, $firstLineOffset = 0, $maxLineLength = 0)
     {
+        if ($firstLineOffset < 0) {
+            throw new \InvalidArgumentException('firstLineOffset must be non-negative');
+        }
+
         if (0 >= $maxLineLength || 76 < $maxLineLength) {
             $maxLineLength = 76;
         }

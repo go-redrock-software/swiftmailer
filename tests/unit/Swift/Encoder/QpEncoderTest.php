@@ -394,28 +394,25 @@ class Swift_Encoder_QpEncoderTest extends SwiftMailerTestCase
         return $this->getMockery('Swift_CharacterStream')->shouldIgnoreMissing();
     }
 
-    public function testSleepAndWakeup()
+    public function testQpEncoderCannotBeUnserialized()
+    {
+        $encoder = $this->createEncoder();
+        $serialized = \serialize($encoder);
+
+        $this->expectException(\BadMethodCallException::class);
+        $this->expectExceptionMessage('QpEncoder cannot be unserialized.');
+
+        \unserialize($serialized);
+    }
+
+    public function testNegativeFirstLineOffsetThrows()
     {
         $encoder = $this->createEncoder();
 
-        $serialized = \serialize($encoder);
-        $restored = \unserialize($serialized);
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('firstLineOffset must be non-negative');
 
-        // After wakeup, encoder should still work
-        $this->assertEquals('test', $restored->encodeString('test'));
-    }
-
-    public function testWakeupWithExistingSafeMapShare()
-    {
-        $encoder1 = $this->createEncoder();
-        // First serialize/unserialize populates the shared map
-        $restored1 = \unserialize(\serialize($encoder1));
-
-        // Second unserialize should use the existing shared map
-        $encoder2 = $this->createEncoder();
-        $restored2 = \unserialize(\serialize($encoder2));
-
-        $this->assertEquals('test', $restored2->encodeString('test'));
+        $encoder->encodeString('test', -1);
     }
 
     private function createEncoder()
