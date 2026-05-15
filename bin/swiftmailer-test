@@ -42,8 +42,17 @@ try {
     exit(1);
 }
 
-// ── Create transport from DSN ────────────────────────────────────
-$displayDsn = \preg_replace('#://([^:]+):([^@]+)@#', '://$1:****@', $args->dsn);
+// ── Resolve DSN ──────────────────────────────────────────────────
+$dsnString = \getenv('SWIFTMAILER_DSN') ?: $args->dsn;
+if (!$dsnString) {
+    $output->error('DSN required. Set SWIFTMAILER_DSN env var or pass as first argument.');
+    exit(1);
+}
+if (!\getenv('SWIFTMAILER_DSN') && $args->dsn) {
+    $output->warning('Passing DSN as a CLI argument exposes credentials in the process list. Use SWIFTMAILER_DSN env var instead.');
+}
+
+$displayDsn = \preg_replace('#://([^:]+):([^@]+)@#', '://$1:****@', $dsnString);
 $output->info('DSN:       ' . $displayDsn);
 $output->info('From:      ' . $args->from);
 $output->info('To:        ' . $args->to);
@@ -53,7 +62,7 @@ $output->writeln('');
 try {
     $output->info('Creating transport from DSN...');
     $factory   = new Swift_Transport_DsnTransportFactory();
-    $transport = $factory->fromDsnString($args->dsn);
+    $transport = $factory->fromDsnString($dsnString);
     $output->success('Transport: ' . get_class($transport));
 } catch (\Throwable $e) {
     $output->error('Failed to create transport: ' . $e->getMessage());

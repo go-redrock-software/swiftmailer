@@ -50,7 +50,12 @@ class Swift_Cli_ConsoleOutput
 
     public function writeln(string $message): void
     {
-        \fwrite($this->stream, $message.\PHP_EOL);
+        \fwrite($this->stream, $this->sanitize($message).\PHP_EOL);
+    }
+
+    private function sanitize(string $message): string
+    {
+        return \preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $message);
     }
 
     private function colorize(string $text, string $code): string
