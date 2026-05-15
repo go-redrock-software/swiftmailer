@@ -28,6 +28,7 @@ class Swift_Transport_Api_InfoBipTransport extends Swift_Transport_AbstractHttpA
         ?Swift_Events_EventDispatcher $eventDispatcher = null,
     ) {
         parent::__construct($apiKey, $httpClient, $eventDispatcher);
+        Swift_Transport_UrlValidator::validate('https://'.$baseUrl);
         $this->baseUrl = \rtrim($baseUrl, '/');
     }
 

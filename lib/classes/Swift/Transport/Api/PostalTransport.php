@@ -28,6 +28,7 @@ class Swift_Transport_Api_PostalTransport extends Swift_Transport_AbstractHttpAp
         ?Swift_Events_EventDispatcher $eventDispatcher = null,
     ) {
         parent::__construct($apiKey, $httpClient, $eventDispatcher);
+        Swift_Transport_UrlValidator::validate('https://'.$host);
         $this->host = \rtrim($host, '/');
     }
 
