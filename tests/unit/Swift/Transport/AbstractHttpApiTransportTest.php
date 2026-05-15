@@ -325,6 +325,43 @@ class Swift_Transport_AbstractHttpApiTransportTest extends TestCase
         $reflection->invoke($this->transport, $response);
     }
 
+    public function testDefaultGuzzleClientHasVerifyTrue(): void
+    {
+        $transport = new class('test-api-key', null, $this->eventDispatcherMock) extends \Swift_Transport_AbstractHttpApiTransport {
+            protected function doSend(\Swift_Mime_SimpleMessage $message, ?\Swift_Envelope $envelope = null): array
+            {
+                return [];
+            }
+
+            protected function getEndpoint(): string
+            {
+                return 'https://api.test.com/send';
+            }
+
+            protected function getAuthHeaders(): array
+            {
+                return [];
+            }
+
+            protected function parseResponse(\Psr\Http\Message\ResponseInterface $response): array
+            {
+                return [];
+            }
+
+            protected function getPingEndpoint(): string
+            {
+                return 'https://api.test.com/ping';
+            }
+        };
+
+        $ref = new \ReflectionProperty($transport, 'httpClient');
+        $client = $ref->getValue($transport);
+        $this->assertInstanceOf(\GuzzleHttp\Client::class, $client);
+
+        $config = $client->getConfig();
+        $this->assertTrue($config['verify'], 'Default Guzzle client must have verify=true');
+    }
+
     public function testSendWithoutEnvelopeFallsBackToMessage(): void
     {
         $dispatcher = new \Swift_Events_SimpleEventDispatcher();

@@ -1206,4 +1206,69 @@ class Swift_Transport_RetryTransportTest extends PHPUnit\Framework\TestCase
         $this->expectException(Swift_TransportException::class);
         $retry->send($message);
     }
+
+    public function testMaxRetriesClampedTo10(): void
+    {
+        $inner = $this->createMock(Swift_Transport::class);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('maxRetries must be between 0 and 10');
+        new Swift_Transport_RetryTransport($inner, maxRetries: 11);
+    }
+
+    public function testNegativeMaxRetriesThrows(): void
+    {
+        $inner = $this->createMock(Swift_Transport::class);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('maxRetries must be between 0 and 10');
+        new Swift_Transport_RetryTransport($inner, maxRetries: -1);
+    }
+
+    public function testBaseDelayMsClampedTo30000(): void
+    {
+        $inner = $this->createMock(Swift_Transport::class);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('baseDelayMs must be between 0 and 30000');
+        new Swift_Transport_RetryTransport($inner, maxRetries: 3, baseDelayMs: 30001);
+    }
+
+    public function testNegativeBaseDelayMsThrows(): void
+    {
+        $inner = $this->createMock(Swift_Transport::class);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('baseDelayMs must be between 0 and 30000');
+        new Swift_Transport_RetryTransport($inner, maxRetries: 3, baseDelayMs: -1);
+    }
+
+    public function testTotalTimeoutAbortsRetries(): void
+    {
+        $inner   = $this->createMock(Swift_Transport::class);
+        $message = (new Swift_Message())
+            ->setFrom(['sender@example.com'])
+            ->setTo(['to@example.com'])
+            ->setSubject('Test')
+            ->setBody('Body');
+
+        $inner->method('send')
+            ->willThrowException(new Swift_TransportException('Timeout', 0));
+        $inner->method('isStarted')->willReturn(true);
+
+        $retry = new class($inner, 10, 0) extends Swift_Transport_RetryTransport {
+            private int $fakeTime = 0;
+
+            protected function getCurrentTime(): int
+            {
+                $t = $this->fakeTime;
+                $this->fakeTime += 100;
+
+                return $t;
+            }
+        };
+
+        $this->expectException(Swift_TransportException::class);
+        $retry->send($message);
+    }
 }
