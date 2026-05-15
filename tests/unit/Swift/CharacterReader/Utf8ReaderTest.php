@@ -68,4 +68,64 @@ class Swift_CharacterReader_Utf8ReaderTest extends PHPUnit\Framework\TestCase
             );
         }
     }
+
+    public function testGetMapTypeReturnsPositions()
+    {
+        $this->assertSame(
+            Swift_CharacterReader::MAP_TYPE_POSITIONS,
+            $this->reader->getMapType(),
+        );
+    }
+
+    public function testValidateByteSequenceWithSizeZeroReturnsMinus1()
+    {
+        $this->assertSame(-1, $this->reader->validateByteSequence([0x41], 0));
+    }
+
+    public function testValidateByteSequenceReturnsMinus1ForContinuationByte()
+    {
+        // 0x80 is a continuation byte, length_map[0x80] = 0, so 0 - 1 = -1
+        $this->assertSame(-1, $this->reader->validateByteSequence([0x80], 1));
+    }
+
+    public function testGetCharPositionsWithInvalidBytes()
+    {
+        $reader = new Swift_CharacterReader_Utf8Reader();
+        $map = ['p' => [], 'i' => []];
+        $ignored = '';
+
+        // A continuation byte (0x80) alone is invalid
+        $count = $reader->getCharPositions("\x80A", 0, $map, $ignored);
+
+        // The invalid byte produces a char, and 'A' produces another
+        $this->assertSame(2, $count);
+        $this->assertTrue(isset($map['i'][0]), 'Invalid char should be marked');
+    }
+
+    public function testGetCharPositionsWithIncompleteMultibyte()
+    {
+        $reader = new Swift_CharacterReader_Utf8Reader();
+        $map = ['p' => [], 'i' => []];
+        $ignored = '';
+
+        // 0xC3 starts a 2-byte sequence but is at end of string
+        $count = $reader->getCharPositions("\xC3", 0, $map, $ignored);
+
+        // Incomplete char should be returned as ignoredChars
+        $this->assertSame(0, $count);
+        $this->assertEquals("\xC3", $ignored);
+    }
+
+    public function testGetCharPositionsWithInvalidContinuationByte()
+    {
+        $reader = new Swift_CharacterReader_Utf8Reader();
+        $map = ['p' => [], 'i' => []];
+        $ignored = '';
+
+        // 0xC3 starts a 2-byte sequence, 0x41 is not a valid continuation byte
+        $count = $reader->getCharPositions("\xC3\x41", 0, $map, $ignored);
+
+        // The invalid sequence triggers resync: invalid char + valid 'A'
+        $this->assertGreaterThanOrEqual(1, $count);
+    }
 }

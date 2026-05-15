@@ -267,6 +267,34 @@ class Swift_KeyCache_ArrayKeyCacheTest extends PHPUnit\Framework\TestCase
         return $this->getMockBuilder('Swift_OutputByteStream')->getMock();
     }
 
+    public function testSetStringWithInvalidModeThrows()
+    {
+        $is    = $this->createKeyCacheInputStream();
+        $cache = $this->createCache($is);
+
+        $this->expectException(Swift_SwiftException::class);
+        $cache->setString($this->key1, 'foo', 'test', 999);
+    }
+
+    public function testImportFromByteStreamWithInvalidModeThrows()
+    {
+        $os = $this->createOutputStream();
+        $is = $this->createKeyCacheInputStream();
+        $cache = $this->createCache($is);
+
+        $this->expectException(Swift_SwiftException::class);
+        $cache->importFromByteStream($this->key1, 'foo', $os, 999);
+    }
+
+    public function testGetInputByteStreamReturnsConfiguredStream()
+    {
+        $is    = $this->createKeyCacheInputStream();
+        $cache = $this->createCache($is);
+
+        $result = $cache->getInputByteStream($this->key1, 'foo');
+        $this->assertInstanceOf(Swift_InputByteStream::class, $result);
+    }
+
     private function createInputStream()
     {
         return $this->getMockBuilder('Swift_InputByteStream')->getMock();

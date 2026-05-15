@@ -90,4 +90,16 @@ class Swift_ByteStream_TemporaryFileByteStreamTest extends PHPUnit\Framework\Tes
         $s2 = new Swift_ByteStream_TemporaryFileByteStream();
         $this->assertNotEquals($s1->getPath(), $s2->getPath());
     }
+
+    public function testGetContentThrowsWhenFileDeleted()
+    {
+        $stream = new Swift_ByteStream_TemporaryFileByteStream();
+        $path = $stream->getPath();
+        // Delete the file to simulate failure
+        \unlink($path);
+
+        $this->expectException(Swift_IoException::class);
+        $this->expectExceptionMessage('Failed to get temporary file content.');
+        @$stream->getContent(); // suppress PHP warning from file_get_contents
+    }
 }

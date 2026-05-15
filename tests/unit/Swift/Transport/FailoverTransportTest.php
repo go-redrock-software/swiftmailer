@@ -555,6 +555,34 @@ class Swift_Transport_FailoverTransportTest extends SwiftMailerTestCase
         $this->assertTrue($transport->isStarted());
     }
 
+    public function testPingReturnsFalseWhenAllTransportsFailPing()
+    {
+        $t1 = $this->getMockery('Swift_Transport');
+        $t2 = $this->getMockery('Swift_Transport');
+
+        $t1->shouldReceive('isStarted')
+            ->zeroOrMoreTimes()
+            ->andReturn(false);
+        $t1->shouldReceive('ping')
+            ->once()
+            ->andReturn(false);
+        $t1->shouldReceive('stop')
+            ->zeroOrMoreTimes();
+
+        $t2->shouldReceive('isStarted')
+            ->zeroOrMoreTimes()
+            ->andReturn(false);
+        $t2->shouldReceive('ping')
+            ->once()
+            ->andReturn(false);
+        $t2->shouldReceive('stop')
+            ->zeroOrMoreTimes();
+
+        $transport = $this->getTransport([$t1, $t2]);
+        // When all transports fail ping and get killed, transports array is empty => false
+        $this->assertFalse($transport->ping());
+    }
+
     public function XtestTransportShowsAsNotStartedIfAllPingFails()
     {
         $t1 = $this->getMockery('Swift_Transport');

@@ -382,6 +382,39 @@ class AzureTransportTest extends TestCase
         $this->assertEmpty($reflection->invoke($this->transport));
     }
 
+    public function testGetPingEndpoint(): void
+    {
+        $reflection = new \ReflectionMethod($this->transport, 'getPingEndpoint');
+        $result = $reflection->invoke($this->transport);
+        $this->assertStringContainsString('/emails/operations/00000000-0000-0000-0000-000000000000', $result);
+        $this->assertStringContainsString('api-version=', $result);
+    }
+
+    public function testParseConnectionStringIgnoresEmptyParts(): void
+    {
+        // Connection string with trailing semicolons and empty segments
+        $transport = new \Swift_Transport_Api_AzureTransport(
+            'endpoint=https://my-resource.communication.azure.com/;;accesskey=dGVzdGFjY2Vzc2tleQ==;',
+            $this->httpClientMock,
+            $this->eventDispatcherMock,
+        );
+
+        // If construction succeeds, the empty parts were properly skipped
+        $this->assertInstanceOf(\Swift_Transport_Api_AzureTransport::class, $transport);
+    }
+
+    public function testParseConnectionStringIgnoresPartsWithoutEquals(): void
+    {
+        // Connection string with a segment that has no equals sign
+        $transport = new \Swift_Transport_Api_AzureTransport(
+            'endpoint=https://my-resource.communication.azure.com/;badpart;accesskey=dGVzdGFjY2Vzc2tleQ==',
+            $this->httpClientMock,
+            $this->eventDispatcherMock,
+        );
+
+        $this->assertInstanceOf(\Swift_Transport_Api_AzureTransport::class, $transport);
+    }
+
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
     {
         return new \Swift_Mime_SimpleMessage(

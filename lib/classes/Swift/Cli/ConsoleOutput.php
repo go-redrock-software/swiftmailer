@@ -59,7 +59,7 @@ class Swift_Cli_ConsoleOutput
             return $text;
         }
 
-        return "\033[{$code}m{$text}\033[0m";
+        return "\033[{$code}m{$text}\033[0m"; // @codeCoverageIgnore
     }
 
     private function detectColor(): bool
@@ -73,6 +73,6 @@ class Swift_Cli_ConsoleOutput
             return \stream_isatty($this->stream);
         }
 
-        return false;
+        return false; // @codeCoverageIgnore
     }
 }

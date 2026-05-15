@@ -202,4 +202,32 @@ class Swift_KeyCache_DiskKeyCacheTest extends PHPUnit\Framework\TestCase
         $cache->setString('ns1', 'key1', $content, Swift_KeyCache::MODE_WRITE);
         $this->assertEquals($content, $cache->getString('ns1', 'key1'));
     }
+
+    public function testImportFromByteStreamWithInvalidModeThrows()
+    {
+        $cache = $this->createCache();
+        $os = $this->createMock(Swift_OutputByteStream::class);
+
+        $this->expectException(Swift_SwiftException::class);
+        $cache->importFromByteStream('ns1', 'key1', $os, 999);
+    }
+
+    public function testGetStringReturnsNullForNonExistentKey()
+    {
+        $cache = $this->createCache();
+        // Prepare the namespace first
+        $cache->setString('ns1', 'dummy', 'x', Swift_KeyCache::MODE_WRITE);
+        $result = $cache->getString('ns1', 'nonexistent');
+        $this->assertNull($result);
+    }
+
+    public function testWakeupResetsKeys()
+    {
+        $cache = $this->createCache();
+        $cache->setString('ns1', 'key1', 'data', Swift_KeyCache::MODE_WRITE);
+        $cache->__wakeup();
+        // After wakeup, keys should be empty so clearAll on the namespace does nothing
+        $cache->clearAll('ns1');
+        $this->addToAssertionCount(1);
+    }
 }

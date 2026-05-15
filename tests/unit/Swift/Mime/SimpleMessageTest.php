@@ -1496,6 +1496,58 @@ class Swift_Mime_SimpleMessageTest extends Swift_Mime_MimePartTest
         $this->assertContains($child3, $children);
     }
 
+    public function testSetPriorityClampsBelowMinToMin()
+    {
+        $headers = $this->createHeaderSet([], false);
+        $headers->shouldReceive('addTextHeader')
+            ->once()
+            ->with('X-Priority', '1 (Highest)');
+        $headers->shouldReceive('addTextHeader')
+            ->zeroOrMoreTimes();
+
+        $message = $this->createMessage(
+            $headers,
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        // Priority -10 is below min (1), should be clamped to 1
+        $message->setPriority(-10);
+    }
+
+    public function testSetPriorityClampsAboveMaxToMax()
+    {
+        $headers = $this->createHeaderSet([], false);
+        $headers->shouldReceive('addTextHeader')
+            ->once()
+            ->with('X-Priority', '5 (Lowest)');
+        $headers->shouldReceive('addTextHeader')
+            ->zeroOrMoreTimes();
+
+        $message = $this->createMessage(
+            $headers,
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        // Priority 100 is above max (5), should be clamped to 5
+        $message->setPriority(100);
+    }
+
+    public function testToStringReturnsStringRepresentation()
+    {
+        $headers = $this->createHeaderSet([], false);
+        $headers->shouldReceive('toString')
+            ->zeroOrMoreTimes()
+            ->andReturn("Subject: Test\r\n");
+
+        $message = $this->createMessage(
+            $headers,
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $result = (string) $message;
+        $this->assertIsString($result);
+    }
+
     public function testSetFromWithArrayOfAddresses()
     {
         $addresses = ['a@b.com' => 'A', 'c@d.com' => 'C'];

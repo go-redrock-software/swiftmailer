@@ -28,6 +28,122 @@ class Swift_MessageTest extends PHPUnit\Framework\TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testAttachAndDetachHeaderSigner()
+    {
+        $message = new Swift_Message('Test');
+        $signer  = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 2).'/_samples/dkim/dkim.test.priv'),
+            'test.example',
+            'example',
+        );
+        $message->attachSigner($signer);
+        $message->detachSigner($signer);
+        $this->addToAssertionCount(1);
+    }
+
+    public function testAttachAndDetachBodySigner()
+    {
+        $message = new Swift_Message('Test');
+        $signer  = $this->createMock(Swift_Signers_BodySigner::class);
+        $message->attachSigner($signer);
+        $message->detachSigner($signer);
+        $this->addToAssertionCount(1);
+    }
+
+    public function testDetachUnknownSignerDoesNothing()
+    {
+        $message = new Swift_Message('Test');
+        $signer  = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 2).'/_samples/dkim/dkim.test.priv'),
+            'test.example',
+            'example',
+        );
+        // Detaching a signer that was never attached should not throw
+        $result = $message->detachSigner($signer);
+        $this->assertSame($message, $result);
+    }
+
+    public function testClearSigners()
+    {
+        $message = new Swift_Message('Test');
+        $signer  = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 2).'/_samples/dkim/dkim.test.priv'),
+            'test.example',
+            'example',
+        );
+        $message->attachSigner($signer);
+        $result = $message->clearSigners();
+        $this->assertSame($message, $result);
+    }
+
+    public function testToStringWithHeaderSigner()
+    {
+        $message = new Swift_Message('Test Subject', 'Test Body');
+        $message->setFrom('from@example.com');
+        $message->setTo('to@example.com');
+        $signer = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 2).'/_samples/dkim/dkim.test.priv'),
+            'test.example',
+            'example',
+        );
+        $signer->setHashAlgorithm('rsa-sha256');
+        $signer->setSignatureTimestamp('1299879181');
+        $message->attachSigner($signer);
+        $string = $message->toString();
+        $this->assertStringContainsString('DKIM-Signature:', $string);
+        $this->assertStringContainsString('Test Body', $string);
+    }
+
+    public function testToByteStreamWithHeaderSigner()
+    {
+        $message = new Swift_Message('Test Subject', 'Test Body');
+        $message->setFrom('from@example.com');
+        $message->setTo('to@example.com');
+        $signer = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 2).'/_samples/dkim/dkim.test.priv'),
+            'test.example',
+            'example',
+        );
+        $signer->setHashAlgorithm('rsa-sha256');
+        $signer->setSignatureTimestamp('1299879181');
+        $message->attachSigner($signer);
+        $stream = new Swift_ByteStream_ArrayByteStream();
+        $message->toByteStream($stream);
+        $content = '';
+        while (false !== $bytes = $stream->read(8192)) {
+            $content .= $bytes;
+        }
+        $this->assertStringContainsString('DKIM-Signature:', $content);
+    }
+
+    public function testToStringWithBodyAndChildren()
+    {
+        $message = new Swift_Message('Test Subject', 'Main Body');
+        $message->setFrom('from@example.com');
+        $message->setTo('to@example.com');
+        $message->addPart('<p>HTML</p>', 'text/html');
+        $signer = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 2).'/_samples/dkim/dkim.test.priv'),
+            'test.example',
+            'example',
+        );
+        $signer->setHashAlgorithm('rsa-sha256');
+        $signer->setSignatureTimestamp('1299879181');
+        $message->attachSigner($signer);
+        $string = $message->toString();
+        $this->assertStringContainsString('DKIM-Signature:', $string);
+        // After toString, body and children should be restored
+        $this->assertEquals('Main Body', $message->getBody());
+    }
+
+    public function testWakeup()
+    {
+        $message = new Swift_Message('Test');
+        // __wakeup should not throw
+        $message->__wakeup();
+        $this->addToAssertionCount(1);
+    }
+
     public function testBodySwap()
     {
         $message1 = new Swift_Message('Test');

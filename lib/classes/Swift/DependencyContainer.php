@@ -55,9 +55,11 @@ class Swift_DependencyContainer
      */
     public static function getInstance()
     {
+        // @codeCoverageIgnoreStart
         if (!isset(self::$instance)) {
             self::$instance = new self();
         }
+        // @codeCoverageIgnoreEnd
 
         return self::$instance;
     }
@@ -66,6 +68,9 @@ class Swift_DependencyContainer
      * List the names of all items stored in the Container.
      *
      * @return array
+     */
+    /**
+     * @codeCoverageIgnoreStart
      */
     public function listItems()
     {

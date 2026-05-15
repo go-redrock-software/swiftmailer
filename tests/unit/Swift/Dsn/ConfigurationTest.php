@@ -154,6 +154,17 @@ class Swift_Dsn_ConfigurationTest extends TestCase
     }
 
     /**
+     * @covers \Swift_Dsn_Configuration
+     */
+    public function testFunctionDsnWithMultipleArguments(): void
+    {
+        $dsnConf = Swift_Dsn_Configuration::parse('failover(smtp://host1:25 smtp://host2:25)');
+
+        $this->assertEquals('failover', $dsnConf->getFunction());
+        $this->assertEquals(2, $dsnConf->countDsn());
+    }
+
+    /**
      * @covers \Swift_Dsn_Configuration::getDsn
      */
     public function testGetDsnWithInvalidIndex(): void

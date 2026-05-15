@@ -271,6 +271,41 @@ class PostMarkTransportTest extends TestCase
         $this->transport->send($message);
     }
 
+    public function testSendWithInlineAttachment(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['from@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'Recipient'])
+            ->setSubject('Inline test');
+        $message->setBody('<p>Hello <img src="' . $message->embed(new \Swift_Image('image data', 'logo.png', 'image/png')) . '" /></p>', 'text/html');
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('POST', $this->anything(), $this->callback(function (array $options): bool {
+                $payload = $options['json'];
+
+                $this->assertArrayHasKey('Attachments', $payload);
+                $inlineFound = false;
+                foreach ($payload['Attachments'] as $att) {
+                    if (isset($att['ContentID'])) {
+                        $this->assertStringStartsWith('cid:', $att['ContentID']);
+                        $inlineFound = true;
+                    }
+                }
+                $this->assertTrue($inlineFound, 'Expected an inline attachment with ContentID');
+
+                return true;
+            }))
+            ->willReturn(new Response(200, [], \json_encode([
+                'ErrorCode' => 0,
+                'Message'   => 'OK',
+                'MessageID' => 'uuid-inline',
+            ])));
+
+        $this->transport->send($message);
+    }
+
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
     {
         return new \Swift_Mime_SimpleMessage(

@@ -493,6 +493,13 @@ class Swift_Mime_Headers_MailboxHeaderTest extends SwiftMailerTestCase
         $this->assertEquals("From: User Name <user@example.com>\r\n", $header->toString());
     }
 
+    public function testInvalidAddressThrowsRfcComplianceException()
+    {
+        $header = $this->getHeader('From');
+        $this->expectException(Swift_RfcComplianceException::class);
+        $header->setAddresses('not a valid email');
+    }
+
     public function testSetBodyModelWithString()
     {
         $header = $this->getHeader('Sender');
@@ -554,6 +561,14 @@ class Swift_Mime_Headers_MailboxHeaderTest extends SwiftMailerTestCase
     {
         $header = $this->getHeader('To');
         $this->assertEquals('', $header->getFieldBody());
+    }
+
+    public function testToStringMagicMethodReturnsHeaderString()
+    {
+        $header = $this->getHeader('From');
+        $header->setAddresses('user@example.com');
+        $result = (string) $header;
+        $this->assertEquals("From: user@example.com\r\n", $result);
     }
 
     private function getHeader($name, $encoder = null, $addressEncoder = null)

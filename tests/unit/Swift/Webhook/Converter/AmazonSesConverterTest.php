@@ -292,4 +292,155 @@ class Swift_Webhook_Converter_AmazonSesConverterTest extends PHPUnit\Framework\T
         $this->assertNull($converter->extractTimestamp('{}', []));
         $this->assertNull($converter->extractTimestamp('invalid-json', []));
     }
+
+    public function testVerifyReturnsFalseWithInvalidJson()
+    {
+        $headers = ['x-amz-sns-message-type' => 'Notification'];
+        $this->assertFalse($this->converter->verify('not-json', $headers, $this->topicArn));
+    }
+
+    public function testVerifyReturnsFalseWithEmptyCertificate()
+    {
+        // Use a converter that returns empty cert
+        $converter = new TestableAmazonSesConverter('');
+        $payload = $this->buildSnsNotification($this->topicArn, $this->privateKeyPem);
+        $headers = ['x-amz-sns-message-type' => 'Notification'];
+
+        $this->assertFalse($converter->verify(\json_encode($payload), $headers, $this->topicArn));
+    }
+
+    public function testVerifyReturnsFalseWithInvalidSignatureBase64()
+    {
+        $payload = $this->buildSnsNotification($this->topicArn, $this->privateKeyPem);
+        $payload['Signature'] = '!!!invalid-base64!!!';
+        $headers = ['x-amz-sns-message-type' => 'Notification'];
+
+        $this->assertFalse($this->converter->verify(\json_encode($payload), $headers, $this->topicArn));
+    }
+
+    public function testConvertNotificationWithSubject()
+    {
+        $payload = [
+            'Type'    => 'Notification',
+            'Message' => \json_encode([
+                'notificationType' => 'Delivery',
+                'delivery'         => [
+                    'recipients' => ['user@example.com'],
+                    'timestamp'  => '2026-01-15T10:30:00.000Z',
+                ],
+                'mail' => ['messageId' => 'ses-subj-100'],
+            ]),
+            'Subject' => 'Test Subject',
+        ];
+
+        // This exercises the Subject branch in buildStringToSign
+        $events = $this->converter->convert($payload, []);
+        $this->assertCount(1, $events);
+        $this->assertSame('delivered', $events[0]->getName());
+    }
+
+    public function testConvertUnsubscribeConfirmationReturnsEmpty()
+    {
+        $payload = [
+            'Type'         => 'UnsubscribeConfirmation',
+            'SubscribeURL' => 'https://sns.amazonaws.com/unsubscribe?...',
+        ];
+
+        $this->assertCount(0, $this->converter->convert($payload, []));
+    }
+
+    public function testConvertUnknownNotificationTypeReturnsEmpty()
+    {
+        $payload = [
+            'Type'    => 'Notification',
+            'Message' => \json_encode([
+                'notificationType' => 'UnknownType',
+                'mail' => ['messageId' => 'ses-unknown'],
+            ]),
+        ];
+
+        $this->assertCount(0, $this->converter->convert($payload, []));
+    }
+
+    public function testConvertTransientBounceAsDeferredEvent()
+    {
+        $payload = [
+            'Type'    => 'Notification',
+            'Message' => \json_encode([
+                'notificationType' => 'Bounce',
+                'bounce'           => [
+                    'bounceType'        => 'Transient',
+                    'bouncedRecipients' => [
+                        ['emailAddress' => 'user@example.com', 'diagnosticCode' => '450 Try again later'],
+                    ],
+                    'timestamp' => '2026-01-15T10:30:00.000Z',
+                ],
+                'mail' => ['messageId' => 'ses-transient'],
+            ]),
+        ];
+
+        $events = $this->converter->convert($payload, []);
+
+        $this->assertCount(1, $events);
+        $this->assertSame('deferred', $events[0]->getName());
+        $this->assertSame('Transient', $events[0]->getMetadata()['bounce_type']);
+        $this->assertSame('450 Try again later', $events[0]->getMetadata()['reason']);
+    }
+
+    public function testConvertComplaintWithoutFeedbackType()
+    {
+        $payload = [
+            'Type'    => 'Notification',
+            'Message' => \json_encode([
+                'notificationType' => 'Complaint',
+                'complaint'        => [
+                    'complainedRecipients' => [
+                        ['emailAddress' => 'user@example.com'],
+                    ],
+                    'timestamp' => '2026-01-15T10:30:00.000Z',
+                ],
+                'mail' => ['messageId' => 'ses-no-feedback'],
+            ]),
+        ];
+
+        $events = $this->converter->convert($payload, []);
+
+        $this->assertCount(1, $events);
+        $this->assertSame('complained', $events[0]->getName());
+        $this->assertArrayNotHasKey('feedback_type', $events[0]->getMetadata());
+    }
+
+    public function testVerifyReturnsFalseWithInvalidCertPem()
+    {
+        // Covers line 81: openssl_pkey_get_public returns false for garbage cert
+        $converter = new TestableAmazonSesConverter('not-a-valid-certificate-pem');
+        $payload   = $this->buildSnsNotification($this->topicArn, $this->privateKeyPem);
+        $headers   = ['x-amz-sns-message-type' => 'Notification'];
+
+        $this->assertFalse($converter->verify(\json_encode($payload), $headers, $this->topicArn));
+    }
+
+    public function testVerifyWithNotificationContainingSubject()
+    {
+        // Covers line 168: Subject branch in buildStringToSign
+        $payload = $this->buildSnsNotification($this->topicArn, $this->privateKeyPem);
+
+        // Re-sign with Subject included in the string-to-sign
+        $payload['Subject'] = 'Test Subject Line';
+
+        $stringToSign = "Message\n{$payload['Message']}\nMessageId\n{$payload['MessageId']}\n"
+            ."Subject\n{$payload['Subject']}\n"
+            ."Timestamp\n{$payload['Timestamp']}\nTopicArn\n{$payload['TopicArn']}\n"
+            ."Type\n{$payload['Type']}\n";
+
+        $algo = ('1' === ($payload['SignatureVersion'] ?? '1'))
+            ? \OPENSSL_ALGO_SHA1
+            : \OPENSSL_ALGO_SHA256;
+        \openssl_sign($stringToSign, $signature, $this->privateKeyPem, $algo);
+        $payload['Signature'] = \base64_encode($signature);
+
+        $headers = ['x-amz-sns-message-type' => 'Notification'];
+
+        $this->assertTrue($this->converter->verify(\json_encode($payload), $headers, $this->topicArn));
+    }
 }

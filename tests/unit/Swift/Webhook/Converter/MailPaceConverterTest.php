@@ -286,4 +286,18 @@ class Swift_Webhook_Converter_MailPaceConverterTest extends PHPUnit\Framework\Te
             $this->assertSame('delivery', $events[0]->getType(), "Failed for event type: {$eventType}");
         }
     }
+
+    public function testVerifyReturnsFalseWhenSodiumThrows(): void
+    {
+        if (!\function_exists('sodium_crypto_sign_keypair')) {
+            $this->markTestSkipped('sodium extension required for Ed25519 verification.');
+        }
+
+        // Provide a valid base64 signature and a public key of wrong length
+        // to trigger a SodiumException
+        $headers = ['x-mailpace-signature' => \base64_encode(\str_repeat("\0", 64))];
+        $secret = \base64_encode('short-key'); // wrong length for Ed25519
+
+        $this->assertFalse($this->converter->verify('{}', $headers, $secret));
+    }
 }

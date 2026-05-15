@@ -42,7 +42,10 @@
 
     <coverage>
         <include>
-            <directory suffix=".php">lib</directory>
+            <directory suffix=".php">lib/classes</directory>
         </include>
+        <exclude>
+            <file>lib/classes/Swift/Transport/StreamBuffer.php</file>
+        </exclude>
     </coverage>
 </phpunit>

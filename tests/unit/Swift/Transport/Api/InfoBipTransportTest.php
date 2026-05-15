@@ -386,6 +386,66 @@ class Swift_Transport_Api_InfoBipTransportTest extends TestCase
         $transport->send($message);
     }
 
+    public function testSendWithAttachments(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message->setFrom(['sender@example.com' => 'Sender']);
+        $message->setTo(['to@example.com' => 'Recipient']);
+        $message->setSubject('Attachment Test');
+        $message->setBody('Body text');
+        $message->attach(new \Swift_Attachment('file content', 'doc.pdf', 'application/pdf'));
+
+        $response = $this->createMockResponse(200, [
+            'messages' => [
+                ['status' => ['groupName' => 'PENDING'], 'messageId' => 'att-123'],
+            ],
+        ]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('POST', $this->anything(), $this->callback(function (array $options) {
+                $fields = $this->indexMultipart($options['multipart']);
+
+                $this->assertArrayHasKey('attachment', $fields);
+
+                return true;
+            }))
+            ->willReturn($response);
+
+        $this->setupEventMocks();
+        $this->transport->send($message);
+    }
+
+    public function testSendWithInlineImage(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message->setFrom(['sender@example.com' => 'Sender']);
+        $message->setTo(['to@example.com' => 'Recipient']);
+        $message->setSubject('Inline Image Test');
+        $message->setBody('<p>Hello <img src="' . $message->embed(new \Swift_Image('image data', 'logo.png', 'image/png')) . '" /></p>', 'text/html');
+
+        $response = $this->createMockResponse(200, [
+            'messages' => [
+                ['status' => ['groupName' => 'PENDING'], 'messageId' => 'inline-123'],
+            ],
+        ]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('POST', $this->anything(), $this->callback(function (array $options) {
+                $fields = $this->indexMultipart($options['multipart']);
+
+                // Inline images should use 'inlineImage' field name
+                $this->assertArrayHasKey('inlineImage', $fields);
+
+                return true;
+            }))
+            ->willReturn($response);
+
+        $this->setupEventMocks();
+        $this->transport->send($message);
+    }
+
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
     {
         return new \Swift_Mime_SimpleMessage(

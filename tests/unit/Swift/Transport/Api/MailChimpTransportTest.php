@@ -410,6 +410,52 @@ class MailChimpTransportTest extends TestCase
         $this->transport->send($message);
     }
 
+    public function testSendWithBccHasName(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['sender@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'To User'])
+            ->setBcc(['bcc@example.com' => 'BCC Named User'])
+            ->setSubject('BCC with name test')
+            ->setBody('Body');
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('POST', $this->anything(), $this->callback(function (array $options): bool {
+                $msg = $options['json']['message'];
+
+                // BCC entry should have a name
+                $bccEntry = null;
+                foreach ($msg['to'] as $entry) {
+                    if ('bcc' === $entry['type']) {
+                        $bccEntry = $entry;
+                        break;
+                    }
+                }
+
+                $this->assertNotNull($bccEntry);
+                $this->assertSame('bcc@example.com', $bccEntry['email']);
+                $this->assertSame('BCC Named User', $bccEntry['name']);
+
+                return true;
+            }))
+            ->willReturn(new Response(200, [], \json_encode([
+                ['email' => 'to@example.com', 'status' => 'sent', '_id' => 'b1'],
+                ['email' => 'bcc@example.com', 'status' => 'sent', '_id' => 'b2'],
+            ])));
+
+        $sent = $this->transport->send($message);
+        $this->assertEquals(2, $sent);
+    }
+
+    public function testGetAuthHeadersReturnsEmptyArray(): void
+    {
+        $reflection = new \ReflectionMethod($this->transport, 'getAuthHeaders');
+        $result = $reflection->invoke($this->transport);
+        $this->assertSame([], $result);
+    }
+
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
     {
         return new \Swift_Mime_SimpleMessage(

@@ -22,6 +22,22 @@ class Swift_DependencyContainerTest extends PHPUnit\Framework\TestCase
         $this->container = new Swift_DependencyContainer();
     }
 
+    public function testListItemsReturnsAllRegistered()
+    {
+        $this->container->register('foo')->asValue('bar');
+        $this->container->register('baz')->asValue(42);
+        $items = $this->container->listItems();
+        $this->assertContains('foo', $items);
+        $this->assertContains('baz', $items);
+    }
+
+    public function testAsValueWithoutRegisterThrows()
+    {
+        $container = new Swift_DependencyContainer();
+        $this->expectException(BadMethodCallException::class);
+        $container->asValue('bar');
+    }
+
     public function testRegisterAndLookupValue()
     {
         $this->container->register('foo')->asValue('bar');

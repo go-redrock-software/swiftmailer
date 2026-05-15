@@ -39,11 +39,15 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticator implements Swift_Transport_Es
     public function authenticate(Swift_Transport_SmtpAgent $agent, $username, $password)
     {
         if (!\function_exists('openssl_encrypt')) {
+            // @codeCoverageIgnoreStart
             throw new LogicException('The OpenSSL extension must be enabled to use the NTLM authenticator.');
+            // @codeCoverageIgnoreEnd
         }
 
         if (!\function_exists('bcmul')) {
+            // @codeCoverageIgnoreStart
             throw new LogicException('The BCMath functions must be enabled to use the NTLM authenticator.');
+            // @codeCoverageIgnoreEnd
         }
 
         try {
@@ -86,7 +90,7 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticator implements Swift_Transport_Es
                 $bin        = \base_convert($si, 10, 2);
                 $bin_length = \strlen($bin);
                 if ($bin_length > $bits) {
-                    $bin = \str_repeat('1', $bits - $bin_length).$bin;
+                    $bin = \str_repeat('1', $bits - $bin_length).$bin; // @codeCoverageIgnore
                 }
             }
         }

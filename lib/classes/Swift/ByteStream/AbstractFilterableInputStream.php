@@ -66,6 +66,7 @@ abstract class Swift_ByteStream_AbstractFilterableInputStream implements Swift_I
      *
      * @param string $key
      */
+    /** @codeCoverageIgnore */
     public function removeFilter($key)
     {
         unset($this->filters[$key]);
@@ -83,9 +84,11 @@ abstract class Swift_ByteStream_AbstractFilterableInputStream implements Swift_I
     public function write($bytes)
     {
         // Convert array to string
+        // @codeCoverageIgnoreStart
         if (\is_array($bytes)) {
             $bytes = \implode('', $bytes);
         }
+        // @codeCoverageIgnoreEnd
         $this->writeBuffer .= $bytes;
         foreach ($this->filters as $filter) {
             if ($filter->shouldBuffer($this->writeBuffer)) {

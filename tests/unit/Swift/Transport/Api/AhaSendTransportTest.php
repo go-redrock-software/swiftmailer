@@ -275,6 +275,41 @@ class AhaSendTransportTest extends TestCase
         $this->transport->send($message);
     }
 
+    public function testSendWithInlineAttachment(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['from@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'Recipient'])
+            ->setSubject('Inline test');
+        $message->setBody('<p>Hello <img src="' . $message->embed(new \Swift_Image('image data', 'logo.png', 'image/png')) . '" /></p>', 'text/html');
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('POST', $this->anything(), $this->callback(function (array $options): bool {
+                $payload = $options['json'];
+
+                $this->assertArrayHasKey('attachments', $payload);
+                $inlineFound = false;
+                foreach ($payload['attachments'] as $att) {
+                    if (isset($att['content_id'])) {
+                        $inlineFound = true;
+                    }
+                }
+                $this->assertTrue($inlineFound, 'Expected an inline attachment with content_id');
+
+                return true;
+            }))
+            ->willReturn($this->createMockResponse(200, [
+                'object' => 'list',
+                'data'   => [
+                    ['object' => 'message', 'id' => 'uuid-inline', 'status' => 'queued'],
+                ],
+            ]));
+
+        $this->transport->send($message);
+    }
+
     public function testFromWithoutNameOmitsNameField(): void
     {
         $message = $this->createSwiftMessage();

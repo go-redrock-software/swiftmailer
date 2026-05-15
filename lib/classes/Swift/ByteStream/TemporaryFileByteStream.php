@@ -17,8 +17,8 @@ class Swift_ByteStream_TemporaryFileByteStream extends Swift_ByteStream_FileByte
     {
         $filePath = \tempnam(\sys_get_temp_dir(), 'FileByteStream');
 
-        if (false === $filePath) {
-            throw new Swift_IoException('Failed to retrieve temporary file name.');
+        if (false === $filePath) { // @codeCoverageIgnore
+            throw new Swift_IoException('Failed to retrieve temporary file name.'); // @codeCoverageIgnore
         }
 
         parent::__construct($filePath, true);

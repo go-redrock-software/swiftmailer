@@ -172,4 +172,223 @@ class Swift_Signers_DomainKeySignerTest extends PHPUnit\Framework\TestCase
         );
         $this->assertInstanceOf(Swift_Signers_DomainKeySigner::class, $signer);
     }
+
+    public function testSigningSimpleCanon()
+    {
+        $headerSet = $this->createHeaderSet();
+        $signer    = $this->createSigner();
+        $signer->setCanon('simple');
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write("Hello World\r\nSecond line\r\n");
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $this->assertTrue($headerSet->has('DomainKey-Signature'));
+        $dks = $headerSet->getAll('DomainKey-Signature');
+        $sig = \reset($dks);
+        $this->assertStringContainsString('c=simple', $sig->getValue());
+        $this->assertStringContainsString('a=rsa-sha1', $sig->getValue());
+    }
+
+    public function testSigningNofwsCanon()
+    {
+        $headerSet = $this->createHeaderSet();
+        $signer    = $this->createSigner();
+        $signer->setCanon('nofws');
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write("Hello   World\r\nSecond\t line\r\n");
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $this->assertTrue($headerSet->has('DomainKey-Signature'));
+        $dks = $headerSet->getAll('DomainKey-Signature');
+        $sig = \reset($dks);
+        $this->assertStringContainsString('c=nofws', $sig->getValue());
+    }
+
+    public function testSigningWithHeaders()
+    {
+        $headerSet = $this->createHeaderSet();
+        $headerSet->addMailboxHeader('From', 'test@test.test');
+        $headerSet->addTextHeader('Subject', 'Test Subject');
+        $signer = $this->createSigner();
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write("Body content\r\n");
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $this->assertTrue($headerSet->has('DomainKey-Signature'));
+        $dks = $headerSet->getAll('DomainKey-Signature');
+        $sig = \reset($dks);
+        $this->assertStringContainsString('h=', $sig->getValue());
+        $this->assertStringContainsString('From', $sig->getValue());
+    }
+
+    public function testSigningNofwsCanonWithHeaders()
+    {
+        $headerSet = $this->createHeaderSet();
+        $headerSet->addMailboxHeader('From', 'test@test.test');
+        $headerSet->addTextHeader('Subject', 'Test Subject');
+        $signer = $this->createSigner();
+        $signer->setCanon('nofws');
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write("Body content\r\n");
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $this->assertTrue($headerSet->has('DomainKey-Signature'));
+    }
+
+    public function testEmptyBodySimpleCanon()
+    {
+        $headerSet = $this->createHeaderSet();
+        $signer    = $this->createSigner();
+        $signer->setCanon('simple');
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $this->assertTrue($headerSet->has('DomainKey-Signature'));
+    }
+
+    public function testEmptyBodyNofwsCanon()
+    {
+        $headerSet = $this->createHeaderSet();
+        $signer    = $this->createSigner();
+        $signer->setCanon('nofws');
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $this->assertTrue($headerSet->has('DomainKey-Signature'));
+    }
+
+    public function testBodyWithTrailingContent()
+    {
+        $headerSet = $this->createHeaderSet();
+        $signer    = $this->createSigner();
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write("Line without trailing CRLF");
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $this->assertTrue($headerSet->has('DomainKey-Signature'));
+    }
+
+    public function testNofwsBodyWithSpaces()
+    {
+        $headerSet = $this->createHeaderSet();
+        $signer    = $this->createSigner();
+        $signer->setCanon('nofws');
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write("Text with   spaces   and\ttabs\r\nMore text\r\n");
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $this->assertTrue($headerSet->has('DomainKey-Signature'));
+    }
+
+    public function testNofwsBodyWithEmptyLines()
+    {
+        $headerSet = $this->createHeaderSet();
+        $signer    = $this->createSigner();
+        $signer->setCanon('nofws');
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write("First line\r\n\r\n\r\nAfter empty lines\r\n");
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $this->assertTrue($headerSet->has('DomainKey-Signature'));
+    }
+
+    public function testIgnoredHeadersExcluded()
+    {
+        $headerSet = $this->createHeaderSet();
+        $headerSet->addMailboxHeader('From', 'test@test.test');
+        $headerSet->addTextHeader('X-Mailer', 'SwiftMailer');
+        $signer = $this->createSigner();
+        $signer->ignoreHeader('X-Mailer');
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write("Body\r\n");
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $dks = $headerSet->getAll('DomainKey-Signature');
+        $sig = \reset($dks);
+        $this->assertStringNotContainsString('X-Mailer', $sig->getValue());
+    }
+
+    public function testSignatureContainsDomainAndSelector()
+    {
+        $headerSet = $this->createHeaderSet();
+        $signer    = $this->createSigner();
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write("Body\r\n");
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $dks = $headerSet->getAll('DomainKey-Signature');
+        $sig = \reset($dks);
+        $this->assertStringContainsString('d=dummy.nxdomain.be', $sig->getValue());
+        $this->assertStringContainsString('s=dummySelector', $sig->getValue());
+        $this->assertStringContainsString('q=dns', $sig->getValue());
+    }
+
+    public function testMultipleEmptyLinesAtEndAreStripped()
+    {
+        $headerSet = $this->createHeaderSet();
+        $signer    = $this->createSigner();
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write("Body\r\n\r\n\r\n");
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $this->assertTrue($headerSet->has('DomainKey-Signature'));
+    }
+
+    public function testBareLinefeedThrowsException()
+    {
+        // Covers line 455: '\n without preceding \r' error
+        $headerSet = $this->createHeaderSet();
+        $signer    = $this->createSigner();
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+
+        $this->expectException(Swift_SwiftException::class);
+        $this->expectExceptionMessage('Invalid new line sequence');
+        $signer->write("Line without CR before LF\nBad line");
+    }
+
+    public function testSigningWithInvalidPrivateKeyThrows()
+    {
+        // Covers line 512: openssl_get_privatekey returns false
+        $headerSet = $this->createHeaderSet();
+        $signer    = new Swift_Signers_DomainKeySigner(
+            'not-a-valid-private-key',
+            'dummy.nxdomain.be',
+            'dummySelector',
+        );
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write("Body\r\n");
+        $signer->endBody();
+
+        $this->expectException(Swift_SwiftException::class);
+        $this->expectExceptionMessage('Unable to load DomainKey Private Key');
+        $signer->addSignature($headerSet);
+    }
 }

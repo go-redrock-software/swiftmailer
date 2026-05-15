@@ -253,14 +253,18 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
                 break;
             case 'rsa-sha256':
                 $this->hashAlgorithm = 'rsa-sha256';
+                // @codeCoverageIgnoreStart
                 if (!\defined('OPENSSL_ALGO_SHA256')) {
                     throw new Swift_SwiftException('Unable to set sha256 as it is not supported by OpenSSL.');
                 }
+                // @codeCoverageIgnoreEnd
                 break;
             case 'ed25519-sha256':
+                // @codeCoverageIgnoreStart
                 if (!\function_exists('sodium_crypto_sign_detached')) {
                     throw new Swift_SwiftException('The sodium extension is required for ed25519-sha256 DKIM signing.');
                 }
+                // @codeCoverageIgnoreEnd
                 $this->hashAlgorithm = 'ed25519-sha256';
                 break;
             default:
@@ -684,12 +688,14 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
                 break;
         }
         $pkeyId = \openssl_pkey_get_private($this->privateKey, $this->passphrase);
+        // @codeCoverageIgnoreStart
         if (!$pkeyId) {
             throw new Swift_SwiftException('Unable to load DKIM Private Key ['.\openssl_error_string().']');
         }
+        // @codeCoverageIgnoreEnd
         if (\openssl_sign($this->headerCanonData, $signature, $pkeyId, $algorithm)) {
             return $signature;
         }
-        throw new Swift_SwiftException('Unable to sign DKIM Hash ['.\openssl_error_string().']');
+        throw new Swift_SwiftException('Unable to sign DKIM Hash ['.\openssl_error_string().']'); // @codeCoverageIgnore
     }
 }

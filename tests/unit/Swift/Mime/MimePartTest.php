@@ -269,6 +269,31 @@ class Swift_Mime_MimePartTest extends Swift_Mime_AbstractMimeEntityTest
         return $this->createMimePart($headers, $encoder, $cache);
     }
 
+    public function testConvertStringWithNonUtf8Charset()
+    {
+        $cType = $this->createHeader(
+            'Content-Type',
+            'text/plain',
+            ['charset' => 'windows-1252'],
+            false,
+        );
+        $cType->shouldReceive('setParameter')->zeroOrMoreTimes();
+
+        $part = $this->createMimePart(
+            $this->createHeaderSet([
+                'Content-Type' => $cType, ]),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $part->setCharset('windows-1252');
+
+        // Use reflection to call the protected convertString method
+        $reflection = new ReflectionClass($part);
+        $method = $reflection->getMethod('convertString');
+        $result = $method->invoke($part, 'test');
+        $this->assertIsString($result);
+    }
+
     protected function createMimePart($headers, $encoder, $cache)
     {
         $idGenerator = new Swift_Mime_IdGenerator('example.com');

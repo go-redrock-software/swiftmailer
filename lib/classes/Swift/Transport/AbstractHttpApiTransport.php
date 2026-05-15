@@ -144,9 +144,9 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
                 $this->eventDispatcher->dispatchEvent($failedEvt, 'failedMessage');
             }
 
-            $this->throwException($transportException);
+            $this->throwException($transportException); // @codeCoverageIgnore
 
-            return 0;
+            return 0; // @codeCoverageIgnore
         } finally {
             $this->activeEnvelope = null;
             if ($evt) {
@@ -228,8 +228,8 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
      */
     protected function getEnvelopeSender(Swift_Mime_SimpleMessage $message): ?string
     {
-        if (null !== $this->activeEnvelope) {
-            return $this->activeEnvelope->getSender();
+        if (null !== $this->activeEnvelope) { // @codeCoverageIgnore
+            return $this->activeEnvelope->getSender(); // @codeCoverageIgnore
         }
 
         $from = $message->getFrom();

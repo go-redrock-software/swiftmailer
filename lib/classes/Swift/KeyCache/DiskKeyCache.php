@@ -237,12 +237,14 @@ class Swift_KeyCache_DiskKeyCache implements Swift_KeyCache
     private function prepareCache($nsKey)
     {
         $cacheDir = $this->path.'/'.$nsKey;
+        // @codeCoverageIgnoreStart
         if (!\is_dir($cacheDir)) {
             if (!\mkdir($cacheDir)) {
                 throw new Swift_IoException('Failed to create cache directory '.$cacheDir);
             }
             $this->keys[$nsKey] = [];
         }
+        // @codeCoverageIgnoreEnd
     }
 
     /**

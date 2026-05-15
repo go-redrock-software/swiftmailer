@@ -129,6 +129,7 @@ class Swift_Plugins_PopBeforeSmtpPlugin implements Swift_Events_TransportChangeL
     {
         if (isset($this->connection)) {
             $this->connection->connect();
+            // @codeCoverageIgnoreStart
         } else {
             if (!isset($this->socket)) {
                 if (!$socket = \fsockopen(
@@ -153,7 +154,7 @@ class Swift_Plugins_PopBeforeSmtpPlugin implements Swift_Events_TransportChangeL
                     $this->command(\sprintf("PASS %s\r\n", $this->password));
                 }
             }
-        }
+        } // @codeCoverageIgnoreEnd
     }
 
     /**
@@ -164,13 +165,14 @@ class Swift_Plugins_PopBeforeSmtpPlugin implements Swift_Events_TransportChangeL
     {
         if (isset($this->connection)) {
             $this->connection->disconnect();
+            // @codeCoverageIgnoreStart
         } else {
             $this->command("QUIT\r\n");
             if (!\fclose($this->socket)) {
                 throw new Swift_Plugins_Pop_Pop3Exception(\sprintf('POP3 host [%s] connection could not be stopped', $this->host));
             }
             $this->socket = null;
-        }
+        } // @codeCoverageIgnoreEnd
     }
 
     /**
@@ -213,6 +215,7 @@ class Swift_Plugins_PopBeforeSmtpPlugin implements Swift_Events_TransportChangeL
     {
     }
 
+    /** @codeCoverageIgnoreStart Raw socket I/O */
     private function command($command)
     {
         if (!\fwrite($this->socket, $command)) {
@@ -228,6 +231,7 @@ class Swift_Plugins_PopBeforeSmtpPlugin implements Swift_Events_TransportChangeL
         return $response;
     }
 
+    /** @codeCoverageIgnore Only called from socket-based command() */
     private function assertOk($response)
     {
         if ('+OK' != \substr($response, 0, 3)) {
@@ -250,4 +254,5 @@ class Swift_Plugins_PopBeforeSmtpPlugin implements Swift_Events_TransportChangeL
 
         return $host;
     }
+    /** @codeCoverageIgnoreEnd */
 }

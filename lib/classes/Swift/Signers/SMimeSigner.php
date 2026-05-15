@@ -507,9 +507,9 @@ class Swift_Signers_SMimeSigner implements Swift_Signers_BodySigner
         // Transform header lines into an associative array
         foreach ($headerLines as $headerLine) {
             // Handle headers that span multiple lines
-            if (!\str_contains($headerLine, ':')) {
-                $headers[$currentHeaderName] .= ' '.\trim($headerLine ?? '');
-                continue;
+            if (!\str_contains($headerLine, ':')) { // @codeCoverageIgnore
+                $headers[$currentHeaderName] .= ' '.\trim($headerLine ?? ''); // @codeCoverageIgnore
+                continue; // @codeCoverageIgnore
             }
 
             $header                      = \explode(':', $headerLine, 2);

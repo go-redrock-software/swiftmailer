@@ -87,6 +87,14 @@ class Swift_Mime_Headers_PathHeaderTest extends PHPUnit\Framework\TestCase
         );
     }
 
+    public function testSetAddressToNullClearsAddress()
+    {
+        $header = $this->getHeader('Return-Path');
+        $header->setAddress('chris@swiftmailer.org');
+        $header->setAddress(null);
+        $this->assertNull($header->getAddress());
+    }
+
     private function getHeader($name)
     {
         return new Swift_Mime_Headers_PathHeader($name, new EmailValidator(), new Swift_AddressEncoder_IdnAddressEncoder());

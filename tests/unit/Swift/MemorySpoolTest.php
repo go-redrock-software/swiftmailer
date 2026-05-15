@@ -60,4 +60,22 @@ class Swift_MemorySpoolTest extends TestCase
         // If the exception is not caught the test will fail
         $this->assertEquals(2, $spool->flushQueue($transport));
     }
+
+    public function testFlushQueueRethrowsAfterRetriesExhausted()
+    {
+        $spool = new Swift_MemorySpool();
+        $spool->setFlushRetries(1);
+
+        $spool->queueMessage($this->createSwiftMessage());
+
+        $transport = $this->createMock(Swift_Transport::class);
+        $transport->method('isStarted')->willReturn(true);
+        $transport->method('send')
+            ->willThrowException(new Swift_TransportException('Connection lost'));
+
+        $this->expectException(Swift_TransportException::class);
+        $this->expectExceptionMessage('Connection lost');
+
+        $spool->flushQueue($transport);
+    }
 }

@@ -459,4 +459,26 @@ class Swift_Webhook_Converter_MailtrapConverterTest extends PHPUnit\Framework\Te
         $metadata = $events[0]->getMetadata();
         $this->assertSame('Daily limit reached', $metadata['reason']);
     }
+
+    public function testConvertExtractsCategoryMetadata()
+    {
+        $payload = [
+            'events' => [
+                [
+                    'event'               => 'delivery',
+                    'timestamp'           => 1706000000,
+                    'message_id'          => 'msg-cat',
+                    'email'               => 'user@example.com',
+                    'event_id'            => 'evt-cat',
+                    'category'            => 'transactional',
+                    'sending_stream'      => 'transactional',
+                    'sending_domain_name' => 'example.com',
+                ],
+            ],
+        ];
+
+        $events   = $this->converter->convert($payload, []);
+        $metadata = $events[0]->getMetadata();
+        $this->assertSame('transactional', $metadata['category']);
+    }
 }

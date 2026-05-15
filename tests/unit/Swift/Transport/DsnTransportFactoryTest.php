@@ -54,6 +54,35 @@ class Swift_Transport_DsnTransportFactoryTest extends PHPUnit\Framework\TestCase
         $this->assertInstanceOf(Swift_AddressEncoder_AutoAddressEncoder::class, $encoder);
     }
 
+    public function testSmtpVerifyPeerFalse(): void
+    {
+        $transport = $this->factory->fromDsnString('smtp://user:pass@smtp.example.com:587?verify_peer=false');
+
+        $this->assertInstanceOf(Swift_SmtpTransport::class, $transport);
+
+        $options = $transport->getStreamOptions();
+        $this->assertFalse($options['ssl']['verify_peer']);
+        $this->assertFalse($options['ssl']['verify_peer_name']);
+    }
+
+    public function testSmtpPeerFingerprint(): void
+    {
+        $transport = $this->factory->fromDsnString('smtp://user:pass@smtp.example.com:587?peer_fingerprint=abc123');
+
+        $this->assertInstanceOf(Swift_SmtpTransport::class, $transport);
+
+        $options = $transport->getStreamOptions();
+        $this->assertSame('abc123', $options['ssl']['peer_fingerprint']);
+    }
+
+    public function testSmtpSourceIp(): void
+    {
+        $transport = $this->factory->fromDsnString('smtp://user:pass@smtp.example.com:587?source_ip=192.168.1.1');
+
+        $this->assertInstanceOf(Swift_SmtpTransport::class, $transport);
+        $this->assertSame('192.168.1.1', $transport->getSourceIp());
+    }
+
     private function getAddressEncoder(Swift_SmtpTransport $transport): Swift_AddressEncoder
     {
         return $transport->getAddressEncoder();

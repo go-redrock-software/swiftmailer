@@ -126,4 +126,147 @@ class Swift_Webhook_Converter_MailjetConverterTest extends PHPUnit\Framework\Tes
 
         $this->assertSame([], $this->converter->convert($payload, []));
     }
+
+    public function testVerifyReturnsFalseWithBase64MissingColon()
+    {
+        // base64_decode succeeds but result has no colon
+        $headers = ['authorization' => 'Basic ' . \base64_encode('nocolonhere')];
+
+        $this->assertFalse($this->converter->verify('{}', $headers, 'some-secret'));
+    }
+
+    public function testConvertBounceSoftBounce()
+    {
+        $payload = [
+            'event'        => 'bounce',
+            'time'         => 1706000000,
+            'email'        => 'user@example.com',
+            'Message_GUID' => 'msg-601',
+            'hard_bounce'  => false,
+        ];
+
+        $events = $this->converter->convert($payload, []);
+
+        $this->assertCount(1, $events);
+        $this->assertSame('deferred', $events[0]->getName());
+    }
+
+    public function testConvertMissingEventReturnsEmpty()
+    {
+        $payload = [
+            'time'         => 1706000000,
+            'email'        => 'user@example.com',
+            'Message_GUID' => 'msg-none',
+        ];
+
+        $this->assertSame([], $this->converter->convert($payload, []));
+    }
+
+    public function testConvertUsesMessageIDFallback()
+    {
+        $payload = [
+            'event'     => 'sent',
+            'time'      => 1706000000,
+            'email'     => 'user@example.com',
+            'MessageID' => 12345,
+        ];
+
+        $events = $this->converter->convert($payload, []);
+
+        $this->assertSame('12345', $events[0]->getMessageId());
+    }
+
+    public function testConvertExtractsAllMetadata()
+    {
+        $payload = [
+            'event'           => 'click',
+            'time'            => 1706000000,
+            'email'           => 'user@example.com',
+            'Message_GUID'    => 'msg-meta',
+            'comment'         => 'A comment',
+            'url'             => 'https://example.com',
+            'ip'              => '1.2.3.4',
+            'agent'           => 'Mozilla/5.0',
+            'geo'             => 'US',
+            'error'           => 'some error',
+            'error_related_to' => 'content',
+            'CustomID'        => 'custom-123',
+            'Payload'         => 'payload-data',
+        ];
+
+        $events   = $this->converter->convert($payload, []);
+        $metadata = $events[0]->getMetadata();
+
+        $this->assertSame('A comment', $metadata['reason']);
+        $this->assertSame('https://example.com', $metadata['url']);
+        $this->assertSame('1.2.3.4', $metadata['ip']);
+        $this->assertSame('Mozilla/5.0', $metadata['user_agent']);
+        $this->assertSame('US', $metadata['geo']);
+        $this->assertSame('some error', $metadata['error']);
+        $this->assertSame('content', $metadata['error_related_to']);
+        $this->assertSame('custom-123', $metadata['custom_id']);
+        $this->assertSame('payload-data', $metadata['payload']);
+    }
+
+    public function testConvertBlockedEvent()
+    {
+        $payload = [
+            'event'        => 'blocked',
+            'time'         => 1706000000,
+            'email'        => 'user@example.com',
+            'Message_GUID' => 'msg-blocked',
+        ];
+
+        $events = $this->converter->convert($payload, []);
+
+        $this->assertCount(1, $events);
+        $this->assertSame('delivery', $events[0]->getType());
+        $this->assertSame('dropped', $events[0]->getName());
+    }
+
+    public function testConvertSpamEvent()
+    {
+        $payload = [
+            'event'        => 'spam',
+            'time'         => 1706000000,
+            'email'        => 'user@example.com',
+            'Message_GUID' => 'msg-spam',
+        ];
+
+        $events = $this->converter->convert($payload, []);
+
+        $this->assertSame('engagement', $events[0]->getType());
+        $this->assertSame('complained', $events[0]->getName());
+    }
+
+    public function testConvertUnsubEvent()
+    {
+        $payload = [
+            'event'        => 'unsub',
+            'time'         => 1706000000,
+            'email'        => 'user@example.com',
+            'Message_GUID' => 'msg-unsub',
+        ];
+
+        $events = $this->converter->convert($payload, []);
+
+        $this->assertSame('engagement', $events[0]->getType());
+        $this->assertSame('unsubscribed', $events[0]->getName());
+    }
+
+    public function testConvertClickEvent()
+    {
+        $payload = [
+            'event'        => 'click',
+            'time'         => 1706000000,
+            'email'        => 'user@example.com',
+            'Message_GUID' => 'msg-click',
+            'url'          => 'https://example.com/clicked',
+        ];
+
+        $events = $this->converter->convert($payload, []);
+
+        $this->assertSame('engagement', $events[0]->getType());
+        $this->assertSame('clicked', $events[0]->getName());
+    }
 }

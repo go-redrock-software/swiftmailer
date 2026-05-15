@@ -361,4 +361,39 @@ class Swift_Webhook_Converter_SendgridConverterTest extends PHPUnit\Framework\Te
         $this->assertSame(1706000000, $this->converter->extractTimestamp('{}', $headers));
         $this->assertNull($this->converter->extractTimestamp('{}', []));
     }
+
+    public function testVerifyWithValidEcdsaSignature(): void
+    {
+        // Generate an ECDSA key pair for testing
+        $privateKey = \openssl_pkey_new([
+            'curve_name'       => 'prime256v1',
+            'private_key_type' => OPENSSL_KEYTYPE_EC,
+        ]);
+        $details = \openssl_pkey_get_details($privateKey);
+        $publicKeyPem = $details['key'];
+
+        $timestamp = '1706000000';
+        $body = '[{"event":"delivered"}]';
+        $payload = $timestamp . $body;
+
+        \openssl_sign($payload, $signature, $privateKey, OPENSSL_ALGO_SHA256);
+        $encodedSig = \base64_encode($signature);
+
+        $headers = [
+            'x-twilio-email-event-webhook-signature' => $encodedSig,
+            'x-twilio-email-event-webhook-timestamp' => $timestamp,
+        ];
+
+        $this->assertTrue($this->converter->verify($body, $headers, $publicKeyPem));
+    }
+
+    public function testVerifyReturnsFalseWithInvalidPublicKey(): void
+    {
+        $headers = [
+            'x-twilio-email-event-webhook-signature' => \base64_encode('sig'),
+            'x-twilio-email-event-webhook-timestamp' => '123',
+        ];
+
+        $this->assertFalse($this->converter->verify('{}', $headers, 'not-a-valid-pem-key'));
+    }
 }

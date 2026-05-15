@@ -21,4 +21,24 @@ class Swift_Plugins_Loggers_EchoLoggerTest extends PHPUnit\Framework\TestCase
 
         $this->assertEquals('&gt;&gt; Foo<br />'.PHP_EOL, $data);
     }
+
+    public function testClearIsNoOp()
+    {
+        $logger = new Swift_Plugins_Loggers_EchoLogger(false);
+        // clear() should not throw or produce output
+        \ob_start();
+        $logger->clear();
+        $data = \ob_get_clean();
+        $this->assertSame('', $data);
+    }
+
+    public function testDumpIsNoOp()
+    {
+        $logger = new Swift_Plugins_Loggers_EchoLogger(false);
+        // dump() should not throw or produce output
+        \ob_start();
+        $logger->dump();
+        $data = \ob_get_clean();
+        $this->assertSame('', $data);
+    }
 }

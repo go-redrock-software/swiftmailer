@@ -136,6 +136,14 @@ class Swift_MailerTest extends SwiftMailerTestCase
         $this->assertSame(1, $result);
     }
 
+    public function testCreateMessageReturnsMessageInstance()
+    {
+        $transport = $this->createTransport();
+        $mailer    = $this->createMailer($transport);
+        $message   = $mailer->createMessage();
+        $this->assertInstanceOf(Swift_Message::class, $message);
+    }
+
     public function testSendWithoutEnvelopePassesNull()
     {
         $transport = $this->createTransport();

@@ -18,8 +18,8 @@ class Swift_Plugins_CssInlinerPlugin implements Swift_Events_SendListener
     #[Override]
     public function beforeSendPerformed(Swift_Events_SendEvent $evt): void
     {
-        if (!\class_exists(TijsVerkoyen\CssToInlineStyles\CssToInlineStyles::class)) {
-            return;
+        if (!\class_exists(TijsVerkoyen\CssToInlineStyles\CssToInlineStyles::class)) { // @codeCoverageIgnore
+            return; // @codeCoverageIgnore
         }
 
         $message = $evt->getMessage();

@@ -989,6 +989,383 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         return $headers;
     }
 
+    public function testDebugHeadersIncludeXDebugHash()
+    {
+        $headerSet      = $this->createHeaderSet();
+        $messageContent = 'Hello World';
+        $signer         = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector',
+        );
+        $signer->setHashAlgorithm('rsa-sha256');
+        $signer->setSignatureTimestamp('1299879181');
+        $signer->setDebugHeaders(true);
+        $altered = $signer->getAlteredHeaders();
+        $this->assertContains('DKIM-Signature', $altered);
+        $this->assertContains('X-DebugHash', $altered);
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write($messageContent);
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $this->assertTrue($headerSet->has('DKIM-Signature'));
+        $this->assertTrue($headerSet->has('X-DebugHash'));
+        $dkim = $headerSet->getAll('DKIM-Signature');
+        $sig  = \reset($dkim);
+        // z= tag should be present for debug headers
+        $this->assertStringContainsString('z=', $sig->getValue());
+    }
+
+    public function testSignatureTimestampDefaultUsesCurrentTime()
+    {
+        $headerSet      = $this->createHeaderSet();
+        $messageContent = 'Hello World';
+        $signer         = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector',
+        );
+        $signer->setHashAlgorithm('rsa-sha256');
+        // signatureTimestamp defaults to true meaning use time()
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write($messageContent);
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $dkim = $headerSet->getAll('DKIM-Signature');
+        $sig  = \reset($dkim);
+        // t= should be present with a numeric timestamp near current time
+        $this->assertMatchesRegularExpression('/t=\d+/', $sig->getValue());
+    }
+
+    public function testSignatureExpirationWithAutoTimestamp()
+    {
+        $headerSet      = $this->createHeaderSet();
+        $messageContent = 'Hello World';
+        $signer         = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector',
+        );
+        $signer->setHashAlgorithm('rsa-sha256');
+        // signatureTimestamp defaults to true, set expiration to 3600
+        $signer->setSignatureExpiration(3600);
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write($messageContent);
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $dkim = $headerSet->getAll('DKIM-Signature');
+        $sig  = \reset($dkim);
+        // x= should be present (auto-timestamp + 3600)
+        $this->assertStringContainsString('x=', $sig->getValue());
+    }
+
+    public function testSignatureExpirationWithFixedTimestamp()
+    {
+        $headerSet      = $this->createHeaderSet();
+        $messageContent = 'Hello World';
+        $signer         = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector',
+        );
+        $signer->setHashAlgorithm('rsa-sha256');
+        $signer->setSignatureTimestamp('1299879181');
+        $signer->setSignatureExpiration(9999999999);
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write($messageContent);
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $dkim = $headerSet->getAll('DKIM-Signature');
+        $sig  = \reset($dkim);
+        // x= should be the absolute expiration value
+        $this->assertStringContainsString('x=9999999999', $sig->getValue());
+    }
+
+    public function testSignatureWithNoTimestamp()
+    {
+        $headerSet      = $this->createHeaderSet();
+        $messageContent = 'Hello World';
+        $signer         = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector',
+        );
+        $signer->setHashAlgorithm('rsa-sha256');
+        $signer->setSignatureTimestamp(false);
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write($messageContent);
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $dkim = $headerSet->getAll('DKIM-Signature');
+        $sig  = \reset($dkim);
+        // t= should NOT be present
+        $this->assertStringNotContainsString('t=', $sig->getValue());
+    }
+
+    public function testSetBodySignedLenTrue()
+    {
+        $headerSet      = $this->createHeaderSet();
+        $messageContent = 'Hello World';
+        $signer         = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector',
+        );
+        $signer->setHashAlgorithm('rsa-sha256');
+        $signer->setSignatureTimestamp('1299879181');
+        $signer->setBodySignedLen(true);
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write($messageContent);
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $dkim = $headerSet->getAll('DKIM-Signature');
+        $sig  = \reset($dkim);
+        // l= tag should be present
+        $this->assertStringContainsString('l=', $sig->getValue());
+    }
+
+    public function testSetBodySignedLenFalse()
+    {
+        $signer = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector',
+        );
+        $result = $signer->setBodySignedLen(false);
+        $this->assertSame($signer, $result);
+    }
+
+    public function testSetBodySignedLenNumeric()
+    {
+        $headerSet      = $this->createHeaderSet();
+        $messageContent = 'Hello World';
+        $signer         = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector',
+        );
+        $signer->setHashAlgorithm('rsa-sha256');
+        $signer->setSignatureTimestamp('1299879181');
+        $signer->setBodySignedLen(5);
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write($messageContent);
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $dkim = $headerSet->getAll('DKIM-Signature');
+        $sig  = \reset($dkim);
+        // l= should show truncated length
+        $this->assertStringContainsString('l=5', $sig->getValue());
+    }
+
+    public function testSetSignerIdentityReturnsSelf()
+    {
+        $signer = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector',
+        );
+        $result = $signer->setSignerIdentity('user@dummy.nxdomain.be');
+        $this->assertSame($signer, $result);
+    }
+
+    public function testSetOversigningReturnsSelf()
+    {
+        $signer = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector',
+        );
+        $result = $signer->setOversigning(true);
+        $this->assertSame($signer, $result);
+    }
+
+    public function testSetDebugHeadersReturnsSelf()
+    {
+        $signer = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector',
+        );
+        $result = $signer->setDebugHeaders(true);
+        $this->assertSame($signer, $result);
+    }
+
+    public function testBindAndUnbindStream()
+    {
+        $signer = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector',
+        );
+        $stream = $this->createMock(Swift_InputByteStream::class);
+        $signer->bind($stream);
+        $signer->unbind($stream);
+        $this->addToAssertionCount(1);
+    }
+
+    public function testWriteForwardsToBoundStream()
+    {
+        $signer = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector',
+        );
+        $signer->setHashAlgorithm('rsa-sha256');
+        $signer->reset();
+        $signer->startBody();
+        $stream = $this->createMock(Swift_InputByteStream::class);
+        $stream->expects($this->once())
+            ->method('write')
+            ->with('test data');
+        $signer->bind($stream);
+        $signer->write('test data');
+    }
+
+    public function testWriteAcceptsArrayInput()
+    {
+        $signer = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector',
+        );
+        $signer->setHashAlgorithm('rsa-sha256');
+        $signer->reset();
+        $signer->startBody();
+        $signer->write(['hello', ' ', 'world']);
+        $this->addToAssertionCount(1);
+    }
+
+    public function testCommitIsNoOp()
+    {
+        $signer = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector',
+        );
+        $signer->commit();
+        $this->addToAssertionCount(1);
+    }
+
+    public function testFlushBuffersResetsState()
+    {
+        $signer = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector',
+        );
+        $signer->flushBuffers();
+        $this->addToAssertionCount(1);
+    }
+
+    /** @group legacy */
+    public function testRsaSha1BodyHash()
+    {
+        $this->expectDeprecation('rsa-sha1 is deprecated per RFC 8301 and will be removed in a future version. Use rsa-sha256 or ed25519-sha256 instead.');
+
+        $headerSet      = $this->createHeaderSet();
+        $messageContent = 'Hello World';
+        $signer         = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector',
+        );
+        $signer->setHashAlgorithm('rsa-sha1');
+        $signer->setSignatureTimestamp('1299879181');
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write($messageContent);
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $dkim = $headerSet->getAll('DKIM-Signature');
+        $sig  = \reset($dkim);
+        // Body hash should use SHA-1
+        $this->assertStringContainsString('bh=', $sig->getValue());
+        $this->assertStringContainsString('a=rsa-sha1', $sig->getValue());
+    }
+
+    public function testRelaxedBodyCanonWithSpacesAndTabs()
+    {
+        $headerSet = $this->createHeaderSet();
+        $signer    = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector',
+        );
+        $signer->setHashAlgorithm('rsa-sha256');
+        $signer->setSignatureTimestamp('1299879181');
+        $signer->setBodyCanon('relaxed');
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        // Relaxed body canon should collapse whitespace
+        $signer->write("Hello   \t  World\r\nSecond  line\r\n");
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $this->assertTrue($headerSet->has('DKIM-Signature'));
+    }
+
+    public function testRelaxedHeaderCanonUsedInSignature()
+    {
+        $headerSet      = $this->createHeaderSetWithFrom();
+        $messageContent = 'Hello World';
+        $signer         = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector',
+        );
+        $signer->setHashAlgorithm('rsa-sha256');
+        $signer->setSignatureTimestamp('1299879181');
+        $signer->setHeaderCanon('relaxed');
+        $signer->setBodyCanon('simple');
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write($messageContent);
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $dkim = $headerSet->getAll('DKIM-Signature');
+        $sig  = \reset($dkim);
+        $this->assertStringContainsString('c=relaxed/simple', $sig->getValue());
+    }
+
+    public function testCustomSignerIdentity()
+    {
+        $headerSet      = $this->createHeaderSet();
+        $messageContent = 'Hello World';
+        $signer         = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector',
+        );
+        $signer->setHashAlgorithm('rsa-sha256');
+        $signer->setSignatureTimestamp('1299879181');
+        $signer->setSignerIdentity('user@dummy.nxdomain.be');
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write($messageContent);
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $dkim = $headerSet->getAll('DKIM-Signature');
+        $sig  = \reset($dkim);
+        $this->assertStringContainsString('i=user@dummy.nxdomain.be', $sig->getValue());
+    }
+
     /**
      * @return Swift_Mime_Headers
      */
@@ -1047,5 +1424,39 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
             ->andReturn([$headerFactory->createTextHeader('DKIM-Signature', 'Foo Bar Text Message')]);
 
         return $headers;
+    }
+
+    // -----------------------------------------------------------------------
+    // Additional coverage tests
+    // -----------------------------------------------------------------------
+
+    public function testSetHeaderCanonNonRelaxedDefaultsToSimple()
+    {
+        // Covers line 303: non-'relaxed' value falls through to 'simple'
+        $signer = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector',
+        );
+        $result = $signer->setHeaderCanon('simple');
+        $this->assertSame($signer, $result);
+
+        // Also test an arbitrary string defaults to simple
+        $result2 = $signer->setHeaderCanon('anything-else');
+        $this->assertSame($signer, $result2);
+
+        // Verify the c= tag contains simple header canon
+        $headerSet = $this->createHeaderSet();
+        $signer->setHashAlgorithm('rsa-sha256');
+        $signer->setSignatureTimestamp('1299879181');
+        $signer->reset();
+        $signer->setHeaders($headerSet);
+        $signer->startBody();
+        $signer->write('Hello');
+        $signer->endBody();
+        $signer->addSignature($headerSet);
+        $dkim = $headerSet->getAll('DKIM-Signature');
+        $sig  = \reset($dkim);
+        $this->assertStringContainsString('c=simple/', $sig->getValue());
     }
 }

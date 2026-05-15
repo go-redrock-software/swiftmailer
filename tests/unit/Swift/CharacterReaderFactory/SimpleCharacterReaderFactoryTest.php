@@ -160,4 +160,12 @@ class Swift_CharacterReaderFactory_SimpleCharacterReaderFactoryTest extends PHPU
         $reader = $this->factory->getReaderFor('utf-8');
         $this->assertInstanceOf(Swift_CharacterReader_Utf8Reader::class, $reader);
     }
+
+    public function testWakeupReinitializesFactory()
+    {
+        $factory = new Swift_CharacterReaderFactory_SimpleCharacterReaderFactory();
+        $factory->__wakeup();
+        $reader = $factory->getReaderFor('utf-8');
+        $this->assertInstanceOf(Swift_CharacterReader_Utf8Reader::class, $reader);
+    }
 }

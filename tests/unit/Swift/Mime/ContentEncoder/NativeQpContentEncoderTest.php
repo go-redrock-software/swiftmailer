@@ -167,4 +167,12 @@ class Swift_Mime_ContentEncoder_NativeQpContentEncoderTest extends PHPUnit\Frame
         $encoder = new Swift_Mime_ContentEncoder_NativeQpContentEncoder(null);
         $this->assertEquals('test', $encoder->encodeString('test'));
     }
+
+    public function testStandardizeTrailingTabIsEncoded()
+    {
+        $encoder = new Swift_Mime_ContentEncoder_NativeQpContentEncoder();
+        // A string ending with a tab should have it encoded as =09
+        $result = $encoder->encodeString("test\t");
+        $this->assertStringEndsWith('=09', $result);
+    }
 }

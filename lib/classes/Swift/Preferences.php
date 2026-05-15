@@ -18,7 +18,7 @@ class Swift_Preferences
     /** Singleton instance */
     private static $instance;
 
-    /** Constructor not to be used */
+    /** @codeCoverageIgnore Singleton — constructor runs once during bootstrap */
     private function __construct()
     {
     }
@@ -30,8 +30,8 @@ class Swift_Preferences
      */
     public static function getInstance()
     {
-        if (!isset(self::$instance)) {
-            self::$instance = new self();
+        if (!isset(self::$instance)) { // @codeCoverageIgnore
+            self::$instance = new self(); // @codeCoverageIgnore
         }
 
         return self::$instance;

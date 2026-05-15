@@ -163,6 +163,14 @@ class Swift_Plugins_AntiFloodPluginTest extends PHPUnit\Framework\TestCase
         }
     }
 
+    public function testSleepUsesNativeWhenNoSleeperSet()
+    {
+        // Verify native sleep path doesn't throw (sleep 0 for speed)
+        $plugin = new Swift_Plugins_AntiFloodPlugin();
+        $plugin->sleep(0);
+        $this->addToAssertionCount(1);
+    }
+
     private function createTransport()
     {
         return $this->getMockBuilder('Swift_Transport')->getMock();

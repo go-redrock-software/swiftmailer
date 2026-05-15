@@ -243,4 +243,107 @@ class Swift_FileSpoolTest extends TestCase
             'All .sending files should be cleaned up after deserialization failure',
         );
     }
+
+    public function testConstructorCreatesDirectory(): void
+    {
+        $newDir = $this->spoolDir.'/subdir_'.\bin2hex(\random_bytes(4));
+        $this->assertDirectoryDoesNotExist($newDir);
+
+        $spool = new Swift_FileSpool($newDir);
+
+        $this->assertDirectoryExists($newDir);
+
+        // Clean up
+        \rmdir($newDir);
+    }
+
+    public function testIsStartedReturnsTrue(): void
+    {
+        $spool = new Swift_FileSpool($this->spoolDir);
+
+        $this->assertTrue($spool->isStarted());
+    }
+
+    public function testStartAndStopAreNoOps(): void
+    {
+        $spool = new Swift_FileSpool($this->spoolDir);
+
+        // These should not throw
+        $spool->start();
+        $spool->stop();
+
+        $this->assertTrue($spool->isStarted());
+    }
+
+    public function testSetRetryLimit(): void
+    {
+        $spool = new Swift_FileSpool($this->spoolDir);
+        $spool->setRetryLimit(5);
+
+        // Verify it doesn't throw and can still queue messages
+        $msg = $this->createMessage();
+        $msg->setSubject('Retry limit test');
+        $result = $spool->queueMessage($msg);
+        $this->assertTrue($result);
+    }
+
+    public function testRecoverRenamesStaleFiles(): void
+    {
+        $spool = new Swift_FileSpool($this->spoolDir);
+
+        // Create a .message.sending file that is stale
+        $sendingFile = $this->spoolDir.'/stale.message.sending';
+        $messageFile = $this->spoolDir.'/stale.message';
+        \file_put_contents($sendingFile, 'test data');
+
+        // Use timeout=-1 so the condition (time() - ctime) > -1 is always true
+        $spool->recover(-1);
+
+        $this->assertFileDoesNotExist($sendingFile);
+        $this->assertFileExists($messageFile);
+
+        // Clean up
+        @\unlink($messageFile);
+    }
+
+    public function testFlushQueueStartsTransportWhenNotStarted(): void
+    {
+        $spool = new Swift_FileSpool($this->spoolDir);
+
+        // Queue a message
+        $msg = $this->createMessage();
+        $msg->setSubject('Start transport test');
+        $spool->queueMessage($msg);
+
+        $transport = $this->createMock(Swift_Transport::class);
+        $transport->method('isStarted')->willReturn(false);
+        $transport->expects($this->once())->method('start');
+        $transport->method('send')->willReturn(1);
+
+        $count = $spool->flushQueue($transport);
+        $this->assertSame(1, $count);
+    }
+
+    public function testQueueMessageRetryLimitExhausted(): void
+    {
+        // Use a subclass that always returns 'x' to force collisions
+        $spool = new class($this->spoolDir) extends Swift_FileSpool {
+            protected function getRandomString($count)
+            {
+                return 'x';
+            }
+        };
+        $spool->setRetryLimit(2);
+
+        // The first iteration tries 'x.message', second tries 'xx.message'
+        \file_put_contents($this->spoolDir.'/x.message', 'existing');
+        \file_put_contents($this->spoolDir.'/xx.message', 'existing');
+
+        $msg = $this->createMessage();
+
+        $this->expectException(Swift_IoException::class);
+        $this->expectExceptionMessage('Unable to create a file');
+
+        $spool->queueMessage($msg);
+    }
 }

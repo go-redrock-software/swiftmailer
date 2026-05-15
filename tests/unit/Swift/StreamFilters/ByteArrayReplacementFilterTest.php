@@ -125,6 +125,22 @@ class Swift_StreamFilters_ByteArrayReplacementFilterTest extends PHPUnit\Framewo
         );
     }
 
+    public function testFilterWithEmptySearchPatternsReturnsBufferUnchanged()
+    {
+        // Empty search/replace (treeMaxLen == 0) should return buffer unchanged
+        $filter = $this->createFilter([], []);
+        $result = $filter->filter([0x61, 0x62, 0x63]);
+        $this->assertEquals([0x61, 0x62, 0x63], $result);
+    }
+
+    public function testFilterWithNonMatchingBytesPassesThrough()
+    {
+        // Pattern [0x0D, 0x0A] but input has no 0x0D or 0x0A - all bytes are "normal"
+        $filter = $this->createFilter([0x0D, 0x0A], [0x0A]);
+        $result = $filter->filter([0x61, 0x62, 0x63]);
+        $this->assertEquals([0x61, 0x62, 0x63], $result);
+    }
+
     private function createFilter($search, $replace)
     {
         return new Swift_StreamFilters_ByteArrayReplacementFilter($search, $replace);

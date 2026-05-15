@@ -66,4 +66,81 @@ class Swift_KeyCache_SimpleKeyCacheInputStreamTest extends PHPUnit\Framework\Tes
 
         $newStream->write('x');
     }
+
+    public function testWriteConvertsArrayToString()
+    {
+        $cache = $this->getMockBuilder('Swift_KeyCache')->getMock();
+        $cache->expects($this->once())
+            ->method('setString')
+            ->with($this->nsKey, 'foo', 'abc', Swift_KeyCache::MODE_APPEND);
+
+        $stream = new Swift_KeyCache_SimpleKeyCacheInputStream();
+        $stream->setKeyCache($cache);
+        $stream->setNsKey($this->nsKey);
+        $stream->setItemKey('foo');
+
+        $stream->write(['a', 'b', 'c']);
+    }
+
+    public function testWriteForwardsToIsParameter()
+    {
+        $cache = $this->getMockBuilder('Swift_KeyCache')->getMock();
+        $cache->expects($this->once())
+            ->method('setString');
+
+        $is = $this->getMockBuilder('Swift_InputByteStream')->getMock();
+        $is->expects($this->once())
+            ->method('write')
+            ->with('data');
+
+        $stream = new Swift_KeyCache_SimpleKeyCacheInputStream();
+        $stream->setKeyCache($cache);
+        $stream->setNsKey($this->nsKey);
+        $stream->setItemKey('foo');
+
+        $stream->write('data', $is);
+    }
+
+    public function testWriteForwardsToWriteThroughStream()
+    {
+        $cache = $this->getMockBuilder('Swift_KeyCache')->getMock();
+        $cache->expects($this->once())
+            ->method('setString');
+
+        $writeThrough = $this->getMockBuilder('Swift_InputByteStream')->getMock();
+        $writeThrough->expects($this->once())
+            ->method('write')
+            ->with('data');
+
+        $stream = new Swift_KeyCache_SimpleKeyCacheInputStream();
+        $stream->setKeyCache($cache);
+        $stream->setNsKey($this->nsKey);
+        $stream->setItemKey('foo');
+        $stream->setWriteThroughStream($writeThrough);
+
+        $stream->write('data');
+    }
+
+    public function testCommitDoesNothing()
+    {
+        $stream = new Swift_KeyCache_SimpleKeyCacheInputStream();
+        $stream->commit();
+        $this->addToAssertionCount(1);
+    }
+
+    public function testBindDoesNothing()
+    {
+        $is = $this->getMockBuilder('Swift_InputByteStream')->getMock();
+        $stream = new Swift_KeyCache_SimpleKeyCacheInputStream();
+        $stream->bind($is);
+        $this->addToAssertionCount(1);
+    }
+
+    public function testUnbindDoesNothing()
+    {
+        $is = $this->getMockBuilder('Swift_InputByteStream')->getMock();
+        $stream = new Swift_KeyCache_SimpleKeyCacheInputStream();
+        $stream->unbind($is);
+        $this->addToAssertionCount(1);
+    }
 }

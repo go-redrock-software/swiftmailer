@@ -174,6 +174,14 @@ class Swift_Mime_ContentEncoder_PlainContentEncoderTest extends SwiftMailerTestC
         return $this->getMockery('Swift_OutputByteStream')->shouldIgnoreMissing();
     }
 
+    public function testCharsetChangedDoesNothing()
+    {
+        $encoder = $this->getEncoder('7bit');
+        $encoder->charsetChanged('utf-8');
+        // Method is a no-op, just verify it doesn't throw
+        $this->assertEquals('7bit', $encoder->getName());
+    }
+
     private function createInputByteStream($stub = false)
     {
         return $this->getMockery('Swift_InputByteStream')->shouldIgnoreMissing();

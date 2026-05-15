@@ -66,6 +66,9 @@ abstract class Swift_Transport_AbstractApiTransport implements Swift_Transport
     /**
      * Destructor.
      */
+    /**
+     * @codeCoverageIgnore Destructor runs during GC
+     */
     public function __destruct()
     {
         try {

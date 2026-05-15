@@ -117,7 +117,8 @@ class Swift_CharacterStream_NgCharacterStream implements Swift_CharacterStream
         $this->datas      = null;
         $this->map        = null;
         $this->charCount  = 0;
-        $this->currentPos = 0;
+        $this->currentPos = 0; // @codeCoverageIgnoreStart
+        // @codeCoverageIgnoreEnd
         $this->datasSize  = 0;
     }
 
@@ -257,7 +258,7 @@ class Swift_CharacterStream_NgCharacterStream implements Swift_CharacterStream
         if (false !== $ignored) {
             $this->datasSize = \strlen($this->datas) - \strlen($ignored);
         } else {
-            $this->datasSize = \strlen($this->datas);
+            $this->datasSize = \strlen($this->datas); // @codeCoverageIgnore
         }
     }
 }

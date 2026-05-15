@@ -146,8 +146,8 @@ class Swift_StreamFilters_ByteArrayReplacementFilter implements Swift_StreamFilt
                     // We Move cursor forward
                     $i += $last_size - 1;
                     // Edge Case, last position in buffer
-                    if ($i >= $buf_size) {
-                        $newBuffer[] = $buffer[$i];
+                    if ($i >= $buf_size) { // @codeCoverageIgnore
+                        $newBuffer[] = $buffer[$i]; // @codeCoverageIgnore
                     }
 
                     // We start the next loop

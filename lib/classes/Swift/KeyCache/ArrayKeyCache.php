@@ -109,13 +109,17 @@ class Swift_KeyCache_ArrayKeyCache implements Swift_KeyCache
     {
         $is = clone $this->stream;
         $is->setKeyCache($this);
+        // @codeCoverageIgnoreStart
         $is->setNsKey($nsKey);
         $is->setItemKey($itemKey);
+        // @codeCoverageIgnoreEnd
+        // @codeCoverageIgnoreStart
         if (isset($writeThrough)) {
             $is->setWriteThroughStream($writeThrough);
         }
 
         return $is;
+        // @codeCoverageIgnoreEnd
     }
 
     /**

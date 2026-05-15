@@ -285,6 +285,65 @@ class Swift_Transport_Api_BrevoTransportTest extends TestCase
         $this->assertEquals(['X-Metadata-order_id' => '999'], $capturedPayload['headers']);
     }
 
+    public function testSendWithAttachments(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message->setFrom(['sender@example.com' => 'Sender']);
+        $message->setTo(['to@example.com' => 'Recipient']);
+        $message->setSubject('Attachment Test');
+        $message->setBody('Body');
+        $message->attach(new \Swift_Attachment('file content', 'doc.pdf', 'application/pdf'));
+
+        $capturedPayload = null;
+        $response        = $this->createMockResponse(201, ['messageId' => '<att@brevo.com>']);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('POST', $this->anything(), $this->callback(function (array $options) use (&$capturedPayload) {
+                $capturedPayload = $options['json'];
+
+                return true;
+            }))
+            ->willReturn($response);
+
+        $evt = $this->createMock(\Swift_Events_TransportChangeEvent::class);
+        $this->eventDispatcherMock->method('createTransportChangeEvent')->willReturn($evt);
+        $sendEvt = $this->createMock(\Swift_Events_SendEvent::class);
+        $this->eventDispatcherMock->method('createSendEvent')->willReturn($sendEvt);
+
+        $this->transport->send($message);
+
+        $this->assertArrayHasKey('attachment', $capturedPayload);
+        $this->assertCount(1, $capturedPayload['attachment']);
+        $this->assertSame('doc.pdf', $capturedPayload['attachment'][0]['name']);
+        $this->assertSame(\base64_encode('file content'), $capturedPayload['attachment'][0]['content']);
+    }
+
+    public function testSendWithEnvelope(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message->setFrom(['sender@example.com' => 'Sender']);
+        $message->setTo(['to@example.com' => 'To']);
+        $message->setSubject('Envelope Test');
+        $message->setBody('Body');
+
+        $envelope = new \Swift_Envelope('envelope-sender@example.com', ['env-recip@example.com']);
+
+        $response = $this->createMockResponse(201, ['messageId' => '<env@brevo.com>']);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($response);
+
+        $evt = $this->createMock(\Swift_Events_TransportChangeEvent::class);
+        $this->eventDispatcherMock->method('createTransportChangeEvent')->willReturn($evt);
+        $sendEvt = $this->createMock(\Swift_Events_SendEvent::class);
+        $this->eventDispatcherMock->method('createSendEvent')->willReturn($sendEvt);
+
+        $count = $this->transport->send($message, $failures, $envelope);
+        $this->assertSame(1, $count);
+    }
+
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
     {
         return new \Swift_Mime_SimpleMessage(

@@ -226,4 +226,33 @@ class Swift_Webhook_Converter_AhaSendConverterTest extends PHPUnit\Framework\Tes
         $this->assertSame(1706000000, $this->converter->extractTimestamp('{}', $headers));
         $this->assertNull($this->converter->extractTimestamp('{}', []));
     }
+
+    public function testVerifyReturnsFalseWithInvalidBase64Secret()
+    {
+        $headers = [
+            'webhook-id'        => 'wh_test',
+            'webhook-timestamp' => '1706000000',
+            'webhook-signature' => 'v1,c2lnbmF0dXJl',
+        ];
+
+        // '!!!' is not valid base64
+        $this->assertFalse($this->converter->verify('{}', $headers, '!!!'));
+    }
+
+    public function testConvertExtractsReasonMetadata()
+    {
+        $payload = [
+            'type'      => 'message.hard_bounced',
+            'timestamp' => '2026-01-15T10:30:00.000000Z',
+            'data'      => [
+                'message_id_header' => 'msg-810',
+                'recipient'         => 'user@example.com',
+                'reason'            => 'Mailbox full',
+            ],
+        ];
+
+        $events = $this->converter->convert($payload, []);
+
+        $this->assertSame('Mailbox full', $events[0]->getMetadata()['reason']);
+    }
 }

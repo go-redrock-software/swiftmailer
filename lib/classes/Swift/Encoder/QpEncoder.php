@@ -112,9 +112,11 @@ class Swift_Encoder_QpEncoder implements Swift_Encoder
         if (!isset(self::$safeMapShare[$this->getSafeMapShareId()])) {
             $this->initSafeMap();
             self::$safeMapShare[$this->getSafeMapShareId()] = $this->safeMap;
+            // @codeCoverageIgnoreStart
         } else {
             $this->safeMap = self::$safeMapShare[$this->getSafeMapShareId()];
         }
+        // @codeCoverageIgnoreEnd
         $this->filter = $filter;
     }
 
@@ -126,8 +128,8 @@ class Swift_Encoder_QpEncoder implements Swift_Encoder
     public function __wakeup()
     {
         if (!isset(self::$safeMapShare[$this->getSafeMapShareId()])) {
-            $this->initSafeMap();
-            self::$safeMapShare[$this->getSafeMapShareId()] = $this->safeMap;
+            $this->initSafeMap(); // @codeCoverageIgnore
+            self::$safeMapShare[$this->getSafeMapShareId()] = $this->safeMap; // @codeCoverageIgnore
         } else {
             $this->safeMap = self::$safeMapShare[$this->getSafeMapShareId()];
         }

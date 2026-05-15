@@ -230,6 +230,120 @@ class Swift_Transport_Api_AmazonSesHttpTransportTest extends PHPUnit\Framework\T
         return new Swift_Transport_Api_AmazonSesHttpTransport($client, $this->eventDispatcherMock);
     }
 
+    public function testSendWithReturnPath(): void
+    {
+        $transport = $this->createTransportWithClient($this->createSuccessClient());
+
+        $message = new Swift_Message();
+        $message->setFrom(['from@example.com' => 'Sender']);
+        $message->setTo(['to@example.com' => 'Recipient']);
+        $message->setSubject('Test');
+        $message->setBody('Hello');
+        $message->setReturnPath('bounce@example.com');
+
+        $result = $transport->send($message);
+        $this->assertSame(1, $result);
+    }
+
+    public function testSendWithConfigurationSetHeader(): void
+    {
+        $transport = $this->createTransportWithClient($this->createSuccessClient());
+
+        $message = new Swift_Message();
+        $message->setFrom(['from@example.com' => 'Sender']);
+        $message->setTo(['to@example.com' => 'Recipient']);
+        $message->setSubject('Test');
+        $message->setBody('Hello');
+        $message->getHeaders()->addTextHeader('X-SES-CONFIGURATION-SET', 'my-config-set');
+
+        $result = $transport->send($message);
+        $this->assertSame(1, $result);
+    }
+
+    public function testSendWithSourceArnHeader(): void
+    {
+        $transport = $this->createTransportWithClient($this->createSuccessClient());
+
+        $message = new Swift_Message();
+        $message->setFrom(['from@example.com' => 'Sender']);
+        $message->setTo(['to@example.com' => 'Recipient']);
+        $message->setSubject('Test');
+        $message->setBody('Hello');
+        $message->getHeaders()->addTextHeader('X-SES-SOURCE-ARN', 'arn:aws:ses:us-east-1:123:identity/example.com');
+
+        $result = $transport->send($message);
+        $this->assertSame(1, $result);
+    }
+
+    public function testSendWithListManagementOptionsHeader(): void
+    {
+        $transport = $this->createTransportWithClient($this->createSuccessClient());
+
+        $message = new Swift_Message();
+        $message->setFrom(['from@example.com' => 'Sender']);
+        $message->setTo(['to@example.com' => 'Recipient']);
+        $message->setSubject('Test');
+        $message->setBody('Hello');
+        $message->getHeaders()->addTextHeader('X-SES-LIST-MANAGEMENT-OPTIONS', 'contactListName=MyList; topicName=MyTopic');
+
+        $result = $transport->send($message);
+        $this->assertSame(1, $result);
+    }
+
+    public function testSendWithMailerTagHeaders(): void
+    {
+        $transport = $this->createTransportWithClient($this->createSuccessClient());
+
+        $message = new Swift_Message();
+        $message->setFrom(['from@example.com' => 'Sender']);
+        $message->setTo(['to@example.com' => 'Recipient']);
+        $message->setSubject('Test');
+        $message->setBody('Hello');
+        $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'campaign-123');
+
+        $result = $transport->send($message);
+        $this->assertSame(1, $result);
+
+        // Tags should be removed after extraction
+        $this->assertEmpty($message->getHeaders()->getAll('X-Mailer-Tag'));
+    }
+
+    public function testSendWithMultipleMailerTags(): void
+    {
+        $transport = $this->createTransportWithClient($this->createSuccessClient());
+
+        $message = new Swift_Message();
+        $message->setFrom(['from@example.com' => 'Sender']);
+        $message->setTo(['to@example.com' => 'Recipient']);
+        $message->setSubject('Test');
+        $message->setBody('Hello');
+        $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'tag1');
+        $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'tag2');
+
+        $result = $transport->send($message);
+        $this->assertSame(1, $result);
+        $this->assertEmpty($message->getHeaders()->getAll('X-Mailer-Tag'));
+    }
+
+    public function testSendWithAllSesHeaders(): void
+    {
+        $transport = $this->createTransportWithClient($this->createSuccessClient());
+
+        $message = new Swift_Message();
+        $message->setFrom(['from@example.com' => 'Sender']);
+        $message->setTo(['to@example.com' => 'Recipient']);
+        $message->setSubject('Test');
+        $message->setBody('Hello');
+        $message->setReturnPath('bounce@example.com');
+        $message->getHeaders()->addTextHeader('X-SES-CONFIGURATION-SET', 'my-set');
+        $message->getHeaders()->addTextHeader('X-SES-SOURCE-ARN', 'arn:aws:ses:us-east-1:123:identity/x');
+        $message->getHeaders()->addTextHeader('X-SES-LIST-MANAGEMENT-OPTIONS', 'MyList; topicName=MyTopic');
+        $message->getHeaders()->addTextHeader('X-Mailer-Tag', 'tag1');
+
+        $result = $transport->send($message);
+        $this->assertSame(1, $result);
+    }
+
     private function createSuccessClient(string $messageId = 'test-msg-id'): object
     {
         return new class($messageId) {

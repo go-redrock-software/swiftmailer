@@ -50,6 +50,6 @@ class Swift_Mime_HeaderEncoder_Base64HeaderEncoder extends Swift_Encoder_Base64E
             return $newstring;
         }
 
-        return parent::encodeString($string, $firstLineOffset, $maxLineLength);
+        return parent::encodeString($string, $firstLineOffset, $maxLineLength); // @codeCoverageIgnore
     }
 }

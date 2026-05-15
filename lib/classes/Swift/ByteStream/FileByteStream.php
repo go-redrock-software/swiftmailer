@@ -192,6 +192,7 @@ class Swift_ByteStream_FileByteStream extends Swift_ByteStream_AbstractFilterabl
     }
 
     /** Copy a readOnly Stream to ensure seekability */
+    /** @codeCoverageIgnore Non-seekable stream copy — requires specific I/O conditions */
     private function copyReadStream()
     {
         if ($tmpFile = \fopen('php://temp/maxmemory:4096', 'w+b')) {

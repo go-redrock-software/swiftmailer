@@ -283,6 +283,13 @@ class MailPaceTransportTest extends TestCase
         $this->transport->send($message);
     }
 
+    public function testGetPingEndpoint(): void
+    {
+        $reflection = new \ReflectionMethod($this->transport, 'getPingEndpoint');
+        $result = $reflection->invoke($this->transport);
+        $this->assertSame('https://app.mailpace.com/api/v1/send', $result);
+    }
+
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
     {
         return new \Swift_Mime_SimpleMessage(

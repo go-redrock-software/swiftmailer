@@ -154,6 +154,122 @@ class Swift_Transport_Esmtp_AuthHandlerTest extends SwiftMailerTestCase
         $auth->afterEhlo($this->agent);
     }
 
+    public function testGetAuthenticatorsReturnsAuthenticators()
+    {
+        $a1 = $this->createMockAuthenticator('PLAIN');
+        $a2 = $this->createMockAuthenticator('LOGIN');
+
+        $auth = $this->createHandler([$a1, $a2]);
+        $this->assertSame([$a1, $a2], $auth->getAuthenticators());
+    }
+
+    public function testAfterEhloThrowsWhenNoAuthenticatorsMatch()
+    {
+        $this->expectException(Swift_TransportException::class);
+        $this->expectExceptionMessage('Failed to authenticate on SMTP server');
+
+        $a1 = $this->createMockAuthenticator('PLAIN');
+
+        $auth = $this->createHandler([$a1]);
+        $auth->setUsername('jack');
+        $auth->setPassword('pass');
+
+        // Set keyword params that don't match any authenticator
+        $auth->setKeywordParams(['CRAM-MD5']);
+        $auth->afterEhlo($this->agent);
+    }
+
+    public function testAfterEhloCollectsErrorsFromFailedAuthenticators()
+    {
+        $a1 = $this->createMockAuthenticator('PLAIN');
+        $a1->shouldReceive('authenticate')
+            ->once()
+            ->with($this->agent, 'jack', 'pass')
+            ->andThrow(new Swift_TransportException('Connection refused'));
+
+        $auth = $this->createHandler([$a1]);
+        $auth->setUsername('jack');
+        $auth->setPassword('pass');
+        $auth->setKeywordParams(['PLAIN']);
+
+        try {
+            $auth->afterEhlo($this->agent);
+            $this->fail('Expected Swift_TransportException');
+        } catch (Swift_TransportException $e) {
+            $this->assertStringContainsString('Authenticator PLAIN returned Connection refused', $e->getMessage());
+        }
+    }
+
+    public function testGetMailParamsReturnsEmptyArray()
+    {
+        $auth = $this->createHandler([]);
+        $this->assertEquals([], $auth->getMailParams());
+    }
+
+    public function testGetRcptParamsReturnsEmptyArray()
+    {
+        $auth = $this->createHandler([]);
+        $this->assertEquals([], $auth->getRcptParams());
+    }
+
+    public function testOnCommandIsNoOp()
+    {
+        $auth = $this->createHandler([]);
+        $failedRecipients = null;
+        $stop = false;
+        $auth->onCommand($this->agent, "MAIL FROM:<foo@bar>\r\n", [250], $failedRecipients, $stop);
+        $this->assertFalse($stop);
+    }
+
+    public function testGetPriorityOverReturnsZero()
+    {
+        $auth = $this->createHandler([]);
+        $this->assertEquals(0, $auth->getPriorityOver('8BITMIME'));
+    }
+
+    public function testResetStateIsNoOp()
+    {
+        $auth = $this->createHandler([]);
+        $auth->resetState();
+        $this->addToAssertionCount(1);
+    }
+
+    public function testInvalidAuthModeThrowsException()
+    {
+        $this->expectException(Swift_TransportException::class);
+        $this->expectExceptionMessage('Auth mode bogus is invalid');
+
+        $a1 = $this->createMockAuthenticator('PLAIN');
+
+        $auth = $this->createHandler([$a1]);
+        $auth->setUsername('jack');
+        $auth->setPassword('pass');
+        $auth->setAuthMode('bogus');
+        $auth->setKeywordParams(['PLAIN']);
+        $auth->afterEhlo($this->agent);
+    }
+
+    public function testValidAuthModeFiltersAuthenticators()
+    {
+        $a1 = $this->createMockAuthenticator('PLAIN');
+        $a2 = $this->createMockAuthenticator('LOGIN');
+
+        // Only LOGIN should be used when auth mode is set to LOGIN
+        $a1->shouldReceive('authenticate')
+            ->never();
+        $a2->shouldReceive('authenticate')
+            ->once()
+            ->with($this->agent, 'jack', 'pass')
+            ->andReturn(true);
+
+        $auth = $this->createHandler([$a1, $a2]);
+        $auth->setUsername('jack');
+        $auth->setPassword('pass');
+        $auth->setAuthMode('LOGIN');
+        $auth->setKeywordParams(['PLAIN', 'LOGIN']);
+        $auth->afterEhlo($this->agent);
+    }
+
     private function createHandler($authenticators)
     {
         return new Swift_Transport_Esmtp_AuthHandler($authenticators);

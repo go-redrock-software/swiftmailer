@@ -398,6 +398,101 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
         $this->assertEquals($originalBody, $message->getBody());
     }
 
+    public function testPixelInjectedInHtmlChildPart()
+    {
+        $plugin = new Swift_Plugins_ReadReceiptPlugin(
+            Swift_Plugins_ReadReceiptPlugin::MODE_PIXEL,
+            null,
+            fn () => 'http://track.example.com/pixel'
+        );
+
+        $message = $this->createRealMessage();
+        $message->setBody('Plain text', 'text/plain');
+        $message->addPart('<html><body><p>Hello</p></body></html>', 'text/html');
+        $evt = $this->createSendEvent($message);
+
+        $plugin->beforeSendPerformed($evt);
+
+        // Main body should be unchanged
+        $this->assertEquals('Plain text', $message->getBody());
+        // The HTML child should have the pixel
+        $found = false;
+        foreach ($message->getChildren() as $child) {
+            if (false !== stripos($child->getContentType() ?? '', 'text/html')) {
+                $this->assertStringContainsString('<img ', $child->getBody());
+                $this->assertStringContainsString('track.example.com/pixel', $child->getBody());
+                $found = true;
+            }
+        }
+        $this->assertTrue($found, 'HTML child part should have tracking pixel');
+    }
+
+    public function testPixelInChildPartRestoredAfterSend()
+    {
+        $plugin = new Swift_Plugins_ReadReceiptPlugin(
+            Swift_Plugins_ReadReceiptPlugin::MODE_PIXEL,
+            null,
+            fn () => 'http://track.example.com/pixel'
+        );
+
+        $originalHtml = '<html><body><p>Hello</p></body></html>';
+        $message = $this->createRealMessage();
+        $message->setBody('Plain text', 'text/plain');
+        $message->addPart($originalHtml, 'text/html');
+        $evt = $this->createSendEvent($message);
+
+        $plugin->beforeSendPerformed($evt);
+        $plugin->sendPerformed($evt);
+
+        // The HTML child should be restored
+        foreach ($message->getChildren() as $child) {
+            if (false !== stripos($child->getContentType() ?? '', 'text/html')) {
+                $this->assertEquals($originalHtml, $child->getBody());
+            }
+        }
+    }
+
+    public function testRestoreDoesNothingForDifferentMessage()
+    {
+        $plugin = new Swift_Plugins_ReadReceiptPlugin(
+            Swift_Plugins_ReadReceiptPlugin::MODE_MDN,
+            'receipts@example.com'
+        );
+
+        $message1 = $this->createRealMessage();
+        $message2 = $this->createRealMessage();
+        $evt1 = $this->createSendEvent($message1);
+        $evt2 = $this->createSendEvent($message2);
+
+        $plugin->beforeSendPerformed($evt1);
+        // Send performed with a different message should not crash
+        $plugin->sendPerformed($evt2);
+        // Original message still has the MDN header since restore was not triggered
+        $this->assertTrue($message1->getHeaders()->has('Disposition-Notification-To'));
+    }
+
+    public function testSetModeViaMethod()
+    {
+        $plugin = new Swift_Plugins_ReadReceiptPlugin();
+        $plugin->setMode(Swift_Plugins_ReadReceiptPlugin::MODE_BOTH);
+        $this->assertEquals(Swift_Plugins_ReadReceiptPlugin::MODE_BOTH, $plugin->getMode());
+    }
+
+    public function testSetModeInvalidThrows()
+    {
+        $plugin = new Swift_Plugins_ReadReceiptPlugin();
+        $this->expectException(Swift_SwiftException::class);
+        $plugin->setMode(0);
+    }
+
+    public function testSetPixelUrlGeneratorViaMethod()
+    {
+        $gen = fn () => 'http://example.com';
+        $plugin = new Swift_Plugins_ReadReceiptPlugin();
+        $plugin->setPixelUrlGenerator($gen);
+        $this->assertSame($gen, $plugin->getPixelUrlGenerator());
+    }
+
     private function createRealMessage(): Swift_Message
     {
         return new Swift_Message('Test Subject');

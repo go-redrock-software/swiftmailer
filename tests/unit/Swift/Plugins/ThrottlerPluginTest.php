@@ -170,6 +170,67 @@ class Swift_Plugins_ThrottlerPluginTest extends SwiftMailerTestCase
         $this->assertEqualsWithDelta(\time(), $timestamp, 2);
     }
 
+    public function testSleepUsesSleeperWhenSet()
+    {
+        $sleeper = $this->createSleeper();
+        $sleeper->shouldReceive('sleep')->once()->with(5);
+
+        $plugin = new Swift_Plugins_ThrottlerPlugin(
+            100,
+            Swift_Plugins_ThrottlerPlugin::BYTES_PER_MINUTE,
+            $sleeper,
+        );
+        $plugin->sleep(5);
+    }
+
+    public function testSleepUsesNativeWhenNoSleeper()
+    {
+        // Just verify it doesn't throw; we can't easily test native sleep
+        $plugin = new Swift_Plugins_ThrottlerPlugin(100);
+        // Sleep 0 seconds to avoid test slowdown
+        $plugin->sleep(0);
+        $this->addToAssertionCount(1);
+    }
+
+    public function testDefaultModeIsBytesPerMinute()
+    {
+        $sleeper = $this->createSleeper();
+        $timer   = $this->createTimer();
+
+        $plugin = new Swift_Plugins_ThrottlerPlugin(
+            100,
+            Swift_Plugins_ThrottlerPlugin::BYTES_PER_MINUTE,
+            $sleeper,
+            $timer,
+        );
+
+        $this->assertInstanceOf(Swift_Plugins_ThrottlerPlugin::class, $plugin);
+    }
+
+    public function testUnknownModeDoesNotSleep()
+    {
+        // Covers lines 110-111: default case in the switch => $sleep = 0
+        $sleeper = $this->createSleeper();
+        $timer   = $this->createTimer();
+
+        // Use an invalid mode value (0xFF)
+        $plugin = new Swift_Plugins_ThrottlerPlugin(
+            100,
+            0xFF,
+            $sleeper,
+            $timer,
+        );
+
+        $timer->shouldReceive('getTimestamp')->andReturn(0);
+        $sleeper->shouldReceive('sleep')->never();
+
+        $message = $this->createMessageWithByteCount(100);
+        $evt     = $this->createSendEvent($message);
+
+        $plugin->beforeSendPerformed($evt);
+        $plugin->sendPerformed($evt);
+    }
+
     private function createSendEvent($message)
     {
         $evt = $this->getMockery('Swift_Events_SendEvent');

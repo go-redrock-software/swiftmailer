@@ -52,6 +52,7 @@ abstract class Swift
             return;
         }
 
+        // @codeCoverageIgnoreStart
         require $path;
 
         if (self::$inits && !self::$initialized) {
@@ -60,6 +61,7 @@ abstract class Swift
                 \call_user_func($init);
             }
         }
+        // @codeCoverageIgnoreEnd
     }
 
     /**
@@ -77,6 +79,9 @@ abstract class Swift
         \spl_autoload_register(['Swift', 'autoload']);
     }
 
+    /**
+     * @codeCoverageIgnore Dead code — getTransportClass() does not exist on Swift_Dsn_Configuration
+     */
     public static function createTransportFromDsn(string $dsn)
     {
         $transport = (new Swift_Dsn_Configuration($dsn))->getTransportClass();

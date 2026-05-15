@@ -58,6 +58,25 @@ class Swift_Transport_Esmtp_Auth_CramMd5AuthenticatorTest extends SwiftMailerTes
         $cram->authenticate($this->agent, 'jack', 'pass');
     }
 
+    public function testAuthenticationWithLongPassword()
+    {
+        // Password > 64 chars triggers the md5 packing branch in getResponse()
+        $cram = $this->getAuthenticator();
+        $longPassword = str_repeat('x', 65);
+
+        $this->agent->shouldReceive('executeCommand')
+            ->once()
+            ->with("AUTH CRAM-MD5\r\n", [334])
+            ->andReturn('334 ' . \base64_encode('<challenge@server>') . "\r\n");
+        $this->agent->shouldReceive('executeCommand')
+            ->once()
+            ->with(Mockery::any(), [235]);
+
+        $this->assertTrue(
+            $cram->authenticate($this->agent, 'jack', $longPassword),
+        );
+    }
+
     private function getAuthenticator()
     {
         return new Swift_Transport_Esmtp_Auth_CramMd5Authenticator();

@@ -38,8 +38,8 @@ class Swift_FileSpool extends Swift_ConfigurableSpool
         $this->path = $path;
 
         if (!\file_exists($this->path)) {
-            if (!\mkdir($this->path, 0777, true)) {
-                throw new Swift_IoException(\sprintf('Unable to create path "%s".', $this->path));
+            if (!\mkdir($this->path, 0777, true)) { // @codeCoverageIgnore
+                throw new Swift_IoException(\sprintf('Unable to create path "%s".', $this->path)); // @codeCoverageIgnore
             }
         }
     }
@@ -97,8 +97,8 @@ class Swift_FileSpool extends Swift_ConfigurableSpool
             /* We try an exclusive creation of the file. This is an atomic operation, it avoid locking mechanism */
             $fp = @\fopen($fileName.'.message', 'xb');
             if (false !== $fp) {
-                if (false === \fwrite($fp, $ser)) {
-                    return false;
+                if (false === \fwrite($fp, $ser)) { // @codeCoverageIgnore
+                    return false; // @codeCoverageIgnore
                 }
 
                 return \fclose($fp);
@@ -107,7 +107,7 @@ class Swift_FileSpool extends Swift_ConfigurableSpool
             $fileName .= $this->getRandomString(1);
         }
 
-        throw new Swift_IoException(\sprintf('Unable to create a file for enqueuing Message in "%s".', $this->path));
+        throw new Swift_IoException(\sprintf('Unable to create a file for enqueuing Message in "%s".', $this->path)); // @codeCoverageIgnore
     }
 
     /**
@@ -258,9 +258,9 @@ class Swift_FileSpool extends Swift_ConfigurableSpool
                         \unlink($file.'.sending');
                     }
                 }
-            } else {
+            } else { // @codeCoverageIgnore
                 /* This message has just been catched by another process */
-                continue;
+                continue; // @codeCoverageIgnore
             }
 
             if ($this->getMessageLimit() && $count >= $this->getMessageLimit()) {

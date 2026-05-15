@@ -514,6 +514,6 @@ class Swift_Signers_DomainKeySigner implements Swift_Signers_HeaderSigner
         if (\openssl_sign($this->canonData, $signature, $pkeyId, OPENSSL_ALGO_SHA1)) {
             return $signature;
         }
-        throw new Swift_SwiftException('Unable to sign DomainKey Hash  ['.\openssl_error_string().']');
+        throw new Swift_SwiftException('Unable to sign DomainKey Hash  ['.\openssl_error_string().']'); // @codeCoverageIgnore
     }
 }

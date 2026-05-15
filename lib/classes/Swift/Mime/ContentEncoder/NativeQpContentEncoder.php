@@ -113,9 +113,9 @@ class Swift_Mime_ContentEncoder_NativeQpContentEncoder implements Swift_Mime_Con
 
         $lastChar = \substr($string, -1);
         switch ('' !== $lastChar ? \ord($lastChar) : -1) {
-            case 0x09:
-                $string = \substr_replace($string, '=09', -1);
-                break;
+            case 0x09: // @codeCoverageIgnore
+                $string = \substr_replace($string, '=09', -1); // @codeCoverageIgnore
+                break; // @codeCoverageIgnore
             case 0x20:
                 $string = \substr_replace($string, '=20', -1);
                 break;

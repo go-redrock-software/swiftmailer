@@ -120,4 +120,54 @@ class Swift_ByteStream_FileByteStreamTest extends PHPUnit\Framework\TestCase
 
         $this->assertEquals('abcdef', $bs->read(8192), 'Read stream not copied correctly');
     }
+
+    public function testSeekReadStreamForwardOnNonSeekable()
+    {
+        \file_put_contents($this->tmpFile, 'abcdefghij');
+
+        $bs = new Swift_ByteStream_FileByteStream($this->tmpFile);
+
+        // Use reflection to simulate a non-seekable stream
+        $reflection = new ReflectionClass(Swift_ByteStream_FileByteStream::class);
+
+        // First trigger the reader to be created
+        $getHandle = $reflection->getMethod('getReadHandle');
+        $getHandle->invoke($bs);
+
+        // Set seekable to false
+        $seekable = $reflection->getProperty('seekable');
+        $seekable->setValue($bs, false);
+
+        // Read initial bytes to advance position
+        $this->assertEquals('abcde', $bs->read(5));
+
+        // Now setReadPointer forward - should use fread to skip bytes
+        $bs->setReadPointer(8);
+
+        // Read remaining
+        $this->assertEquals('ij', $bs->read(10));
+    }
+
+    public function testSeekReadStreamBackwardOnNonSeekableTriggersCopy()
+    {
+        \file_put_contents($this->tmpFile, 'abcdefghij');
+
+        $bs = new Swift_ByteStream_FileByteStream($this->tmpFile);
+
+        $reflection = new ReflectionClass(Swift_ByteStream_FileByteStream::class);
+
+        $getHandle = $reflection->getMethod('getReadHandle');
+        $getHandle->invoke($bs);
+
+        $seekable = $reflection->getProperty('seekable');
+        $seekable->setValue($bs, false);
+
+        // Read forward first
+        $bs->read(5);
+
+        // Now seek backward - should trigger copyReadStream
+        $bs->setReadPointer(2);
+
+        $this->assertEquals('cde', $bs->read(3));
+    }
 }

@@ -140,6 +140,7 @@ class Swift_Webhook_Converter_AmazonSesConverter extends Swift_Webhook_AbstractP
      *
      * This method is protected so tests can override it to avoid network calls.
      */
+    /** @codeCoverageIgnore Network I/O — tests override this method */
     protected function fetchSigningCertificate(string $url): string
     {
         $context = \stream_context_create([

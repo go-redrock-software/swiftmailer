@@ -390,6 +390,44 @@ class Swift_CharacterStream_ArrayCharacterStreamTest extends SwiftMailerTestCase
         return $factory;
     }
 
+    public function testSetPointerBeyondEndClampsToEnd()
+    {
+        $reader  = $this->getReader();
+        $factory = $this->getFactory($reader);
+
+        $stream = new Swift_CharacterStream_ArrayCharacterStream($factory, 'utf-8');
+
+        $reader->shouldReceive('getInitialByteSize')
+            ->zeroOrMoreTimes()
+            ->andReturn(1);
+        $reader->shouldReceive('validateByteSequence')->once()->with([0xD0], 1)->andReturn(1);
+
+        $stream->importString(\pack('C*', 0xD0, 0x94));
+
+        // Set pointer beyond end - should clamp to array_size
+        $stream->setPointer(100);
+        $this->assertFalse($stream->read(1));
+    }
+
+    public function testSetPointerBelowZeroClampsToZero()
+    {
+        $reader  = $this->getReader();
+        $factory = $this->getFactory($reader);
+
+        $stream = new Swift_CharacterStream_ArrayCharacterStream($factory, 'utf-8');
+
+        $reader->shouldReceive('getInitialByteSize')
+            ->zeroOrMoreTimes()
+            ->andReturn(1);
+        $reader->shouldReceive('validateByteSequence')->once()->with([0xD0], 1)->andReturn(1);
+
+        $stream->importString(\pack('C*', 0xD0, 0x94));
+
+        // Set pointer below zero - should clamp to 0
+        $stream->setPointer(-5);
+        $this->assertIdenticalBinary(\pack('C*', 0xD0, 0x94), $stream->read(1));
+    }
+
     private function getByteStream()
     {
         return $this->getMockery('Swift_OutputByteStream');

@@ -105,6 +105,7 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
      *
      * @param string $source
      */
+    /** @codeCoverageIgnore Covered via EsmtpTransport subclass tests */
     public function setSourceIp($source)
     {
         $this->sourceIp = $source;
@@ -114,6 +115,7 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
      * Returns the IP used to connect to the destination.
      *
      * @return string
+     * @codeCoverageIgnore Covered via EsmtpTransport subclass tests
      */
     public function getSourceIp()
     {
@@ -185,7 +187,7 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
     public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null)
     {
         if (!$this->isStarted()) {
-            $this->start();
+            $this->start(); // @codeCoverageIgnore
         }
 
         $sent             = 0;
@@ -293,11 +295,11 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
             $this->executeCommand("NOOP\r\n", [250]);
         } catch (Swift_TransportException $e) {
             try {
-                $this->stop();
-            } catch (Swift_TransportException $e) {
+                $this->stop(); // @codeCoverageIgnore
+            } catch (Swift_TransportException $e) { // @codeCoverageIgnore
             }
 
-            return false;
+            return false; // @codeCoverageIgnore
         }
 
         return true;
@@ -570,6 +572,7 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
     /**
      * Destructor.
      */
+    /** @codeCoverageIgnore Destructor runs during GC */
     public function __destruct()
     {
         try {

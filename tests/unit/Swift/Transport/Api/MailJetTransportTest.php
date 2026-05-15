@@ -256,6 +256,43 @@ class Swift_Transport_Api_MailJetTransportTest extends TestCase
         $this->assertEquals(['campaign' => 'summer'], $msg['Properties']);
     }
 
+    public function testSendWithAttachments(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message->setFrom(['from@example.com' => 'Sender']);
+        $message->setTo(['to@example.com' => 'Recipient']);
+        $message->setSubject('Attachment Test');
+        $message->setBody('Body');
+        $message->attach(new \Swift_Attachment('file content', 'doc.pdf', 'application/pdf'));
+
+        $capturedPayload = null;
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('POST', $this->anything(), $this->callback(function ($options) use (&$capturedPayload) {
+                $capturedPayload = $options['json'];
+
+                return true;
+            }))
+            ->willReturn(new Response(200, [], \json_encode([
+                'Messages' => [['Status' => 'success']],
+            ])));
+
+        $evt = $this->createMock(\Swift_Events_SendEvent::class);
+        $this->eventDispatcherMock->method('createSendEvent')->willReturn($evt);
+        $this->eventDispatcherMock->method('createTransportChangeEvent')
+            ->willReturn($this->createMock(\Swift_Events_TransportChangeEvent::class));
+
+        $this->transport->send($message);
+
+        $msg = $capturedPayload['Messages'][0];
+        $this->assertArrayHasKey('Attachments', $msg);
+        $this->assertCount(1, $msg['Attachments']);
+        $this->assertSame('doc.pdf', $msg['Attachments'][0]['Filename']);
+        $this->assertSame('application/pdf', $msg['Attachments'][0]['ContentType']);
+        $this->assertSame(\base64_encode('file content'), $msg['Attachments'][0]['Base64Content']);
+    }
+
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
     {
         return new \Swift_Mime_SimpleMessage(

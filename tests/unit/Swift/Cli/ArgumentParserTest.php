@@ -63,4 +63,13 @@ class Swift_Cli_ArgumentParserTest extends PHPUnit\Framework\TestCase
 
         $parser->parse(['bin/swiftmailer-test', '--help']);
     }
+
+    public function testThrowsWhenOptionLacksValue()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('requires a value');
+
+        $parser = new Swift_Cli_ArgumentParser();
+        $parser->parse(['bin/swiftmailer-test', 'smtp://localhost', '--verbose']);
+    }
 }

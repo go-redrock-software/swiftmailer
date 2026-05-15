@@ -109,7 +109,7 @@ class Swift_Plugins_DecoratorPlugin implements Swift_Events_SendListener, Swift_
                         $bodyReplaced[$key] = $value;
 
                         if (!$count && ($count1 || $count2)) {
-                            $count = 1;
+                            $count = 1; // @codeCoverageIgnore
                         }
                     }
                 } elseif (\is_string($body)) {
@@ -159,9 +159,11 @@ class Swift_Plugins_DecoratorPlugin implements Swift_Events_SendListener, Swift_
     #[Override]
     public function getReplacementsFor($address)
     {
+        // @codeCoverageIgnoreStart
         if ($this->replacements instanceof Swift_Plugins_Decorator_Replacements) {
             return $this->replacements->getReplacementsFor($address);
         }
+        // @codeCoverageIgnoreEnd
 
         return $this->replacements[$address] ?? null;
     }

@@ -309,6 +309,34 @@ class Swift_Transport_Api_MailGunTransportTest extends TestCase
     /**
      * Index multipart form fields by name for easy assertion.
      */
+    public function testSendApiErrorThrowsException(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message->setFrom(['from@example.com' => 'Sender']);
+        $message->setTo(['to@example.com' => 'Recipient']);
+        $message->setSubject('Error Test');
+        $message->setBody('Hello');
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn(new Response(400, [], \json_encode([
+                'message' => 'Invalid domain',
+            ])));
+
+        $this->stubEventDispatcher();
+
+        $exceptionEvt = $this->createMock(\Swift_Events_TransportExceptionEvent::class);
+        $this->eventDispatcherMock->method('createTransportExceptionEvent')->willReturn($exceptionEvt);
+
+        $failedEvt = $this->createMock(\Swift_Events_FailedMessageEvent::class);
+        $this->eventDispatcherMock->method('createFailedMessageEvent')->willReturn($failedEvt);
+
+        $this->expectException(\Swift_TransportException::class);
+        $this->expectExceptionMessage('Mailgun API error: Invalid domain');
+
+        $this->transport->send($message);
+    }
+
     private function indexMultipart(array $multipart): array
     {
         $fields = [];

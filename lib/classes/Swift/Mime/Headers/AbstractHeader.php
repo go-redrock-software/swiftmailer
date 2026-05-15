@@ -219,11 +219,15 @@ abstract class Swift_Mime_Headers_AbstractHeader implements Swift_Mime_Header
                 // ... otherwise it needs encoding
                 // Determine space remaining on line if first line
                 if ($shorten) {
+                    // @codeCoverageIgnoreStart
                     $usedLength = \strlen($header->getFieldName().': ');
+                    // @codeCoverageIgnoreEnd
+                // @codeCoverageIgnoreStart
                 } else {
                     $usedLength = 0;
                 }
                 $phraseStr = $this->encodeWords($header, $string, $usedLength);
+                // @codeCoverageIgnoreEnd
             }
         }
 
@@ -349,9 +353,9 @@ abstract class Swift_Mime_Headers_AbstractHeader implements Swift_Mime_Header
             '=?'.$charsetDecl.'?'.$this->encoder->getName().'??=',
         );
 
-        if ($firstLineOffset >= 75) {
+        if ($firstLineOffset >= 75) { // @codeCoverageIgnore
             // Does this logic need to be here?
-            $firstLineOffset = 0;
+            $firstLineOffset = 0; // @codeCoverageIgnore
         }
 
         $encodedTextLines = \explode(

@@ -56,6 +56,19 @@ class Swift_Mime_EmbeddedFileTest extends Swift_Mime_AttachmentTest
         return $this->createEmbeddedFile($headers, $encoder, $cache, $mimeTypes);
     }
 
+    public function testFromPathCreatesInstance()
+    {
+        $tmpFile = \tempnam(\sys_get_temp_dir(), 'swift_embed_');
+        \file_put_contents($tmpFile, 'test content');
+
+        try {
+            $file = Swift_EmbeddedFile::fromPath($tmpFile);
+            $this->assertInstanceOf(Swift_Mime_EmbeddedFile::class, $file);
+        } finally {
+            @\unlink($tmpFile);
+        }
+    }
+
     private function createEmbeddedFile($headers, $encoder, $cache)
     {
         $idGenerator = new Swift_Mime_IdGenerator('example.com');

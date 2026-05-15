@@ -403,4 +403,18 @@ class Swift_Plugins_DecoratorPluginTest extends SwiftMailerTestCase
         // No replacements means body unchanged
         $this->assertEquals('Hello {name}', $message->getBody());
     }
+
+    public function testGetReplacementsForDelegatesWhenReplacementsIsObject()
+    {
+        $replacements = $this->createReplacements();
+        $replacements->shouldReceive('getReplacementsFor')
+            ->once()
+            ->with('test@example.com')
+            ->andReturn(['{name}' => 'TestUser']);
+
+        $plugin = $this->createPlugin($replacements);
+        $result = $plugin->getReplacementsFor('test@example.com');
+
+        $this->assertSame(['{name}' => 'TestUser'], $result);
+    }
 }

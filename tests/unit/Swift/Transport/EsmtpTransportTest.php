@@ -769,4 +769,602 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
         $smtp->setPort(587);
         $this->assertEquals(587, $smtp->getPort());
     }
+
+    public function testStreamOptionsCanBeSetAndFetched()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+        $options = ['ssl' => ['verify_peer' => false]];
+        $result = $smtp->setStreamOptions($options);
+        $this->assertSame($smtp, $result);
+        $this->assertEquals($options, $smtp->getStreamOptions());
+    }
+
+    public function testSourceIpCanBeSetAndFetched()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+        $this->assertNull($smtp->getSourceIp());
+        $result = $smtp->setSourceIp('10.0.0.1');
+        $this->assertSame($smtp, $result);
+        $this->assertEquals('10.0.0.1', $smtp->getSourceIp());
+    }
+
+    public function testUndefinedMixinMethodTriggersError()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+
+        $this->expectError();
+        $smtp->noSuchMethod();
+    }
+
+    public function testStartTlsIsNegotiated()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+        $smtp->setEncryption(CONNECTION_ENCRYPTION_MODE_STARTTLS);
+
+        $buf->shouldReceive('initialize')
+            ->once();
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(0)
+            ->andReturn("220 server.tld ready\r\n");
+
+        // First EHLO
+        $buf->shouldReceive('write')
+            ->once()
+            ->with(Mockery::pattern('~^EHLO .+?\r\n$~D'))
+            ->andReturn(1);
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(1)
+            ->andReturn("250 ServerName\r\n");
+
+        // STARTTLS command
+        $buf->shouldReceive('write')
+            ->once()
+            ->with("STARTTLS\r\n")
+            ->andReturn(2);
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(2)
+            ->andReturn("220 Go ahead\r\n");
+
+        $buf->shouldReceive('startTLS')
+            ->once()
+            ->andReturn(true);
+
+        // Second EHLO after TLS
+        $buf->shouldReceive('write')
+            ->once()
+            ->with(Mockery::pattern('~^EHLO .+?\r\n$~D'))
+            ->andReturn(3);
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(3)
+            ->andReturn("250 ServerName\r\n");
+
+        $this->finishBuffer($buf);
+        $smtp->start();
+    }
+
+    public function testStartTlsFailureThrowsException()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+        $smtp->setEncryption(CONNECTION_ENCRYPTION_MODE_STARTTLS);
+
+        $buf->shouldReceive('initialize')
+            ->once();
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(0)
+            ->andReturn("220 server.tld ready\r\n");
+
+        // EHLO
+        $buf->shouldReceive('write')
+            ->once()
+            ->with(Mockery::pattern('~^EHLO .+?\r\n$~D'))
+            ->andReturn(1);
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(1)
+            ->andReturn("250 ServerName\r\n");
+
+        // STARTTLS
+        $buf->shouldReceive('write')
+            ->once()
+            ->with("STARTTLS\r\n")
+            ->andReturn(2);
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(2)
+            ->andReturn("220 Go ahead\r\n");
+
+        $buf->shouldReceive('startTLS')
+            ->once()
+            ->andReturn(false);
+
+        $this->finishBuffer($buf);
+
+        try {
+            $smtp->start();
+            $this->fail('Expected Swift_TransportException for failed STARTTLS');
+        } catch (Swift_TransportException $e) {
+            $this->assertStringContainsString('STARTTLS', $e->getMessage());
+        }
+    }
+
+    public function testStartTlsWithEhloFallbackToHelo()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+        $smtp->setEncryption(CONNECTION_ENCRYPTION_MODE_STARTTLS);
+
+        $buf->shouldReceive('initialize')
+            ->once();
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(0)
+            ->andReturn("220 server.tld ready\r\n");
+
+        // First EHLO
+        $buf->shouldReceive('write')
+            ->once()
+            ->with(Mockery::pattern('~^EHLO .+?\r\n$~D'))
+            ->andReturn(1);
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(1)
+            ->andReturn("250 ServerName\r\n");
+
+        // STARTTLS
+        $buf->shouldReceive('write')
+            ->once()
+            ->with("STARTTLS\r\n")
+            ->andReturn(2);
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(2)
+            ->andReturn("220 Go ahead\r\n");
+
+        $buf->shouldReceive('startTLS')
+            ->once()
+            ->andReturn(true);
+
+        // Second EHLO after TLS fails => fallback to HELO
+        $buf->shouldReceive('write')
+            ->once()
+            ->with(Mockery::pattern('~^EHLO .+?\r\n$~D'))
+            ->andReturn(3);
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(3)
+            ->andReturn("501 Not accepted\r\n");
+
+        $buf->shouldReceive('write')
+            ->once()
+            ->with(Mockery::pattern('~^HELO .+?\r\n$~D'))
+            ->andReturn(4);
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(4)
+            ->andReturn("250 OK\r\n");
+
+        $this->finishBuffer($buf);
+        $smtp->start();
+    }
+
+    public function testAutoAddressEncoderIsUpdatedOnSmtpUtf8()
+    {
+        $buf  = $this->getBuffer();
+        $autoEncoder = new Swift_AddressEncoder_AutoAddressEncoder();
+        $smtp = $this->getTransport($buf, null, $autoEncoder);
+
+        $buf->shouldReceive('initialize')
+            ->once();
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(0)
+            ->andReturn("220 server.tld ready\r\n");
+        $buf->shouldReceive('write')
+            ->once()
+            ->with(Mockery::pattern('~^EHLO .+?\r\n$~D'))
+            ->andReturn(1);
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(1)
+            ->andReturn("250-ServerName\r\n");
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(1)
+            ->andReturn("250 SMTPUTF8\r\n");
+
+        $this->finishBuffer($buf);
+        $smtp->start();
+
+        $this->assertTrue($autoEncoder->isSmtpUtf8Available());
+    }
+
+    public function testExtensionHandlersAreCalledDuringExecuteCommand()
+    {
+        $buf     = $this->getBuffer();
+        $handler = $this->getMockery('Swift_Transport_EsmtpHandler');
+        $handler->shouldReceive('getHandledKeyword')
+            ->zeroOrMoreTimes()
+            ->andReturn('TEST');
+        $handler->shouldReceive('getPriorityOver')
+            ->zeroOrMoreTimes()
+            ->andReturn(0);
+        $handler->shouldReceive('exposeMixinMethods')
+            ->zeroOrMoreTimes()
+            ->andReturn([]);
+        $handler->shouldReceive('setKeywordParams')
+            ->zeroOrMoreTimes();
+
+        $dispatcher     = $this->createEventDispatcher();
+        $addressEncoder = new Swift_AddressEncoder_IdnAddressEncoder();
+        $smtp = new Swift_Transport_EsmtpTransport($buf, [$handler], $dispatcher, 'example.org', $addressEncoder);
+
+        // Simulate that the handler's keyword is in capabilities
+        // by starting the transport with EHLO returning TEST capability
+        $buf->shouldReceive('initialize')->once();
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(0)
+            ->andReturn("220 server.tld ready\r\n");
+        $buf->shouldReceive('write')
+            ->once()
+            ->with(Mockery::pattern('~^EHLO .+?\r\n$~D'))
+            ->andReturn(1);
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(1)
+            ->andReturn("250-ServerName\r\n");
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(1)
+            ->andReturn("250 TEST\r\n");
+
+        $handler->shouldReceive('afterEhlo')
+            ->once()
+            ->with($smtp);
+
+        // When executeCommand is called, onCommand should be invoked on active handlers
+        $handler->shouldReceive('onCommand')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($agent, $cmd, $codes, &$failures, &$stop) {
+                return null; // don't stop
+            });
+
+        $this->finishBuffer($buf);
+        $smtp->start();
+    }
+
+    public function testMixinSetMethodReturnsTransport()
+    {
+        $buf     = $this->getBuffer();
+        $handler = $this->getMockery('Swift_Transport_EsmtpHandler');
+        $handler->shouldReceive('getHandledKeyword')
+            ->zeroOrMoreTimes()
+            ->andReturn('AUTH');
+        $handler->shouldReceive('getPriorityOver')
+            ->zeroOrMoreTimes()
+            ->andReturn(0);
+        $handler->shouldReceive('exposeMixinMethods')
+            ->zeroOrMoreTimes()
+            ->andReturn(['setUsername', 'getUsername']);
+        $handler->shouldReceive('setKeywordParams')
+            ->zeroOrMoreTimes();
+
+        // setUsername returns null => __call should return $this for fluid interface
+        $handler->shouldReceive('setUsername')
+            ->once()
+            ->with('jack')
+            ->andReturn(null);
+
+        $dispatcher     = $this->createEventDispatcher();
+        $addressEncoder = new Swift_AddressEncoder_IdnAddressEncoder();
+        $smtp = new Swift_Transport_EsmtpTransport($buf, [$handler], $dispatcher, 'example.org', $addressEncoder);
+
+        $result = $smtp->setUsername('jack');
+        $this->assertSame($smtp, $result);
+    }
+
+    public function testMixinGetMethodReturnsValue()
+    {
+        $buf     = $this->getBuffer();
+        $handler = $this->getMockery('Swift_Transport_EsmtpHandler');
+        $handler->shouldReceive('getHandledKeyword')
+            ->zeroOrMoreTimes()
+            ->andReturn('AUTH');
+        $handler->shouldReceive('getPriorityOver')
+            ->zeroOrMoreTimes()
+            ->andReturn(0);
+        $handler->shouldReceive('exposeMixinMethods')
+            ->zeroOrMoreTimes()
+            ->andReturn(['setUsername', 'getUsername']);
+        $handler->shouldReceive('setKeywordParams')
+            ->zeroOrMoreTimes();
+
+        $handler->shouldReceive('getUsername')
+            ->once()
+            ->andReturn('jack');
+
+        $dispatcher     = $this->createEventDispatcher();
+        $addressEncoder = new Swift_AddressEncoder_IdnAddressEncoder();
+        $smtp = new Swift_Transport_EsmtpTransport($buf, [$handler], $dispatcher, 'example.org', $addressEncoder);
+
+        $this->assertEquals('jack', $smtp->getUsername());
+    }
+
+    public function testBufferInitFailureIsRethrown()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+
+        $buf->shouldReceive('initialize')
+            ->once()
+            ->andThrow(new Swift_TransportException('Connection refused'));
+
+        try {
+            $smtp->start();
+            $this->fail('Expected Swift_TransportException');
+        } catch (Swift_TransportException $e) {
+            $this->assertStringContainsString('Connection refused', $e->getMessage());
+            $this->assertFalse($smtp->isStarted());
+        }
+    }
+
+    public function testSendWithoutSenderThrowsException()
+    {
+        $buf     = $this->getBuffer();
+        $smtp    = $this->getTransport($buf);
+        $message = $this->createMessage();
+
+        $message->shouldReceive('getFrom')
+            ->once()
+            ->andReturn([]);
+        $message->shouldReceive('getSender')
+            ->once()
+            ->andReturn([]);
+        $message->shouldReceive('getReturnPath')
+            ->once()
+            ->andReturn(null);
+        $message->shouldReceive('getTo')
+            ->zeroOrMoreTimes()
+            ->andReturn(['foo@bar' => null]);
+
+        $this->finishBuffer($buf);
+        $smtp->start();
+
+        try {
+            $smtp->send($message);
+            $this->fail('Expected Swift_TransportException for missing sender');
+        } catch (Swift_TransportException $e) {
+            $this->assertStringContainsString('Cannot send message without a sender address', $e->getMessage());
+        }
+    }
+
+    public function testSendWithEnvelopeUsesEnvelopePath()
+    {
+        $buf     = $this->getBuffer();
+        $smtp    = $this->getTransport($buf);
+        $message = $this->createMessage();
+
+        $message->shouldReceive('getFrom')
+            ->zeroOrMoreTimes()
+            ->andReturn(['orig@example.com' => 'Orig']);
+        $message->shouldReceive('getTo')
+            ->zeroOrMoreTimes()
+            ->andReturn(['to@example.com' => null]);
+
+        $envelope = new Swift_Envelope('env-sender@example.com', ['env-rcpt@example.com']);
+
+        $buf->shouldReceive('write')
+            ->once()
+            ->with("MAIL FROM:<env-sender@example.com>\r\n")
+            ->andReturn(1);
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(1)
+            ->andReturn("250 OK\r\n");
+        $buf->shouldReceive('write')
+            ->once()
+            ->with("RCPT TO:<env-rcpt@example.com>\r\n")
+            ->andReturn(2);
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(2)
+            ->andReturn("250 OK\r\n");
+
+        $this->finishBuffer($buf);
+        $smtp->start();
+        $count = $smtp->send($message, $failures, $envelope);
+        $this->assertEquals(1, $count);
+    }
+
+    public function testStreamMessageCatchesTransportException()
+    {
+        $buf     = $this->getBuffer();
+        $smtp    = $this->getTransport($buf);
+        $message = $this->createMessage();
+
+        $message->shouldReceive('getFrom')
+            ->zeroOrMoreTimes()
+            ->andReturn(['me@domain.com' => 'Me']);
+        $message->shouldReceive('getTo')
+            ->zeroOrMoreTimes()
+            ->andReturn(['foo@bar' => null]);
+        $message->shouldReceive('toByteStream')
+            ->once()
+            ->andThrow(new Swift_TransportException('Stream write failed'));
+
+        $this->finishBuffer($buf);
+        $smtp->start();
+
+        try {
+            $smtp->send($message);
+            $this->fail('Expected Swift_TransportException');
+        } catch (Swift_TransportException $e) {
+            $this->assertStringContainsString('Stream write failed', $e->getMessage());
+        }
+    }
+
+    public function testGetFullResponseCatchesIoException()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+
+        $buf->shouldReceive('initialize')
+            ->once();
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(0)
+            ->andThrow(new Swift_IoException('Read error'));
+
+        try {
+            $smtp->start();
+            $this->fail('Expected Swift_TransportException');
+        } catch (Swift_TransportException $e) {
+            $this->assertStringContainsString('Read error', $e->getMessage());
+        }
+    }
+
+    public function testGetFullResponseCatchesTransportException()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+
+        $buf->shouldReceive('initialize')
+            ->once();
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(0)
+            ->andThrow(new Swift_TransportException('Connection lost'));
+
+        try {
+            $smtp->start();
+            $this->fail('Expected Swift_TransportException');
+        } catch (Swift_TransportException $e) {
+            $this->assertStringContainsString('Connection lost', $e->getMessage());
+        }
+    }
+
+    public function testSerializationIsNotAllowed()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+
+        $this->expectException(BadMethodCallException::class);
+        $smtp->__sleep();
+    }
+
+    public function testDeserializationIsNotAllowed()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+
+        $this->expectException(BadMethodCallException::class);
+        $smtp->__wakeup();
+    }
+
+    public function testStopTerminateFailureIsRethrown()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+
+        $buf->shouldReceive('initialize')->once();
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(0)
+            ->andReturn("220 server.tld ready\r\n");
+        $buf->shouldReceive('write')
+            ->once()
+            ->with(Mockery::pattern('~^EHLO .+?\r\n$~D'))
+            ->andReturn(1);
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(1)
+            ->andReturn("250 ServerName\r\n");
+
+        $buf->shouldReceive('write')
+            ->once()
+            ->with("QUIT\r\n")
+            ->andReturn(2);
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(2)
+            ->andReturn("221 Bye\r\n");
+
+        $buf->shouldReceive('terminate')
+            ->once()
+            ->andThrow(new Swift_TransportException('Terminate failed'));
+
+        $smtp->start();
+        $this->assertTrue($smtp->isStarted());
+
+        try {
+            $smtp->stop();
+            $this->fail('Expected Swift_TransportException');
+        } catch (Swift_TransportException $e) {
+            $this->assertStringContainsString('Terminate failed', $e->getMessage());
+        }
+    }
+
+    public function testPingStopFailureIsSwallowed()
+    {
+        // Test the ping() path where NOOP fails and stop() also throws.
+        // This covers line 297 (catch inside ping's stop call).
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+
+        // Set up buffer so start() succeeds
+        $buf->shouldReceive('initialize')->once();
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(0)
+            ->andReturn("220 server.tld ready\r\n");
+        $buf->shouldReceive('write')
+            ->once()
+            ->with(Mockery::pattern('~^EHLO .+?\r\n$~D'))
+            ->andReturn(1);
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(1)
+            ->andReturn("250 ServerName\r\n");
+
+        // NOOP fails, triggering catch block
+        $buf->shouldReceive('write')
+            ->once()
+            ->with("NOOP\r\n")
+            ->andThrow(new Swift_TransportException('Connection reset'));
+
+        // stop() inside catch also throws -> swallowed
+        $buf->shouldReceive('write')
+            ->with("QUIT\r\n")
+            ->andThrow(new Swift_TransportException('Already disconnected'));
+        $buf->shouldReceive('terminate')
+            ->once();
+
+        // Catch-all for any other reads/writes
+        $buf->shouldReceive('readLine')->zeroOrMoreTimes()->andReturn(false);
+        $buf->shouldReceive('write')->zeroOrMoreTimes()->andReturn(false);
+
+        $smtp->start();
+        $this->assertTrue($smtp->isStarted());
+        $this->assertFalse($smtp->ping());
+    }
+
+    public function testAddressEncoderCanBeSetAndFetched()
+    {
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+
+        $encoder = new Swift_AddressEncoder_Utf8AddressEncoder();
+        $smtp->setAddressEncoder($encoder);
+        $this->assertSame($encoder, $smtp->getAddressEncoder());
+    }
 }

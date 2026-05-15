@@ -614,6 +614,176 @@ OEL;
         return $newContent."\r\n".self::getBodyOfMessage($content);
     }
 
+    public function testSignerWithNoCertificateOrEncryptReturnsEarly()
+    {
+        $signer  = new Swift_Signers_SMimeSigner();
+        $message = (new Swift_Message('Test'))
+            ->setFrom(['a@b.com' => 'A'])
+            ->setTo(['c@d.com' => 'C'])
+            ->setBody('Test body');
+
+        $originalBody = $message->getBody();
+        $signer->signMessage($message);
+        $this->assertEquals($originalBody, $message->getBody());
+    }
+
+    public function testGetAlteredHeaders()
+    {
+        $signer = new Swift_Signers_SMimeSigner();
+        $this->assertEquals(
+            ['Content-Type', 'Content-Transfer-Encoding', 'Content-Disposition'],
+            $signer->getAlteredHeaders(),
+        );
+    }
+
+    public function testResetReturnsSelf()
+    {
+        $signer = new Swift_Signers_SMimeSigner();
+        $this->assertSame($signer, $signer->reset());
+    }
+
+    public function testSignThenEncryptDefault()
+    {
+        $signer = new Swift_Signers_SMimeSigner();
+        $this->assertTrue($signer->isSignThenEncrypt());
+    }
+
+    public function testSetSignThenEncryptFalse()
+    {
+        $signer = new Swift_Signers_SMimeSigner();
+        $result = $signer->setSignThenEncrypt(false);
+        $this->assertSame($signer, $result);
+        $this->assertFalse($signer->isSignThenEncrypt());
+    }
+
+    public function testGetSignCertificateAndPrivateKey()
+    {
+        $signer = new Swift_Signers_SMimeSigner();
+        $signer->setSignCertificate(
+            $this->samplesDir.'smime/sign.crt',
+            $this->samplesDir.'smime/sign.key',
+        );
+        $this->assertStringContainsString('sign.crt', $signer->getSignCertificate());
+        $this->assertStringContainsString('sign.key', $signer->getSignPrivateKey());
+    }
+
+    public function testSetSignCertificateWithArrayPrivateKey()
+    {
+        $signer = new Swift_Signers_SMimeSigner();
+        $signer->setSignCertificate(
+            $this->samplesDir.'smime/sign.crt',
+            [$this->samplesDir.'smime/sign.key', ''],
+        );
+        $privateKey = $signer->getSignPrivateKey();
+        $this->assertIsArray($privateKey);
+        $this->assertStringContainsString('sign.key', $privateKey[0]);
+    }
+
+    public function testSetEncryptCertificateWithArray()
+    {
+        $signer = new Swift_Signers_SMimeSigner();
+        $result = $signer->setEncryptCertificate(
+            [$this->samplesDir.'smime/encrypt.crt', $this->samplesDir.'smime/encrypt2.crt'],
+        );
+        $this->assertSame($signer, $result);
+    }
+
+    public function testConstructorWithSignAndEncrypt()
+    {
+        $signer = new Swift_Signers_SMimeSigner(
+            $this->samplesDir.'smime/sign.crt',
+            $this->samplesDir.'smime/sign.key',
+            $this->samplesDir.'smime/encrypt.crt',
+        );
+        $this->assertStringContainsString('sign.crt', $signer->getSignCertificate());
+    }
+
+    public function testSetWrapFullMessageDoesNotThrow()
+    {
+        $signer = new Swift_Signers_SMimeSigner();
+        $signer->setWrapFullMessage(true);
+        $this->addToAssertionCount(1);
+    }
+
+    public function testSetEncryptCertificateWithCipher()
+    {
+        // Covers line 131: cipher parameter is set
+        $signer = new Swift_Signers_SMimeSigner();
+        $result = $signer->setEncryptCertificate(
+            $this->samplesDir.'smime/encrypt.crt',
+            OPENSSL_CIPHER_AES_256_CBC,
+        );
+        $this->assertSame($signer, $result);
+    }
+
+    public function testSignWithMismatchedCertAndKeyThrowsException()
+    {
+        // Covers line 290: openssl_pkcs7_sign failure
+        $message = (new Swift_Message('Test'))
+            ->setFrom(['john@doe.com' => 'John'])
+            ->setTo(['receiver@domain.org'])
+            ->setBody('Body');
+
+        $signer = new Swift_Signers_SMimeSigner();
+        // Use sign.crt with encrypt.key — they do not match
+        $signer->setSignCertificate(
+            $this->samplesDir.'smime/sign.crt',
+            $this->samplesDir.'smime/encrypt.key',
+        );
+
+        $message->attachSigner($signer);
+
+        // Suppress the OpenSSL warning from openssl_pkcs7_sign
+        $thrown = null;
+        \set_error_handler(static function () { return true; });
+        try {
+            $messageStream = new Swift_ByteStream_TemporaryFileByteStream();
+            $message->toByteStream($messageStream);
+        } catch (Swift_IoException $e) {
+            $thrown = $e;
+        } finally {
+            \restore_error_handler();
+        }
+
+        $this->assertNotNull($thrown, 'Expected Swift_IoException for sign failure');
+        $this->assertStringContainsString('Failed to sign S/Mime message', $thrown->getMessage());
+    }
+
+    public function testEncryptWithInvalidCertificateThrowsException()
+    {
+        // Covers line 347: openssl_pkcs7_encrypt failure
+        $message = (new Swift_Message('Test'))
+            ->setFrom(['john@doe.com' => 'John'])
+            ->setTo(['receiver@domain.org'])
+            ->setBody('Body');
+
+        $signer = new Swift_Signers_SMimeSigner();
+        $tempFile = \tempnam(\sys_get_temp_dir(), 'smime_test_');
+        \file_put_contents($tempFile, 'not a valid certificate');
+
+        $thrown = null;
+        try {
+            $signer->setEncryptCertificate($tempFile);
+            $message->attachSigner($signer);
+
+            // Suppress the OpenSSL warning from openssl_pkcs7_encrypt
+            \set_error_handler(static function () { return true; });
+            try {
+                $messageStream = new Swift_ByteStream_TemporaryFileByteStream();
+                $message->toByteStream($messageStream);
+            } catch (Swift_IoException $e) {
+                $thrown = $e;
+            } finally {
+                \restore_error_handler();
+            }
+        } finally {
+            @\unlink($tempFile);
+        }
+
+        $this->assertNotNull($thrown, 'Expected Swift_IoException for encrypt failure');
+        $this->assertStringContainsString('Failed to encrypt S/Mime message', $thrown->getMessage());
+    }
+
     /**
      * Returns the headers of the message.
      *
