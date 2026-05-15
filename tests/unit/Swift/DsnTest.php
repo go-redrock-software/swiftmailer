@@ -18,16 +18,13 @@ class Swift_DsnTest extends TestCase
 
     protected function setUp(): void
     {
-        // Mock the Dsn object
         $this->dsn = $this->createMock(Dsn::class);
 
-        // Define return values for the Dsn object
         $this->dsn->method('getScheme')->willReturn('smtp');
         $this->dsn->method('getUser')->willReturn('user');
         $this->dsn->method('getPassword')->willReturn('pass');
         $this->dsn->method('getHost')->willReturn('localhost');
         $this->dsn->method('getPort')->willReturn(25);
-
         $this->dsn->method('getParameters')->willReturn(['param1' => 'value1']);
 
         $this->swiftDsn = new Swift_Dsn($this->dsn);
@@ -110,6 +107,23 @@ class Swift_DsnTest extends TestCase
             ['resend', Swift_Transport_Api_ResendTransport::class],
             ['scaleway', Swift_Transport_Api_ScalewayTransport::class],
             ['sendgrid', Swift_Transport_Api_SendgridTransport::class],
+            ['native', Swift_Transport_SendmailTransport::class],
+            ['brevo+smtp', Swift_Transport_EsmtpTransport::class],
+            ['sendgrid+smtp', Swift_Transport_EsmtpTransport::class],
+            ['mailgun+smtp', Swift_Transport_EsmtpTransport::class],
+            ['postmark+smtp', Swift_Transport_EsmtpTransport::class],
+            ['mailtrap+sandbox', Swift_Transport_Api_MailtrapTransport::class],
+            ['mailtrap+smtp', Swift_Transport_EsmtpTransport::class],
+            ['amazon+smtp', Swift_Transport_EsmtpTransport::class],
+            ['mandrill+smtp', Swift_Transport_EsmtpTransport::class],
+            ['resend+smtp', Swift_Transport_EsmtpTransport::class],
+            ['ahasend+smtp', Swift_Transport_EsmtpTransport::class],
+            ['mailomat+smtp', Swift_Transport_EsmtpTransport::class],
+            ['sweego+smtp', Swift_Transport_EsmtpTransport::class],
+            ['mailersend+smtp', Swift_Transport_EsmtpTransport::class],
+            ['mailjet+smtp', Swift_Transport_EsmtpTransport::class],
+            ['scaleway+smtp', Swift_Transport_EsmtpTransport::class],
+            ['infobip+smtp', Swift_Transport_EsmtpTransport::class],
         ];
     }
 
