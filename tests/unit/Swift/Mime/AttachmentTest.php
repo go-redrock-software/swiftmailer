@@ -345,6 +345,92 @@ class Swift_Mime_AttachmentTest extends Swift_Mime_AbstractMimeEntityTest
         );
     }
 
+    public function testPathTraversalStrippedFromFilename()
+    {
+        $disposition = $this->createHeader('Content-Disposition', 'attachment', [], false);
+        $disposition->shouldReceive('setParameter')->once()->with('filename', '....etcpasswd');
+        $disposition->shouldReceive('setParameter')->zeroOrMoreTimes();
+
+        $attachment = $this->createAttachment(
+            $this->createHeaderSet(['Content-Disposition' => $disposition]),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $attachment->setFilename('../../etc/passwd');
+    }
+
+    public function testNullBytesStrippedFromFilename()
+    {
+        $disposition = $this->createHeader('Content-Disposition', 'attachment', [], false);
+        $disposition->shouldReceive('setParameter')->once()->with('filename', 'file.php.jpg');
+        $disposition->shouldReceive('setParameter')->zeroOrMoreTimes();
+
+        $attachment = $this->createAttachment(
+            $this->createHeaderSet(['Content-Disposition' => $disposition]),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $attachment->setFilename("file.php\0.jpg");
+    }
+
+    public function testRtlOverrideStrippedFromFilename()
+    {
+        $disposition = $this->createHeader('Content-Disposition', 'attachment', [], false);
+        $disposition->shouldReceive('setParameter')->once()->with('filename', 'invoicegpj.exe');
+        $disposition->shouldReceive('setParameter')->zeroOrMoreTimes();
+
+        $attachment = $this->createAttachment(
+            $this->createHeaderSet(['Content-Disposition' => $disposition]),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $attachment->setFilename("invoice\u{202E}gpj.exe");
+    }
+
+    public function testLongFilenamesTruncated()
+    {
+        $disposition = $this->createHeader('Content-Disposition', 'attachment', [], false);
+        $disposition->shouldReceive('setParameter')->withArgs(function ($key, $value) {
+            return 'filename' === $key && strlen($value) <= 255 && str_ends_with($value, '.pdf');
+        })->once();
+        $disposition->shouldReceive('setParameter')->zeroOrMoreTimes();
+
+        $attachment = $this->createAttachment(
+            $this->createHeaderSet(['Content-Disposition' => $disposition]),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $attachment->setFilename(str_repeat('a', 300).'.pdf');
+    }
+
+    public function testControlCharsStrippedFromFilename()
+    {
+        $disposition = $this->createHeader('Content-Disposition', 'attachment', [], false);
+        $disposition->shouldReceive('setParameter')->once()->with('filename', 'filename.txt');
+        $disposition->shouldReceive('setParameter')->zeroOrMoreTimes();
+
+        $attachment = $this->createAttachment(
+            $this->createHeaderSet(['Content-Disposition' => $disposition]),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $attachment->setFilename("file\t\nname.txt");
+    }
+
+    public function testNormalFilenameUnchanged()
+    {
+        $disposition = $this->createHeader('Content-Disposition', 'attachment', [], false);
+        $disposition->shouldReceive('setParameter')->once()->with('filename', 'report.pdf');
+        $disposition->shouldReceive('setParameter')->zeroOrMoreTimes();
+
+        $attachment = $this->createAttachment(
+            $this->createHeaderSet(['Content-Disposition' => $disposition]),
+            $this->createEncoder(),
+            $this->createCache(),
+        );
+        $attachment->setFilename('report.pdf');
+    }
+
     protected function createEntity($headers, $encoder, $cache)
     {
         return $this->createAttachment($headers, $encoder, $cache);
