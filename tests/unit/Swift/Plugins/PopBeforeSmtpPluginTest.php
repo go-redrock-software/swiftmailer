@@ -181,6 +181,14 @@ class Swift_Plugins_PopBeforeSmtpPluginTest extends PHPUnit\Framework\TestCase
         $this->assertInstanceOf(Swift_Plugins_PopBeforeSmtpPlugin::class, $plugin);
     }
 
+    public function testSetPasswordHasSensitiveParameterAttribute()
+    {
+        $method = new \ReflectionMethod(Swift_Plugins_PopBeforeSmtpPlugin::class, 'setPassword');
+        $param  = $method->getParameters()[0];
+        $attrs  = $param->getAttributes(\SensitiveParameter::class);
+        $this->assertNotEmpty($attrs, 'setPassword parameter must have #[\SensitiveParameter]');
+    }
+
     public function testDefaultPortIs110()
     {
         // Constructor signature has default 110

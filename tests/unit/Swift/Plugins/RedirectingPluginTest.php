@@ -232,6 +232,33 @@ class Swift_Plugins_RedirectingPluginTest extends PHPUnit\Framework\TestCase
         $this->assertEquals([], $message->getBcc());
     }
 
+    public function testRedirectingPluginDoesNotLeakBccInHeaders()
+    {
+        $message = (new Swift_Message())
+            ->setSubject('...')
+            ->setFrom(['john@example.com' => 'John Doe'])
+            ->setTo(['to@example.com' => 'To'])
+            ->setCc(['cc@example.com' => 'Cc'])
+            ->setBcc(['bcc@example.com' => 'Bcc'])
+            ->setBody('...');
+
+        $plugin = new Swift_Plugins_RedirectingPlugin('redirect@example.com');
+        $evt    = $this->createSendEvent($message);
+
+        $plugin->beforeSendPerformed($evt);
+
+        $headers = $message->getHeaders();
+        $this->assertFalse($headers->has('X-Swift-To'), 'X-Swift-To header must not be present');
+        $this->assertFalse($headers->has('X-Swift-Cc'), 'X-Swift-Cc header must not be present');
+        $this->assertFalse($headers->has('X-Swift-Bcc'), 'X-Swift-Bcc header must not be present');
+
+        $plugin->sendPerformed($evt);
+
+        $this->assertFalse($headers->has('X-Swift-To'));
+        $this->assertFalse($headers->has('X-Swift-Cc'));
+        $this->assertFalse($headers->has('X-Swift-Bcc'));
+    }
+
     private function createSendEvent(Swift_Mime_SimpleMessage $message)
     {
         $evt = $this->getMockBuilder('Swift_Events_SendEvent')

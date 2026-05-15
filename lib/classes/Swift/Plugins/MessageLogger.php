@@ -18,11 +18,13 @@ class Swift_Plugins_MessageLogger implements Swift_Events_SendListener
     /**
      * @var Swift_Mime_SimpleMessage[]
      */
-    private $messages;
+    private array $messages = [];
 
-    public function __construct()
+    private int $maxMessages;
+
+    public function __construct(int $maxMessages = 100)
     {
-        $this->messages = [];
+        $this->maxMessages = $maxMessages;
     }
 
     /**
@@ -58,6 +60,9 @@ class Swift_Plugins_MessageLogger implements Swift_Events_SendListener
      */
     public function beforeSendPerformed(Swift_Events_SendEvent $evt)
     {
+        if (\count($this->messages) >= $this->maxMessages) {
+            \array_shift($this->messages);
+        }
         $this->messages[] = clone $evt->getMessage();
     }
 

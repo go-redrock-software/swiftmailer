@@ -105,6 +105,22 @@ class Swift_Plugins_SentMessagePluginTest extends PHPUnit\Framework\TestCase
         $this->assertSame('second', $messages[1]->getMessageId());
     }
 
+    public function testSentMessagePluginRespectsMaxMessages()
+    {
+        $plugin    = new Swift_Plugins_SentMessagePlugin(3);
+        $transport = $this->createMock(Swift_Transport::class);
+        $message   = (new Swift_Message())->setTo(['a@b.com' => 'A']);
+
+        for ($i = 1; $i <= 5; ++$i) {
+            $sentMessage = new Swift_SentMessage($message, $transport, ['message_id' => 'id-'.$i]);
+            $plugin->sentMessage(new Swift_Events_SentMessageEvent($transport, $sentMessage));
+        }
+
+        $this->assertCount(3, $plugin->getSentMessages());
+        $this->assertSame('id-3', $plugin->getSentMessages()[0]->getMessageId());
+        $this->assertSame('id-5', $plugin->getLastSentMessage()->getMessageId());
+    }
+
     public function testResetOnEmptyPluginIsNoOp()
     {
         $plugin = new Swift_Plugins_SentMessagePlugin();

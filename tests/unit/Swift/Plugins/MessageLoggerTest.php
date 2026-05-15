@@ -126,6 +126,27 @@ class Swift_Plugins_MessageLoggerTest extends PHPUnit\Framework\TestCase
         $this->assertInstanceOf(Swift_Mime_SimpleMessage::class, $messages[0]);
     }
 
+    public function testMessageLoggerRespectsMaxMessages()
+    {
+        $logger    = new Swift_Plugins_MessageLogger(3);
+        $transport = $this->createMock(Swift_Transport::class);
+
+        for ($i = 0; $i < 5; ++$i) {
+            $message = (new Swift_Message())
+                ->setFrom(['from@example.com'])
+                ->setTo(['to@example.com' => 'To'])
+                ->setSubject('Test '.$i);
+
+            $event = new Swift_Events_SendEvent($transport, $message);
+            $logger->beforeSendPerformed($event);
+        }
+
+        $this->assertEquals(3, $logger->countMessages());
+        $messages = $logger->getMessages();
+        $this->assertSame('Test 2', $messages[0]->getSubject());
+        $this->assertSame('Test 4', $messages[2]->getSubject());
+    }
+
     public function testClearThenAddWorks()
     {
         $logger    = new Swift_Plugins_MessageLogger();

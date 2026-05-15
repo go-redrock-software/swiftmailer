@@ -15,9 +15,19 @@ class Swift_Plugins_SentMessagePlugin implements Swift_Events_SentMessageListene
     /** @var Swift_SentMessage[] */
     private array $sentMessages = [];
 
+    private int $maxMessages;
+
+    public function __construct(int $maxMessages = 100)
+    {
+        $this->maxMessages = $maxMessages;
+    }
+
     #[Override]
     public function sentMessage(Swift_Events_SentMessageEvent $evt): void
     {
+        if (\count($this->sentMessages) >= $this->maxMessages) {
+            \array_shift($this->sentMessages);
+        }
         $this->sentMessages[] = $evt->getSentMessage();
     }
 

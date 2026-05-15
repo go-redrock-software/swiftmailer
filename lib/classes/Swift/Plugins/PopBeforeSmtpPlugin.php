@@ -112,7 +112,7 @@ class Swift_Plugins_PopBeforeSmtpPlugin implements Swift_Events_TransportChangeL
      *
      * @return $this
      */
-    public function setPassword($password)
+    public function setPassword(#[\SensitiveParameter] $password)
     {
         $this->password = $password;
 
@@ -218,12 +218,14 @@ class Swift_Plugins_PopBeforeSmtpPlugin implements Swift_Events_TransportChangeL
     /** @codeCoverageIgnoreStart Raw socket I/O */
     private function command($command)
     {
+        $logCommand = \str_starts_with($command, 'PASS ') ? 'PASS [REDACTED]' : \trim($command ?? '');
+
         if (!\fwrite($this->socket, $command)) {
-            throw new Swift_Plugins_Pop_Pop3Exception(\sprintf('Failed to write command [%s] to POP3 host', \trim($command ?? '')));
+            throw new Swift_Plugins_Pop_Pop3Exception(\sprintf('Failed to write command [%s] to POP3 host', $logCommand));
         }
 
         if (false === $response = \fgets($this->socket)) {
-            throw new Swift_Plugins_Pop_Pop3Exception(\sprintf('Failed to read from POP3 host after command [%s]', \trim($command ?? '')));
+            throw new Swift_Plugins_Pop_Pop3Exception(\sprintf('Failed to read from POP3 host after command [%s]', $logCommand));
         }
 
         $this->assertOk($response);

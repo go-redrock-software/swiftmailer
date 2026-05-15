@@ -9,7 +9,7 @@ class Swift_Plugins_Loggers_EchoLoggerTest extends PHPUnit\Framework\TestCase
         $logger->add('>> Foo');
         $data = \ob_get_clean();
 
-        $this->assertEquals('>> Foo'.PHP_EOL, $data);
+        $this->assertEquals('&gt;&gt; Foo'.PHP_EOL, $data);
     }
 
     public function testAddingEntryDumpsEscapedLineWithHtml()
@@ -20,6 +20,17 @@ class Swift_Plugins_Loggers_EchoLoggerTest extends PHPUnit\Framework\TestCase
         $data = \ob_get_clean();
 
         $this->assertEquals('&gt;&gt; Foo<br />'.PHP_EOL, $data);
+    }
+
+    public function testEchoLoggerEscapesHtmlInNonHtmlMode()
+    {
+        $logger = new Swift_Plugins_Loggers_EchoLogger(false);
+        \ob_start();
+        $logger->add('<script>alert("xss")</script>');
+        $data = \ob_get_clean();
+
+        $this->assertStringNotContainsString('<script>', $data);
+        $this->assertStringContainsString('&lt;script&gt;', $data);
     }
 
     public function testClearIsNoOp()

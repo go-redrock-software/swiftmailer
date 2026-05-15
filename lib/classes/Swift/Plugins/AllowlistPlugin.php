@@ -103,11 +103,6 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
 
         $message = $evt->getMessage();
 
-        // Remove temporary header
-        if ($message->getHeaders()->has('X-Original-To')) {
-            $message->getHeaders()->removeAll('X-Original-To');
-        }
-
         // Restore original recipients
         $message->setTo($this->originalRecipients['to'] ?? []);
 
@@ -131,12 +126,6 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
 
         $filteredTo    = $this->filterRecipients($this->originalRecipients['to'] ?? []);
         $needsRedirect = \count($filteredTo) < \count($allOriginal);
-
-        if ($needsRedirect) {
-            // Store original recipients in X-Original-To header
-            $originalAddresses = \implode(', ', \array_keys($allOriginal));
-            $message->getHeaders()->addTextHeader('X-Original-To', $originalAddresses);
-        }
 
         // Allowed recipients go through, add catch-all for any non-allowed
         $newTo = $filteredTo;

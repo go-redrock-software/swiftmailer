@@ -27,6 +27,10 @@ class Swift_Plugins_RedirectingPlugin implements Swift_Events_SendListener
      */
     private $whitelist = [];
 
+    private ?array $originalTo = null;
+    private ?array $originalCc = null;
+    private ?array $originalBcc = null;
+
     /**
      * Create a new RedirectingPlugin.
      */
@@ -79,19 +83,10 @@ class Swift_Plugins_RedirectingPlugin implements Swift_Events_SendListener
         $message = $evt->getMessage();
         $headers = $message->getHeaders();
 
-        // conditionally save current recipients
-
-        if ($headers->has('to')) {
-            $headers->addMailboxHeader('X-Swift-To', $message->getTo());
-        }
-
-        if ($headers->has('cc')) {
-            $headers->addMailboxHeader('X-Swift-Cc', $message->getCc());
-        }
-
-        if ($headers->has('bcc')) {
-            $headers->addMailboxHeader('X-Swift-Bcc', $message->getBcc());
-        }
+        // Store original recipients as instance properties (not in headers)
+        $this->originalTo = $headers->has('to') ? $message->getTo() : null;
+        $this->originalCc = $headers->has('cc') ? $message->getCc() : null;
+        $this->originalBcc = $headers->has('bcc') ? $message->getBcc() : null;
 
         // Filter remaining headers against whitelist
         $this->filterHeaderSet($headers, 'To');
@@ -172,24 +167,22 @@ class Swift_Plugins_RedirectingPlugin implements Swift_Events_SendListener
 
     private function restoreMessage(Swift_Mime_SimpleMessage $message)
     {
-        // restore original headers
-        $headers = $message->getHeaders();
-
-        if ($headers->has('X-Swift-To')) {
-            $message->setTo($headers->get('X-Swift-To')->getNameAddresses());
-            $headers->removeAll('X-Swift-To');
+        if (null !== $this->originalTo) {
+            $message->setTo($this->originalTo);
         } else {
             $message->setTo(null);
         }
 
-        if ($headers->has('X-Swift-Cc')) {
-            $message->setCc($headers->get('X-Swift-Cc')->getNameAddresses());
-            $headers->removeAll('X-Swift-Cc');
+        if (null !== $this->originalCc) {
+            $message->setCc($this->originalCc);
         }
 
-        if ($headers->has('X-Swift-Bcc')) {
-            $message->setBcc($headers->get('X-Swift-Bcc')->getNameAddresses());
-            $headers->removeAll('X-Swift-Bcc');
+        if (null !== $this->originalBcc) {
+            $message->setBcc($this->originalBcc);
         }
+
+        $this->originalTo = null;
+        $this->originalCc = null;
+        $this->originalBcc = null;
     }
 }
