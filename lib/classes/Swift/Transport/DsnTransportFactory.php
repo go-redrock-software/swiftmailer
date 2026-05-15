@@ -53,7 +53,7 @@ class Swift_Transport_DsnTransportFactory
 
     private function createTransport(string $dsnString): Swift_Transport
     {
-        $dsn    = new Swift_Dsn(DsnParser::parseUrl($dsnString));
+        $dsn    = $dsnString |> DsnParser::parseUrl(...) |> (fn ($parsed) => new Swift_Dsn($parsed));
         $params = $dsn->getParameters();
 
         // Extract retry parameters before creating transport

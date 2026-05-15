@@ -91,4 +91,24 @@ class Swift_AddressEncoder_IdnAddressEncoderTest extends PHPUnit\Framework\TestC
         $result = $this->encoder->encodeString('user@sub.example.com');
         $this->assertEquals('user@sub.example.com', $result);
     }
+
+    public function testIdnFailureThrowsException()
+    {
+        $this->expectException(Swift_AddressEncoderException::class);
+        $this->expectExceptionMessage('IDN conversion failed');
+        $this->encoder->encodeString('user@'.str_repeat('ä', 200).'.com');
+    }
+
+    public function testRejectsControlCharsInLocalPart()
+    {
+        $this->expectException(Swift_AddressEncoderException::class);
+        $this->expectExceptionMessage('Control characters');
+        $this->encoder->encodeString("user\x01name@example.com");
+    }
+
+    public function testAcceptsValidIdnAddress()
+    {
+        $result = $this->encoder->encodeString('user@dømæne.dk');
+        $this->assertEquals('user@xn--dmne-woa0i.dk', $result);
+    }
 }

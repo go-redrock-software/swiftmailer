@@ -70,4 +70,24 @@ class Swift_AddressEncoder_Utf8AddressEncoderTest extends PHPUnit\Framework\Test
         $address = 'user+tag@example.com';
         $this->assertEquals($address, $this->encoder->encodeString($address));
     }
+
+    public function testRejectsInvalidUtf8()
+    {
+        $this->expectException(Swift_AddressEncoderException::class);
+        $this->expectExceptionMessage('Invalid UTF-8');
+        $this->encoder->encodeString("user@\x80\x81.com");
+    }
+
+    public function testRejectsControlCharacters()
+    {
+        $this->expectException(Swift_AddressEncoderException::class);
+        $this->expectExceptionMessage('Control characters');
+        $this->encoder->encodeString("user\x00@example.com");
+    }
+
+    public function testAcceptsValidUtf8Address()
+    {
+        $address = 'müller@münchen.de';
+        $this->assertEquals($address, $this->encoder->encodeString($address));
+    }
 }
