@@ -18,8 +18,6 @@ class Swift_Plugins_LoggerPlugin implements Swift_Events_CommandListener, Swift_
     /** The logger which is delegated to */
     private $logger;
 
-    private bool $inAuthSequence = false;
-
     /**
      * Create a new LoggerPlugin using $logger.
      */
@@ -33,7 +31,6 @@ class Swift_Plugins_LoggerPlugin implements Swift_Events_CommandListener, Swift_
      *
      * @param string $entry
      */
-    #[Override]
     public function add($entry)
     {
         $this->logger->add($entry);
@@ -42,7 +39,6 @@ class Swift_Plugins_LoggerPlugin implements Swift_Events_CommandListener, Swift_
     /**
      * Clear the log contents.
      */
-    #[Override]
     public function clear()
     {
         $this->logger->clear();
@@ -53,7 +49,6 @@ class Swift_Plugins_LoggerPlugin implements Swift_Events_CommandListener, Swift_
      *
      * @return string
      */
-    #[Override]
     public function dump()
     {
         return $this->logger->dump();
@@ -62,35 +57,15 @@ class Swift_Plugins_LoggerPlugin implements Swift_Events_CommandListener, Swift_
     /**
      * Invoked immediately following a command being sent.
      */
-    #[Override]
     public function commandSent(Swift_Events_CommandEvent $evt)
     {
         $command = $evt->getCommand();
-
-        if (\preg_match('/^AUTH\s/i', $command)) {
-            $this->inAuthSequence = true;
-            $this->logger->add('>> AUTH [REDACTED]');
-
-            return;
-        }
-
-        if ($this->inAuthSequence) {
-            if (\preg_match('/^(EHLO|HELO|MAIL|RCPT|DATA|QUIT|RSET|NOOP|STARTTLS)\b/i', $command)) {
-                $this->inAuthSequence = false;
-            } else {
-                $this->logger->add('>> [REDACTED]');
-
-                return;
-            }
-        }
-
         $this->logger->add(\sprintf('>> %s', $command));
     }
 
     /**
      * Invoked immediately following a response coming back.
      */
-    #[Override]
     public function responseReceived(Swift_Events_ResponseEvent $evt)
     {
         $response = $evt->getResponse();
@@ -100,7 +75,6 @@ class Swift_Plugins_LoggerPlugin implements Swift_Events_CommandListener, Swift_
     /**
      * Invoked just before a Transport is started.
      */
-    #[Override]
     public function beforeTransportStarted(Swift_Events_TransportChangeEvent $evt)
     {
         $transportName = \get_class($evt->getSource());
@@ -110,7 +84,6 @@ class Swift_Plugins_LoggerPlugin implements Swift_Events_CommandListener, Swift_
     /**
      * Invoked immediately after the Transport is started.
      */
-    #[Override]
     public function transportStarted(Swift_Events_TransportChangeEvent $evt)
     {
         $transportName = \get_class($evt->getSource());
@@ -120,7 +93,6 @@ class Swift_Plugins_LoggerPlugin implements Swift_Events_CommandListener, Swift_
     /**
      * Invoked just before a Transport is stopped.
      */
-    #[Override]
     public function beforeTransportStopped(Swift_Events_TransportChangeEvent $evt)
     {
         $transportName = \get_class($evt->getSource());
@@ -130,7 +102,6 @@ class Swift_Plugins_LoggerPlugin implements Swift_Events_CommandListener, Swift_
     /**
      * Invoked immediately after the Transport is stopped.
      */
-    #[Override]
     public function transportStopped(Swift_Events_TransportChangeEvent $evt)
     {
         $transportName = \get_class($evt->getSource());
@@ -140,7 +111,6 @@ class Swift_Plugins_LoggerPlugin implements Swift_Events_CommandListener, Swift_
     /**
      * Invoked as a TransportException is thrown in the Transport system.
      */
-    #[Override]
     public function exceptionThrown(Swift_Events_TransportExceptionEvent $evt)
     {
         $e       = $evt->getException();
@@ -157,7 +127,6 @@ class Swift_Plugins_LoggerPlugin implements Swift_Events_CommandListener, Swift_
     /**
      * Invoked immediately before the Message is sent.
      */
-    #[Override]
     public function beforeSendPerformed(Swift_Events_SendEvent $evt)
     {
     }
@@ -165,7 +134,6 @@ class Swift_Plugins_LoggerPlugin implements Swift_Events_CommandListener, Swift_
     /**
      * Invoked immediately after the Message is sent.
      */
-    #[Override]
     public function sendPerformed(Swift_Events_SendEvent $evt)
     {
         if ($evt->isRejected()) {
@@ -182,7 +150,6 @@ class Swift_Plugins_LoggerPlugin implements Swift_Events_CommandListener, Swift_
     /**
      * Log when a message has been sent successfully.
      */
-    #[Override]
     public function sentMessage(Swift_Events_SentMessageEvent $evt): void
     {
         $sm = $evt->getSentMessage();
@@ -198,7 +165,6 @@ class Swift_Plugins_LoggerPlugin implements Swift_Events_CommandListener, Swift_
     /**
      * Log when a message fails to send.
      */
-    #[Override]
     public function failedMessage(Swift_Events_FailedMessageEvent $evt): void
     {
         $this->logger->add(\sprintf(

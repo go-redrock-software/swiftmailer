@@ -105,7 +105,7 @@ class Swift_Transport_Esmtp_AuthHandler implements Swift_Transport_EsmtpHandler
      *
      * @param string $password
      */
-    public function setPassword(#[\SensitiveParameter] $password)
+    public function setPassword($password)
     {
         $this->password = $password;
     }
@@ -252,15 +252,6 @@ class Swift_Transport_Esmtp_AuthHandler implements Swift_Transport_EsmtpHandler
      */
     public function resetState()
     {
-    }
-
-    public function __debugInfo(): array
-    {
-        return [
-            'username'  => $this->username,
-            'password'  => '[REDACTED]',
-            'auth_mode' => $this->auth_mode,
-        ];
     }
 
     /**

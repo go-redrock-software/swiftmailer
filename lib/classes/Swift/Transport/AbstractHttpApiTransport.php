@@ -21,12 +21,12 @@ use Psr\Http\Message\ResponseInterface;
  */
 abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_AbstractApiTransport
 {
-    public protected(set) string $apiKey;
+    protected string $apiKey;
 
-    public protected(set) ClientInterface $httpClient;
+    protected ClientInterface $httpClient;
 
     /** @var Swift_Envelope|null Active envelope during send */
-    public protected(set) ?Swift_Envelope $activeEnvelope = null;
+    protected ?Swift_Envelope $activeEnvelope = null;
 
     public function __construct(
         #[SensitiveParameter] string $apiKey,
@@ -38,16 +38,6 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
         $this->eventDispatcher = $eventDispatcher;
     }
 
-    public function __debugInfo(): array
-    {
-        return [
-            'apiKey'     => '[REDACTED]',
-            'httpClient' => \get_class($this->httpClient),
-            'started'    => $this->started,
-        ];
-    }
-
-    #[Override]
     public function start(): void
     {
         if (!$this->started) {
@@ -66,7 +56,6 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
         }
     }
 
-    #[Override]
     public function ping(): bool
     {
         if (!$this->isStarted()) {
@@ -85,7 +74,6 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
         }
     }
 
-    #[Override]
     public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null): int
     {
         if (null === $failedRecipients) {
@@ -103,9 +91,6 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
             $evt->setEnvelope($envelope);
             $this->eventDispatcher->dispatchEvent($evt, 'beforeSendPerformed');
             if ($evt->bubbleCancelled()) {
-                $evt->setResult(Swift_Events_SendEvent::RESULT_FAILED);
-                $evt->cancelBubble(false);
-                $this->eventDispatcher->dispatchEvent($evt, 'sendPerformed');
                 $this->activeEnvelope = null;
 
                 return 0;
@@ -153,9 +138,9 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
                 $this->eventDispatcher->dispatchEvent($failedEvt, 'failedMessage');
             }
 
-            $this->throwException($transportException); // @codeCoverageIgnore
+            $this->throwException($transportException);
 
-            return 0; // @codeCoverageIgnore
+            return 0;
         } finally {
             $this->activeEnvelope = null;
             if ($evt) {
@@ -164,7 +149,6 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
         }
     }
 
-    #[Override]
     protected function getApiConnection(): ClientInterface
     {
         return $this->httpClient;
@@ -237,8 +221,8 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
      */
     protected function getEnvelopeSender(Swift_Mime_SimpleMessage $message): ?string
     {
-        if (null !== $this->activeEnvelope) { // @codeCoverageIgnore
-            return $this->activeEnvelope->getSender(); // @codeCoverageIgnore
+        if (null !== $this->activeEnvelope) {
+            return $this->activeEnvelope->getSender();
         }
 
         $from = $message->getFrom();
