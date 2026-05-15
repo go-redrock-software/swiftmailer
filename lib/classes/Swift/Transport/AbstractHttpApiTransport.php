@@ -21,12 +21,12 @@ use Psr\Http\Message\ResponseInterface;
  */
 abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_AbstractApiTransport
 {
-    protected string $apiKey;
+    public protected(set) string $apiKey;
 
-    protected ClientInterface $httpClient;
+    public protected(set) ClientInterface $httpClient;
 
     /** @var Swift_Envelope|null Active envelope during send */
-    protected ?Swift_Envelope $activeEnvelope = null;
+    public protected(set) ?Swift_Envelope $activeEnvelope = null;
 
     public function __construct(
         #[SensitiveParameter] string $apiKey,
