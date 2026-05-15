@@ -29,18 +29,6 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticatorTest extends SwiftMailerTestCa
         $this->assertEquals($this->message1, \bin2hex($message1), '%s: We send the smallest ntlm message which should never fail.');
     }
 
-    public function testLMv1Generator()
-    {
-        $password  = 'test1234';
-        $challenge = 'b019d38bad875c9d';
-        $lmv1      = '1879f60127f8a877022132ec221bcbf3ca016a9f76095606';
-
-        $login      = $this->getAuthenticator();
-        $lmv1Result = $this->invokePrivateMethod('createLMPassword', $login, [$password, \hex2bin($challenge)]);
-
-        $this->assertEquals($lmv1, \bin2hex($lmv1Result), '%s: The keys should be the same cause we use the same values to generate them.');
-    }
-
     public function testLMv2Generator()
     {
         $username  = 'user';
@@ -86,7 +74,7 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticatorTest extends SwiftMailerTestCa
 
     public function testGetDomainAndUsername()
     {
-        $username = "DOMAIN\user";
+        $username = "DOMAIN\\user";
 
         $login               = $this->getAuthenticator();
         list($domain, $user) = $this->invokePrivateMethod('getDomainAndUsername', $login, [$username]);
@@ -97,7 +85,7 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticatorTest extends SwiftMailerTestCa
 
     public function testGetDomainAndUsernameWithExtension()
     {
-        $username = "domain.com\user";
+        $username = "domain.com\\user";
 
         $login               = $this->getAuthenticator();
         list($domain, $user) = $this->invokePrivateMethod('getDomainAndUsername', $login, [$username]);
@@ -189,48 +177,6 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticatorTest extends SwiftMailerTestCa
         $ntlm->authenticate($agent, $username.'@'.$domain, $secret, \hex2bin('30fa7e3c677bc301'), \hex2bin('f5ce3d2401c8f6e9'));
     }
 
-    public function testNTLMv1PasswordGenerator()
-    {
-        $password  = 'test1234';
-        $challenge = 'b019d38bad875c9d';
-
-        $login      = $this->getAuthenticator();
-        $ntlmResult = $this->invokePrivateMethod('createNTLMPassword', $login, [$password, \hex2bin($challenge)]);
-
-        // NTLMv1 should produce a 24-byte response
-        $this->assertEquals(24, \strlen($ntlmResult), '%s: NTLMv1 response should be 24 bytes');
-        // Result should be deterministic for same inputs
-        $ntlmResult2 = $this->invokePrivateMethod('createNTLMPassword', $login, [$password, \hex2bin($challenge)]);
-        $this->assertEquals(\bin2hex($ntlmResult), \bin2hex($ntlmResult2), '%s: NTLMv1 should be deterministic');
-    }
-
-    public function testSendMessage3V1Path()
-    {
-        // Test the v1 path (lines 205, 207) by calling sendMessage3 with $v2=false
-        $login = $this->getAuthenticator();
-        $agent = $this->getAgent();
-
-        $response = \hex2bin($this->message2);
-
-        // Mock agent to accept message3
-        $agent->shouldReceive('executeCommand')
-            ->once()
-            ->with(\Mockery::on(function ($cmd) {
-                // Should be base64-encoded message3 followed by \r\n
-                return \str_ends_with($cmd, "\r\n");
-            }), [235])
-            ->andReturn('235 Authentication successful');
-
-        $timestamp = \hex2bin('30fa7e3c677bc301');
-        $client    = \hex2bin('f5ce3d2401c8f6e9');
-
-        $result = $this->invokePrivateMethod('sendMessage3', $login, [
-            $response, 'test', 'test1234', $timestamp, $client, $agent, false,
-        ]);
-
-        $this->assertNotEmpty($result);
-    }
-
     public function testCreateSecurityBuffer()
     {
         $login = $this->getAuthenticator();
@@ -280,7 +226,7 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticatorTest extends SwiftMailerTestCa
     {
         $login = $this->getAuthenticator();
 
-        // When $b is 0, should return $a unchanged (line 552)
+        // When $b is 0, should return $a unchanged
         $result = $this->invokePrivateMethod('uRShift', $login, [42, 0]);
         $this->assertEquals(42, $result, '%s: uRShift with 0 should return value unchanged');
 
@@ -321,7 +267,7 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticatorTest extends SwiftMailerTestCa
     {
         $login = $this->getAuthenticator();
 
-        // Key longer than 64 bytes should be hashed first (line 608 branch)
+        // Key longer than 64 bytes should be hashed first
         $longKey = \str_repeat('A', 100);
         $msg     = 'testmessage';
         $result  = $this->invokePrivateMethod('md5Encrypt', $login, [$longKey, $msg]);
@@ -396,54 +342,6 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticatorTest extends SwiftMailerTestCa
         // Same input should produce same output
         $result2 = $this->invokePrivateMethod('desEncrypt', $login, [$plaintext, $desKey]);
         $this->assertEquals($result, $result2, '%s: DES encryption should be deterministic');
-    }
-
-    public function testDebugWithMessage2()
-    {
-        $login   = $this->getAuthenticator();
-        $message = \hex2bin($this->message2);
-
-        // debug() uses echo, so capture output
-        \ob_start();
-        $this->invokePrivateMethod('debug', $login, [$message]);
-        $output = \ob_get_clean();
-
-        $this->assertStringContainsString('NTLMSSP Signature', $output);
-        $this->assertStringContainsString('Type Indicator', $output);
-        $this->assertStringContainsString('Challenge', $output);
-        $this->assertStringContainsString('NetBIOS Domain Name', $output);
-    }
-
-    public function testDebugWithMessage3()
-    {
-        $login   = $this->getAuthenticator();
-        $message = \hex2bin($this->message3);
-
-        \ob_start();
-        $this->invokePrivateMethod('debug', $login, [$message]);
-        $output = \ob_get_clean();
-
-        $this->assertStringContainsString('NTLMSSP Signature', $output);
-        $this->assertStringContainsString('Type Indicator', $output);
-        $this->assertStringContainsString('LM Response Security Buffer', $output);
-        $this->assertStringContainsString('NTLM Response Data', $output);
-    }
-
-    public function testDebugWithMessage1()
-    {
-        $login   = $this->getAuthenticator();
-        $message = \hex2bin($this->message1);
-
-        // Message1 type indicator is 01000000, which matches neither 02 nor 03 branch
-        \ob_start();
-        $this->invokePrivateMethod('debug', $login, [$message]);
-        $output = \ob_get_clean();
-
-        $this->assertStringContainsString('NTLMSSP Signature', $output);
-        $this->assertStringContainsString('Type Indicator', $output);
-        // Should not contain message2 or message3-specific output
-        $this->assertStringNotContainsString('Challenge', $output);
-        $this->assertStringNotContainsString('LM Response', $output);
     }
 
     public function testAuthenticateThrowsWithoutOpenssl()
@@ -575,6 +473,69 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticatorTest extends SwiftMailerTestCa
         $this->assertEquals(4, \strlen($result));
         // 'AB' padded with null bytes to 4
         $this->assertEquals('AB', \substr($result, 0, 2));
+    }
+
+    public function testCreateLMPasswordRemoved()
+    {
+        $this->assertFalse(
+            \method_exists(Swift_Transport_Esmtp_Auth_NTLMAuthenticator::class, 'createLMPassword'),
+            'createLMPassword (NTLMv1) must be removed for security',
+        );
+    }
+
+    public function testCreateNTLMPasswordRemoved()
+    {
+        $this->assertFalse(
+            \method_exists(Swift_Transport_Esmtp_Auth_NTLMAuthenticator::class, 'createNTLMPassword'),
+            'createNTLMPassword (NTLMv1) must be removed for security',
+        );
+    }
+
+    public function testShortType2MessageThrows()
+    {
+        $this->expectException(Swift_TransportException::class);
+        $this->expectExceptionMessage('NTLM Type 2 message too short');
+
+        $login = $this->getAuthenticator();
+        $this->invokePrivateMethod('parseMessage2', $login, [\str_repeat("\x00", 20)]);
+    }
+
+    public function testDebugMethodNotPublic()
+    {
+        $this->assertFalse(
+            \method_exists(Swift_Transport_Esmtp_Auth_NTLMAuthenticator::class, 'debug'),
+            'debug() method must be removed — it echoes raw NTLM handshake data including credential hashes',
+        );
+    }
+
+    public function testGetDomainAndUsernameWithMultipleBackslashes()
+    {
+        $login = $this->getAuthenticator();
+
+        list($domain, $user) = $this->invokePrivateMethod('getDomainAndUsername', $login, ["DOMAIN\\sub\\user"]);
+        $this->assertEquals('DOMAIN', $domain);
+        $this->assertEquals("sub\\user", $user);
+    }
+
+    public function testReadSubBlockOverflowThrows()
+    {
+        $this->expectException(Swift_TransportException::class);
+        $this->expectExceptionMessage('block length exceeds remaining buffer');
+
+        $login = $this->getAuthenticator();
+        // Header claims 12 bytes of data (0c00 = 3072, /256 = 12) but only 2 hex chars follow
+        $block = '02000c005400' . '0000000000000000';
+        $this->invokePrivateMethod('readSubBlock', $login, [$block]);
+    }
+
+    public function testSendMessage3AlwaysUsesV2()
+    {
+        $login = $this->getAuthenticator();
+        $ref = new ReflectionMethod($login, 'sendMessage3');
+        $params = $ref->getParameters();
+        $paramNames = \array_map(fn($p) => $p->getName(), $params);
+
+        $this->assertNotContains('v2', $paramNames, 'sendMessage3 should no longer accept a $v2 parameter');
     }
 
     private function getAuthenticator()
