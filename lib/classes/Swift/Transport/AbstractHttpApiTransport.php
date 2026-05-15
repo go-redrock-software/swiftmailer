@@ -91,6 +91,8 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
             $evt->setEnvelope($envelope);
             $this->eventDispatcher->dispatchEvent($evt, 'beforeSendPerformed');
             if ($evt->bubbleCancelled()) {
+                $evt->cancelBubble(false);
+                $this->eventDispatcher->dispatchEvent($evt, 'sendPerformed');
                 $this->activeEnvelope = null;
 
                 return 0;
