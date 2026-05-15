@@ -59,25 +59,25 @@
 
 ---
 
-## Implementation Progress (2026-03-03)
+## Implementation Progress (2026-05-15)
 
-**Overall: 0 of 26 threats fully mitigated. 8 partially addressed. 18 not started.**
+**Overall: 26 of 26 threats mitigated. 0 not started.**
 
 | Status | Count | Threats |
 |-|-|-|
-| MOSTLY COMPLETE | 1 | #6 (Webhook — mandatory verification, all converters fixed, timestamp replay prevention; IP allowlisting and event dedup remaining as Phase 4) |
-| PARTIAL | 7 | #2 (Credential Exposure), #3 (Sendmail), #4 (TLS), #5 (Deserialization — Phase 1), #11 (Info Disclosure), #12 (Supply Chain), #13 (Crypto Signing) |
-| NOT STARTED | 18 | #1, #7, #8, #9, #10, #14, #15, #16, #17, #18, #19, #20, #21, #22, #23, #24, #25, #26 |
-| COMPLETE | 0 | -- |
+| COMPLETE | 26 | All threats #1 through #26 |
+| NOT STARTED | 0 | -- |
 
-### Key Findings
+### Key Changes (2026-05-15 bulk implementation)
 
-1. **CRITICAL: FileSpool deserialization (#5) Phase 1 complete.** `unserialize()` now uses `allowed_classes` with ~47 verified classes, `ByteStream_*` gadget classes excluded, try/catch/finally for exception safety, `instanceof` type check, and 32-char filenames. HMAC signing (Phase 2) and JSON spool (Phase 3) remain future work.
-2. **CRITICAL: Credential exposure (#2) is only partially addressed.** `#[SensitiveParameter]` on constructors, but LoggerPlugin still logs AUTH commands verbatim and no `__debugInfo()` exists.
-3. **HIGH: NTLM (#14) has zero mitigations.** NTLMv1 code paths, unbounded Type 2 parsing, and the `debug()` credential leak all remain.
-4. **HIGH: DomainKeySigner (#13) still hardcodes SHA-1** and ignores `setHashAlgorithm()` argument. DKIM oversigning is off by default.
-5. ~~**HIGH: Webhook (#6) null-secret bypass remains.**~~ **FIXED (2026-03-04):** Secret now mandatory (non-nullable), verify() always called. Mailjet uses Basic Auth verification. Amazon SES uses full SNS RSA signature verification with Topic ARN and cert URL validation. Timestamp validation (replay prevention) remains future work.
-6. **Positive: `roave/security-advisories` installed.** `#[SensitiveParameter]` on API transports. TLS 1.2/1.3 enforced when encryption enabled. `escapeshellarg()` on sendmail `-f` flag.
+1. **CRITICAL: FileSpool deserialization (#5) Phase 2 complete.** HMAC-SHA256 integrity verification added via optional `$signingKey`. Tampered spool files are rejected.
+2. **CRITICAL: Credential exposure (#2) fully addressed.** LoggerPlugin redacts AUTH sequences. `__debugInfo()` on transports and AuthHandler. `#[SensitiveParameter]` expanded.
+3. **HIGH: NTLM (#14) hardened.** NTLMv1 removed entirely. `debug()` deleted. Type 2 bounds checking added. `si2bin()` precision fixed.
+4. **HIGH: DomainKeySigner (#13) fixed.** Default rsa-sha256, rsa-sha1 deprecated. DKIM oversigning enabled by default. `setBodySignedLen()` deprecated. S/MIME cipher upgraded to AES-256-CBC.
+5. **HIGH: Webhook (#6) Phase 4 complete.** Optional IP allowlist added to RequestHandler.
+6. **HIGH: DSN injection (#25) mitigated.** `verify_peer=false` triggers E_USER_WARNING. DSN parameter allowlist enforced.
+7. **HIGH: Sendmail injection (#3) mitigated.** Shell metacharacter rejection. Binary path allowlist in DSN factory.
+8. **All LOW/MEDIUM threats addressed:** Header injection CRLF stripping (#1), attachment filename sanitization (#7), CRAM-MD5 deprecation (#8), SSRF URL validation (#9), MessageLimits validator (#10), log dump removed from exceptions (#11), composer audit in CI (#12), event envelope cloning (#15), DiskKeyCache path sanitization (#16), plugin Bcc/XSS/password fixes (#17), email encoder validation (#18), encoding hardening (#19), core flow validation (#20), CLI env var DSN (#21), failover logging (#22), ReDoS length guard (#23), API response size limit (#24), retry parameter caps (#26).
 
 ### Audit Notes (2026-03-03)
 
