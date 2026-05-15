@@ -207,9 +207,22 @@ abstract class Swift_Mime_Headers_AbstractHeader implements Swift_Mime_Header
     {
         // Treat token as exactly what was given
         $phraseStr = $string;
-        // If it's not valid
 
-        if (!\preg_match('/^'.self::PHRASE_PATTERN.'$/D', $phraseStr)) {
+        // RFC 2822 limits header lines to 998 characters; skip the expensive
+        // recursive regex for overly long input to prevent ReDoS.
+        if (\strlen($phraseStr) > 998) {
+            $phraseMatch = false;
+        } else {
+            $oldLimit = \ini_get('pcre.backtrack_limit');
+            \ini_set('pcre.backtrack_limit', '100000');
+            $phraseMatch = \preg_match('/^'.self::PHRASE_PATTERN.'$/D', $phraseStr);
+            \ini_set('pcre.backtrack_limit', $oldLimit);
+            if (\PREG_BACKTRACK_LIMIT_ERROR === \preg_last_error()) {
+                $phraseMatch = false;
+            }
+        }
+
+        if (!$phraseMatch) {
             // .. but it is just ascii text, try escaping some characters
             // and make it a quoted-string
             if (\preg_match('/^[\x00-\x08\x0B\x0C\x0E-\x7F]*$/D', $phraseStr)) {

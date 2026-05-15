@@ -69,7 +69,7 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
      * are signed an extra time (for a non-existent instance), so any header
      * added post-signing breaks DKIM verification.
      */
-    protected bool $oversigning = false;
+    protected bool $oversigning = true;
 
     // work variables
     protected array $signedHeaders = [];
@@ -123,7 +123,7 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
         } else {
             $pkeyId = \openssl_pkey_get_private($privateKey, $passphrase);
             if (!$pkeyId) {
-                throw new Swift_SwiftException('Unable to load DKIM Private Key ['.\openssl_error_string().']');
+                throw new Swift_SwiftException('Unable to load DKIM Private Key: the key is invalid or the passphrase is incorrect.');
             }
             $this->privateKey = $privateKey;
         }
@@ -245,12 +245,9 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
     {
         switch ($hash) {
             case 'rsa-sha1':
-                @\trigger_error(
-                    'rsa-sha1 is deprecated per RFC 8301 and will be removed in a future version. Use rsa-sha256 or ed25519-sha256 instead.',
-                    \E_USER_DEPRECATED,
+                throw new \InvalidArgumentException(
+                    'rsa-sha1 is no longer supported for DKIM signing (RFC 8301). Use rsa-sha256 or ed25519-sha256.'
                 );
-                $this->hashAlgorithm = 'rsa-sha1';
-                break;
             case 'rsa-sha256':
                 $this->hashAlgorithm = 'rsa-sha256';
                 // @codeCoverageIgnoreStart
@@ -333,6 +330,11 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
      */
     public function setBodySignedLen($len)
     {
+        \trigger_error(
+            'setBodySignedLen() is deprecated and will be removed. The DKIM l= tag enables content injection attacks (RFC 8301 §5).',
+            \E_USER_DEPRECATED
+        );
+
         if (true === $len) {
             $this->showLen = true;
             $this->maxLen  = PHP_INT_MAX;
@@ -690,12 +692,12 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
         $pkeyId = \openssl_pkey_get_private($this->privateKey, $this->passphrase);
         // @codeCoverageIgnoreStart
         if (!$pkeyId) {
-            throw new Swift_SwiftException('Unable to load DKIM Private Key ['.\openssl_error_string().']');
+            throw new Swift_SwiftException('Unable to load DKIM Private Key: the key is invalid or the passphrase is incorrect.');
         }
         // @codeCoverageIgnoreEnd
         if (\openssl_sign($this->headerCanonData, $signature, $pkeyId, $algorithm)) {
             return $signature;
         }
-        throw new Swift_SwiftException('Unable to sign DKIM Hash ['.\openssl_error_string().']'); // @codeCoverageIgnore
+        throw new Swift_SwiftException('Unable to sign DKIM Hash: signing operation failed.'); // @codeCoverageIgnore
     }
 }

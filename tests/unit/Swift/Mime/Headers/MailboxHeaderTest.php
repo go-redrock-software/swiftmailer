@@ -581,6 +581,15 @@ class Swift_Mime_Headers_MailboxHeaderTest extends SwiftMailerTestCase
         return $header;
     }
 
+    public function testOverlyLongPhraseIsRejected()
+    {
+        $header = $this->getHeader('From');
+        $longName = str_repeat('a', 999);
+        $header->setNameAddresses(['long@example.com' => $longName]);
+        $rendered = $header->toString();
+        $this->assertStringContainsString('long@example.com', $rendered);
+    }
+
     private function getEncoder($type)
     {
         $encoder = $this->getMockery('Swift_Mime_HeaderEncoder')->shouldIgnoreMissing();

@@ -52,18 +52,41 @@ class Swift_Signers_DomainKeySignerTest extends PHPUnit\Framework\TestCase
         $this->assertNotContains('X-DebugHash', $altered);
     }
 
-    public function testSetHashAlgorithmReturnsSelf()
+    public function testSetHashAlgorithmAcceptsSha256()
     {
         $signer = $this->createSigner();
-        $result = $signer->setHashAlgorithm('rsa-sha1');
+        $result = $signer->setHashAlgorithm('rsa-sha256');
         $this->assertSame($signer, $result);
     }
 
-    public function testSetHashAlgorithmAlwaysSetsRsaSha1()
+    public function testRsaSha1TriggersDeprecation()
     {
         $signer = $this->createSigner();
-        $result = $signer->setHashAlgorithm('anything');
-        $this->assertSame($signer, $result);
+
+        $triggered = false;
+        \set_error_handler(static function (int $errno, string $errstr) use (&$triggered) {
+            if (\E_USER_DEPRECATED === $errno && \str_contains($errstr, 'rsa-sha1 is deprecated')) {
+                $triggered = true;
+
+                return true;
+            }
+
+            return false;
+        });
+        try {
+            $signer->setHashAlgorithm('rsa-sha1');
+        } finally {
+            \restore_error_handler();
+        }
+        $this->assertTrue($triggered, 'Expected E_USER_DEPRECATED for DomainKeys rsa-sha1');
+    }
+
+    public function testSetHashAlgorithmRejectsUnknown()
+    {
+        $signer = $this->createSigner();
+        $this->expectException(Swift_SwiftException::class);
+        $this->expectExceptionMessage('not recognized');
+        $signer->setHashAlgorithm('anything');
     }
 
     public function testSetCanonReturnsSelf()
@@ -106,6 +129,14 @@ class Swift_Signers_DomainKeySignerTest extends PHPUnit\Framework\TestCase
         $signer = $this->createSigner();
         $result = $signer->ignoreHeader('X-Mailer');
         $this->assertSame($signer, $result);
+    }
+
+    public function testIgnoreHeaderFromThrows()
+    {
+        $signer = $this->createSigner();
+        $this->expectException(Swift_SwiftException::class);
+        $this->expectExceptionMessage('"From" header must not be ignored');
+        $signer->ignoreHeader('from');
     }
 
     public function testResetDoesNotThrow()
@@ -188,7 +219,7 @@ class Swift_Signers_DomainKeySignerTest extends PHPUnit\Framework\TestCase
         $dks = $headerSet->getAll('DomainKey-Signature');
         $sig = \reset($dks);
         $this->assertStringContainsString('c=simple', $sig->getValue());
-        $this->assertStringContainsString('a=rsa-sha1', $sig->getValue());
+        $this->assertStringContainsString('a=rsa-sha256', $sig->getValue());
     }
 
     public function testSigningNofwsCanon()

@@ -70,7 +70,7 @@ class Swift_Signers_SMimeSigner implements Swift_Signers_BodySigner
             ->lookup('transport.replacementfactory');
 
         $this->signOptions   = PKCS7_DETACHED;
-        $this->encryptCipher = OPENSSL_CIPHER_AES_128_CBC;
+        $this->encryptCipher = OPENSSL_CIPHER_AES_256_CBC;
     }
 
     /**

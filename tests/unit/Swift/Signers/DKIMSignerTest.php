@@ -22,30 +22,13 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $signer->addSignature($headers);
     }
 
-    // SHA1 Signing
-    /** @group legacy */
-    public function testSigningSHA1()
+    // SHA1 Signing — now a hard-fail
+    public function testSigningSHA1ThrowsException()
     {
-        $this->expectDeprecation('rsa-sha1 is deprecated per RFC 8301 and will be removed in a future version. Use rsa-sha256 or ed25519-sha256 instead.');
-
-        $headerSet      = $this->createHeaderSet();
-        $messageContent = 'Hello World';
-        $signer         = new Swift_Signers_DKIMSigner(\file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'), 'dummy.nxdomain.be', 'dummySelector');
+        $signer = new Swift_Signers_DKIMSigner(\file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'), 'dummy.nxdomain.be', 'dummySelector');
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('rsa-sha1 is no longer supported');
         $signer->setHashAlgorithm('rsa-sha1');
-        $signer->setSignatureTimestamp('1299879181');
-        $altered = $signer->getAlteredHeaders();
-        $this->assertEquals(['DKIM-Signature'], $altered);
-        $signer->reset();
-        $signer->setHeaders($headerSet);
-        $this->assertFalse($headerSet->has('DKIM-Signature'));
-        $signer->startBody();
-        $signer->write($messageContent);
-        $signer->endBody();
-        $signer->addSignature($headerSet);
-        $this->assertTrue($headerSet->has('DKIM-Signature'));
-        $dkim = $headerSet->getAll('DKIM-Signature');
-        $sig  = \reset($dkim);
-        $this->assertEquals($sig->getValue(), 'v=1; q=dns/txt; a=rsa-sha1; bh=wlbYcY9O9OPInGJ4D0E/rGsvMLE=; d=dummy.nxdomain.be; h=; i=@dummy.nxdomain.be; s=dummySelector; c=simple/simple; t=1299879181; b=mXaWZGkmLsUyQzoOQLBHFULU9bK3JpckZ99AGt7E/CGOTNgUkPmi69Kj1pCeLYtj3wKve48dI hqmmaeVWVYHAGASm2WbFc27idM6hPB/iqV1BqeeBaO+PnRecGQ9GmWvfhaUzxEMvDrbiiR35J plhRhbisw4icOKdBPWSPKLKDE=');
     }
 
     // SHA256 Signing
@@ -144,7 +127,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $this->assertEquals($sig->getValue(), 'v=1; q=dns/txt; a=rsa-sha256; bh=f+W+hu8dIhf2VAni89o8lF6WKTXi7nViA4RrMdpD5/U=; d=dummy.nxdomain.be; h=; i=@dummy.nxdomain.be; s=dummySelector; c=simple/relaxed; t=1299879181; b=k/y8Cyt5YylUbo2Ey0iXMeOO/KBV5lMClErTPeKRQ1Q5Y3X4UsbBldbta8ZxxIj/cpAVjheDk v/t0OMZLrbCxCVXnB+d2/aiz7w5Lnru2E2EFaVM2DmXVEIb6KjCGmpAJFZn+AKZtSpramk4zm Z80Df07CsmItnJE/A+J5m1nnw=');
     }
 
-    public function testRsaSha1TriggersDeprecation()
+    public function testRsaSha1ThrowsException()
     {
         $signer = new Swift_Signers_DKIMSigner(
             \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
@@ -152,22 +135,9 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
             'dummySelector',
         );
 
-        $triggered = false;
-        \set_error_handler(static function (int $errno, string $errstr) use (&$triggered) {
-            if (\E_USER_DEPRECATED === $errno && \str_contains($errstr, 'rsa-sha1 is deprecated')) {
-                $triggered = true;
-
-                return true;
-            }
-
-            return false;
-        });
-        try {
-            $signer->setHashAlgorithm('rsa-sha1');
-        } finally {
-            \restore_error_handler();
-        }
-        $this->assertTrue($triggered, 'Expected E_USER_DEPRECATED to be triggered for rsa-sha1');
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('rsa-sha1 is no longer supported');
+        $signer->setHashAlgorithm('rsa-sha1');
     }
 
     public function testConstructorValidatesRsaPrivateKey()
@@ -215,7 +185,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $this->assertStringContainsString('c=simple/simple', $sig->getValue());
     }
 
-    public function testOversigningDisabledByDefault()
+    public function testOversigningEnabledByDefault()
     {
         $headerSet      = $this->createHeaderSetWithFrom();
         $messageContent = 'Hello World';
@@ -238,9 +208,9 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         // Extract h= value (use \b to avoid matching bh=)
         \preg_match('/\bh=([^;]+)/', $value, $matches);
         $signedHeaders = \array_map('trim', \explode(':', $matches[1]));
-        // From should appear exactly once (not oversigned)
+        // From should appear twice (oversigned by default)
         $fromCount = \array_count_values($signedHeaders)['From'] ?? 0;
-        $this->assertEquals(1, $fromCount);
+        $this->assertEquals(2, $fromCount);
     }
 
     public function testOversigningAddsExtraHeaderInstances()
@@ -1112,6 +1082,32 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $this->assertStringNotContainsString('t=', $sig->getValue());
     }
 
+    public function testSetBodySignedLenTriggersDeprecation()
+    {
+        $signer = new Swift_Signers_DKIMSigner(
+            \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
+            'dummy.nxdomain.be',
+            'dummySelector',
+        );
+
+        $triggered = false;
+        \set_error_handler(static function (int $errno, string $errstr) use (&$triggered) {
+            if (\E_USER_DEPRECATED === $errno && \str_contains($errstr, 'setBodySignedLen() is deprecated')) {
+                $triggered = true;
+
+                return true;
+            }
+
+            return false;
+        });
+        try {
+            $signer->setBodySignedLen(true);
+        } finally {
+            \restore_error_handler();
+        }
+        $this->assertTrue($triggered, 'Expected E_USER_DEPRECATED for setBodySignedLen()');
+    }
+
     public function testSetBodySignedLenTrue()
     {
         $headerSet      = $this->createHeaderSet();
@@ -1123,7 +1119,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         );
         $signer->setHashAlgorithm('rsa-sha256');
         $signer->setSignatureTimestamp('1299879181');
-        $signer->setBodySignedLen(true);
+        @$signer->setBodySignedLen(true);
         $signer->reset();
         $signer->setHeaders($headerSet);
         $signer->startBody();
@@ -1138,12 +1134,13 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
 
     public function testSetBodySignedLenFalse()
     {
+        @$this->addToAssertionCount(0); // suppress deprecation
         $signer = new Swift_Signers_DKIMSigner(
             \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
             'dummy.nxdomain.be',
             'dummySelector',
         );
-        $result = $signer->setBodySignedLen(false);
+        @$result = $signer->setBodySignedLen(false);
         $this->assertSame($signer, $result);
     }
 
@@ -1158,7 +1155,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         );
         $signer->setHashAlgorithm('rsa-sha256');
         $signer->setSignatureTimestamp('1299879181');
-        $signer->setBodySignedLen(5);
+        @$signer->setBodySignedLen(5);
         $signer->reset();
         $signer->setHeaders($headerSet);
         $signer->startBody();
@@ -1271,31 +1268,15 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
         $this->addToAssertionCount(1);
     }
 
-    /** @group legacy */
-    public function testRsaSha1BodyHash()
+    public function testRsaSha1BodyHashThrowsException()
     {
-        $this->expectDeprecation('rsa-sha1 is deprecated per RFC 8301 and will be removed in a future version. Use rsa-sha256 or ed25519-sha256 instead.');
-
-        $headerSet      = $this->createHeaderSet();
-        $messageContent = 'Hello World';
-        $signer         = new Swift_Signers_DKIMSigner(
+        $signer = new Swift_Signers_DKIMSigner(
             \file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'),
             'dummy.nxdomain.be',
             'dummySelector',
         );
+        $this->expectException(\InvalidArgumentException::class);
         $signer->setHashAlgorithm('rsa-sha1');
-        $signer->setSignatureTimestamp('1299879181');
-        $signer->reset();
-        $signer->setHeaders($headerSet);
-        $signer->startBody();
-        $signer->write($messageContent);
-        $signer->endBody();
-        $signer->addSignature($headerSet);
-        $dkim = $headerSet->getAll('DKIM-Signature');
-        $sig  = \reset($dkim);
-        // Body hash should use SHA-1
-        $this->assertStringContainsString('bh=', $sig->getValue());
-        $this->assertStringContainsString('a=rsa-sha1', $sig->getValue());
     }
 
     public function testRelaxedBodyCanonWithSpacesAndTabs()

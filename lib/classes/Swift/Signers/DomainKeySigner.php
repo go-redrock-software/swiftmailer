@@ -41,7 +41,7 @@ class Swift_Signers_DomainKeySigner implements Swift_Signers_HeaderSigner
      *
      * @var string
      */
-    protected $hashAlgorithm = 'rsa-sha1';
+    protected $hashAlgorithm = 'rsa-sha256';
 
     /**
      * Canonisation method.
@@ -252,7 +252,16 @@ class Swift_Signers_DomainKeySigner implements Swift_Signers_HeaderSigner
      */
     public function setHashAlgorithm($hash)
     {
-        $this->hashAlgorithm = 'rsa-sha1';
+        $algorithm = strtolower($hash);
+        if (!in_array($algorithm, ['rsa-sha1', 'rsa-sha256'], true)) {
+            throw new Swift_SwiftException(
+                sprintf('DomainKeys hash algorithm "%s" is not recognized. Use rsa-sha1 or rsa-sha256.', $hash)
+            );
+        }
+        if ('rsa-sha1' === $algorithm) {
+            \trigger_error('DomainKeys rsa-sha1 is deprecated. Use rsa-sha256.', \E_USER_DEPRECATED);
+        }
+        $this->hashAlgorithm = $algorithm;
 
         return $this;
     }
@@ -345,6 +354,9 @@ class Swift_Signers_DomainKeySigner implements Swift_Signers_HeaderSigner
     #[Override]
     public function ignoreHeader($header_name)
     {
+        if ('from' === \strtolower($header_name ?? '')) {
+            throw new Swift_SwiftException('The "From" header must not be ignored in DomainKeys signatures.');
+        }
         $this->ignoredHeaders[\strtolower($header_name ?? '')] = true;
 
         return $this;
@@ -495,6 +507,9 @@ class Swift_Signers_DomainKeySigner implements Swift_Signers_HeaderSigner
             case 'rsa-sha1':
                 $this->hashHandler = \hash_init('sha1');
                 break;
+            case 'rsa-sha256':
+                $this->hashHandler = \hash_init('sha256');
+                break;
         }
         $this->bodyCanonLine = '';
     }
@@ -509,11 +524,12 @@ class Swift_Signers_DomainKeySigner implements Swift_Signers_HeaderSigner
         $signature = '';
         $pkeyId    = \openssl_get_privatekey($this->privateKey);
         if (!$pkeyId) {
-            throw new Swift_SwiftException('Unable to load DomainKey Private Key ['.\openssl_error_string().']');
+            throw new Swift_SwiftException('Unable to load DomainKey Private Key: the key is invalid or the passphrase is incorrect.');
         }
-        if (\openssl_sign($this->canonData, $signature, $pkeyId, OPENSSL_ALGO_SHA1)) {
+        $algo = 'rsa-sha1' === $this->hashAlgorithm ? OPENSSL_ALGO_SHA1 : OPENSSL_ALGO_SHA256;
+        if (\openssl_sign($this->canonData, $signature, $pkeyId, $algo)) {
             return $signature;
         }
-        throw new Swift_SwiftException('Unable to sign DomainKey Hash  ['.\openssl_error_string().']'); // @codeCoverageIgnore
+        throw new Swift_SwiftException('Unable to sign DomainKey Hash: signing operation failed.'); // @codeCoverageIgnore
     }
 }
