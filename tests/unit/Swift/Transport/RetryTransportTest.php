@@ -1206,4 +1206,33 @@ class Swift_Transport_RetryTransportTest extends PHPUnit\Framework\TestCase
         $this->expectException(Swift_TransportException::class);
         $retry->send($message);
     }
+
+    public function testMaxRetriesClampedToUpperBound()
+    {
+        $inner = $this->createMock(Swift_Transport::class);
+        $retry = new Swift_Transport_RetryTransport($inner, maxRetries: 50, baseDelayMs: 0);
+
+        $ref = new \ReflectionProperty($retry, 'maxRetries');
+        $this->assertSame(10, $ref->getValue($retry));
+    }
+
+    public function testBaseDelayMsClampedToUpperBound()
+    {
+        $inner = $this->createMock(Swift_Transport::class);
+        $retry = new Swift_Transport_RetryTransport($inner, maxRetries: 1, baseDelayMs: 99999);
+
+        $ref = new \ReflectionProperty($retry, 'baseDelayMs');
+        $this->assertSame(30000, $ref->getValue($retry));
+    }
+
+    public function testNegativeParametersClampedToZero()
+    {
+        $inner = $this->createMock(Swift_Transport::class);
+        $retry = new Swift_Transport_RetryTransport($inner, maxRetries: -5, baseDelayMs: -100);
+
+        $refRetries = new \ReflectionProperty($retry, 'maxRetries');
+        $refDelay   = new \ReflectionProperty($retry, 'baseDelayMs');
+        $this->assertSame(0, $refRetries->getValue($retry));
+        $this->assertSame(0, $refDelay->getValue($retry));
+    }
 }

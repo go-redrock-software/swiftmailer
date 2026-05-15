@@ -77,6 +77,11 @@ class Swift_Transport_FailoverTransport extends Swift_Transport_LoadBalancedTran
                     return $sent;
                 }
             } catch (Swift_TransportException $e) {
+                \error_log(\sprintf(
+                    'Swiftmailer: Failover from %s: %s',
+                    \get_class($transport),
+                    $e->getMessage()
+                ));
                 $this->killCurrentTransport();
             }
         }

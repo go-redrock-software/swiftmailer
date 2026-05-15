@@ -31,6 +31,12 @@ class Swift_Transport_RetryTransport implements Swift_Transport
 
     private Swift_Transport_RetryClassifier $classifier;
 
+    private const MAX_RETRIES_LIMIT = 10;
+
+    private const MAX_BASE_DELAY_MS = 30000;
+
+    private const TOTAL_TIMEOUT_SECONDS = 300;
+
     /**
      * @param Swift_Transport                      $innerTransport The transport to wrap
      * @param int                                  $maxRetries     Maximum number of retry attempts (default: 3)
@@ -43,6 +49,13 @@ class Swift_Transport_RetryTransport implements Swift_Transport
         int $baseDelayMs = 1000,
         ?Swift_Transport_RetryClassifier $classifier = null,
     ) {
+        if ($maxRetries < 0 || $maxRetries > self::MAX_RETRIES_LIMIT) {
+            throw new \InvalidArgumentException(\sprintf('maxRetries must be between 0 and %d, got %d.', self::MAX_RETRIES_LIMIT, $maxRetries));
+        }
+        if ($baseDelayMs < 0 || $baseDelayMs > self::MAX_BASE_DELAY_MS) {
+            throw new \InvalidArgumentException(\sprintf('baseDelayMs must be between 0 and %d, got %d.', self::MAX_BASE_DELAY_MS, $baseDelayMs));
+        }
+
         $this->innerTransport = $innerTransport;
         $this->maxRetries     = $maxRetries;
         $this->baseDelayMs    = $baseDelayMs;
@@ -97,13 +110,15 @@ class Swift_Transport_RetryTransport implements Swift_Transport
     #[Override]
     public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null): int
     {
-        $attempt = 0;
+        $attempt   = 0;
+        $startTime = $this->getCurrentTime();
 
         while (true) {
             try {
                 return $this->innerTransport->send($message, $failedRecipients, $envelope);
             } catch (Swift_TransportException $e) {
-                if (!$this->classifier->isRetryable($e) || $attempt >= $this->maxRetries) {
+                $elapsed = $this->getCurrentTime() - $startTime;
+                if (!$this->classifier->isRetryable($e) || $attempt >= $this->maxRetries || $elapsed >= self::TOTAL_TIMEOUT_SECONDS) {
                     throw $e;
                 }
 
@@ -126,6 +141,11 @@ class Swift_Transport_RetryTransport implements Swift_Transport
     public function registerPlugin(Swift_Events_EventListener $plugin): void
     {
         $this->innerTransport->registerPlugin($plugin);
+    }
+
+    protected function getCurrentTime(): int
+    {
+        return \time();
     }
 
     /**

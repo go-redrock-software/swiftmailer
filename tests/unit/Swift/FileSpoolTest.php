@@ -324,6 +324,91 @@ class Swift_FileSpoolTest extends TestCase
         $this->assertSame(1, $count);
     }
 
+    public function testHmacSignedMessageRoundTrip(): void
+    {
+        $key = \bin2hex(\random_bytes(32));
+        $spool = new Swift_FileSpool($this->spoolDir, $key);
+
+        $msg = $this->createMessage();
+        $msg->setSubject('HMAC round-trip');
+        $spool->queueMessage($msg);
+
+        $transport = $this->createMock(Swift_Transport::class);
+        $transport->method('isStarted')->willReturn(true);
+        $transport->expects($this->once())
+            ->method('send')
+            ->with($this->isInstanceOf(Swift_Mime_SimpleMessage::class))
+            ->willReturn(1);
+
+        $count = $spool->flushQueue($transport);
+        $this->assertSame(1, $count);
+    }
+
+    public function testHmacTamperedMessageIsSkipped(): void
+    {
+        $key = \bin2hex(\random_bytes(32));
+        $spool = new Swift_FileSpool($this->spoolDir, $key);
+
+        $msg = $this->createMessage();
+        $msg->setSubject('Tampered');
+        $spool->queueMessage($msg);
+
+        // Tamper with the serialized payload after the HMAC line
+        $files = \glob($this->spoolDir.'/*.message');
+        $this->assertCount(1, $files);
+        $contents = \file_get_contents($files[0]);
+        $newlinePos = \strpos($contents, "\n");
+        $hmac = \substr($contents, 0, $newlinePos);
+        \file_put_contents($files[0], $hmac."\n"."tampered-payload");
+
+        $transport = $this->createMock(Swift_Transport::class);
+        $transport->method('isStarted')->willReturn(true);
+        $transport->expects($this->never())->method('send');
+
+        $count = $spool->flushQueue($transport);
+        $this->assertSame(0, $count);
+    }
+
+    public function testHmacWrongKeyMessageIsSkipped(): void
+    {
+        $key1 = \bin2hex(\random_bytes(32));
+        $key2 = \bin2hex(\random_bytes(32));
+
+        $spool = new Swift_FileSpool($this->spoolDir, $key1);
+        $msg = $this->createMessage();
+        $msg->setSubject('Wrong key');
+        $spool->queueMessage($msg);
+
+        // Flush with a different key
+        $spool->setSigningKey($key2);
+
+        $transport = $this->createMock(Swift_Transport::class);
+        $transport->method('isStarted')->willReturn(true);
+        $transport->expects($this->never())->method('send');
+
+        $count = $spool->flushQueue($transport);
+        $this->assertSame(0, $count);
+    }
+
+    public function testNoSigningKeyBackwardsCompatible(): void
+    {
+        $spool = new Swift_FileSpool($this->spoolDir);
+
+        $msg = $this->createMessage();
+        $msg->setSubject('No HMAC');
+        $spool->queueMessage($msg);
+
+        $transport = $this->createMock(Swift_Transport::class);
+        $transport->method('isStarted')->willReturn(true);
+        $transport->expects($this->once())
+            ->method('send')
+            ->with($this->isInstanceOf(Swift_Mime_SimpleMessage::class))
+            ->willReturn(1);
+
+        $count = $spool->flushQueue($transport);
+        $this->assertSame(1, $count);
+    }
+
     public function testQueueMessageRetryLimitExhausted(): void
     {
         // Use a subclass that always returns 'x' to force collisions

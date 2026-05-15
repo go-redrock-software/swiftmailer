@@ -613,6 +613,41 @@ class Swift_Transport_FailoverTransportTest extends SwiftMailerTestCase
         $this->assertFalse($transport->ping());
     }
 
+    public function testFailoverLogsWhenSwitchingTransports()
+    {
+        $e       = new Swift_TransportException('connection lost');
+        $message = $this->getMockery('Swift_Mime_SimpleMessage');
+        $t1      = $this->getMockery('Swift_Transport');
+        $t2      = $this->getMockery('Swift_Transport');
+
+        $t1->shouldReceive('isStarted')->andReturn(true);
+        $t1->shouldReceive('send')->once()->andThrow($e);
+        $t1->shouldReceive('stop')->once();
+
+        $t2->shouldReceive('isStarted')->andReturn(true);
+        $t2->shouldReceive('send')->once()->andReturn(1);
+
+        $transport = $this->getTransport([$t1, $t2]);
+        $transport->start();
+
+        $logged = false;
+        \set_error_handler(function (int $errno, string $errstr) use (&$logged) {
+            if (\str_contains($errstr, 'Failover from') && \str_contains($errstr, 'connection lost')) {
+                $logged = true;
+            }
+
+            return true;
+        });
+
+        try {
+            $this->assertEquals(1, $transport->send($message));
+        } finally {
+            \restore_error_handler();
+        }
+
+        $this->assertTrue($logged, 'Expected failover to be logged via error_log');
+    }
+
     private function getTransport(array $transports)
     {
         $transport = new Swift_Transport_FailoverTransport();

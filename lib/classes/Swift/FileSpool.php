@@ -19,6 +19,8 @@ class Swift_FileSpool extends Swift_ConfigurableSpool
     /** The spool directory */
     private $path;
 
+    private ?string $signingKey;
+
     /**
      * File WriteRetry Limit.
      *
@@ -33,9 +35,10 @@ class Swift_FileSpool extends Swift_ConfigurableSpool
      *
      * @throws Swift_IoException
      */
-    public function __construct($path)
+    public function __construct($path, #[\SensitiveParameter] ?string $signingKey = null)
     {
         $this->path = $path;
+        $this->signingKey = $signingKey;
 
         if (!\file_exists($this->path)) {
             if (!\mkdir($this->path, 0777, true)) { // @codeCoverageIgnore
@@ -80,6 +83,11 @@ class Swift_FileSpool extends Swift_ConfigurableSpool
         $this->retryLimit = $limit;
     }
 
+    public function setSigningKey(#[\SensitiveParameter] ?string $signingKey): void
+    {
+        $this->signingKey = $signingKey;
+    }
+
     /**
      * Queues a message.
      *
@@ -92,6 +100,10 @@ class Swift_FileSpool extends Swift_ConfigurableSpool
     public function queueMessage(Swift_Mime_SimpleMessage $message)
     {
         $ser      = \serialize($message);
+        if (null !== $this->signingKey) {
+            $hmac = \hash_hmac('sha256', $ser, $this->signingKey);
+            $ser = $hmac."\n".$ser;
+        }
         $fileName = $this->path.'/'.$this->getRandomString(32);
         for ($i = 0; $i < $this->retryLimit; ++$i) {
             /* We try an exclusive creation of the file. This is an atomic operation, it avoid locking mechanism */
@@ -240,8 +252,24 @@ class Swift_FileSpool extends Swift_ConfigurableSpool
             /* We try a rename, it's an atomic operation, and avoid locking the file */
             if (\rename($file, $file.'.sending')) {
                 try {
+                    $contents = \file_get_contents($file.'.sending');
+                    if (null !== $this->signingKey) {
+                        $newlinePos = \strpos($contents, "\n");
+                        if (false === $newlinePos) {
+                            continue;
+                        }
+                        $storedHmac = \substr($contents, 0, $newlinePos);
+                        $ser = \substr($contents, $newlinePos + 1);
+                        $expectedHmac = \hash_hmac('sha256', $ser, $this->signingKey);
+                        if (!\hash_equals($expectedHmac, $storedHmac)) {
+                            continue;
+                        }
+                    } else {
+                        $ser = $contents;
+                    }
+
                     $message = @\unserialize(
-                        \file_get_contents($file.'.sending'),
+                        $ser,
                         ['allowed_classes' => self::UNSERIALIZE_ALLOWED_CLASSES],
                     );
 
