@@ -18,6 +18,8 @@ class Swift_Plugins_LoggerPlugin implements Swift_Events_CommandListener, Swift_
     /** The logger which is delegated to */
     private $logger;
 
+    private bool $inAuthSequence = false;
+
     /**
      * Create a new LoggerPlugin using $logger.
      */
@@ -64,6 +66,24 @@ class Swift_Plugins_LoggerPlugin implements Swift_Events_CommandListener, Swift_
     public function commandSent(Swift_Events_CommandEvent $evt)
     {
         $command = $evt->getCommand();
+
+        if (\preg_match('/^AUTH\s/i', $command)) {
+            $this->inAuthSequence = true;
+            $this->logger->add('>> AUTH [REDACTED]');
+
+            return;
+        }
+
+        if ($this->inAuthSequence) {
+            if (\preg_match('/^(EHLO|HELO|MAIL|RCPT|DATA|QUIT|RSET|NOOP|STARTTLS)\b/i', $command)) {
+                $this->inAuthSequence = false;
+            } else {
+                $this->logger->add('>> [REDACTED]');
+
+                return;
+            }
+        }
+
         $this->logger->add(\sprintf('>> %s', $command));
     }
 

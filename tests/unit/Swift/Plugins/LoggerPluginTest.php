@@ -161,6 +161,51 @@ class Swift_Plugins_LoggerPluginTest extends SwiftMailerTestCase
         $plugin->sendPerformed($event);
     }
 
+    public function testAuthCommandIsRedactedInLog()
+    {
+        $evt    = $this->createCommandEvent("AUTH PLAIN dXNlcm5hbWUAcGFzc3dvcmQ=\r\n");
+        $logger = $this->createLogger();
+        $logger->expects($this->once())
+            ->method('add')
+            ->with('>> AUTH [REDACTED]');
+
+        $plugin = $this->createPlugin($logger);
+        $plugin->commandSent($evt);
+    }
+
+    public function testNonAuthCommandIsNotRedacted()
+    {
+        $evt    = $this->createCommandEvent("EHLO localhost\r\n");
+        $logger = $this->createLogger();
+        $logger->expects($this->once())
+            ->method('add')
+            ->with($this->stringContains('EHLO localhost'));
+
+        $plugin = $this->createPlugin($logger);
+        $plugin->commandSent($evt);
+    }
+
+    public function testAuthSequenceIsFullyRedacted()
+    {
+        $logger = $this->createLogger();
+        $plugin = $this->createPlugin($logger);
+
+        $logged = [];
+        $logger->method('add')->willReturnCallback(function ($entry) use (&$logged) {
+            $logged[] = $entry;
+        });
+
+        $plugin->commandSent($this->createCommandEvent("AUTH LOGIN\r\n"));
+        $plugin->commandSent($this->createCommandEvent("dXNlcm5hbWU=\r\n"));
+        $plugin->commandSent($this->createCommandEvent("cGFzc3dvcmQ=\r\n"));
+        $plugin->commandSent($this->createCommandEvent("MAIL FROM:<test@example.com>\r\n"));
+
+        $this->assertSame('>> AUTH [REDACTED]', $logged[0]);
+        $this->assertSame('>> [REDACTED]', $logged[1]);
+        $this->assertSame('>> [REDACTED]', $logged[2]);
+        $this->assertStringContainsString('MAIL FROM', $logged[3]);
+    }
+
     public function testExceptionsArePassedToDelegateAndLeftToBubbleUp()
     {
         $transport = $this->createTransport();

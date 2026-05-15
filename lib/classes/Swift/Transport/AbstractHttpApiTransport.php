@@ -38,6 +38,15 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
         $this->eventDispatcher = $eventDispatcher;
     }
 
+    public function __debugInfo(): array
+    {
+        return [
+            'apiKey'     => '[REDACTED]',
+            'httpClient' => \get_class($this->httpClient),
+            'started'    => $this->started,
+        ];
+    }
+
     #[Override]
     public function start(): void
     {
