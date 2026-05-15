@@ -97,6 +97,20 @@ class Swift_Transport_DsnTransportFactory
                 $command = $dsn->getParameter('command') ?: '/usr/sbin/sendmail -bs';
             }
 
+            $binary = \explode(' ', $command)[0];
+            $allowedBinaries = [
+                '/usr/sbin/sendmail',
+                '/usr/lib/sendmail',
+                '/usr/bin/sendmail',
+                '/usr/local/sbin/sendmail',
+                '/usr/local/bin/sendmail',
+            ];
+            if (!\in_array($binary, $allowedBinaries, true)) {
+                throw new \InvalidArgumentException(
+                    \sprintf('DSN sendmail binary "%s" is not in the allowlist.', $binary)
+                );
+            }
+
             return new Swift_SendmailTransport($command);
         }
 
