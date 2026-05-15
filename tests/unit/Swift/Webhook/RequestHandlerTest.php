@@ -312,6 +312,65 @@ class Swift_Webhook_RequestHandlerTest extends PHPUnit\Framework\TestCase
 
     // ── Other tests ─────────────────────────────────────────────
 
+    public function testWebhookIpAllowlistRejectsUnknownIp()
+    {
+        $converter = $this->createMock(Swift_Webhook_PayloadConverterInterface::class);
+        $converter->method('getProviderName')->willReturn('test');
+
+        $handler = new Swift_Webhook_RequestHandler();
+
+        $this->expectException(Swift_Webhook_SignatureVerificationException::class);
+        $this->expectExceptionMessage('remote IP not in allowlist');
+
+        $handler->handle($converter, '{"e":1}', [], 'secret', 300, ['10.0.0.1'], '192.168.1.1');
+    }
+
+    public function testWebhookIpAllowlistAcceptsKnownIp()
+    {
+        $event = new Swift_Webhook_Event(
+            'delivery',
+            'delivered',
+            'msg-1',
+            'user@example.com',
+            [],
+            new DateTimeImmutable(),
+            [],
+        );
+
+        $converter = $this->createMock(Swift_Webhook_PayloadConverterInterface::class);
+        $converter->method('verify')->willReturn(true);
+        $converter->method('convert')->willReturn([$event]);
+        $converter->method('getProviderName')->willReturn('test');
+
+        $handler = new Swift_Webhook_RequestHandler();
+        $result  = $handler->handle($converter, '{"e":1}', [], 'secret', 300, ['10.0.0.1'], '10.0.0.1');
+
+        $this->assertCount(1, $result);
+    }
+
+    public function testWebhookNullAllowlistAcceptsAll()
+    {
+        $event = new Swift_Webhook_Event(
+            'delivery',
+            'delivered',
+            'msg-1',
+            'user@example.com',
+            [],
+            new DateTimeImmutable(),
+            [],
+        );
+
+        $converter = $this->createMock(Swift_Webhook_PayloadConverterInterface::class);
+        $converter->method('verify')->willReturn(true);
+        $converter->method('convert')->willReturn([$event]);
+        $converter->method('getProviderName')->willReturn('test');
+
+        $handler = new Swift_Webhook_RequestHandler();
+        $result  = $handler->handle($converter, '{"e":1}', [], 'secret', 300, null, '192.168.1.1');
+
+        $this->assertCount(1, $result);
+    }
+
     public function testSignatureVerificationExceptionContainsProviderName()
     {
         $converter = $this->createMock(Swift_Webhook_PayloadConverterInterface::class);

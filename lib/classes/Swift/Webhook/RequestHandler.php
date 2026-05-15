@@ -40,9 +40,19 @@ class Swift_Webhook_RequestHandler
         array $headers,
         #[SensitiveParameter] string $secret,
         int $maxAge = 300,
+        ?array $allowedIps = null,
+        ?string $remoteIp = null,
     ): array {
         if ('' === $secret) {
             throw new InvalidArgumentException('Webhook signing secret must not be empty.');
+        }
+
+        if (null !== $allowedIps && null !== $remoteIp) {
+            if (!\in_array($remoteIp, $allowedIps, true)) {
+                throw new Swift_Webhook_SignatureVerificationException(
+                    $converter->getProviderName() . ': remote IP not in allowlist'
+                );
+            }
         }
 
         // Normalize header keys to lowercase
