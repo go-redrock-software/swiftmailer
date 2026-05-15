@@ -32,6 +32,13 @@ class Swift_AddressEncoder_Utf8AddressEncoder implements Swift_AddressEncoder
     #[Override]
     public function encodeString(string $address): string
     {
+        if (!mb_check_encoding($address, 'UTF-8')) {
+            throw new Swift_AddressEncoderException('Invalid UTF-8 in email address', $address);
+        }
+        if (preg_match('/[\x00-\x1F\x7F]/', $address)) {
+            throw new Swift_AddressEncoderException('Control characters not allowed in email address', $address);
+        }
+
         return $address;
     }
 }

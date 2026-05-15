@@ -25,7 +25,7 @@
     }
   ],
   "require": {
-    "php": ">=8.2.0",
+    "php": ">=8.5",
     "ext-iconv": "*",
     "ext-mbstring": "*",
     "ext-intl": "*",
@@ -77,6 +77,9 @@
   "minimum-stability": "dev",
   "prefer-stable": true,
   "config": {
+    "audit": {
+      "abandoned": "report"
+    },
     "allow-plugins": {
       "php-http/discovery": true,
       "infection/extension-installer": true,
