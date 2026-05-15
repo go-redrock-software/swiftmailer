@@ -27,6 +27,11 @@ class Swift_Transport_Esmtp_Auth_CramMd5Authenticator implements Swift_Transport
 
     public function authenticate(Swift_Transport_SmtpAgent $agent, $username, $password)
     {
+        \trigger_error(
+            'CRAM-MD5 authentication uses the cryptographically weak MD5 algorithm. Consider using XOAUTH2 or PLAIN over TLS instead.',
+            \E_USER_DEPRECATED
+        );
+
         try {
             $challenge = $agent->executeCommand("AUTH CRAM-MD5\r\n", [334]);
             $challenge = \base64_decode(\substr($challenge, 4));

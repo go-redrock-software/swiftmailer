@@ -77,6 +77,37 @@ class Swift_Transport_Esmtp_Auth_CramMd5AuthenticatorTest extends SwiftMailerTes
         );
     }
 
+    /**
+     * @group legacy
+     */
+    public function testCramMd5TriggersDeprecation()
+    {
+        $cram = $this->getAuthenticator();
+
+        $this->agent->shouldReceive('executeCommand')
+            ->with("AUTH CRAM-MD5\r\n", [334])
+            ->andReturn('334 '.\base64_encode('<foo@bar>')."\r\n");
+        $this->agent->shouldReceive('executeCommand')
+            ->with(Mockery::any(), [235]);
+
+        $triggered = false;
+        \set_error_handler(function (int $errno, string $errstr) use (&$triggered) {
+            if (\E_USER_DEPRECATED === $errno && \str_contains($errstr, 'CRAM-MD5')) {
+                $triggered = true;
+            }
+
+            return false;
+        });
+
+        try {
+            $cram->authenticate($this->agent, 'jack', 'pass');
+        } finally {
+            \restore_error_handler();
+        }
+
+        $this->assertTrue($triggered, 'Expected E_USER_DEPRECATED mentioning CRAM-MD5');
+    }
+
     private function getAuthenticator()
     {
         return new Swift_Transport_Esmtp_Auth_CramMd5Authenticator();

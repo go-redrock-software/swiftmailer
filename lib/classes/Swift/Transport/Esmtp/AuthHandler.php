@@ -262,7 +262,16 @@ class Swift_Transport_Esmtp_AuthHandler implements Swift_Transport_EsmtpHandler
     protected function getAuthenticatorsForAgent()
     {
         if (!$mode = \strtolower($this->auth_mode ?? '')) {
-            return $this->authenticators;
+            $priority = ['xoauth2' => 0, 'plain' => 1, 'login' => 2, 'cram-md5' => 3, 'ntlm' => 4];
+            $sorted = $this->authenticators;
+            \usort($sorted, function ($a, $b) use ($priority) {
+                $pa = $priority[\strtolower($a->getAuthKeyword() ?? '')] ?? 99;
+                $pb = $priority[\strtolower($b->getAuthKeyword() ?? '')] ?? 99;
+
+                return $pa <=> $pb;
+            });
+
+            return $sorted;
         }
 
         foreach ($this->authenticators as $authenticator) {

@@ -270,6 +270,36 @@ class Swift_Transport_Esmtp_AuthHandlerTest extends SwiftMailerTestCase
         $auth->afterEhlo($this->agent);
     }
 
+    public function testAuthenticatorPreferenceOrdering()
+    {
+        $aCram  = $this->getMockery('Swift_Transport_Esmtp_Authenticator');
+        $aPlain = $this->getMockery('Swift_Transport_Esmtp_Authenticator');
+        $aLogin = $this->getMockery('Swift_Transport_Esmtp_Authenticator');
+        $aOauth = $this->getMockery('Swift_Transport_Esmtp_Authenticator');
+
+        $aCram->shouldReceive('getAuthKeyword')->andReturn('CRAM-MD5');
+        $aPlain->shouldReceive('getAuthKeyword')->andReturn('PLAIN');
+        $aLogin->shouldReceive('getAuthKeyword')->andReturn('LOGIN');
+        $aOauth->shouldReceive('getAuthKeyword')->andReturn('XOAUTH2');
+
+        // XOAUTH2 succeeds immediately — others must not be tried
+        $aOauth->shouldReceive('authenticate')
+            ->once()
+            ->with($this->agent, 'jack', 'pass')
+            ->andReturn(true);
+        $aPlain->shouldReceive('authenticate')->never();
+        $aLogin->shouldReceive('authenticate')->never();
+        $aCram->shouldReceive('authenticate')->never();
+
+        // Pass in worst-first order
+        $auth = $this->createHandler([$aCram, $aLogin, $aPlain, $aOauth]);
+        $auth->setUsername('jack');
+        $auth->setPassword('pass');
+
+        $auth->setKeywordParams(['XOAUTH2', 'PLAIN', 'LOGIN', 'CRAM-MD5']);
+        $auth->afterEhlo($this->agent);
+    }
+
     private function createHandler($authenticators)
     {
         return new Swift_Transport_Esmtp_AuthHandler($authenticators);
