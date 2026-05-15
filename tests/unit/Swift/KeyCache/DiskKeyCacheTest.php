@@ -230,4 +230,44 @@ class Swift_KeyCache_DiskKeyCacheTest extends PHPUnit\Framework\TestCase
         $cache->clearAll('ns1');
         $this->addToAssertionCount(1);
     }
+
+    public function testPathTraversalInNsKeyIsRejected()
+    {
+        $cache = $this->createCache();
+        $this->expectException(Swift_IoException::class);
+        $this->expectExceptionMessage('invalid characters');
+        $cache->setString('../../etc', 'key1', 'data', Swift_KeyCache::MODE_WRITE);
+    }
+
+    public function testPathTraversalInItemKeyIsRejected()
+    {
+        $cache = $this->createCache();
+        $this->expectException(Swift_IoException::class);
+        $this->expectExceptionMessage('invalid characters');
+        $cache->setString('ns1', '../passwd', 'data', Swift_KeyCache::MODE_WRITE);
+    }
+
+    public function testNullByteInKeyIsRejected()
+    {
+        $cache = $this->createCache();
+        $this->expectException(Swift_IoException::class);
+        $this->expectExceptionMessage('invalid characters');
+        $cache->setString("test\0evil", 'key1', 'data', Swift_KeyCache::MODE_WRITE);
+    }
+
+    public function testValidKeysAreAccepted()
+    {
+        $cache = $this->createCache();
+        $cache->setString('valid-ns.1', 'item_key-2.txt', 'data', Swift_KeyCache::MODE_WRITE);
+        $this->assertTrue($cache->hasKey('valid-ns.1', 'item_key-2.txt'));
+        $this->assertEquals('data', $cache->getString('valid-ns.1', 'item_key-2.txt'));
+    }
+
+    public function testEmptyKeyIsRejected()
+    {
+        $cache = $this->createCache();
+        $this->expectException(Swift_IoException::class);
+        $this->expectExceptionMessage('must not be empty');
+        $cache->setString('', 'key1', 'data', Swift_KeyCache::MODE_WRITE);
+    }
 }
