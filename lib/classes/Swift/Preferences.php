@@ -74,6 +74,13 @@ class Swift_Preferences
      */
     public function setCacheType($type)
     {
+        $allowed = ['array', 'disk', 'null'];
+        if (!\in_array($type, $allowed, true)) {
+            throw new \InvalidArgumentException(
+                \sprintf('Invalid cache type "%s". Allowed: %s', $type, \implode(', ', $allowed))
+            );
+        }
+
         Swift_DependencyContainer::getInstance()->register('cache')->asAliasOf(\sprintf('cache.%s', $type));
 
         return $this;

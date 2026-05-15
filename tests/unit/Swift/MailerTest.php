@@ -144,6 +144,15 @@ class Swift_MailerTest extends SwiftMailerTestCase
         $this->assertInstanceOf(Swift_Message::class, $message);
     }
 
+    public function testCreateMessageRejectsTraversal()
+    {
+        $transport = $this->createTransport();
+        $mailer    = $this->createMailer($transport);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $mailer->createMessage('../evil');
+    }
+
     public function testSendWithoutEnvelopePassesNull()
     {
         $transport = $this->createTransport();

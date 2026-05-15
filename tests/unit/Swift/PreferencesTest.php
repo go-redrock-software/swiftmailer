@@ -36,6 +36,16 @@ class Swift_PreferencesTest extends TestCase
         $this->assertSame($prefs, $result);
     }
 
+    public function testSetCacheTypeRejectsUnknownType(): void
+    {
+        $prefs = Swift_Preferences::getInstance();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Invalid cache type "evil"');
+
+        $prefs->setCacheType('evil');
+    }
+
     public function testSetQPDotEscapeReturnsSelf(): void
     {
         $prefs = Swift_Preferences::getInstance();

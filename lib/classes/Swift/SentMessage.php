@@ -122,4 +122,13 @@ readonly class Swift_SentMessage
     {
         return $this->failedRecipients;
     }
+
+    public function __debugInfo(): array
+    {
+        return [
+            'messageId'      => $this->messageId,
+            'recipientCount' => $this->recipientCount,
+            'transport'      => \get_class($this->transport),
+        ];
+    }
 }
