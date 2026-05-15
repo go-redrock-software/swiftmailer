@@ -287,6 +287,44 @@ class Swift_Transport_AbstractHttpApiTransportTest extends TestCase
         $this->assertEquals(['a@example.com', 'b@example.com'], $failures);
     }
 
+    public function testOversizedResponseThrows(): void
+    {
+        $stream = $this->createMock(\Psr\Http\Message\StreamInterface::class);
+        $stream->method('getSize')->willReturn(2 * 1024 * 1024);
+
+        $response = $this->createMock(\Psr\Http\Message\ResponseInterface::class);
+        $response->method('getBody')->willReturn($stream);
+
+        $reflection = new \ReflectionMethod($this->transport, 'getResponseBody');
+
+        $this->expectException(\Swift_TransportException::class);
+        $this->expectExceptionMessage('too large');
+        $reflection->invoke($this->transport, $response);
+    }
+
+    public function testOversizedStreamingResponseThrows(): void
+    {
+        $callCount = 0;
+        $stream = $this->createMock(\Psr\Http\Message\StreamInterface::class);
+        $stream->method('getSize')->willReturn(null);
+        $stream->method('eof')->willReturnCallback(function () use (&$callCount) {
+            return $callCount > 200;
+        });
+        $stream->method('read')->willReturnCallback(function () use (&$callCount) {
+            ++$callCount;
+            return str_repeat('x', 8192);
+        });
+
+        $response = $this->createMock(\Psr\Http\Message\ResponseInterface::class);
+        $response->method('getBody')->willReturn($stream);
+
+        $reflection = new \ReflectionMethod($this->transport, 'getResponseBody');
+
+        $this->expectException(\Swift_TransportException::class);
+        $this->expectExceptionMessage('exceeded max size');
+        $reflection->invoke($this->transport, $response);
+    }
+
     public function testSendWithoutEnvelopeFallsBackToMessage(): void
     {
         $dispatcher = new \Swift_Events_SimpleEventDispatcher();

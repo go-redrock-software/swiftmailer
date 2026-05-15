@@ -67,7 +67,7 @@ class Swift_Transport_Api_AhaSendTransport extends Swift_Transport_AbstractHttpA
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        return \json_decode((string) $response->getBody(), true) ?? [];
+        return \json_decode($this->getResponseBody($response), true) ?? [];
     }
 
     #[Override]

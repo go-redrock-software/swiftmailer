@@ -67,7 +67,7 @@ class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHtt
                 'http_errors' => false,
             ]);
 
-            $body = (string) $response->getBody();
+            $body = $this->getResponseBody($response);
 
             return 200 === $response->getStatusCode() && 'PONG!' === \trim($body, '"');
         } catch (Exception $e) {
@@ -90,7 +90,7 @@ class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHtt
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        return \json_decode((string) $response->getBody(), true) ?? [];
+        return \json_decode($this->getResponseBody($response), true) ?? [];
     }
 
     #[Override]

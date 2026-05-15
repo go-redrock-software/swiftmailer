@@ -111,7 +111,7 @@ class Swift_Transport_Api_AzureTransport extends Swift_Transport_AbstractHttpApi
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        return \json_decode((string) $response->getBody(), true) ?? [];
+        return \json_decode($this->getResponseBody($response), true) ?? [];
     }
 
     #[Override]

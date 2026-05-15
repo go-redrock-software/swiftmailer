@@ -78,7 +78,7 @@ class Swift_Transport_Api_ScalewayTransport extends Swift_Transport_AbstractHttp
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        $body = (string) $response->getBody();
+        $body = $this->getResponseBody($response);
 
         return \json_decode($body, true) ?? [];
     }

@@ -53,7 +53,7 @@ class Swift_Transport_Api_ResendTransport extends Swift_Transport_AbstractHttpAp
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        $body = (string) $response->getBody();
+        $body = $this->getResponseBody($response);
 
         return \json_decode($body, true) ?? [];
     }

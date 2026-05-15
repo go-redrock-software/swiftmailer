@@ -51,7 +51,7 @@ class Swift_Transport_Api_BrevoTransport extends Swift_Transport_AbstractHttpApi
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        return \json_decode($response->getBody()->getContents(), true) ?? [];
+        return \json_decode($this->getResponseBody($response), true) ?? [];
     }
 
     #[Override]

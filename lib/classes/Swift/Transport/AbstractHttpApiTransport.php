@@ -34,7 +34,7 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
         ?Swift_Events_EventDispatcher $eventDispatcher = null,
     ) {
         $this->apiKey          = $apiKey;
-        $this->httpClient      = $httpClient ?? new Client();
+        $this->httpClient      = $httpClient ?? new Client(['verify' => true]);
         $this->eventDispatcher = $eventDispatcher;
     }
 
@@ -182,6 +182,33 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
      * Get the API endpoint URL for ping/health check.
      */
     abstract protected function getPingEndpoint(): string;
+
+    protected const MAX_RESPONSE_SIZE = 1048576; // 1 MB
+
+    protected function getResponseBody(ResponseInterface $response): string
+    {
+        $body = $response->getBody();
+        $size = $body->getSize();
+
+        if (null !== $size && $size > static::MAX_RESPONSE_SIZE) {
+            throw new Swift_TransportException(
+                \sprintf('API response body too large: %d bytes (max %d)', $size, static::MAX_RESPONSE_SIZE)
+            );
+        }
+
+        $contents = '';
+        while (!$body->eof()) {
+            $chunk = $body->read(8192);
+            $contents .= $chunk;
+            if (\strlen($contents) > static::MAX_RESPONSE_SIZE) {
+                throw new Swift_TransportException(
+                    \sprintf('API response body exceeded max size of %d bytes', static::MAX_RESPONSE_SIZE)
+                );
+            }
+        }
+
+        return $contents;
+    }
 
     /**
      * Count total recipients on a message.
