@@ -189,12 +189,12 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
         if ($transport = \array_pop($this->transports)) {
             try {
                 $transport->stop();
-            } catch (\Exception $e) {
-                \error_log(\sprintf(
+            } catch (Exception $e) {
+                @\trigger_error(\sprintf(
                     'Swiftmailer: LoadBalancedTransport error from %s: %s',
                     \get_class($transport),
-                    $e->getMessage()
-                ));
+                    $e->getMessage(),
+                ), \E_USER_WARNING);
             }
             $this->deadTransports[] = $transport;
         }
