@@ -322,8 +322,16 @@ class MailomatTransportTest extends TestCase
 
     private function createMockResponse(int $statusCode, array $body): ResponseInterface
     {
+        $json   = \json_encode($body);
         $stream = $this->createMock(StreamInterface::class);
-        $stream->method('__toString')->willReturn(\json_encode($body));
+        // getResponseBody() consumes the stream via eof()/read(); a real PSR-7 stream
+        // yields its contents once and then reports EOF. Stub that so the read loop
+        // terminates instead of spinning forever on an unstubbed eof() (default false).
+        $stream->method('getSize')->willReturn(\strlen($json));
+        $stream->method('eof')->willReturnOnConsecutiveCalls(false, true);
+        $stream->method('read')->willReturn($json);
+        $stream->method('getContents')->willReturn($json);
+        $stream->method('__toString')->willReturn($json);
 
         $response = $this->createMock(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn($statusCode);
