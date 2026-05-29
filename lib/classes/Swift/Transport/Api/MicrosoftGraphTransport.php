@@ -211,25 +211,27 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         $graphMessage->setBody($body);
         $graphMessage->setToRecipients([$recipient]);
 
-        // @codeCoverageIgnoreStart — bug: array_map passes name strings, not email arrays, causing TypeError before callbacks execute
+        // Swift addresses are an [address => name] map, so iterate by key. (array_map
+        // over the array would hand the callback the name strings, not the pairs.)
         if (\count($message->getCc() ?? []) > 0) {
-            $graphMessage->setCcRecipients(\array_map(/** @codeCoverageIgnore */ function ($row) use (&$recipient_count, &$failedRecipients) {
-                $failedRecipients[] = \array_key_first($row); // @codeCoverageIgnore
-                ++$recipient_count; // @codeCoverageIgnore
-
-                return $this->convertSwiftEmailAddressToGraphRecipient($row); // @codeCoverageIgnore
-            }, $message->getCc() ?? []));
+            $ccRecipients = [];
+            foreach ($message->getCc() ?? [] as $address => $name) {
+                $failedRecipients[] = $address;
+                ++$recipient_count;
+                $ccRecipients[] = $this->convertSwiftEmailAddressToGraphRecipient([$address => $name]);
+            }
+            $graphMessage->setCcRecipients($ccRecipients);
         }
 
         if (\count($message->getBcc() ?? []) > 0) {
-            $graphMessage->setBccRecipients(\array_map(/** @codeCoverageIgnore */ function ($row) use (&$recipient_count, &$failedRecipients) {
-                $failedRecipients[] = \array_key_first($row); // @codeCoverageIgnore
-                ++$recipient_count; // @codeCoverageIgnore
-
-                return $this->convertSwiftEmailAddressToGraphRecipient($row); // @codeCoverageIgnore
-            }, $message->getBcc() ?? []));
+            $bccRecipients = [];
+            foreach ($message->getBcc() ?? [] as $address => $name) {
+                $failedRecipients[] = $address;
+                ++$recipient_count;
+                $bccRecipients[] = $this->convertSwiftEmailAddressToGraphRecipient([$address => $name]);
+            }
+            $graphMessage->setBccRecipients($bccRecipients);
         }
-        // @codeCoverageIgnoreEnd
 
         // Detect calendar invitations we should convert into real Graph events. M365
         // strips METHOD:REQUEST from .ics parts sent via sendMail, so the recipient
