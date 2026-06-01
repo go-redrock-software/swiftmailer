@@ -1,0 +1,416 @@
+<?php
+
+namespace Swift\Transport\Api;
+
+use Microsoft\Graph\GraphServiceClient;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * Tests for calendar-invite -> Graph event conversion in
+ * Swift_Transport_Api_MicrosoftGraphTransport.
+ */
+class MicrosoftGraphCalendarTest extends TestCase
+{
+    private function requestInviteIcs(): string
+    {
+        return \implode("\r\n", [
+            'BEGIN:VCALENDAR',
+            'METHOD:REQUEST',
+            'BEGIN:VEVENT',
+            'UID:cal-1@example.com',
+            'DTSTART:20260301T140000Z',
+            'DTEND:20260301T150000Z',
+            'SUMMARY:Project Kickoff',
+            'ATTENDEE;CN=Bob;ROLE=REQ-PARTICIPANT:mailto:bob@example.com',
+            'END:VEVENT',
+            'END:VCALENDAR',
+        ]);
+    }
+
+    private function promise(): \Http\Promise\Promise
+    {
+        $promise = $this->createMock(\Http\Promise\Promise::class);
+        $promise->method('wait')->willReturn(null);
+
+        return $promise;
+    }
+
+    private function dispatcher(): \Swift_Events_EventDispatcher
+    {
+        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
+        $dispatcher->method('createSendEvent')->willReturn($this->createMock(\Swift_Events_SendEvent::class));
+        $dispatcher->method('createTransportChangeEvent')->willReturn($this->createMock(\Swift_Events_TransportChangeEvent::class));
+
+        return $dispatcher;
+    }
+
+    private function message(string $ics): \Swift_Message
+    {
+        $m = new \Swift_Message();
+        $m->setFrom(['from@example.com' => 'Sender']);
+        $m->setTo(['to@example.com' => 'Recipient']);
+        $m->setSubject('Invitation');
+        $m->setBody('Please join.');
+        $m->attach(new \Swift_Attachment($ics, 'invite.ics', 'text/calendar'));
+
+        return $m;
+    }
+
+    // -- flag accessors ---
+
+    public function testConversionDisabledByDefault(): void
+    {
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport(
+            $this->createMock(GraphServiceClient::class),
+        );
+
+        $this->assertFalse($transport->isCalendarEventConversionEnabled());
+        $this->assertFalse($transport->isSendingEmailAlongsideEvent());
+    }
+
+    public function testEnableAndDisableConversion(): void
+    {
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport(
+            $this->createMock(GraphServiceClient::class),
+        );
+
+        $transport->enableCalendarEventConversion();
+        $this->assertTrue($transport->isCalendarEventConversionEnabled());
+
+        $transport->disableCalendarEventConversion();
+        $this->assertFalse($transport->isCalendarEventConversionEnabled());
+
+        $transport->setSendEmailAlongsideEvent(true);
+        $this->assertTrue($transport->isSendingEmailAlongsideEvent());
+    }
+
+    // -- conversion creates an event and skips the duplicate email ---
+
+    public function testRequestInviteIsCreatedAsEventAndEmailSkipped(): void
+    {
+        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
+        $eventsBuilder->expects($this->once())->method('post')->willReturn($this->promise());
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('events')->willReturn($eventsBuilder);
+        $userItemBuilder->expects($this->never())->method('sendMail');
+
+        $graphClient = $this->createMock(GraphServiceClient::class);
+        $graphClient->method('me')->willReturn($userItemBuilder);
+
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $this->dispatcher());
+        $transport->enableCalendarEventConversion();
+
+        $result = $transport->send($this->message($this->requestInviteIcs()));
+
+        // One attendee notified via the created event.
+        $this->assertSame(1, $result);
+    }
+
+    // -- sendAlongside also sends the email (without the broken .ics) ---
+
+    public function testRequestInviteWithSendAlongsideSendsBoth(): void
+    {
+        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
+        $eventsBuilder->expects($this->once())->method('post')->willReturn($this->promise());
+
+        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
+        $sendMailBuilder->expects($this->once())->method('post')->willReturn($this->promise());
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('events')->willReturn($eventsBuilder);
+        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
+
+        $graphClient = $this->createMock(GraphServiceClient::class);
+        $graphClient->method('me')->willReturn($userItemBuilder);
+
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $this->dispatcher());
+        $transport->enableCalendarEventConversion();
+        $transport->setSendEmailAlongsideEvent(true);
+
+        $result = $transport->send($this->message($this->requestInviteIcs()));
+        $this->assertSame(1, $result);
+    }
+
+    // -- conversion disabled: .ics rides along as a normal attachment ---
+
+    public function testConversionDisabledSendsIcsAsAttachment(): void
+    {
+        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
+        $sendMailBuilder->expects($this->once())->method('post')->willReturn($this->promise());
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
+        $userItemBuilder->expects($this->never())->method('events');
+
+        $graphClient = $this->createMock(GraphServiceClient::class);
+        $graphClient->method('me')->willReturn($userItemBuilder);
+
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $this->dispatcher());
+        // conversion intentionally left disabled
+
+        $result = $transport->send($this->message($this->requestInviteIcs()));
+        $this->assertSame(0, $result);
+    }
+
+    // -- non-REQUEST methods are not converted ---
+
+    public function testPublishMethodIsNotConverted(): void
+    {
+        $publishIcs = \implode("\r\n", [
+            'BEGIN:VCALENDAR',
+            'METHOD:PUBLISH',
+            'BEGIN:VEVENT',
+            'UID:pub-1',
+            'DTSTART:20260301T140000Z',
+            'DTEND:20260301T150000Z',
+            'SUMMARY:FYI event',
+            'END:VEVENT',
+            'END:VCALENDAR',
+        ]);
+
+        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
+        $sendMailBuilder->expects($this->once())->method('post')->willReturn($this->promise());
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
+        $userItemBuilder->expects($this->never())->method('events');
+
+        $graphClient = $this->createMock(GraphServiceClient::class);
+        $graphClient->method('me')->willReturn($userItemBuilder);
+
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $this->dispatcher());
+        $transport->enableCalendarEventConversion();
+
+        $result = $transport->send($this->message($publishIcs));
+        $this->assertSame(0, $result);
+    }
+
+    // -- convertParsedEventToGraphEvent maps fields onto the Graph model ---
+
+    public function testConvertParsedEventToGraphEventMapsFields(): void
+    {
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport(
+            $this->createMock(GraphServiceClient::class),
+        );
+
+        $parsed = (new \Swift_Transport_Api_Calendar_IcsParser())->parse(
+            \implode("\r\n", [
+                'BEGIN:VCALENDAR',
+                'METHOD:REQUEST',
+                'BEGIN:VEVENT',
+                'UID:map-1',
+                'DTSTART;TZID=America/New_York:20260301T090000',
+                'DTEND;TZID=America/New_York:20260301T100000',
+                'SUMMARY:Mapped Meeting',
+                'LOCATION:HQ',
+                'DESCRIPTION:Agenda',
+                'ATTENDEE;CN=Bob:mailto:bob@example.com',
+                'END:VEVENT',
+                'END:VCALENDAR',
+            ]),
+        );
+
+        $graphEvent = $transport->convertParsedEventToGraphEvent($parsed);
+
+        $this->assertSame('Mapped Meeting', $graphEvent->getSubject());
+        $this->assertSame('Agenda', $graphEvent->getBody()->getContent());
+        $this->assertSame('2026-03-01T09:00:00', $graphEvent->getStart()->getDateTime());
+        $this->assertSame('America/New_York', $graphEvent->getStart()->getTimeZone());
+        $this->assertSame('2026-03-01T10:00:00', $graphEvent->getEnd()->getDateTime());
+        $this->assertSame('HQ', $graphEvent->getLocation()->getDisplayName());
+        $this->assertCount(1, $graphEvent->getAttendees());
+        $this->assertSame('bob@example.com', $graphEvent->getAttendees()[0]->getEmailAddress()->getAddress());
+        $this->assertSame('map-1', $graphEvent->getTransactionId());
+    }
+
+    // -- a malformed .ics must not crash the send; it falls back to an attachment ---
+
+    public function testMalformedIcsFallsBackToAttachment(): void
+    {
+        // METHOD:REQUEST so detection fires, but an unparseable DTSTART so the parser
+        // throws. The transport must swallow that and send the .ics as an attachment.
+        $malformed = \implode("\r\n", [
+            'BEGIN:VCALENDAR',
+            'METHOD:REQUEST',
+            'BEGIN:VEVENT',
+            'UID:bad-1',
+            'DTSTART:not-a-real-date',
+            'SUMMARY:Broken',
+            'END:VEVENT',
+            'END:VCALENDAR',
+        ]);
+
+        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
+        $sendMailBuilder->expects($this->once())->method('post')->willReturn($this->promise());
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
+        $userItemBuilder->expects($this->never())->method('events');
+
+        $graphClient = $this->createMock(GraphServiceClient::class);
+        $graphClient->method('me')->willReturn($userItemBuilder);
+
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $this->dispatcher());
+        $transport->enableCalendarEventConversion();
+
+        // Must not throw, and must not create an event.
+        $result = $transport->send($this->message($malformed));
+        $this->assertSame(0, $result);
+    }
+
+    // -- conversion enabled but no calendar part: ordinary sendMail, no event ---
+
+    public function testNoCalendarPartSendsNormally(): void
+    {
+        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
+        $sendMailBuilder->expects($this->once())->method('post')->willReturn($this->promise());
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
+        $userItemBuilder->expects($this->never())->method('events');
+
+        $graphClient = $this->createMock(GraphServiceClient::class);
+        $graphClient->method('me')->willReturn($userItemBuilder);
+
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $this->dispatcher());
+        $transport->enableCalendarEventConversion();
+
+        $m = new \Swift_Message();
+        $m->setFrom(['from@example.com' => 'Sender']);
+        $m->setTo(['to@example.com' => 'Recipient']);
+        $m->setSubject('No invite here');
+        $m->setBody('Just a normal email.');
+
+        $result = $transport->send($m);
+        $this->assertSame(0, $result);
+    }
+
+    // -- multiple invites create multiple events ---
+
+    public function testMultipleInvitesCreateMultipleEvents(): void
+    {
+        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
+        $eventsBuilder->expects($this->exactly(2))->method('post')->willReturn($this->promise());
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('events')->willReturn($eventsBuilder);
+        $userItemBuilder->expects($this->never())->method('sendMail');
+
+        $graphClient = $this->createMock(GraphServiceClient::class);
+        $graphClient->method('me')->willReturn($userItemBuilder);
+
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $this->dispatcher());
+        $transport->enableCalendarEventConversion();
+
+        $m = new \Swift_Message();
+        $m->setFrom(['from@example.com' => 'Sender']);
+        $m->setTo(['to@example.com' => 'Recipient']);
+        $m->setSubject('Two invites');
+        $m->setBody('See attached.');
+        $m->attach(new \Swift_Attachment($this->requestInviteIcs(), 'a.ics', 'text/calendar'));
+        $m->attach(new \Swift_Attachment($this->requestInviteIcs(), 'b.ics', 'text/calendar'));
+
+        // Two attendees total (one per invite).
+        $result = $transport->send($m);
+        $this->assertSame(2, $result);
+    }
+
+    // -- detection by .ics filename when the content type isn't text/calendar ---
+
+    public function testDetectionByIcsFilename(): void
+    {
+        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
+        $eventsBuilder->expects($this->once())->method('post')->willReturn($this->promise());
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('events')->willReturn($eventsBuilder);
+        $userItemBuilder->expects($this->never())->method('sendMail');
+
+        $graphClient = $this->createMock(GraphServiceClient::class);
+        $graphClient->method('me')->willReturn($userItemBuilder);
+
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $this->dispatcher());
+        $transport->enableCalendarEventConversion();
+
+        $m = new \Swift_Message();
+        $m->setFrom(['from@example.com' => 'Sender']);
+        $m->setTo(['to@example.com' => 'Recipient']);
+        $m->setSubject('Odd content type');
+        $m->setBody('See attached.');
+        // Generic content type, but a .ics filename should still be detected.
+        $m->attach(new \Swift_Attachment($this->requestInviteIcs(), 'meeting.ics', 'application/octet-stream'));
+
+        $result = $transport->send($m);
+        $this->assertSame(1, $result);
+    }
+
+    // -- explicit user id routes events through /users/{id}, not /me ---
+
+    public function testExplicitUserIdRoutesEventsThroughByUserId(): void
+    {
+        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
+        $eventsBuilder->expects($this->once())->method('post')->willReturn($this->promise());
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('events')->willReturn($eventsBuilder);
+
+        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
+        $usersBuilder->expects($this->once())->method('byUserId')->with('user-123')->willReturn($userItemBuilder);
+
+        $graphClient = $this->createMock(GraphServiceClient::class);
+        $graphClient->method('users')->willReturn($usersBuilder);
+        $graphClient->expects($this->never())->method('me');
+
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'user-123', $this->dispatcher());
+        $transport->enableCalendarEventConversion();
+
+        $result = $transport->send($this->message($this->requestInviteIcs()));
+        $this->assertSame(1, $result);
+    }
+
+    // -- send-alongside strips the .ics but keeps real file attachments ---
+
+    public function testSendAlongsideStripsIcsButKeepsFileAttachment(): void
+    {
+        $captured = null;
+
+        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
+        $eventsBuilder->expects($this->once())->method('post')->willReturn($this->promise());
+
+        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
+        $sendMailBuilder->method('post')->willReturnCallback(function ($body) use (&$captured) {
+            $captured = $body;
+
+            return $this->promise();
+        });
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('events')->willReturn($eventsBuilder);
+        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
+
+        $graphClient = $this->createMock(GraphServiceClient::class);
+        $graphClient->method('me')->willReturn($userItemBuilder);
+
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $this->dispatcher());
+        $transport->enableCalendarEventConversion();
+        $transport->setSendEmailAlongsideEvent(true);
+
+        $m = new \Swift_Message();
+        $m->setFrom(['from@example.com' => 'Sender']);
+        $m->setTo(['to@example.com' => 'Recipient']);
+        $m->setSubject('Invite plus file');
+        $m->setBody('See attached.');
+        $m->attach(new \Swift_Attachment('real file body', 'report.pdf', 'application/pdf'));
+        $m->attach(new \Swift_Attachment($this->requestInviteIcs(), 'invite.ics', 'text/calendar'));
+
+        $transport->send($m);
+
+        $this->assertNotNull($captured, 'sendMail should have been called');
+        $attachments = $captured->getMessage()->getAttachments() ?? [];
+        $names       = \array_map(static fn ($a) => $a->getName(), $attachments);
+
+        $this->assertContains('report.pdf', $names, 'real attachment must survive');
+        $this->assertNotContains('invite.ics', $names, 'the broken .ics must be stripped');
+    }
+}

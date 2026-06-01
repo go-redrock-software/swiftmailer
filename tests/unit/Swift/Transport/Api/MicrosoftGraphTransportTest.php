@@ -38,6 +38,16 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $this->assertEquals($string, $object->getSendingAccountUserId());
     }
 
+    public function testConstructDefaultsToNullUserId(): void
+    {
+        $object = new \Swift_Transport_Api_MicrosoftGraphTransport(
+            $this->createMock(GraphServiceClient::class),
+        );
+
+        $this->assertNull($object->getSendingAccountUserId());
+        $this->assertTrue($object->isUsingMeEndpoint());
+    }
+
     /**
      * Test the convertSwiftEmailAddressToGraphRecipient method for valid Swift email.
      */
@@ -220,8 +230,42 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         );
 
         $object->useFromAddressAsSendingAccountUserId();
-        // method just sets a flag; verify no exception
-        $this->assertTrue(true);
+        $this->assertFalse($object->isUsingMeEndpoint());
+    }
+
+    public function testIsUsingMeEndpointReturnsTrueWhenNoUserId(): void
+    {
+        $object = new \Swift_Transport_Api_MicrosoftGraphTransport(
+            $this->createMock(GraphServiceClient::class),
+            null,
+            $this->createMock(\Swift_Events_EventDispatcher::class),
+        );
+
+        $this->assertTrue($object->isUsingMeEndpoint());
+    }
+
+    public function testIsUsingMeEndpointReturnsFalseWhenUserIdSet(): void
+    {
+        $object = new \Swift_Transport_Api_MicrosoftGraphTransport(
+            $this->createMock(GraphServiceClient::class),
+            'user-id',
+            $this->createMock(\Swift_Events_EventDispatcher::class),
+        );
+
+        $this->assertFalse($object->isUsingMeEndpoint());
+    }
+
+    public function testSetSendingAccountUserIdToNullEnablesMeEndpoint(): void
+    {
+        $object = new \Swift_Transport_Api_MicrosoftGraphTransport(
+            $this->createMock(GraphServiceClient::class),
+            'user-id',
+            $this->createMock(\Swift_Events_EventDispatcher::class),
+        );
+
+        $this->assertFalse($object->isUsingMeEndpoint());
+        $object->setSendingAccountUserId(null);
+        $this->assertTrue($object->isUsingMeEndpoint());
     }
 
     // -- ping ---
@@ -599,8 +643,13 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $promise = $this->createMock(\Http\Promise\Promise::class);
         $promise->method('wait')->willReturn(null);
 
+        $captured        = null;
         $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->method('post')->willReturn($promise);
+        $sendMailBuilder->method('post')->willReturnCallback(function ($body) use ($promise, &$captured) {
+            $captured = $body;
+
+            return $promise;
+        });
 
         $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
         $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
@@ -626,21 +675,17 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $m->setSubject('Test');
         $m->setBody('Hello');
 
-        // The transport has a bug: array_map iterates values of getCc() which are
-        // name strings, but convertSwiftEmailAddressToGraphRecipient expects arrays.
-        // This causes a TypeError, which is caught by the transport's catch(Throwable)
-        // and converted to a Swift_TransportException.
-        try {
-            $transport->send($m);
-        } catch (\Swift_TransportException|\TypeError $e) {
-            // Expected -- transport bug causes TypeError in CC processing
-            $this->assertTrue(true);
+        // CC is an [address => name] map; the recipient must carry the address, not
+        // the name. The previous array_map-over-values implementation threw a
+        // TypeError here, so this test would have caught the regression.
+        $result = $transport->send($m);
 
-            return;
-        }
+        $this->assertSame(1, $result); // one CC recipient counted
 
-        // If somehow it doesn't throw, that's fine too
-        $this->assertTrue(true);
+        $cc = $captured->getMessage()->getCcRecipients();
+        $this->assertCount(1, $cc);
+        $this->assertSame('cc@example.com', $cc[0]->getEmailAddress()->getAddress());
+        $this->assertSame('CC Name', $cc[0]->getEmailAddress()->getName());
     }
 
     // -- send: with BCC (exercises BCC path despite transport bug) ---
@@ -650,8 +695,13 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $promise = $this->createMock(\Http\Promise\Promise::class);
         $promise->method('wait')->willReturn(null);
 
+        $captured        = null;
         $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->method('post')->willReturn($promise);
+        $sendMailBuilder->method('post')->willReturnCallback(function ($body) use ($promise, &$captured) {
+            $captured = $body;
+
+            return $promise;
+        });
 
         $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
         $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
@@ -677,14 +727,91 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $m->setSubject('Test');
         $m->setBody('Hello');
 
-        try {
-            $transport->send($m);
-        } catch (\Swift_TransportException|\TypeError $e) {
-            $this->assertTrue(true);
+        // BCC takes the same [address => name] path as CC; assert the address lands
+        // on the recipient rather than triggering the old TypeError.
+        $result = $transport->send($m);
 
-            return;
-        }
+        $this->assertSame(1, $result); // one BCC recipient counted
 
+        $bcc = $captured->getMessage()->getBccRecipients();
+        $this->assertCount(1, $bcc);
+        $this->assertSame('bcc@example.com', $bcc[0]->getEmailAddress()->getAddress());
+        $this->assertSame('BCC Name', $bcc[0]->getEmailAddress()->getName());
+    }
+
+    // -- send: /me endpoint (delegated, no user ID) ---
+
+    public function testSendUsesMeEndpointWhenNoUserId(): void
+    {
+        $promise = $this->createMock(\Http\Promise\Promise::class);
+        $promise->method('wait')->willReturn(null);
+
+        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
+        $sendMailBuilder->method('post')->willReturn($promise);
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
+
+        $graphClient = $this->createMock(GraphServiceClient::class);
+        $graphClient->method('me')->willReturn($userItemBuilder);
+        $graphClient->expects($this->never())->method('users');
+
+        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
+        $sendEvt    = $this->createMock(\Swift_Events_SendEvent::class);
+        $changeEvt  = $this->createMock(\Swift_Events_TransportChangeEvent::class);
+        $dispatcher->method('createSendEvent')->willReturn($sendEvt);
+        $dispatcher->method('createTransportChangeEvent')->willReturn($changeEvt);
+
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $dispatcher);
+
+        $m = new \Swift_Message();
+        $m->setFrom(['from@example.com' => 'Sender']);
+        $m->setTo(['to@example.com' => 'Recipient']);
+        $m->setSubject('Test');
+        $m->setBody('Hello');
+
+        $transport->send($m);
+        $this->assertTrue($transport->isUsingMeEndpoint());
+    }
+
+    // -- send: from-address mode ---
+
+    public function testSendUsesFromAddressAsUserId(): void
+    {
+        $promise = $this->createMock(\Http\Promise\Promise::class);
+        $promise->method('wait')->willReturn(null);
+
+        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
+        $sendMailBuilder->method('post')->willReturn($promise);
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
+
+        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
+        $usersBuilder->expects($this->once())
+            ->method('byUserId')
+            ->with('from@example.com')
+            ->willReturn($userItemBuilder);
+
+        $graphClient = $this->createMock(GraphServiceClient::class);
+        $graphClient->method('users')->willReturn($usersBuilder);
+
+        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
+        $sendEvt    = $this->createMock(\Swift_Events_SendEvent::class);
+        $changeEvt  = $this->createMock(\Swift_Events_TransportChangeEvent::class);
+        $dispatcher->method('createSendEvent')->willReturn($sendEvt);
+        $dispatcher->method('createTransportChangeEvent')->willReturn($changeEvt);
+
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'ignored-id', $dispatcher);
+        $transport->useFromAddressAsSendingAccountUserId();
+
+        $m = new \Swift_Message();
+        $m->setFrom(['from@example.com' => 'Sender']);
+        $m->setTo(['to@example.com' => 'Recipient']);
+        $m->setSubject('Test');
+        $m->setBody('Hello');
+
+        $transport->send($m);
         $this->assertTrue(true);
     }
 

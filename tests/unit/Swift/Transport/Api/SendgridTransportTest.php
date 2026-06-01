@@ -253,8 +253,14 @@ class Swift_Transport_Api_SendgridTransportTest extends TestCase
     {
         $reflection = new \ReflectionMethod($this->transport, 'parseResponse');
 
+        $json   = \json_encode(['key' => 'value']);
         $stream = $this->createMock(\Psr\Http\Message\StreamInterface::class);
-        $stream->method('getContents')->willReturn(\json_encode(['key' => 'value']));
+        // getResponseBody() consumes the stream via eof()/read(); stub those so the
+        // read loop terminates instead of spinning on an unstubbed eof() (default false).
+        $stream->method('getSize')->willReturn(\strlen($json));
+        $stream->method('eof')->willReturnOnConsecutiveCalls(false, true);
+        $stream->method('read')->willReturn($json);
+        $stream->method('getContents')->willReturn($json);
 
         $response = $this->createMock(\Psr\Http\Message\ResponseInterface::class);
         $response->method('getBody')->willReturn($stream);
@@ -279,7 +285,7 @@ class Swift_Transport_Api_SendgridTransportTest extends TestCase
 
                 return isset($payload['reply_to'])
                     && 'reply@example.com' === $payload['reply_to']['email']
-                    && 'Reply User' === $payload['reply_to']['name'];
+                    && 'Reply User'        === $payload['reply_to']['name'];
             }))
             ->willReturn(new Response(202));
 
@@ -330,7 +336,7 @@ class Swift_Transport_Api_SendgridTransportTest extends TestCase
         $message->setFrom(['from@example.com' => 'Sender']);
         $message->setTo(['to@example.com' => 'Recipient']);
         $message->setSubject('Test');
-        $message->setBody('<p>Hello <img src="' . $message->embed(new \Swift_Image('image data', 'logo.png', 'image/png')) . '" /></p>', 'text/html');
+        $message->setBody('<p>Hello <img src="'.$message->embed(new \Swift_Image('image data', 'logo.png', 'image/png')).'" /></p>', 'text/html');
 
         $this->httpClientMock->expects($this->once())
             ->method('request')

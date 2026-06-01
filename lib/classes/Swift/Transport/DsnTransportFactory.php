@@ -13,8 +13,12 @@ use Nyholm\Dsn\DsnParser;
  * Factory that creates Swift_Transport instances from DSN strings.
  *
  * Supports meta-transport wrappers:
- *   failover(dsn1 dsn2)   -> Swift_Transport_FailoverTransport
+ *   failover(dsn1 dsn2)    -> Swift_Transport_FailoverTransport
  *   roundrobin(dsn1 dsn2)  -> Swift_Transport_LoadBalancedTransport
+ *   retry(dsn)             -> Swift_Transport_RetryTransport
+ *
+ * Retry can also be requested via query parameters on a plain DSN:
+ *   null://default?retries=5&retry_delay=2000
  */
 class Swift_Transport_DsnTransportFactory
 {
@@ -49,6 +53,12 @@ class Swift_Transport_DsnTransportFactory
 
     public function fromDsnString(string $dsnString): Swift_Transport
     {
+        // retry(...) wrapper -- decorate the inner transport (which may itself be a
+        // failover/roundrobin wrapper or a plain DSN) with retry-on-failure.
+        if (\preg_match('/^retry\((.+)\)$/', $dsnString, $matches)) {
+            return new Swift_Transport_RetryTransport($this->fromDsnString(\trim($matches[1])));
+        }
+
         // Check for meta-transport wrappers
         if (\preg_match('/^(failover|roundrobin)\((.+)\)$/', $dsnString, $matches)) {
             $wrapper   = $matches[1];
@@ -69,7 +79,28 @@ class Swift_Transport_DsnTransportFactory
             return $transport;
         }
 
-        return $this->createTransport($dsnString);
+        $transport = $this->createTransport($dsnString);
+
+        // A positive ?retries= query parameter decorates the transport with retry.
+        return $this->maybeWrapWithRetry($transport, $dsnString);
+    }
+
+    /**
+     * Wraps a transport in a RetryTransport when the DSN carries a positive
+     * "retries" query parameter (with an optional "retry_delay" in milliseconds).
+     */
+    private function maybeWrapWithRetry(Swift_Transport $transport, string $dsnString): Swift_Transport
+    {
+        $dsn     = new Swift_Dsn(DsnParser::parseUrl($dsnString));
+        $retries = (int) ($dsn->getParameter('retries') ?? 0);
+
+        if ($retries <= 0) {
+            return $transport;
+        }
+
+        $delay = (int) ($dsn->getParameter('retry_delay') ?? 1000);
+
+        return new Swift_Transport_RetryTransport($transport, $retries, $delay);
     }
 
     private function createTransport(string $dsnString): Swift_Transport
@@ -97,7 +128,7 @@ class Swift_Transport_DsnTransportFactory
                 $command = $dsn->getParameter('command') ?: '/usr/sbin/sendmail -bs';
             }
 
-            $binary = \explode(' ', $command)[0];
+            $binary          = \explode(' ', $command)[0];
             $allowedBinaries = [
                 '/usr/sbin/sendmail',
                 '/usr/lib/sendmail',
@@ -106,9 +137,7 @@ class Swift_Transport_DsnTransportFactory
                 '/usr/local/bin/sendmail',
             ];
             if (!\in_array($binary, $allowedBinaries, true)) {
-                throw new \InvalidArgumentException(
-                    \sprintf('DSN sendmail binary "%s" is not in the allowlist.', $binary)
-                );
+                throw new InvalidArgumentException(\sprintf('DSN sendmail binary "%s" is not in the allowlist.', $binary));
             }
 
             return new Swift_SendmailTransport($command);
