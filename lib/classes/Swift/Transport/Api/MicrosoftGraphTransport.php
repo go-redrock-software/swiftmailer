@@ -40,9 +40,10 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
     private Swift_Transport_Api_Calendar_IcsParser $icsParser;
 
     /**
-     * Graph's /sendMail endpoint rejects request bodies larger than ~4 MB. Attachments
-     * at or above this size must be uploaded via an upload session against a draft
-     * message instead. 3 MB is Microsoft's documented boundary for switching approaches.
+     * Graph's /sendMail endpoint caps the whole request body near 4 MB. Microsoft documents
+     * 3 MB as the point at which a single attachment should switch from inline base64 to an
+     * upload session, leaving headroom for the rest of the payload. Attachments at or above
+     * this size use the draft + upload-session flow.
      */
     public const LARGE_ATTACHMENT_THRESHOLD = 3 * 1024 * 1024;
 
