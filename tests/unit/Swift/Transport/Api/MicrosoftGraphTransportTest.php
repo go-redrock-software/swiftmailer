@@ -999,13 +999,16 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
             ->onlyMethods(['sendViaDraft'])
             ->getMock();
         $transport->expects($this->once())->method('sendViaDraft');
+        // Drop the threshold so a tiny body trips the draft flow; the threshold itself
+        // is the subject under test, not the cost of allocating a multi-megabyte string.
+        $transport->setLargeAttachmentThreshold(10);
 
         $m = new \Swift_Message();
         $m->setFrom(['from@example.com' => 'Sender']);
         $m->setTo(['to@example.com' => 'Recipient']);
         $m->setSubject('Big');
         $m->setBody('Hello');
-        $m->attach(new \Swift_Attachment(\str_repeat('A', 4 * 1024 * 1024), 'huge.bin', 'application/octet-stream'));
+        $m->attach(new \Swift_Attachment('this body is over ten bytes', 'huge.bin', 'application/octet-stream'));
 
         $transport->send($m);
     }
