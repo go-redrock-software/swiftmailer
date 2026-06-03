@@ -861,4 +861,188 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $this->expectExceptionMessage('error parsing email array');
         $object->convertSwiftEmailAddressToGraphRecipient(['test@x.com' => null, 'extra' => NAN], true);
     }
+
+    // -- large-attachment threshold + partitioning -------------------------------
+
+    private function newTransport(): \Swift_Transport_Api_MicrosoftGraphTransport
+    {
+        return new \Swift_Transport_Api_MicrosoftGraphTransport(
+            $this->createMock(GraphServiceClient::class),
+        );
+    }
+
+    public function testThresholdDefaultsToThreeMegabytes(): void
+    {
+        $transport = $this->newTransport();
+        $this->assertSame(3 * 1024 * 1024, \Swift_Transport_Api_MicrosoftGraphTransport::LARGE_ATTACHMENT_THRESHOLD);
+        $this->assertSame(3 * 1024 * 1024, $transport->getLargeAttachmentThreshold());
+    }
+
+    public function testSetThresholdUpdatesValue(): void
+    {
+        $transport = $this->newTransport();
+        $transport->setLargeAttachmentThreshold(10 * 1024 * 1024);
+        $this->assertSame(10 * 1024 * 1024, $transport->getLargeAttachmentThreshold());
+    }
+
+    public function testSetThresholdRejectsNonPositive(): void
+    {
+        $transport = $this->newTransport();
+        $this->expectException(\InvalidArgumentException::class);
+        $transport->setLargeAttachmentThreshold(0);
+    }
+
+    public function testPartitionSplitsAtThreshold(): void
+    {
+        $transport = $this->newTransport();
+        $transport->setLargeAttachmentThreshold(10); // 10 bytes, easy to straddle
+
+        $small  = new \Swift_Attachment('123456789', 'small.bin', 'application/octet-stream');   // 9 bytes
+        $atEdge = new \Swift_Attachment('1234567890', 'edge.bin', 'application/octet-stream');  // 10 bytes -> large
+        $big    = new \Swift_Attachment('1234567890123', 'big.bin', 'application/octet-stream');   // 13 bytes
+
+        $method                  = new \ReflectionMethod($transport, 'partitionAttachmentsBySize');
+        [$smallList, $largeList] = $method->invoke($transport, [$small, $atEdge, $big]);
+
+        $this->assertSame([$small], $smallList);
+        $this->assertSame([$atEdge, $big], $largeList);
+    }
+
+    public function testSendViaDraftAttachesSmallInlineUploadsLargeAndSends(): void
+    {
+        $promise = $this->createMock(\Http\Promise\Promise::class);
+        $promise->method('wait')->willReturn(null);
+
+        // Draft POST returns a Message carrying an id.
+        $draft = new \Microsoft\Graph\Generated\Models\Message();
+        $draft->setId('draft-123');
+        $draftPromise = $this->createMock(\Http\Promise\Promise::class);
+        $draftPromise->method('wait')->willReturn($draft);
+
+        // Upload session POST returns an UploadSession.
+        $uploadSession  = new \Microsoft\Graph\Generated\Models\UploadSession();
+        $sessionPromise = $this->createMock(\Http\Promise\Promise::class);
+        $sessionPromise->method('wait')->willReturn($uploadSession);
+
+        $createUpload = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Messages\Item\Attachments\CreateUploadSession\CreateUploadSessionRequestBuilder::class);
+        $createUpload->expects($this->once())->method('post')->willReturn($sessionPromise);
+
+        $attachmentsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Messages\Item\Attachments\AttachmentsRequestBuilder::class);
+        $attachmentsBuilder->expects($this->once())->method('post')->willReturn($promise);          // one small attachment
+        $attachmentsBuilder->method('createUploadSession')->willReturn($createUpload);
+
+        $sendBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Messages\Item\Send\SendRequestBuilder::class);
+        $sendBuilder->expects($this->once())->method('post')->willReturn($promise);
+
+        $messageItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Messages\Item\MessageItemRequestBuilder::class);
+        $messageItemBuilder->method('attachments')->willReturn($attachmentsBuilder);
+        $messageItemBuilder->method('send')->willReturn($sendBuilder);
+
+        $messagesBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Messages\MessagesRequestBuilder::class);
+        $messagesBuilder->expects($this->once())->method('post')->willReturn($draftPromise);         // draft create
+        $messagesBuilder->method('byMessageId')->with('draft-123')->willReturn($messageItemBuilder);
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('messages')->willReturn($messagesBuilder);
+
+        // Partial mock: stub only uploadLargeAttachment so no real streaming occurs.
+        $transport = $this->getMockBuilder(\Swift_Transport_Api_MicrosoftGraphTransport::class)
+            ->setConstructorArgs([$this->createMock(GraphServiceClient::class)])
+            ->onlyMethods(['uploadLargeAttachment'])
+            ->getMock();
+        $transport->expects($this->once())->method('uploadLargeAttachment');
+
+        $graphMessage = new \Microsoft\Graph\Generated\Models\Message();
+        $small        = new \Swift_Attachment('small body', 'small.txt', 'text/plain');
+        $large        = new \Swift_Attachment('large body bytes', 'big.bin', 'application/octet-stream');
+
+        $method = new \ReflectionMethod($transport, 'sendViaDraft');
+        $method->invoke($transport, $userItemBuilder, $graphMessage, [$small], [$large]);
+    }
+
+    public function testSendViaDraftThrowsWhenDraftHasNoId(): void
+    {
+        $draftPromise = $this->createMock(\Http\Promise\Promise::class);
+        $draftPromise->method('wait')->willReturn(null);
+
+        $messagesBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Messages\MessagesRequestBuilder::class);
+        $messagesBuilder->method('post')->willReturn($draftPromise);
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('messages')->willReturn($messagesBuilder);
+
+        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
+        $transport  = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class), null, $dispatcher);
+
+        $this->expectException(\Swift_TransportException::class);
+        $method = new \ReflectionMethod($transport, 'sendViaDraft');
+        $method->invoke($transport, $userItemBuilder, new \Microsoft\Graph\Generated\Models\Message(), [], [new \Swift_Attachment('x', 'a.bin', 'application/octet-stream')]);
+    }
+
+    public function testLargeAttachmentRoutesThroughDraftFlow(): void
+    {
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        // sendMail must NOT be used when a large attachment is present.
+        $userItemBuilder->expects($this->never())->method('sendMail');
+
+        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
+        $usersBuilder->method('byUserId')->willReturn($userItemBuilder);
+        $graphClient = $this->createMock(GraphServiceClient::class);
+        $graphClient->method('users')->willReturn($usersBuilder);
+
+        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
+        $dispatcher->method('createSendEvent')->willReturn($this->createMock(\Swift_Events_SendEvent::class));
+        $dispatcher->method('createTransportChangeEvent')->willReturn($this->createMock(\Swift_Events_TransportChangeEvent::class));
+
+        $transport = $this->getMockBuilder(\Swift_Transport_Api_MicrosoftGraphTransport::class)
+            ->setConstructorArgs([$graphClient, 'user-id', $dispatcher])
+            ->onlyMethods(['sendViaDraft'])
+            ->getMock();
+        $transport->expects($this->once())->method('sendViaDraft');
+        // Drop the threshold so a tiny body trips the draft flow; the threshold itself
+        // is the subject under test, not the cost of allocating a multi-megabyte string.
+        $transport->setLargeAttachmentThreshold(10);
+
+        $m = new \Swift_Message();
+        $m->setFrom(['from@example.com' => 'Sender']);
+        $m->setTo(['to@example.com' => 'Recipient']);
+        $m->setSubject('Big');
+        $m->setBody('Hello');
+        $m->attach(new \Swift_Attachment('this body is over ten bytes', 'huge.bin', 'application/octet-stream'));
+
+        $transport->send($m);
+    }
+
+    public function testSmallAttachmentStillUsesSendMail(): void
+    {
+        $promise = $this->createMock(\Http\Promise\Promise::class);
+        $promise->method('wait')->willReturn(null);
+
+        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
+        $sendMailBuilder->expects($this->once())->method('post')->willReturn($promise);
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
+        $userItemBuilder->expects($this->never())->method('messages');
+
+        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
+        $usersBuilder->method('byUserId')->willReturn($userItemBuilder);
+        $graphClient = $this->createMock(GraphServiceClient::class);
+        $graphClient->method('users')->willReturn($usersBuilder);
+
+        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
+        $dispatcher->method('createSendEvent')->willReturn($this->createMock(\Swift_Events_SendEvent::class));
+        $dispatcher->method('createTransportChangeEvent')->willReturn($this->createMock(\Swift_Events_TransportChangeEvent::class));
+
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'user-id', $dispatcher);
+
+        $m = new \Swift_Message();
+        $m->setFrom(['from@example.com' => 'Sender']);
+        $m->setTo(['to@example.com' => 'Recipient']);
+        $m->setSubject('Small');
+        $m->setBody('Hello');
+        $m->attach(new \Swift_Attachment('tiny', 'tiny.txt', 'text/plain'));
+
+        $transport->send($m);
+    }
 }

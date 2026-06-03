@@ -1,7 +1,10 @@
 <?php
 
 use GuzzleHttp\Psr7\Utils;
+use Microsoft\Graph\Core\Tasks\LargeFileUploadTask;
 use Microsoft\Graph\Generated\Models\Attachment;
+use Microsoft\Graph\Generated\Models\AttachmentItem;
+use Microsoft\Graph\Generated\Models\AttachmentType;
 use Microsoft\Graph\Generated\Models\Attendee;
 use Microsoft\Graph\Generated\Models\AttendeeType;
 use Microsoft\Graph\Generated\Models\BodyType;
@@ -13,6 +16,11 @@ use Microsoft\Graph\Generated\Models\ItemBody;
 use Microsoft\Graph\Generated\Models\Location;
 use Microsoft\Graph\Generated\Models\Message;
 use Microsoft\Graph\Generated\Models\Recipient;
+use Microsoft\Graph\Generated\Models\UploadSession;
+use Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilderGetQueryParameters;
+use Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilderGetRequestConfiguration;
+use Microsoft\Graph\Generated\Users\Item\Events\Item\Cancel\CancelPostRequestBody;
+use Microsoft\Graph\Generated\Users\Item\Messages\Item\Attachments\CreateUploadSession\CreateUploadSessionPostRequestBody;
 use Microsoft\Graph\Generated\Users\Item\SendMail\SendMailPostRequestBody;
 use Microsoft\Graph\GraphServiceClient;
 
@@ -38,6 +46,16 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
     private bool $sendEmailAlongsideEvent = false;
 
     private Swift_Transport_Api_Calendar_IcsParser $icsParser;
+
+    /**
+     * Graph's /sendMail endpoint caps the whole request body near 4 MB. Microsoft documents
+     * 3 MB as the point at which a single attachment should switch from inline base64 to an
+     * upload session, leaving headroom for the rest of the payload. Attachments at or above
+     * this size use the draft + upload-session flow.
+     */
+    public const LARGE_ATTACHMENT_THRESHOLD = 3 * 1024 * 1024;
+
+    private int $largeAttachmentThreshold = self::LARGE_ATTACHMENT_THRESHOLD;
 
     /**
      * @param string|null $sendingAccountUserId null = use /me endpoint (delegated Mail.Send only)
@@ -67,6 +85,22 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
     public function useFromAddressAsSendingAccountUserId(): void
     {
         $this->shouldUseFromAddress = true;
+    }
+
+    public function getLargeAttachmentThreshold(): int
+    {
+        return $this->largeAttachmentThreshold;
+    }
+
+    /**
+     * @throws InvalidArgumentException when the byte count is not positive
+     */
+    public function setLargeAttachmentThreshold(int $bytes): void
+    {
+        if ($bytes < 1) {
+            throw new InvalidArgumentException('Large-attachment threshold must be a positive byte count.');
+        }
+        $this->largeAttachmentThreshold = $bytes;
     }
 
     public function isUsingMeEndpoint(): bool
@@ -240,19 +274,29 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         $calendarInvites   = $this->convertCalendarToEvents ? $this->extractCalendarInvites($message) : [];
         $inviteAttachments = \array_column($calendarInvites, 'attachment');
 
-        $graphAttachments = [];
-
+        $attachmentsToSend = [];
         foreach ($message->getChildren() ?? [] as $swiftAttachment) {
             // Skip calendar parts we are converting to Graph events; shipping the raw
             // .ics alongside is exactly what M365 mangles.
             if (\in_array($swiftAttachment, $inviteAttachments, true)) {
                 continue;
             }
-            $graphAttachments[] = $this->convertSwiftAttachmentToGraphAttachment($swiftAttachment);
+            $attachmentsToSend[] = $swiftAttachment;
         }
 
-        if (!empty($graphAttachments)) {
-            $graphMessage->setAttachments($graphAttachments);
+        [$smallAttachments, $largeAttachments] = $this->partitionAttachmentsBySize($attachmentsToSend);
+        $useDraftFlow = [] !== $largeAttachments;
+
+        // The sendMail payload can only carry attachments small enough to inline; when a
+        // large attachment is present the draft flow attaches everything itself.
+        if (!$useDraftFlow) {
+            $graphAttachments = \array_map(
+                fn (Swift_Attachment $a): Attachment => $this->convertSwiftAttachmentToGraphAttachment($a),
+                $smallAttachments,
+            );
+            if (!empty($graphAttachments)) {
+                $graphMessage->setAttachments($graphAttachments);
+            }
         }
 
         $recipient    = new Recipient();
@@ -269,26 +313,23 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         $sendMailBody = new SendMailPostRequestBody();
         $sendMailBody->setMessage($graphMessage);
 
-        $graphEvents = [];
-        foreach ($calendarInvites as $invite) {
-            $graphEvents[] = $this->convertParsedEventToGraphEvent($invite['event']);
-        }
-
-        // When we create the event(s), Exchange emails the invitation itself, so by
-        // default we skip the duplicate raw email. Callers can opt back in.
-        $shouldSendEmail = empty($graphEvents) || $this->sendEmailAlongsideEvent;
+        // When we act on the calendar entry, Exchange emails the invitation/cancellation
+        // itself, so by default we skip the duplicate raw email. Callers can opt back in.
+        $shouldSendEmail = empty($calendarInvites) || $this->sendEmailAlongsideEvent;
 
         try {
             $userRequestBuilder = $this->resolveUserRequestBuilder($message);
 
-            foreach ($graphEvents as $graphEvent) {
-                // POST /users/{id}/events (or /me/events) — Exchange sends a proper,
-                // actionable invitation to each attendee.
-                $userRequestBuilder->events()->post($graphEvent)->wait();
+            foreach ($calendarInvites as $invite) {
+                $this->dispatchCalendarOperation($userRequestBuilder, $invite['event']);
             }
 
             if ($shouldSendEmail) {
-                $userRequestBuilder->sendMail()->post($sendMailBody)->wait();
+                if ($useDraftFlow) {
+                    $this->sendViaDraft($userRequestBuilder, $graphMessage, $smallAttachments, $largeAttachments);
+                } else {
+                    $userRequestBuilder->sendMail()->post($sendMailBody)->wait();
+                }
             }
 
             foreach ($calendarInvites as $invite) {
@@ -360,6 +401,88 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
     }
 
     /**
+     * Sends a message that carries at least one large attachment via the draft +
+     * upload-session flow, because Graph's /sendMail rejects bodies over ~4 MB.
+     *
+     * Creates a draft, attaches small files inline, streams large files through upload
+     * sessions, then sends the draft.
+     *
+     * @param array<int, Swift_Mime_SimpleMimeEntity> $smallAttachments
+     * @param array<int, Swift_Mime_SimpleMimeEntity> $largeAttachments
+     *
+     * @throws Swift_TransportException
+     */
+    protected function sendViaDraft(
+        Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder $userRequestBuilder,
+        Message $graphMessage,
+        array $smallAttachments,
+        array $largeAttachments,
+    ): void {
+        $draft = $userRequestBuilder->messages()->post($graphMessage)->wait();
+        if (null === $draft || null === $draft->getId()) {
+            $this->throwException(new Swift_TransportException('Graph did not return a draft message id; cannot attach large files.'));
+
+            // throwException() can return if a listener cancels bubbling; abort rather than deref null.
+            return;
+        }
+
+        $messageBuilder = $userRequestBuilder->messages()->byMessageId($draft->getId());
+
+        // Files under the threshold are cheap to inline directly on the draft.
+        foreach ($smallAttachments as $attachment) {
+            $messageBuilder->attachments()->post($this->convertSwiftAttachmentToGraphAttachment($attachment))->wait();
+        }
+
+        foreach ($largeAttachments as $attachment) {
+            $contents       = (string) $attachment->getBody();
+            $attachmentItem = new AttachmentItem();
+            try {
+                $attachmentItem->setAttachmentType(new AttachmentType(AttachmentType::FILE));
+                // @codeCoverageIgnoreStart
+            } catch (ReflectionException $e) {
+                $this->throwException(new Swift_TransportException("Failed to set Graph AttachmentType: {$e->getMessage()}"));
+            }
+            // @codeCoverageIgnoreEnd
+            $attachmentItem->setName($attachment->getFilename());
+            $attachmentItem->setSize(\strlen($contents));
+            $attachmentItem->setContentType((string) $attachment->getContentType());
+            $attachmentItem->setIsInline('attachment' !== $attachment->getDisposition());
+
+            $uploadBody = new CreateUploadSessionPostRequestBody();
+            $uploadBody->setAttachmentItem($attachmentItem);
+
+            $uploadSession = $messageBuilder->attachments()->createUploadSession()->post($uploadBody)->wait();
+            if (null === $uploadSession) {
+                $this->throwException(new Swift_TransportException("Graph returned no upload session for attachment '{$attachment->getFilename()}'."));
+
+                // throwException() can return if a listener cancels bubbling; abort rather than deref null.
+                return;
+            }
+
+            $this->uploadLargeAttachment($uploadSession, $contents);
+        }
+
+        // POST /messages/{id}/send takes no body and moves the draft to Sent Items.
+        $messageBuilder->send()->post()->wait();
+    }
+
+    /**
+     * Streams a large attachment's bytes into a previously-created upload session.
+     *
+     * Isolated so tests can stub the chunked transfer; the SDK's LargeFileUploadTask
+     * performs the sequential PUT requests against the session's upload URL.
+     */
+    protected function uploadLargeAttachment(UploadSession $uploadSession, string $contents): void
+    {
+        $task = new LargeFileUploadTask(
+            $uploadSession,
+            $this->client->getRequestAdapter(),
+            Utils::streamFor($contents),
+        );
+        $task->upload()->wait();
+    }
+
+    /**
      * Resolves the Graph user endpoint: /me (delegated) or /users/{id} (application).
      */
     private function resolveUserRequestBuilder(Swift_Mime_SimpleMessage $message): Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder
@@ -381,11 +504,45 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
     }
 
     /**
+     * Whether a MIME child's decoded body is large enough to require an upload session
+     * rather than inline base64 in the sendMail payload.
+     *
+     * Swift_Attachment::getSize() reads the Content-Disposition "size" parameter, which
+     * is frequently unset, so we measure the decoded body directly.
+     */
+    private function attachmentExceedsThreshold(Swift_Mime_SimpleMimeEntity $attachment): bool
+    {
+        return \strlen((string) $attachment->getBody()) >= $this->largeAttachmentThreshold;
+    }
+
+    /**
+     * Splits attachments into [small, large] by the configured threshold.
+     *
+     * @param array<int, Swift_Mime_SimpleMimeEntity> $attachments
+     *
+     * @return array{0: array<int, Swift_Mime_SimpleMimeEntity>, 1: array<int, Swift_Mime_SimpleMimeEntity>}
+     */
+    private function partitionAttachmentsBySize(array $attachments): array
+    {
+        $small = [];
+        $large = [];
+        foreach ($attachments as $attachment) {
+            if ($this->attachmentExceedsThreshold($attachment)) {
+                $large[] = $attachment;
+            } else {
+                $small[] = $attachment;
+            }
+        }
+
+        return [$small, $large];
+    }
+
+    /**
      * Finds calendar parts that should be converted into Graph events.
      *
-     * Only text/calendar parts whose METHOD is REQUEST are returned — those are the
-     * invitations M365 mangles. Other methods (PUBLISH, CANCEL, REPLY, ...) and
-     * unparseable parts are left to be sent as ordinary attachments.
+     * Only text/calendar parts whose METHOD is REQUEST or CANCEL are returned — those
+     * are the ones M365 mangles when sent as a sendMail attachment. Other methods
+     * (PUBLISH, REPLY, …) and unparseable parts are left to be sent as attachments.
      *
      * @return array<int, array{attachment: Swift_Mime_SimpleMimeEntity, event: Swift_Transport_Api_Calendar_ParsedEvent}>
      */
@@ -407,7 +564,10 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
                 continue;
             }
 
-            if (null === $parsed || !$parsed->isRequest()) {
+            // REQUEST invites and CANCEL notices are both mangled by M365 when sent as
+            // raw .ics, so both are routed through the Calendar API. Other methods
+            // (PUBLISH, REPLY, …) are left to ride along as ordinary attachments.
+            if (null === $parsed || (!$parsed->isRequest() && !$parsed->isCancel())) {
                 continue;
             }
 
@@ -507,6 +667,99 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         }
 
         return $event;
+    }
+
+    /**
+     * Routes a single parsed calendar entry to the correct Graph Calendar operation:
+     * CANCEL -> cancel the matching event; REQUEST with SEQUENCE > 0 -> patch the
+     * matching event (create if it can't be found); REQUEST with SEQUENCE 0 -> create.
+     */
+    private function dispatchCalendarOperation(
+        Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder $userRequestBuilder,
+        Swift_Transport_Api_Calendar_ParsedEvent $parsed,
+    ): void {
+        if ($parsed->isCancel()) {
+            $eventId = null !== $parsed->uid
+                ? $this->findEventIdByICalUId($userRequestBuilder, $parsed->uid)
+                : null;
+            if (null === $eventId) {
+                // No matching event (e.g. it was not created via Graph). Nothing
+                // actionable; the broken .ics is intentionally not sent.
+                \trigger_error("Graph calendar CANCEL: no event matched iCalUId '{$parsed->uid}'", E_USER_NOTICE);
+
+                return;
+            }
+            $this->cancelGraphEvent($userRequestBuilder, $eventId);
+
+            return;
+        }
+
+        $graphEvent = $this->convertParsedEventToGraphEvent($parsed);
+
+        // SEQUENCE > 0 marks a revision to an existing invitation; patch it in place so
+        // Exchange sends an "updated" notice rather than a second invite.
+        if ($parsed->sequence > 0 && null !== $parsed->uid) {
+            $eventId = $this->findEventIdByICalUId($userRequestBuilder, $parsed->uid);
+            if (null !== $eventId) {
+                $this->updateGraphEvent($userRequestBuilder, $eventId, $graphEvent);
+
+                return;
+            }
+            // Fall through to create when the original can't be found.
+        }
+
+        // POST /users/{id}/events (or /me/events) — Exchange sends a proper, actionable
+        // invitation to each attendee.
+        $userRequestBuilder->events()->post($graphEvent)->wait();
+    }
+
+    /**
+     * Looks up the Graph event id for a given iCalendar UID, or null if none matches.
+     *
+     * Graph stores the originating .ics UID in the event's iCalUId property, so this is
+     * the reliable key for correlating an UPDATE/CANCEL .ics back to the created event.
+     */
+    protected function findEventIdByICalUId(
+        Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder $userRequestBuilder,
+        string $iCalUId,
+    ): ?string {
+        $config                  = new EventsRequestBuilderGetRequestConfiguration();
+        $config->queryParameters = new EventsRequestBuilderGetQueryParameters();
+        // OData string literals escape a single quote by doubling it.
+        $escaped                 = \str_replace("'", "''", $iCalUId);
+        $config->queryParameters->filter = "iCalUId eq '{$escaped}'";
+
+        $response = $userRequestBuilder->events()->get($config)->wait();
+        foreach ($response?->getValue() ?? [] as $event) {
+            if (null !== $event->getId()) {
+                return $event->getId();
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Cancels a Graph event via the Calendar API cancel action, which sends a proper
+     * cancellation notice to all attendees (unlike a plain delete).
+     */
+    protected function cancelGraphEvent(
+        Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder $userRequestBuilder,
+        string $eventId,
+    ): void {
+        $userRequestBuilder->events()->byEventId($eventId)->cancel()->post(new CancelPostRequestBody())->wait();
+    }
+
+    /**
+     * Patches an existing Graph event in place so Exchange sends an "updated" notice
+     * rather than creating a second invitation.
+     */
+    protected function updateGraphEvent(
+        Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder $userRequestBuilder,
+        string $eventId,
+        Event $event,
+    ): void {
+        $userRequestBuilder->events()->byEventId($eventId)->patch($event)->wait();
     }
 
     protected function getApiConnection(): GraphServiceClient

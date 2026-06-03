@@ -413,4 +413,260 @@ class MicrosoftGraphCalendarTest extends TestCase
         $this->assertContains('report.pdf', $names, 'real attachment must survive');
         $this->assertNotContains('invite.ics', $names, 'the broken .ics must be stripped');
     }
+
+    // -- extractCalendarInvites(): REQUEST and CANCEL are extracted; others are not ---
+
+    private function icsWithMethod(string $method): string
+    {
+        return \implode("\r\n", [
+            'BEGIN:VCALENDAR',
+            "METHOD:{$method}",
+            'BEGIN:VEVENT',
+            'UID:extract-1@example.com',
+            'DTSTART:20260301T140000Z',
+            'DTEND:20260301T150000Z',
+            'SUMMARY:Extract test',
+            'END:VEVENT',
+            'END:VCALENDAR',
+        ]);
+    }
+
+    private function messageWithIcs(string $ics): \Swift_Message
+    {
+        $m = new \Swift_Message();
+        $m->setFrom(['from@example.com' => 'Sender']);
+        $m->setTo(['to@example.com' => 'Recipient']);
+        $m->setSubject('Invite');
+        $m->setBody('See attached.');
+        $m->attach(new \Swift_Attachment($ics, 'invite.ics', 'text/calendar'));
+
+        return $m;
+    }
+
+    private function extractInvites(\Swift_Transport_Api_MicrosoftGraphTransport $t, \Swift_Message $m): array
+    {
+        $method = new \ReflectionMethod($t, 'extractCalendarInvites');
+        $method->setAccessible(true);
+
+        return $method->invoke($t, $m);
+    }
+
+    public function testExtractReturnsCancelPart(): void
+    {
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport(
+            $this->createMock(GraphServiceClient::class),
+        );
+
+        $invites = $this->extractInvites($transport, $this->messageWithIcs($this->icsWithMethod('CANCEL')));
+
+        $this->assertCount(1, $invites);
+        $this->assertTrue($invites[0]['event']->isCancel());
+    }
+
+    public function testExtractReturnsRequestPart(): void
+    {
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport(
+            $this->createMock(GraphServiceClient::class),
+        );
+
+        $invites = $this->extractInvites($transport, $this->messageWithIcs($this->icsWithMethod('REQUEST')));
+
+        $this->assertCount(1, $invites);
+        $this->assertTrue($invites[0]['event']->isRequest());
+    }
+
+    public function testExtractIgnoresPublishPart(): void
+    {
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport(
+            $this->createMock(GraphServiceClient::class),
+        );
+
+        $invites = $this->extractInvites($transport, $this->messageWithIcs($this->icsWithMethod('PUBLISH')));
+
+        $this->assertCount(0, $invites);
+    }
+
+    // -- event lookup / cancel / update seams ---
+
+    public function testFindEventIdReturnsFirstMatch(): void
+    {
+        $event = new \Microsoft\Graph\Generated\Models\Event();
+        $event->setId('evt-graph-1');
+        $response = new \Microsoft\Graph\Generated\Models\EventCollectionResponse();
+        $response->setValue([$event]);
+        $promise = $this->createMock(\Http\Promise\Promise::class);
+        $promise->method('wait')->willReturn($response);
+
+        $capturedConfig = null;
+        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
+        $eventsBuilder->method('get')->willReturnCallback(function ($config) use (&$capturedConfig, $promise) {
+            $capturedConfig = $config;
+
+            return $promise;
+        });
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('events')->willReturn($eventsBuilder);
+
+        $t = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
+        $method = new \ReflectionMethod($t, 'findEventIdByICalUId');
+        $id = $method->invoke($t, $userItemBuilder, "o'brien-uid");
+
+        $this->assertSame('evt-graph-1', $id);
+        $this->assertSame("iCalUId eq 'o''brien-uid'", $capturedConfig->queryParameters->filter);
+    }
+
+    public function testFindEventIdReturnsNullWhenNoMatch(): void
+    {
+        $response = new \Microsoft\Graph\Generated\Models\EventCollectionResponse();
+        $response->setValue([]);
+        $promise = $this->createMock(\Http\Promise\Promise::class);
+        $promise->method('wait')->willReturn($response);
+
+        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
+        $eventsBuilder->method('get')->willReturn($promise);
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('events')->willReturn($eventsBuilder);
+
+        $t = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
+        $method = new \ReflectionMethod($t, 'findEventIdByICalUId');
+        $this->assertNull($method->invoke($t, $userItemBuilder, 'missing-uid'));
+    }
+
+    public function testCancelGraphEventPostsCancel(): void
+    {
+        $promise = $this->createMock(\Http\Promise\Promise::class);
+        $promise->method('wait')->willReturn(null);
+
+        $cancelBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\Item\Cancel\CancelRequestBuilder::class);
+        $cancelBuilder->expects($this->once())->method('post')->willReturn($promise);
+
+        $eventItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\Item\EventItemRequestBuilder::class);
+        $eventItemBuilder->method('cancel')->willReturn($cancelBuilder);
+
+        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
+        $eventsBuilder->method('byEventId')->with('evt-graph-1')->willReturn($eventItemBuilder);
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('events')->willReturn($eventsBuilder);
+
+        $t = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
+        $method = new \ReflectionMethod($t, 'cancelGraphEvent');
+        $method->invoke($t, $userItemBuilder, 'evt-graph-1');
+    }
+
+    public function testUpdateGraphEventPatches(): void
+    {
+        $promise = $this->createMock(\Http\Promise\Promise::class);
+        $promise->method('wait')->willReturn(null);
+
+        $eventItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\Item\EventItemRequestBuilder::class);
+        $eventItemBuilder->expects($this->once())->method('patch')->willReturn($promise);
+
+        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
+        $eventsBuilder->method('byEventId')->with('evt-graph-1')->willReturn($eventItemBuilder);
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('events')->willReturn($eventsBuilder);
+
+        $t = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
+        $method = new \ReflectionMethod($t, 'updateGraphEvent');
+        $method->invoke($t, $userItemBuilder, 'evt-graph-1', new \Microsoft\Graph\Generated\Models\Event());
+    }
+
+    // -- send() routes each parsed entry to CREATE / UPDATE / CANCEL ---
+
+    private function dispatcherTransport(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder $userItemBuilder, array $stub): \Swift_Transport_Api_MicrosoftGraphTransport
+    {
+        $graphClient = $this->createMock(GraphServiceClient::class);
+        $graphClient->method('me')->willReturn($userItemBuilder);
+
+        $transport = $this->getMockBuilder(\Swift_Transport_Api_MicrosoftGraphTransport::class)
+            ->setConstructorArgs([$graphClient, null, $this->dispatcher()])
+            ->onlyMethods($stub)
+            ->getMock();
+        $transport->enableCalendarEventConversion();
+
+        return $transport;
+    }
+
+    public function testCancelInviteCancelsMatchingEvent(): void
+    {
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->expects($this->never())->method('sendMail');
+
+        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByICalUId', 'cancelGraphEvent']);
+        $transport->method('findEventIdByICalUId')->willReturn('evt-graph-1');
+        $transport->expects($this->once())->method('cancelGraphEvent')->with($userItemBuilder, 'evt-graph-1');
+
+        $cancelIcs = \implode("\r\n", [
+            'BEGIN:VCALENDAR', 'METHOD:CANCEL', 'BEGIN:VEVENT',
+            'UID:cancel-1@example.com', 'SEQUENCE:1',
+            'DTSTART:20260301T140000Z', 'DTEND:20260301T150000Z',
+            'SUMMARY:Cancelled', 'ATTENDEE;CN=Bob:mailto:bob@example.com',
+            'END:VEVENT', 'END:VCALENDAR',
+        ]);
+        $transport->send($this->messageWithIcs($cancelIcs));
+    }
+
+    public function testCancelInviteWithNoMatchMakesNoEventCall(): void
+    {
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->expects($this->never())->method('events');
+        $userItemBuilder->expects($this->never())->method('sendMail');
+
+        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByICalUId', 'cancelGraphEvent']);
+        $transport->method('findEventIdByICalUId')->willReturn(null);
+        $transport->expects($this->never())->method('cancelGraphEvent');
+
+        $cancelIcs = \implode("\r\n", [
+            'BEGIN:VCALENDAR', 'METHOD:CANCEL', 'BEGIN:VEVENT',
+            'UID:cancel-2@example.com',
+            'DTSTART:20260301T140000Z', 'DTEND:20260301T150000Z',
+            'SUMMARY:Cancelled', 'END:VEVENT', 'END:VCALENDAR',
+        ]);
+        // @ suppresses the expected E_USER_NOTICE so the test does not error on it.
+        @$transport->send($this->messageWithIcs($cancelIcs));
+    }
+
+    public function testUpdateInviteWithSequencePatchesMatchingEvent(): void
+    {
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->expects($this->never())->method('sendMail');
+
+        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByICalUId', 'updateGraphEvent']);
+        $transport->method('findEventIdByICalUId')->willReturn('evt-graph-1');
+        $transport->expects($this->once())->method('updateGraphEvent')->with($userItemBuilder, 'evt-graph-1', $this->isInstanceOf(\Microsoft\Graph\Generated\Models\Event::class));
+
+        $updateIcs = \implode("\r\n", [
+            'BEGIN:VCALENDAR', 'METHOD:REQUEST', 'BEGIN:VEVENT',
+            'UID:update-1@example.com', 'SEQUENCE:2',
+            'DTSTART:20260301T140000Z', 'DTEND:20260301T150000Z',
+            'SUMMARY:Rescheduled', 'ATTENDEE;CN=Bob:mailto:bob@example.com',
+            'END:VEVENT', 'END:VCALENDAR',
+        ]);
+        $transport->send($this->messageWithIcs($updateIcs));
+    }
+
+    public function testUpdateInviteWithNoMatchFallsBackToCreate(): void
+    {
+        $promise = $this->createMock(\Http\Promise\Promise::class);
+        $promise->method('wait')->willReturn(null);
+        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
+        $eventsBuilder->expects($this->once())->method('post')->willReturn($promise);
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('events')->willReturn($eventsBuilder);
+
+        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByICalUId', 'updateGraphEvent']);
+        $transport->method('findEventIdByICalUId')->willReturn(null);
+        $transport->expects($this->never())->method('updateGraphEvent');
+
+        $updateIcs = \implode("\r\n", [
+            'BEGIN:VCALENDAR', 'METHOD:REQUEST', 'BEGIN:VEVENT',
+            'UID:update-2@example.com', 'SEQUENCE:3',
+            'DTSTART:20260301T140000Z', 'DTEND:20260301T150000Z',
+            'SUMMARY:Rescheduled', 'END:VEVENT', 'END:VCALENDAR',
+        ]);
+        $transport->send($this->messageWithIcs($updateIcs));
+    }
 }
