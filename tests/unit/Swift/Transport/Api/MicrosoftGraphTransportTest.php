@@ -960,6 +960,77 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $method->invoke($transport, $userItemBuilder, $graphMessage, [$small], [$large]);
     }
 
+    public function testSendViaDraftBuildsAttachmentItemFromTheLargeAttachment(): void
+    {
+        // Capture the CreateUploadSessionPostRequestBody handed to createUploadSession()
+        // and assert the AttachmentItem mirrors the source attachment's metadata.
+        $promise = $this->createMock(\Http\Promise\Promise::class);
+        $promise->method('wait')->willReturn(null);
+
+        $draft = new \Microsoft\Graph\Generated\Models\Message();
+        $draft->setId('draft-xyz');
+        $draftPromise = $this->createMock(\Http\Promise\Promise::class);
+        $draftPromise->method('wait')->willReturn($draft);
+
+        $uploadSession  = new \Microsoft\Graph\Generated\Models\UploadSession();
+        $sessionPromise = $this->createMock(\Http\Promise\Promise::class);
+        $sessionPromise->method('wait')->willReturn($uploadSession);
+
+        $capturedBody = null;
+        $createUpload = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Messages\Item\Attachments\CreateUploadSession\CreateUploadSessionRequestBuilder::class);
+        $createUpload->method('post')->willReturnCallback(function ($body) use (&$capturedBody, $sessionPromise) {
+            $capturedBody = $body;
+
+            return $sessionPromise;
+        });
+
+        $attachmentsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Messages\Item\Attachments\AttachmentsRequestBuilder::class);
+        $attachmentsBuilder->method('createUploadSession')->willReturn($createUpload);
+
+        $sendBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Messages\Item\Send\SendRequestBuilder::class);
+        $sendBuilder->method('post')->willReturn($promise);
+
+        $messageItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Messages\Item\MessageItemRequestBuilder::class);
+        $messageItemBuilder->method('attachments')->willReturn($attachmentsBuilder);
+        $messageItemBuilder->method('send')->willReturn($sendBuilder);
+
+        $messagesBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Messages\MessagesRequestBuilder::class);
+        $messagesBuilder->method('post')->willReturn($draftPromise);
+        $messagesBuilder->method('byMessageId')->with('draft-xyz')->willReturn($messageItemBuilder);
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('messages')->willReturn($messagesBuilder);
+
+        $transport = $this->getMockBuilder(\Swift_Transport_Api_MicrosoftGraphTransport::class)
+            ->setConstructorArgs([$this->createMock(GraphServiceClient::class)])
+            ->onlyMethods(['uploadLargeAttachment'])
+            ->getMock();
+        $transport->method('uploadLargeAttachment');
+
+        $body  = 'the large attachment payload bytes';
+        $large = new \Swift_Attachment($body, 'big.bin', 'application/octet-stream');
+
+        $method = new \ReflectionMethod($transport, 'sendViaDraft');
+        $method->invoke($transport, $userItemBuilder, new \Microsoft\Graph\Generated\Models\Message(), [], [$large]);
+
+        $this->assertInstanceOf(
+            \Microsoft\Graph\Generated\Users\Item\Messages\Item\Attachments\CreateUploadSession\CreateUploadSessionPostRequestBody::class,
+            $capturedBody,
+            'createUploadSession()->post() should receive a CreateUploadSessionPostRequestBody',
+        );
+        $item = $capturedBody->getAttachmentItem();
+        $this->assertNotNull($item, 'the upload body must carry an AttachmentItem');
+        $this->assertSame('big.bin', $item->getName());
+        $this->assertSame(\strlen($body), $item->getSize());
+        $this->assertSame('application/octet-stream', $item->getContentType());
+        // A normal (disposition 'attachment') file is not inline.
+        $this->assertFalse($item->getIsInline());
+        $this->assertSame(
+            \Microsoft\Graph\Generated\Models\AttachmentType::FILE,
+            $item->getAttachmentType()->value(),
+        );
+    }
+
     public function testSendViaDraftRejectsAttachmentOverGraphLimitBeforeCreatingDraft(): void
     {
         // An attachment larger than Graph's 150 MB upload-session ceiling must be

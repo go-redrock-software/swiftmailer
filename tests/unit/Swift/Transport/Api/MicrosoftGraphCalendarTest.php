@@ -663,6 +663,42 @@ class MicrosoftGraphCalendarTest extends TestCase
         @$transport->send($this->messageWithIcs($cancelIcs));
     }
 
+    public function testNoMatchCancelEmitsNoticeNamingTheICalUId(): void
+    {
+        // The no-match CANCEL path warns operators via E_USER_NOTICE. Assert it actually
+        // fires and names the operation + the unmatched iCalUId, so a silently-dropped
+        // cancellation is observable in logs.
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->expects($this->never())->method('events');
+        $userItemBuilder->expects($this->never())->method('sendMail');
+
+        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByICalUId', 'cancelGraphEvent']);
+        $transport->method('findEventIdByICalUId')->willReturn(null);
+
+        $cancelIcs = \implode("\r\n", [
+            'BEGIN:VCALENDAR', 'METHOD:CANCEL', 'BEGIN:VEVENT',
+            'UID:cancel-notice@example.com',
+            'DTSTART:20260301T140000Z', 'DTEND:20260301T150000Z',
+            'SUMMARY:Cancelled', 'END:VEVENT', 'END:VCALENDAR',
+        ]);
+
+        $captured = null;
+        \set_error_handler(static function (int $errno, string $errstr) use (&$captured): bool {
+            $captured = $errstr;
+
+            return true; // swallow so the notice doesn't bubble to PHPUnit
+        }, E_USER_NOTICE);
+        try {
+            $transport->send($this->messageWithIcs($cancelIcs));
+        } finally {
+            \restore_error_handler();
+        }
+
+        $this->assertNotNull($captured, 'a no-match CANCEL must emit an E_USER_NOTICE');
+        $this->assertStringContainsString('Graph calendar CANCEL', $captured);
+        $this->assertStringContainsString('cancel-notice@example.com', $captured);
+    }
+
     public function testNoMatchCancelReturnsZeroRecipients(): void
     {
         // A CANCEL that matches no Graph event contacts Graph zero times, so it notified
