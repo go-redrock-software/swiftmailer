@@ -55,6 +55,12 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
      */
     public const LARGE_ATTACHMENT_THRESHOLD = 3 * 1024 * 1024;
 
+    /**
+     * Microsoft Graph caps a single Outlook-item attachment uploaded via an upload
+     * session at 150 MB. Anything larger cannot be sent and is rejected up front.
+     */
+    public const MAX_ATTACHMENT_SIZE = 150 * 1024 * 1024;
+
     private int $largeAttachmentThreshold = self::LARGE_ATTACHMENT_THRESHOLD;
 
     /**
@@ -415,6 +421,25 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         array $smallAttachments,
         array $largeAttachments,
     ): void {
+        // Reject anything past Graph's 150 MB upload-session ceiling BEFORE creating the
+        // draft — otherwise we orphan a draft that then fails deep in the chunked PUT
+        // with an opaque error.
+        foreach ($largeAttachments as $attachment) {
+            $size = $this->attachmentByteSize($attachment);
+            if ($size > self::MAX_ATTACHMENT_SIZE) {
+                $this->throwException(new Swift_TransportException(\sprintf(
+                    "Attachment '%s' is %d bytes, exceeding Microsoft Graph's %d-byte limit.",
+                    $attachment->getFilename(),
+                    $size,
+                    self::MAX_ATTACHMENT_SIZE,
+                )));
+
+                // throwException() can return if a listener cancels bubbling; abort
+                // rather than create a draft we can never finish.
+                return;
+            }
+        }
+
         $draft = $userRequestBuilder->messages()->post($graphMessage)->wait();
         if (null === $draft || null === $draft->getId()) {
             $this->throwException(new Swift_TransportException('Graph did not return a draft message id; cannot attach large files.'));
@@ -509,7 +534,16 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
      */
     private function attachmentExceedsThreshold(Swift_Mime_SimpleMimeEntity $attachment): bool
     {
-        return \strlen((string) $attachment->getBody()) >= $this->largeAttachmentThreshold;
+        return $this->attachmentByteSize($attachment) >= $this->largeAttachmentThreshold;
+    }
+
+    /**
+     * Decoded byte size of an attachment's body. Isolated so size-based guards can be
+     * exercised in tests without allocating a multi-hundred-megabyte string.
+     */
+    protected function attachmentByteSize(Swift_Mime_SimpleMimeEntity $attachment): int
+    {
+        return \strlen((string) $attachment->getBody());
     }
 
     /**

@@ -960,6 +960,34 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $method->invoke($transport, $userItemBuilder, $graphMessage, [$small], [$large]);
     }
 
+    public function testSendViaDraftRejectsAttachmentOverGraphLimitBeforeCreatingDraft(): void
+    {
+        // An attachment larger than Graph's 150 MB upload-session ceiling must be
+        // rejected up front — before a draft is created — so we never orphan a draft
+        // that then fails deep in the chunked PUT. We stub attachmentByteSize so the
+        // guard trips WITHOUT allocating 150 MB.
+        $messagesBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Messages\MessagesRequestBuilder::class);
+        // No draft must ever be created.
+        $messagesBuilder->expects($this->never())->method('post');
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('messages')->willReturn($messagesBuilder);
+
+        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
+        $transport  = $this->getMockBuilder(\Swift_Transport_Api_MicrosoftGraphTransport::class)
+            ->setConstructorArgs([$this->createMock(GraphServiceClient::class), null, $dispatcher])
+            ->onlyMethods(['attachmentByteSize'])
+            ->getMock();
+        $transport->method('attachmentByteSize')
+            ->willReturn(\Swift_Transport_Api_MicrosoftGraphTransport::MAX_ATTACHMENT_SIZE + 1);
+
+        $oversized = new \Swift_Attachment('tiny', 'huge.bin', 'application/octet-stream');
+
+        $this->expectException(\Swift_TransportException::class);
+        $method = new \ReflectionMethod($transport, 'sendViaDraft');
+        $method->invoke($transport, $userItemBuilder, new \Microsoft\Graph\Generated\Models\Message(), [], [$oversized]);
+    }
+
     public function testSendViaDraftThrowsWhenDraftHasNoId(): void
     {
         $draftPromise = $this->createMock(\Http\Promise\Promise::class);
