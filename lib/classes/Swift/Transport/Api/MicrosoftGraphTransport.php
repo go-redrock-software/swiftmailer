@@ -313,22 +313,15 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         $sendMailBody = new SendMailPostRequestBody();
         $sendMailBody->setMessage($graphMessage);
 
-        $graphEvents = [];
-        foreach ($calendarInvites as $invite) {
-            $graphEvents[] = $this->convertParsedEventToGraphEvent($invite['event']);
-        }
-
-        // When we create the event(s), Exchange emails the invitation itself, so by
-        // default we skip the duplicate raw email. Callers can opt back in.
-        $shouldSendEmail = empty($graphEvents) || $this->sendEmailAlongsideEvent;
+        // When we act on the calendar entry, Exchange emails the invitation/cancellation
+        // itself, so by default we skip the duplicate raw email. Callers can opt back in.
+        $shouldSendEmail = empty($calendarInvites) || $this->sendEmailAlongsideEvent;
 
         try {
             $userRequestBuilder = $this->resolveUserRequestBuilder($message);
 
-            foreach ($graphEvents as $graphEvent) {
-                // POST /users/{id}/events (or /me/events) — Exchange sends a proper,
-                // actionable invitation to each attendee.
-                $userRequestBuilder->events()->post($graphEvent)->wait();
+            foreach ($calendarInvites as $invite) {
+                $this->dispatchCalendarOperation($userRequestBuilder, $invite['event']);
             }
 
             if ($shouldSendEmail) {
@@ -674,6 +667,50 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         }
 
         return $event;
+    }
+
+    /**
+     * Routes a single parsed calendar entry to the correct Graph Calendar operation:
+     * CANCEL -> cancel the matching event; REQUEST with SEQUENCE > 0 -> patch the
+     * matching event (create if it can't be found); REQUEST with SEQUENCE 0 -> create.
+     */
+    private function dispatchCalendarOperation(
+        Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder $userRequestBuilder,
+        Swift_Transport_Api_Calendar_ParsedEvent $parsed,
+    ): void {
+        if ($parsed->isCancel()) {
+            $eventId = null !== $parsed->uid
+                ? $this->findEventIdByICalUId($userRequestBuilder, $parsed->uid)
+                : null;
+            if (null === $eventId) {
+                // No matching event (e.g. it was not created via Graph). Nothing
+                // actionable; the broken .ics is intentionally not sent.
+                \trigger_error("Graph calendar CANCEL: no event matched iCalUId '{$parsed->uid}'", E_USER_NOTICE);
+
+                return;
+            }
+            $this->cancelGraphEvent($userRequestBuilder, $eventId);
+
+            return;
+        }
+
+        $graphEvent = $this->convertParsedEventToGraphEvent($parsed);
+
+        // SEQUENCE > 0 marks a revision to an existing invitation; patch it in place so
+        // Exchange sends an "updated" notice rather than a second invite.
+        if ($parsed->sequence > 0 && null !== $parsed->uid) {
+            $eventId = $this->findEventIdByICalUId($userRequestBuilder, $parsed->uid);
+            if (null !== $eventId) {
+                $this->updateGraphEvent($userRequestBuilder, $eventId, $graphEvent);
+
+                return;
+            }
+            // Fall through to create when the original can't be found.
+        }
+
+        // POST /users/{id}/events (or /me/events) — Exchange sends a proper, actionable
+        // invitation to each attendee.
+        $userRequestBuilder->events()->post($graphEvent)->wait();
     }
 
     /**
