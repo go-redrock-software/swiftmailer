@@ -314,8 +314,9 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         $sendMailBody->setMessage($graphMessage);
 
         // When we act on the calendar entry, Exchange emails the invitation/cancellation
-        // itself, so by default we skip the duplicate raw email. Callers can opt back in.
-        $shouldSendEmail = empty($calendarInvites) || $this->sendEmailAlongsideEvent;
+        // itself, so by default we skip the duplicate raw email — UNLESS the message also
+        // carries real (non-.ics) attachments, which would otherwise be silently dropped.
+        $shouldSendEmail = empty($calendarInvites) || $this->sendEmailAlongsideEvent || [] !== $attachmentsToSend;
 
         try {
             $userRequestBuilder = $this->resolveUserRequestBuilder($message);

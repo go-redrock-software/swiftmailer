@@ -107,6 +107,40 @@ class MicrosoftGraphCalendarTest extends TestCase
         $this->assertSame(1, $result);
     }
 
+    // -- invite + a real (non-.ics) attachment: the attachment must still be delivered ---
+
+    public function testRequestInviteWithRealAttachmentSendsBothEvenWithoutSendAlongside(): void
+    {
+        // Default sendEmailAlongsideEvent (false), but a genuine PDF rides alongside the
+        // invite. The .ics is converted to an event; the PDF must NOT be silently dropped.
+        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
+        $eventsBuilder->expects($this->once())->method('post')->willReturn($this->promise());
+
+        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
+        $sendMailBuilder->expects($this->once())->method('post')->willReturn($this->promise());
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('events')->willReturn($eventsBuilder);
+        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
+
+        $graphClient = $this->createMock(GraphServiceClient::class);
+        $graphClient->method('me')->willReturn($userItemBuilder);
+
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $this->dispatcher());
+        $transport->enableCalendarEventConversion();
+        // intentionally NOT calling setSendEmailAlongsideEvent(true)
+
+        $m = new \Swift_Message();
+        $m->setFrom(['from@example.com' => 'Sender']);
+        $m->setTo(['to@example.com' => 'Recipient']);
+        $m->setSubject('Invite plus report');
+        $m->setBody('See attached.');
+        $m->attach(new \Swift_Attachment('report body', 'report.pdf', 'application/pdf'));
+        $m->attach(new \Swift_Attachment($this->requestInviteIcs(), 'invite.ics', 'text/calendar'));
+
+        $transport->send($m);
+    }
+
     // -- sendAlongside also sends the email (without the broken .ics) ---
 
     public function testRequestInviteWithSendAlongsideSendsBoth(): void
