@@ -538,13 +538,8 @@ class MicrosoftGraphCalendarTest extends TestCase
         $promise = $this->createMock(\Http\Promise\Promise::class);
         $promise->method('wait')->willReturn(null);
 
-        $capturedBody = null;
         $cancelBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\Item\Cancel\CancelRequestBuilder::class);
-        $cancelBuilder->expects($this->once())->method('post')->willReturnCallback(function ($body) use (&$capturedBody, $promise) {
-            $capturedBody = $body;
-
-            return $promise;
-        });
+        $cancelBuilder->expects($this->once())->method('post')->willReturn($promise);
 
         $eventItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\Item\EventItemRequestBuilder::class);
         $eventItemBuilder->method('cancel')->willReturn($cancelBuilder);
@@ -557,9 +552,7 @@ class MicrosoftGraphCalendarTest extends TestCase
 
         $t = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
         $method = new \ReflectionMethod($t, 'cancelGraphEvent');
-        $method->invoke($t, $userItemBuilder, 'evt-graph-1', 'Meeting cancelled');
-
-        $this->assertSame('Meeting cancelled', $capturedBody->getComment());
+        $method->invoke($t, $userItemBuilder, 'evt-graph-1');
     }
 
     public function testUpdateGraphEventPatches(): void

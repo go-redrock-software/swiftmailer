@@ -746,13 +746,8 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
     protected function cancelGraphEvent(
         Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder $userRequestBuilder,
         string $eventId,
-        ?string $comment = null,
     ): void {
-        $body = new CancelPostRequestBody();
-        if (null !== $comment) {
-            $body->setComment($comment);
-        }
-        $userRequestBuilder->events()->byEventId($eventId)->cancel()->post($body)->wait();
+        $userRequestBuilder->events()->byEventId($eventId)->cancel()->post(new CancelPostRequestBody())->wait();
     }
 
     /**
