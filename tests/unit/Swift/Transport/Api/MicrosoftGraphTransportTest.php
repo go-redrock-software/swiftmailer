@@ -861,4 +861,50 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $this->expectExceptionMessage('error parsing email array');
         $object->convertSwiftEmailAddressToGraphRecipient(['test@x.com' => null, 'extra' => NAN], true);
     }
+
+    // -- large-attachment threshold + partitioning -------------------------------
+
+    private function newTransport(): \Swift_Transport_Api_MicrosoftGraphTransport
+    {
+        return new \Swift_Transport_Api_MicrosoftGraphTransport(
+            $this->createMock(GraphServiceClient::class),
+        );
+    }
+
+    public function testThresholdDefaultsToThreeMegabytes(): void
+    {
+        $transport = $this->newTransport();
+        $this->assertSame(3 * 1024 * 1024, \Swift_Transport_Api_MicrosoftGraphTransport::LARGE_ATTACHMENT_THRESHOLD);
+        $this->assertSame(3 * 1024 * 1024, $transport->getLargeAttachmentThreshold());
+    }
+
+    public function testSetThresholdUpdatesValue(): void
+    {
+        $transport = $this->newTransport();
+        $transport->setLargeAttachmentThreshold(10 * 1024 * 1024);
+        $this->assertSame(10 * 1024 * 1024, $transport->getLargeAttachmentThreshold());
+    }
+
+    public function testSetThresholdRejectsNonPositive(): void
+    {
+        $transport = $this->newTransport();
+        $this->expectException(\InvalidArgumentException::class);
+        $transport->setLargeAttachmentThreshold(0);
+    }
+
+    public function testPartitionSplitsAtThreshold(): void
+    {
+        $transport = $this->newTransport();
+        $transport->setLargeAttachmentThreshold(10); // 10 bytes, easy to straddle
+
+        $small = new \Swift_Attachment('123456789', 'small.bin', 'application/octet-stream');   // 9 bytes
+        $atEdge = new \Swift_Attachment('1234567890', 'edge.bin', 'application/octet-stream');  // 10 bytes -> large
+        $big = new \Swift_Attachment('1234567890123', 'big.bin', 'application/octet-stream');   // 13 bytes
+
+        $method = new \ReflectionMethod($transport, 'partitionAttachmentsBySize');
+        [$smallList, $largeList] = $method->invoke($transport, [$small, $atEdge, $big]);
+
+        $this->assertSame([$small], $smallList);
+        $this->assertSame([$atEdge, $big], $largeList);
+    }
 }

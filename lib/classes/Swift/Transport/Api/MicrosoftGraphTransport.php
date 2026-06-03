@@ -40,6 +40,15 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
     private Swift_Transport_Api_Calendar_IcsParser $icsParser;
 
     /**
+     * Graph's /sendMail endpoint rejects request bodies larger than ~4 MB. Attachments
+     * at or above this size must be uploaded via an upload session against a draft
+     * message instead. 3 MB is Microsoft's documented boundary for switching approaches.
+     */
+    public const LARGE_ATTACHMENT_THRESHOLD = 3 * 1024 * 1024;
+
+    private int $largeAttachmentThreshold = self::LARGE_ATTACHMENT_THRESHOLD;
+
+    /**
      * @param string|null $sendingAccountUserId null = use /me endpoint (delegated Mail.Send only)
      */
     public function __construct(
@@ -67,6 +76,22 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
     public function useFromAddressAsSendingAccountUserId(): void
     {
         $this->shouldUseFromAddress = true;
+    }
+
+    public function getLargeAttachmentThreshold(): int
+    {
+        return $this->largeAttachmentThreshold;
+    }
+
+    /**
+     * @throws InvalidArgumentException when the byte count is not positive
+     */
+    public function setLargeAttachmentThreshold(int $bytes): void
+    {
+        if ($bytes < 1) {
+            throw new InvalidArgumentException('Large-attachment threshold must be a positive byte count.');
+        }
+        $this->largeAttachmentThreshold = $bytes;
     }
 
     public function isUsingMeEndpoint(): bool
@@ -378,6 +403,40 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         }
 
         return $this->client->users()->byUserId($this->sendingAccountUserId);
+    }
+
+    /**
+     * Whether a MIME child's decoded body is large enough to require an upload session
+     * rather than inline base64 in the sendMail payload.
+     *
+     * Swift_Attachment::getSize() reads the Content-Disposition "size" parameter, which
+     * is frequently unset, so we measure the decoded body directly.
+     */
+    private function attachmentExceedsThreshold(Swift_Mime_SimpleMimeEntity $attachment): bool
+    {
+        return \strlen((string) $attachment->getBody()) >= $this->largeAttachmentThreshold;
+    }
+
+    /**
+     * Splits attachments into [small, large] by the configured threshold.
+     *
+     * @param array<int, Swift_Mime_SimpleMimeEntity> $attachments
+     *
+     * @return array{0: array<int, Swift_Mime_SimpleMimeEntity>, 1: array<int, Swift_Mime_SimpleMimeEntity>}
+     */
+    private function partitionAttachmentsBySize(array $attachments): array
+    {
+        $small = [];
+        $large = [];
+        foreach ($attachments as $attachment) {
+            if ($this->attachmentExceedsThreshold($attachment)) {
+                $large[] = $attachment;
+            } else {
+                $small[] = $attachment;
+            }
+        }
+
+        return [$small, $large];
     }
 
     /**
