@@ -6,6 +6,34 @@ Maintained by `Redrock Software Corporation <https://www.go-redrock.com/>`_ sinc
 applications that cannot migrate to Symfony Mailer, integrating features from
 Symfony Mailer while preserving full backward compatibility.
 
+Unreleased
+----------
+
+ New Features:
+
+ * Microsoft Graph transport: large attachments (>= 3 MB, configurable via
+   `setLargeAttachmentThreshold()`) are now sent through a draft-message +
+   upload-session flow (using the Graph SDK `LargeFileUploadTask`) instead of
+   `sendMail`, lifting the ~4 MB request-body limit. Smaller messages are
+   unchanged. Attachments exceeding Graph's 150 MB ceiling are rejected up
+   front with a `Swift_TransportException`.
+ * Microsoft Graph transport: calendar invitations carrying `METHOD:CANCEL`
+   now cancel the matching Graph event (via the Calendar `cancel` action),
+   and `METHOD:REQUEST` invitations with `SEQUENCE > 0` update the existing
+   event in place (PATCH, matched by `iCalUId`) instead of creating a
+   duplicate, falling back to creation when no matching event is found.
+   Builds on the existing invitation-to-event conversion
+   (`enableCalendarEventConversion()`).
+
+ Bug Fixes:
+
+ * Microsoft Graph transport: a real (non-`.ics`) attachment sent alongside a
+   converted calendar invitation is no longer silently dropped — the message
+   is still delivered so the attachment reaches the recipient.
+ * Microsoft Graph transport: the reported recipient count now reflects only
+   recipients actually notified (a `CANCEL` that matches no event counts as
+   zero rather than inflating the total with parsed `.ics` attendees).
+
 6.4.0 (2026-02-28)
 ------------------
 
