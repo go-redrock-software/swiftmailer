@@ -544,9 +544,9 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
     /**
      * Finds calendar parts that should be converted into Graph events.
      *
-     * Only text/calendar parts whose METHOD is REQUEST are returned — those are the
-     * invitations M365 mangles. Other methods (PUBLISH, CANCEL, REPLY, ...) and
-     * unparseable parts are left to be sent as ordinary attachments.
+     * Only text/calendar parts whose METHOD is REQUEST or CANCEL are returned — those
+     * are the ones M365 mangles when sent as a sendMail attachment. Other methods
+     * (PUBLISH, REPLY, …) and unparseable parts are left to be sent as attachments.
      *
      * @return array<int, array{attachment: Swift_Mime_SimpleMimeEntity, event: Swift_Transport_Api_Calendar_ParsedEvent}>
      */
@@ -568,7 +568,10 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
                 continue;
             }
 
-            if (null === $parsed || !$parsed->isRequest()) {
+            // REQUEST invites and CANCEL notices are both mangled by M365 when sent as
+            // raw .ics, so both are routed through the Calendar API. Other methods
+            // (PUBLISH, REPLY, …) are left to ride along as ordinary attachments.
+            if (null === $parsed || (!$parsed->isRequest() && !$parsed->isCancel())) {
                 continue;
             }
 

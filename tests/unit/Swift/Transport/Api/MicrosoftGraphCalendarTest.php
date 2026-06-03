@@ -413,4 +413,76 @@ class MicrosoftGraphCalendarTest extends TestCase
         $this->assertContains('report.pdf', $names, 'real attachment must survive');
         $this->assertNotContains('invite.ics', $names, 'the broken .ics must be stripped');
     }
+
+    // -- extractCalendarInvites(): REQUEST and CANCEL are extracted; others are not ---
+
+    private function icsWithMethod(string $method): string
+    {
+        return \implode("\r\n", [
+            'BEGIN:VCALENDAR',
+            "METHOD:{$method}",
+            'BEGIN:VEVENT',
+            'UID:extract-1@example.com',
+            'DTSTART:20260301T140000Z',
+            'DTEND:20260301T150000Z',
+            'SUMMARY:Extract test',
+            'END:VEVENT',
+            'END:VCALENDAR',
+        ]);
+    }
+
+    private function messageWithIcs(string $ics): \Swift_Message
+    {
+        $m = new \Swift_Message();
+        $m->setFrom(['from@example.com' => 'Sender']);
+        $m->setTo(['to@example.com' => 'Recipient']);
+        $m->setSubject('Invite');
+        $m->setBody('See attached.');
+        $m->attach(new \Swift_Attachment($ics, 'invite.ics', 'text/calendar'));
+
+        return $m;
+    }
+
+    private function extractInvites(\Swift_Transport_Api_MicrosoftGraphTransport $t, \Swift_Message $m): array
+    {
+        $method = new \ReflectionMethod($t, 'extractCalendarInvites');
+        $method->setAccessible(true);
+
+        return $method->invoke($t, $m);
+    }
+
+    public function testExtractReturnsCancelPart(): void
+    {
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport(
+            $this->createMock(GraphServiceClient::class),
+        );
+
+        $invites = $this->extractInvites($transport, $this->messageWithIcs($this->icsWithMethod('CANCEL')));
+
+        $this->assertCount(1, $invites);
+        $this->assertTrue($invites[0]['event']->isCancel());
+    }
+
+    public function testExtractReturnsRequestPart(): void
+    {
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport(
+            $this->createMock(GraphServiceClient::class),
+        );
+
+        $invites = $this->extractInvites($transport, $this->messageWithIcs($this->icsWithMethod('REQUEST')));
+
+        $this->assertCount(1, $invites);
+        $this->assertTrue($invites[0]['event']->isRequest());
+    }
+
+    public function testExtractIgnoresPublishPart(): void
+    {
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport(
+            $this->createMock(GraphServiceClient::class),
+        );
+
+        $invites = $this->extractInvites($transport, $this->messageWithIcs($this->icsWithMethod('PUBLISH')));
+
+        $this->assertCount(0, $invites);
+    }
 }
