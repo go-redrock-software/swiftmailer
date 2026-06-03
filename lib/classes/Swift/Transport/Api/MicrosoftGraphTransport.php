@@ -1,7 +1,10 @@
 <?php
 
 use GuzzleHttp\Psr7\Utils;
+use Microsoft\Graph\Core\Tasks\LargeFileUploadTask;
 use Microsoft\Graph\Generated\Models\Attachment;
+use Microsoft\Graph\Generated\Models\AttachmentItem;
+use Microsoft\Graph\Generated\Models\AttachmentType;
 use Microsoft\Graph\Generated\Models\Attendee;
 use Microsoft\Graph\Generated\Models\AttendeeType;
 use Microsoft\Graph\Generated\Models\BodyType;
@@ -13,6 +16,8 @@ use Microsoft\Graph\Generated\Models\ItemBody;
 use Microsoft\Graph\Generated\Models\Location;
 use Microsoft\Graph\Generated\Models\Message;
 use Microsoft\Graph\Generated\Models\Recipient;
+use Microsoft\Graph\Generated\Models\UploadSession;
+use Microsoft\Graph\Generated\Users\Item\Messages\Item\Attachments\CreateUploadSession\CreateUploadSessionPostRequestBody;
 use Microsoft\Graph\Generated\Users\Item\SendMail\SendMailPostRequestBody;
 use Microsoft\Graph\GraphServiceClient;
 
@@ -383,6 +388,82 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         $graphAttachment->setSize($swiftAttachment->getSize());
 
         return $graphAttachment;
+    }
+
+    /**
+     * Sends a message that carries at least one large attachment via the draft +
+     * upload-session flow, because Graph's /sendMail rejects bodies over ~4 MB.
+     *
+     * Creates a draft, attaches small files inline, streams large files through upload
+     * sessions, then sends the draft.
+     *
+     * @param array<int, Swift_Mime_SimpleMimeEntity> $smallAttachments
+     * @param array<int, Swift_Mime_SimpleMimeEntity> $largeAttachments
+     *
+     * @throws Swift_TransportException
+     */
+    private function sendViaDraft(
+        Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder $userRequestBuilder,
+        Message $graphMessage,
+        array $smallAttachments,
+        array $largeAttachments,
+    ): void {
+        $draft = $userRequestBuilder->messages()->post($graphMessage)->wait();
+        if (null === $draft || null === $draft->getId()) {
+            $this->throwException(new Swift_TransportException('Graph did not return a draft message id; cannot attach large files.'));
+        }
+
+        $messageBuilder = $userRequestBuilder->messages()->byMessageId($draft->getId());
+
+        // Files under the threshold are cheap to inline directly on the draft.
+        foreach ($smallAttachments as $attachment) {
+            $messageBuilder->attachments()->post($this->convertSwiftAttachmentToGraphAttachment($attachment))->wait();
+        }
+
+        foreach ($largeAttachments as $attachment) {
+            $contents       = (string) $attachment->getBody();
+            $attachmentItem = new AttachmentItem();
+            try {
+                $attachmentItem->setAttachmentType(new AttachmentType(AttachmentType::FILE));
+                // @codeCoverageIgnoreStart
+            } catch (ReflectionException $e) {
+                $this->throwException(new Swift_TransportException("Failed to set Graph AttachmentType: {$e->getMessage()}"));
+            }
+            // @codeCoverageIgnoreEnd
+            $attachmentItem->setName($attachment->getFilename());
+            $attachmentItem->setSize(\strlen($contents));
+            $attachmentItem->setContentType((string) $attachment->getContentType());
+            $attachmentItem->setIsInline('attachment' !== $attachment->getDisposition());
+
+            $uploadBody = new CreateUploadSessionPostRequestBody();
+            $uploadBody->setAttachmentItem($attachmentItem);
+
+            $uploadSession = $messageBuilder->attachments()->createUploadSession()->post($uploadBody)->wait();
+            if (null === $uploadSession) {
+                $this->throwException(new Swift_TransportException("Graph returned no upload session for attachment '{$attachment->getFilename()}'."));
+            }
+
+            $this->uploadLargeAttachment($uploadSession, $contents);
+        }
+
+        // POST /messages/{id}/send takes no body and moves the draft to Sent Items.
+        $messageBuilder->send()->post()->wait();
+    }
+
+    /**
+     * Streams a large attachment's bytes into a previously-created upload session.
+     *
+     * Isolated so tests can stub the chunked transfer; the SDK's LargeFileUploadTask
+     * performs the sequential PUT requests against the session's upload URL.
+     */
+    protected function uploadLargeAttachment(UploadSession $uploadSession, string $contents): void
+    {
+        $task = new LargeFileUploadTask(
+            $uploadSession,
+            $this->client->getRequestAdapter(),
+            Utils::streamFor($contents),
+        );
+        $task->upload()->wait();
     }
 
     /**
