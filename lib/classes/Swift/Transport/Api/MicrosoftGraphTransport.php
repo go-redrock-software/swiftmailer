@@ -271,19 +271,29 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         $calendarInvites   = $this->convertCalendarToEvents ? $this->extractCalendarInvites($message) : [];
         $inviteAttachments = \array_column($calendarInvites, 'attachment');
 
-        $graphAttachments = [];
-
+        $attachmentsToSend = [];
         foreach ($message->getChildren() ?? [] as $swiftAttachment) {
             // Skip calendar parts we are converting to Graph events; shipping the raw
             // .ics alongside is exactly what M365 mangles.
             if (\in_array($swiftAttachment, $inviteAttachments, true)) {
                 continue;
             }
-            $graphAttachments[] = $this->convertSwiftAttachmentToGraphAttachment($swiftAttachment);
+            $attachmentsToSend[] = $swiftAttachment;
         }
 
-        if (!empty($graphAttachments)) {
-            $graphMessage->setAttachments($graphAttachments);
+        [$smallAttachments, $largeAttachments] = $this->partitionAttachmentsBySize($attachmentsToSend);
+        $useDraftFlow = [] !== $largeAttachments;
+
+        // The sendMail payload can only carry attachments small enough to inline; when a
+        // large attachment is present the draft flow attaches everything itself.
+        if (!$useDraftFlow) {
+            $graphAttachments = \array_map(
+                fn (Swift_Attachment $a): Attachment => $this->convertSwiftAttachmentToGraphAttachment($a),
+                $smallAttachments,
+            );
+            if (!empty($graphAttachments)) {
+                $graphMessage->setAttachments($graphAttachments);
+            }
         }
 
         $recipient    = new Recipient();
@@ -319,7 +329,11 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
             }
 
             if ($shouldSendEmail) {
-                $userRequestBuilder->sendMail()->post($sendMailBody)->wait();
+                if ($useDraftFlow) {
+                    $this->sendViaDraft($userRequestBuilder, $graphMessage, $smallAttachments, $largeAttachments);
+                } else {
+                    $userRequestBuilder->sendMail()->post($sendMailBody)->wait();
+                }
             }
 
             foreach ($calendarInvites as $invite) {
@@ -402,7 +416,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
      *
      * @throws Swift_TransportException
      */
-    private function sendViaDraft(
+    protected function sendViaDraft(
         Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder $userRequestBuilder,
         Message $graphMessage,
         array $smallAttachments,
