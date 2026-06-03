@@ -63,4 +63,14 @@ class Swift_Transport_Api_Calendar_ParsedEvent
     {
         return 'REQUEST' === \strtoupper((string) $this->method);
     }
+
+    /**
+     * True for METHOD:CANCEL — a cancellation of a previously-sent invitation. Like
+     * REQUEST, M365 mangles these when delivered as a sendMail attachment, so we route
+     * them through the Calendar API's cancel action instead.
+     */
+    public function isCancel(): bool
+    {
+        return 'CANCEL' === \strtoupper((string) $this->method);
+    }
 }
