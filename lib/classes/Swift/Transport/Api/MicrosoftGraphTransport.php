@@ -322,7 +322,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
             $userRequestBuilder = $this->resolveUserRequestBuilder($message);
 
             foreach ($calendarInvites as $invite) {
-                $this->dispatchCalendarOperation($userRequestBuilder, $invite['event']);
+                $recipient_count += $this->dispatchCalendarOperation($userRequestBuilder, $invite['event']);
             }
 
             if ($shouldSendEmail) {
@@ -331,10 +331,6 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
                 } else {
                     $userRequestBuilder->sendMail()->post($sendMailBody)->wait();
                 }
-            }
-
-            foreach ($calendarInvites as $invite) {
-                $recipient_count += \count($invite['event']->attendees);
             }
 
             if ($evt) {
@@ -674,25 +670,30 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
      * Routes a single parsed calendar entry to the correct Graph Calendar operation:
      * CANCEL -> cancel the matching event; REQUEST with SEQUENCE > 0 -> patch the
      * matching event (create if it can't be found); REQUEST with SEQUENCE 0 -> create.
+     *
+     * @return int the number of recipients actually notified by Graph for this entry
+     *             (0 when the operation contacted Graph zero times, e.g. a CANCEL that
+     *             matched no event)
      */
     private function dispatchCalendarOperation(
         Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder $userRequestBuilder,
         Swift_Transport_Api_Calendar_ParsedEvent $parsed,
-    ): void {
+    ): int {
         if ($parsed->isCancel()) {
             $eventId = null !== $parsed->uid
                 ? $this->findEventIdByICalUId($userRequestBuilder, $parsed->uid)
                 : null;
             if (null === $eventId) {
                 // No matching event (e.g. it was not created via Graph). Nothing
-                // actionable; the broken .ics is intentionally not sent.
+                // actionable; the broken .ics is intentionally not sent, and nobody
+                // was notified.
                 \trigger_error("Graph calendar CANCEL: no event matched iCalUId '{$parsed->uid}'", E_USER_NOTICE);
 
-                return;
+                return 0;
             }
             $this->cancelGraphEvent($userRequestBuilder, $eventId);
 
-            return;
+            return \count($parsed->attendees);
         }
 
         $graphEvent = $this->convertParsedEventToGraphEvent($parsed);
@@ -704,7 +705,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
             if (null !== $eventId) {
                 $this->updateGraphEvent($userRequestBuilder, $eventId, $graphEvent);
 
-                return;
+                return \count($parsed->attendees);
             }
             // Fall through to create when the original can't be found.
         }
@@ -712,6 +713,8 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         // POST /users/{id}/events (or /me/events) — Exchange sends a proper, actionable
         // invitation to each attendee.
         $userRequestBuilder->events()->post($graphEvent)->wait();
+
+        return \count($parsed->attendees);
     }
 
     /**

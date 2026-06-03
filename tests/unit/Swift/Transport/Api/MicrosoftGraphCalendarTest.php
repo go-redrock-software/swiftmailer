@@ -663,6 +663,51 @@ class MicrosoftGraphCalendarTest extends TestCase
         @$transport->send($this->messageWithIcs($cancelIcs));
     }
 
+    public function testNoMatchCancelReturnsZeroRecipients(): void
+    {
+        // A CANCEL that matches no Graph event contacts Graph zero times, so it notified
+        // nobody — send() must return 0, not the parsed attendee count (1).
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->expects($this->never())->method('events');
+        $userItemBuilder->expects($this->never())->method('sendMail');
+
+        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByICalUId', 'cancelGraphEvent']);
+        $transport->method('findEventIdByICalUId')->willReturn(null);
+        $transport->expects($this->never())->method('cancelGraphEvent');
+
+        $cancelIcs = \implode("\r\n", [
+            'BEGIN:VCALENDAR', 'METHOD:CANCEL', 'BEGIN:VEVENT',
+            'UID:cancel-nomatch@example.com',
+            'DTSTART:20260301T140000Z', 'DTEND:20260301T150000Z',
+            'SUMMARY:Cancelled', 'ATTENDEE;CN=Bob:mailto:bob@example.com',
+            'END:VEVENT', 'END:VCALENDAR',
+        ]);
+        $result = @$transport->send($this->messageWithIcs($cancelIcs));
+        $this->assertSame(0, $result, 'a no-match CANCEL notified nobody');
+    }
+
+    public function testMatchedCancelReturnsAttendeeCount(): void
+    {
+        // A CANCEL that matches a Graph event sends a cancellation notice to its one
+        // attendee — send() must report that one recipient.
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->expects($this->never())->method('sendMail');
+
+        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByICalUId', 'cancelGraphEvent']);
+        $transport->method('findEventIdByICalUId')->willReturn('evt-graph-1');
+        $transport->expects($this->once())->method('cancelGraphEvent')->with($userItemBuilder, 'evt-graph-1');
+
+        $cancelIcs = \implode("\r\n", [
+            'BEGIN:VCALENDAR', 'METHOD:CANCEL', 'BEGIN:VEVENT',
+            'UID:cancel-match@example.com',
+            'DTSTART:20260301T140000Z', 'DTEND:20260301T150000Z',
+            'SUMMARY:Cancelled', 'ATTENDEE;CN=Bob:mailto:bob@example.com',
+            'END:VEVENT', 'END:VCALENDAR',
+        ]);
+        $result = $transport->send($this->messageWithIcs($cancelIcs));
+        $this->assertSame(1, $result, 'a matched CANCEL notified its one attendee');
+    }
+
     public function testUpdateInviteWithSequencePatchesMatchingEvent(): void
     {
         $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
