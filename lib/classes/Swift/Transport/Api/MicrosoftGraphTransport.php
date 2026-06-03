@@ -411,6 +411,9 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         $draft = $userRequestBuilder->messages()->post($graphMessage)->wait();
         if (null === $draft || null === $draft->getId()) {
             $this->throwException(new Swift_TransportException('Graph did not return a draft message id; cannot attach large files.'));
+
+            // throwException() can return if a listener cancels bubbling; abort rather than deref null.
+            return;
         }
 
         $messageBuilder = $userRequestBuilder->messages()->byMessageId($draft->getId());
@@ -441,6 +444,9 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
             $uploadSession = $messageBuilder->attachments()->createUploadSession()->post($uploadBody)->wait();
             if (null === $uploadSession) {
                 $this->throwException(new Swift_TransportException("Graph returned no upload session for attachment '{$attachment->getFilename()}'."));
+
+                // throwException() can return if a listener cancels bubbling; abort rather than deref null.
+                return;
             }
 
             $this->uploadLargeAttachment($uploadSession, $contents);
