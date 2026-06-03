@@ -17,6 +17,9 @@ use Microsoft\Graph\Generated\Models\Location;
 use Microsoft\Graph\Generated\Models\Message;
 use Microsoft\Graph\Generated\Models\Recipient;
 use Microsoft\Graph\Generated\Models\UploadSession;
+use Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilderGetQueryParameters;
+use Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilderGetRequestConfiguration;
+use Microsoft\Graph\Generated\Users\Item\Events\Item\Cancel\CancelPostRequestBody;
 use Microsoft\Graph\Generated\Users\Item\Messages\Item\Attachments\CreateUploadSession\CreateUploadSessionPostRequestBody;
 use Microsoft\Graph\Generated\Users\Item\SendMail\SendMailPostRequestBody;
 use Microsoft\Graph\GraphServiceClient;
@@ -671,6 +674,60 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         }
 
         return $event;
+    }
+
+    /**
+     * Looks up the Graph event id for a given iCalendar UID, or null if none matches.
+     *
+     * Graph stores the originating .ics UID in the event's iCalUId property, so this is
+     * the reliable key for correlating an UPDATE/CANCEL .ics back to the created event.
+     */
+    protected function findEventIdByICalUId(
+        Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder $userRequestBuilder,
+        string $iCalUId,
+    ): ?string {
+        $config                  = new EventsRequestBuilderGetRequestConfiguration();
+        $config->queryParameters = new EventsRequestBuilderGetQueryParameters();
+        // OData string literals escape a single quote by doubling it.
+        $escaped                 = \str_replace("'", "''", $iCalUId);
+        $config->queryParameters->filter = "iCalUId eq '{$escaped}'";
+
+        $response = $userRequestBuilder->events()->get($config)->wait();
+        foreach ($response?->getValue() ?? [] as $event) {
+            if (null !== $event->getId()) {
+                return $event->getId();
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Cancels a Graph event via the Calendar API cancel action, which sends a proper
+     * cancellation notice to all attendees (unlike a plain delete).
+     */
+    protected function cancelGraphEvent(
+        Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder $userRequestBuilder,
+        string $eventId,
+        ?string $comment = null,
+    ): void {
+        $body = new CancelPostRequestBody();
+        if (null !== $comment) {
+            $body->setComment($comment);
+        }
+        $userRequestBuilder->events()->byEventId($eventId)->cancel()->post($body)->wait();
+    }
+
+    /**
+     * Patches an existing Graph event in place so Exchange sends an "updated" notice
+     * rather than creating a second invitation.
+     */
+    protected function updateGraphEvent(
+        Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder $userRequestBuilder,
+        string $eventId,
+        Event $event,
+    ): void {
+        $userRequestBuilder->events()->byEventId($eventId)->patch($event)->wait();
     }
 
     protected function getApiConnection(): GraphServiceClient

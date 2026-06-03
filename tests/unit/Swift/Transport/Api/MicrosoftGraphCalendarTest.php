@@ -485,4 +485,92 @@ class MicrosoftGraphCalendarTest extends TestCase
 
         $this->assertCount(0, $invites);
     }
+
+    // -- event lookup / cancel / update seams ---
+
+    public function testFindEventIdReturnsFirstMatch(): void
+    {
+        $event = new \Microsoft\Graph\Generated\Models\Event();
+        $event->setId('evt-graph-1');
+        $response = new \Microsoft\Graph\Generated\Models\EventCollectionResponse();
+        $response->setValue([$event]);
+        $promise = $this->createMock(\Http\Promise\Promise::class);
+        $promise->method('wait')->willReturn($response);
+
+        $capturedConfig = null;
+        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
+        $eventsBuilder->method('get')->willReturnCallback(function ($config) use (&$capturedConfig, $promise) {
+            $capturedConfig = $config;
+
+            return $promise;
+        });
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('events')->willReturn($eventsBuilder);
+
+        $t = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
+        $method = new \ReflectionMethod($t, 'findEventIdByICalUId');
+        $id = $method->invoke($t, $userItemBuilder, "o'brien-uid");
+
+        $this->assertSame('evt-graph-1', $id);
+        $this->assertSame("iCalUId eq 'o''brien-uid'", $capturedConfig->queryParameters->filter);
+    }
+
+    public function testFindEventIdReturnsNullWhenNoMatch(): void
+    {
+        $response = new \Microsoft\Graph\Generated\Models\EventCollectionResponse();
+        $response->setValue([]);
+        $promise = $this->createMock(\Http\Promise\Promise::class);
+        $promise->method('wait')->willReturn($response);
+
+        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
+        $eventsBuilder->method('get')->willReturn($promise);
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('events')->willReturn($eventsBuilder);
+
+        $t = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
+        $method = new \ReflectionMethod($t, 'findEventIdByICalUId');
+        $this->assertNull($method->invoke($t, $userItemBuilder, 'missing-uid'));
+    }
+
+    public function testCancelGraphEventPostsCancel(): void
+    {
+        $promise = $this->createMock(\Http\Promise\Promise::class);
+        $promise->method('wait')->willReturn(null);
+
+        $cancelBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\Item\Cancel\CancelRequestBuilder::class);
+        $cancelBuilder->expects($this->once())->method('post')->willReturn($promise);
+
+        $eventItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\Item\EventItemRequestBuilder::class);
+        $eventItemBuilder->method('cancel')->willReturn($cancelBuilder);
+
+        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
+        $eventsBuilder->method('byEventId')->with('evt-graph-1')->willReturn($eventItemBuilder);
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('events')->willReturn($eventsBuilder);
+
+        $t = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
+        $method = new \ReflectionMethod($t, 'cancelGraphEvent');
+        $method->invoke($t, $userItemBuilder, 'evt-graph-1', 'Meeting cancelled');
+    }
+
+    public function testUpdateGraphEventPatches(): void
+    {
+        $promise = $this->createMock(\Http\Promise\Promise::class);
+        $promise->method('wait')->willReturn(null);
+
+        $eventItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\Item\EventItemRequestBuilder::class);
+        $eventItemBuilder->expects($this->once())->method('patch')->willReturn($promise);
+
+        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
+        $eventsBuilder->method('byEventId')->with('evt-graph-1')->willReturn($eventItemBuilder);
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('events')->willReturn($eventsBuilder);
+
+        $t = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
+        $method = new \ReflectionMethod($t, 'updateGraphEvent');
+        $method->invoke($t, $userItemBuilder, 'evt-graph-1', new \Microsoft\Graph\Generated\Models\Event());
+    }
 }
