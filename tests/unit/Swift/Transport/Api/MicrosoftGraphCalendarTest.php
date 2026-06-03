@@ -532,7 +532,7 @@ class MicrosoftGraphCalendarTest extends TestCase
         $promise->method('wait')->willReturn($response);
 
         $capturedConfig = null;
-        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
+        $eventsBuilder  = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
         $eventsBuilder->method('get')->willReturnCallback(function ($config) use (&$capturedConfig, $promise) {
             $capturedConfig = $config;
 
@@ -542,9 +542,9 @@ class MicrosoftGraphCalendarTest extends TestCase
         $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
         $userItemBuilder->method('events')->willReturn($eventsBuilder);
 
-        $t = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
+        $t      = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
         $method = new \ReflectionMethod($t, 'findEventIdByICalUId');
-        $id = $method->invoke($t, $userItemBuilder, "o'brien-uid");
+        $id     = $method->invoke($t, $userItemBuilder, "o'brien-uid");
 
         $this->assertSame('evt-graph-1', $id);
         $this->assertSame("iCalUId eq 'o''brien-uid'", $capturedConfig->queryParameters->filter);
@@ -562,7 +562,7 @@ class MicrosoftGraphCalendarTest extends TestCase
         $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
         $userItemBuilder->method('events')->willReturn($eventsBuilder);
 
-        $t = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
+        $t      = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
         $method = new \ReflectionMethod($t, 'findEventIdByICalUId');
         $this->assertNull($method->invoke($t, $userItemBuilder, 'missing-uid'));
     }
@@ -584,7 +584,7 @@ class MicrosoftGraphCalendarTest extends TestCase
         $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
         $userItemBuilder->method('events')->willReturn($eventsBuilder);
 
-        $t = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
+        $t      = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
         $method = new \ReflectionMethod($t, 'cancelGraphEvent');
         $method->invoke($t, $userItemBuilder, 'evt-graph-1');
     }
@@ -603,7 +603,7 @@ class MicrosoftGraphCalendarTest extends TestCase
         $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
         $userItemBuilder->method('events')->willReturn($eventsBuilder);
 
-        $t = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
+        $t      = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
         $method = new \ReflectionMethod($t, 'updateGraphEvent');
         $method->invoke($t, $userItemBuilder, 'evt-graph-1', new \Microsoft\Graph\Generated\Models\Event());
     }

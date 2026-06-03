@@ -291,7 +291,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         }
 
         [$smallAttachments, $largeAttachments] = $this->partitionAttachmentsBySize($attachmentsToSend);
-        $useDraftFlow = [] !== $largeAttachments;
+        $useDraftFlow                          = [] !== $largeAttachments;
 
         // The sendMail payload can only carry attachments small enough to inline; when a
         // large attachment is present the draft flow attaches everything itself.
@@ -764,7 +764,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         $config                  = new EventsRequestBuilderGetRequestConfiguration();
         $config->queryParameters = new EventsRequestBuilderGetQueryParameters();
         // OData string literals escape a single quote by doubling it.
-        $escaped                 = \str_replace("'", "''", $iCalUId);
+        $escaped                         = \str_replace("'", "''", $iCalUId);
         $config->queryParameters->filter = "iCalUId eq '{$escaped}'";
 
         $response = $userRequestBuilder->events()->get($config)->wait();
