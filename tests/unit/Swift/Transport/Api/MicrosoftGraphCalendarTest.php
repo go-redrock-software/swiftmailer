@@ -107,6 +107,40 @@ class MicrosoftGraphCalendarTest extends TestCase
         $this->assertSame(1, $result);
     }
 
+    // -- invite + a real (non-.ics) attachment: the attachment must still be delivered ---
+
+    public function testRequestInviteWithRealAttachmentSendsBothEvenWithoutSendAlongside(): void
+    {
+        // Default sendEmailAlongsideEvent (false), but a genuine PDF rides alongside the
+        // invite. The .ics is converted to an event; the PDF must NOT be silently dropped.
+        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
+        $eventsBuilder->expects($this->once())->method('post')->willReturn($this->promise());
+
+        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
+        $sendMailBuilder->expects($this->once())->method('post')->willReturn($this->promise());
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('events')->willReturn($eventsBuilder);
+        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
+
+        $graphClient = $this->createMock(GraphServiceClient::class);
+        $graphClient->method('me')->willReturn($userItemBuilder);
+
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $this->dispatcher());
+        $transport->enableCalendarEventConversion();
+        // intentionally NOT calling setSendEmailAlongsideEvent(true)
+
+        $m = new \Swift_Message();
+        $m->setFrom(['from@example.com' => 'Sender']);
+        $m->setTo(['to@example.com' => 'Recipient']);
+        $m->setSubject('Invite plus report');
+        $m->setBody('See attached.');
+        $m->attach(new \Swift_Attachment('report body', 'report.pdf', 'application/pdf'));
+        $m->attach(new \Swift_Attachment($this->requestInviteIcs(), 'invite.ics', 'text/calendar'));
+
+        $transport->send($m);
+    }
+
     // -- sendAlongside also sends the email (without the broken .ics) ---
 
     public function testRequestInviteWithSendAlongsideSendsBoth(): void
@@ -627,6 +661,87 @@ class MicrosoftGraphCalendarTest extends TestCase
         ]);
         // @ suppresses the expected E_USER_NOTICE so the test does not error on it.
         @$transport->send($this->messageWithIcs($cancelIcs));
+    }
+
+    public function testNoMatchCancelEmitsNoticeNamingTheICalUId(): void
+    {
+        // The no-match CANCEL path warns operators via E_USER_NOTICE. Assert it actually
+        // fires and names the operation + the unmatched iCalUId, so a silently-dropped
+        // cancellation is observable in logs.
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->expects($this->never())->method('events');
+        $userItemBuilder->expects($this->never())->method('sendMail');
+
+        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByICalUId', 'cancelGraphEvent']);
+        $transport->method('findEventIdByICalUId')->willReturn(null);
+
+        $cancelIcs = \implode("\r\n", [
+            'BEGIN:VCALENDAR', 'METHOD:CANCEL', 'BEGIN:VEVENT',
+            'UID:cancel-notice@example.com',
+            'DTSTART:20260301T140000Z', 'DTEND:20260301T150000Z',
+            'SUMMARY:Cancelled', 'END:VEVENT', 'END:VCALENDAR',
+        ]);
+
+        $captured = null;
+        \set_error_handler(static function (int $errno, string $errstr) use (&$captured): bool {
+            $captured = $errstr;
+
+            return true; // swallow so the notice doesn't bubble to PHPUnit
+        }, E_USER_NOTICE);
+        try {
+            $transport->send($this->messageWithIcs($cancelIcs));
+        } finally {
+            \restore_error_handler();
+        }
+
+        $this->assertNotNull($captured, 'a no-match CANCEL must emit an E_USER_NOTICE');
+        $this->assertStringContainsString('Graph calendar CANCEL', $captured);
+        $this->assertStringContainsString('cancel-notice@example.com', $captured);
+    }
+
+    public function testNoMatchCancelReturnsZeroRecipients(): void
+    {
+        // A CANCEL that matches no Graph event contacts Graph zero times, so it notified
+        // nobody — send() must return 0, not the parsed attendee count (1).
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->expects($this->never())->method('events');
+        $userItemBuilder->expects($this->never())->method('sendMail');
+
+        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByICalUId', 'cancelGraphEvent']);
+        $transport->method('findEventIdByICalUId')->willReturn(null);
+        $transport->expects($this->never())->method('cancelGraphEvent');
+
+        $cancelIcs = \implode("\r\n", [
+            'BEGIN:VCALENDAR', 'METHOD:CANCEL', 'BEGIN:VEVENT',
+            'UID:cancel-nomatch@example.com',
+            'DTSTART:20260301T140000Z', 'DTEND:20260301T150000Z',
+            'SUMMARY:Cancelled', 'ATTENDEE;CN=Bob:mailto:bob@example.com',
+            'END:VEVENT', 'END:VCALENDAR',
+        ]);
+        $result = @$transport->send($this->messageWithIcs($cancelIcs));
+        $this->assertSame(0, $result, 'a no-match CANCEL notified nobody');
+    }
+
+    public function testMatchedCancelReturnsAttendeeCount(): void
+    {
+        // A CANCEL that matches a Graph event sends a cancellation notice to its one
+        // attendee — send() must report that one recipient.
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->expects($this->never())->method('sendMail');
+
+        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByICalUId', 'cancelGraphEvent']);
+        $transport->method('findEventIdByICalUId')->willReturn('evt-graph-1');
+        $transport->expects($this->once())->method('cancelGraphEvent')->with($userItemBuilder, 'evt-graph-1');
+
+        $cancelIcs = \implode("\r\n", [
+            'BEGIN:VCALENDAR', 'METHOD:CANCEL', 'BEGIN:VEVENT',
+            'UID:cancel-match@example.com',
+            'DTSTART:20260301T140000Z', 'DTEND:20260301T150000Z',
+            'SUMMARY:Cancelled', 'ATTENDEE;CN=Bob:mailto:bob@example.com',
+            'END:VEVENT', 'END:VCALENDAR',
+        ]);
+        $result = $transport->send($this->messageWithIcs($cancelIcs));
+        $this->assertSame(1, $result, 'a matched CANCEL notified its one attendee');
     }
 
     public function testUpdateInviteWithSequencePatchesMatchingEvent(): void

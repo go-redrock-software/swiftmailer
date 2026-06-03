@@ -55,6 +55,12 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
      */
     public const LARGE_ATTACHMENT_THRESHOLD = 3 * 1024 * 1024;
 
+    /**
+     * Microsoft Graph caps a single Outlook-item attachment uploaded via an upload
+     * session at 150 MB. Anything larger cannot be sent and is rejected up front.
+     */
+    public const MAX_ATTACHMENT_SIZE = 150 * 1024 * 1024;
+
     private int $largeAttachmentThreshold = self::LARGE_ATTACHMENT_THRESHOLD;
 
     /**
@@ -314,14 +320,15 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         $sendMailBody->setMessage($graphMessage);
 
         // When we act on the calendar entry, Exchange emails the invitation/cancellation
-        // itself, so by default we skip the duplicate raw email. Callers can opt back in.
-        $shouldSendEmail = empty($calendarInvites) || $this->sendEmailAlongsideEvent;
+        // itself, so by default we skip the duplicate raw email — UNLESS the message also
+        // carries real (non-.ics) attachments, which would otherwise be silently dropped.
+        $shouldSendEmail = empty($calendarInvites) || $this->sendEmailAlongsideEvent || [] !== $attachmentsToSend;
 
         try {
             $userRequestBuilder = $this->resolveUserRequestBuilder($message);
 
             foreach ($calendarInvites as $invite) {
-                $this->dispatchCalendarOperation($userRequestBuilder, $invite['event']);
+                $recipient_count += $this->dispatchCalendarOperation($userRequestBuilder, $invite['event']);
             }
 
             if ($shouldSendEmail) {
@@ -330,10 +337,6 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
                 } else {
                     $userRequestBuilder->sendMail()->post($sendMailBody)->wait();
                 }
-            }
-
-            foreach ($calendarInvites as $invite) {
-                $recipient_count += \count($invite['event']->attendees);
             }
 
             if ($evt) {
@@ -418,6 +421,25 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         array $smallAttachments,
         array $largeAttachments,
     ): void {
+        // Reject anything past Graph's 150 MB upload-session ceiling BEFORE creating the
+        // draft — otherwise we orphan a draft that then fails deep in the chunked PUT
+        // with an opaque error.
+        foreach ($largeAttachments as $attachment) {
+            $size = $this->attachmentByteSize($attachment);
+            if ($size > self::MAX_ATTACHMENT_SIZE) {
+                $this->throwException(new Swift_TransportException(\sprintf(
+                    "Attachment '%s' is %d bytes, exceeding Microsoft Graph's %d-byte limit.",
+                    $attachment->getFilename(),
+                    $size,
+                    self::MAX_ATTACHMENT_SIZE,
+                )));
+
+                // throwException() can return if a listener cancels bubbling; abort
+                // rather than create a draft we can never finish.
+                return;
+            }
+        }
+
         $draft = $userRequestBuilder->messages()->post($graphMessage)->wait();
         if (null === $draft || null === $draft->getId()) {
             $this->throwException(new Swift_TransportException('Graph did not return a draft message id; cannot attach large files.'));
@@ -512,7 +534,16 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
      */
     private function attachmentExceedsThreshold(Swift_Mime_SimpleMimeEntity $attachment): bool
     {
-        return \strlen((string) $attachment->getBody()) >= $this->largeAttachmentThreshold;
+        return $this->attachmentByteSize($attachment) >= $this->largeAttachmentThreshold;
+    }
+
+    /**
+     * Decoded byte size of an attachment's body. Isolated so size-based guards can be
+     * exercised in tests without allocating a multi-hundred-megabyte string.
+     */
+    protected function attachmentByteSize(Swift_Mime_SimpleMimeEntity $attachment): int
+    {
+        return \strlen((string) $attachment->getBody());
     }
 
     /**
@@ -673,25 +704,30 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
      * Routes a single parsed calendar entry to the correct Graph Calendar operation:
      * CANCEL -> cancel the matching event; REQUEST with SEQUENCE > 0 -> patch the
      * matching event (create if it can't be found); REQUEST with SEQUENCE 0 -> create.
+     *
+     * @return int the number of recipients actually notified by Graph for this entry
+     *             (0 when the operation contacted Graph zero times, e.g. a CANCEL that
+     *             matched no event)
      */
     private function dispatchCalendarOperation(
         Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder $userRequestBuilder,
         Swift_Transport_Api_Calendar_ParsedEvent $parsed,
-    ): void {
+    ): int {
         if ($parsed->isCancel()) {
             $eventId = null !== $parsed->uid
                 ? $this->findEventIdByICalUId($userRequestBuilder, $parsed->uid)
                 : null;
             if (null === $eventId) {
                 // No matching event (e.g. it was not created via Graph). Nothing
-                // actionable; the broken .ics is intentionally not sent.
+                // actionable; the broken .ics is intentionally not sent, and nobody
+                // was notified.
                 \trigger_error("Graph calendar CANCEL: no event matched iCalUId '{$parsed->uid}'", E_USER_NOTICE);
 
-                return;
+                return 0;
             }
             $this->cancelGraphEvent($userRequestBuilder, $eventId);
 
-            return;
+            return \count($parsed->attendees);
         }
 
         $graphEvent = $this->convertParsedEventToGraphEvent($parsed);
@@ -703,7 +739,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
             if (null !== $eventId) {
                 $this->updateGraphEvent($userRequestBuilder, $eventId, $graphEvent);
 
-                return;
+                return \count($parsed->attendees);
             }
             // Fall through to create when the original can't be found.
         }
@@ -711,6 +747,8 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         // POST /users/{id}/events (or /me/events) — Exchange sends a proper, actionable
         // invitation to each attendee.
         $userRequestBuilder->events()->post($graphEvent)->wait();
+
+        return \count($parsed->attendees);
     }
 
     /**
