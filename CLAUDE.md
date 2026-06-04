@@ -52,4 +52,4 @@ The transport hierarchy is the most important architectural concept:
 - Tests mirror the source tree under `tests/unit/Swift/` using the same underscore naming
 - Autoloading entry point: `lib/swift_required.php`
 - Dependencies managed via `Swift_DependencyContainer` (internal service locator)
-- PHP 8.1+ required; uses typed properties and return types throughout
+- PHP 8.4+ required (uses asymmetric visibility, e.g. `public protected(set)`); typed properties and return types throughout

@@ -25,7 +25,7 @@
     }
   ],
   "require": {
-    "php": ">=8.5",
+    "php": ">=8.4",
     "ext-iconv": "*",
     "ext-mbstring": "*",
     "ext-intl": "*",
