@@ -84,6 +84,15 @@ phpstan:
 
 tests:
   extends: .test-job
+  parallel:
+    matrix:
+      - PHP_VERSION: ["8.3", "8.5"]
+  image: "php:${PHP_VERSION}-cli"
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}-composer-php${PHP_VERSION}"
+    paths:
+      - vendor/
+    policy: pull-push
   variables:
     SYMFONY_DEPRECATIONS_HELPER: "max[direct]=0&max[self]=0"
   script:
