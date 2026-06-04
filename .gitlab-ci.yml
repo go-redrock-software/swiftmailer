@@ -4,6 +4,14 @@ stages:
   - integration
   - mutation
 
+# CI checks out a shallow, detached HEAD with no tags, so Composer cannot infer
+# the package version and defaults swiftmailer/swiftmailer to 1.0.0. That trips
+# roave/security-advisories' "conflicts with swiftmailer/swiftmailer <6.2.5"
+# rule and breaks dependency resolution. Pin the root version explicitly so
+# resolution sees a >= 6.2.5 root. Bump the minor line when it changes.
+variables:
+  COMPOSER_ROOT_VERSION: "6.5.x-dev"
+
 # ---------------------------------------------------------------------------
 # Shared configuration for test-stage jobs
 # ---------------------------------------------------------------------------
@@ -63,7 +71,7 @@ security-audit:
   image: php:8.5-cli
   before_script:
     - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-    - composer install --no-interaction --no-progress --ignore-platform-reqs
+    - composer install --no-interaction --no-progress
   script:
     - composer audit
   rules:
