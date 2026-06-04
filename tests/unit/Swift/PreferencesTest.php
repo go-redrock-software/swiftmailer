@@ -4,6 +4,15 @@ use PHPUnit\Framework\TestCase;
 
 class Swift_PreferencesTest extends TestCase
 {
+    protected function tearDown(): void
+    {
+        // testSetQPDotEscapeReturnsSelf mutates the global Swift_Preferences
+        // singleton (and the DI container's mime.qpcontentencoder value). Reset
+        // it so dot-escaping does not leak into later test classes and break
+        // SimpleMessageAcceptanceTest::testComplexEmbeddingOfContent.
+        Swift_Preferences::getInstance()->setQPDotEscape(false);
+    }
+
     public function testGetInstanceReturnsSingleton(): void
     {
         $prefs1 = Swift_Preferences::getInstance();
