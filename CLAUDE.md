@@ -11,7 +11,7 @@ Swiftmailer — a component-based PHP mailing library, now maintained by Redrock
 | Action | Command |
 |-|-|
 | Install dependencies | `composer install` |
-| Run all tests | `vendor/bin/simple-phpunit --verbose` |
+| Run all tests | `composer test` (exports `SYMFONY_DEPRECATIONS_HELPER` with the deprecation baseline so the suite exits 0; a bare `vendor/bin/simple-phpunit` run is not given the baseline and exits non-zero on the known/intentional deprecations) |
 | Run a single test file | `vendor/bin/simple-phpunit tests/unit/Swift/SomeTest.php` |
 | Run a specific test suite | `vendor/bin/simple-phpunit --testsuite="SwiftMailer unit tests"` |
 | Fix code style | `composer php-cs-fixer` |

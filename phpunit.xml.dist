@@ -17,6 +17,12 @@
         <ini name="memory_limit" value="-1"/>
         <ini name="error_reporting" value="-1" />
         <ini name="xdebug.mode" value="coverage" />
+        <!-- The deprecation baseline (tests/deprecation-baseline.json) only
+             loads when SYMFONY_DEPRECATIONS_HELPER is exported in the
+             environment before PHPUnit starts (the bridge caches its config at
+             process start, before this <env> is applied). Run the suite via
+             `composer test`, which exports it. A bare run uses max[direct]=0
+             without the baseline. -->
         <env name="SYMFONY_DEPRECATIONS_HELPER" value="max[direct]=0" />
     </php>
 

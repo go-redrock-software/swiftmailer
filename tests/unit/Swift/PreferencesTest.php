@@ -23,7 +23,7 @@ class Swift_PreferencesTest extends TestCase
 
     public function testSetCharsetReturnsSelf(): void
     {
-        $prefs = Swift_Preferences::getInstance();
+        $prefs  = Swift_Preferences::getInstance();
         $result = $prefs->setCharset('utf-8');
 
         $this->assertSame($prefs, $result);
@@ -31,7 +31,7 @@ class Swift_PreferencesTest extends TestCase
 
     public function testSetTempDirReturnsSelf(): void
     {
-        $prefs = Swift_Preferences::getInstance();
+        $prefs  = Swift_Preferences::getInstance();
         $result = $prefs->setTempDir(\sys_get_temp_dir());
 
         $this->assertSame($prefs, $result);
@@ -39,7 +39,7 @@ class Swift_PreferencesTest extends TestCase
 
     public function testSetCacheTypeReturnsSelf(): void
     {
-        $prefs = Swift_Preferences::getInstance();
+        $prefs  = Swift_Preferences::getInstance();
         $result = $prefs->setCacheType('array');
 
         $this->assertSame($prefs, $result);
@@ -49,7 +49,7 @@ class Swift_PreferencesTest extends TestCase
     {
         $prefs = Swift_Preferences::getInstance();
 
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Invalid cache type "evil"');
 
         $prefs->setCacheType('evil');
@@ -57,7 +57,7 @@ class Swift_PreferencesTest extends TestCase
 
     public function testSetQPDotEscapeReturnsSelf(): void
     {
-        $prefs = Swift_Preferences::getInstance();
+        $prefs  = Swift_Preferences::getInstance();
         $result = $prefs->setQPDotEscape(true);
 
         $this->assertSame($prefs, $result);
