@@ -24,6 +24,13 @@ Symfony Mailer while preserving full backward compatibility.
    duplicate, falling back to creation when no matching event is found.
    Builds on the existing invitation-to-event conversion
    (`enableCalendarEventConversion()`).
+ * Microsoft Graph transport: now defaults to the delegated `/me/sendMail`
+   endpoint (least-privilege delegated `Mail.Send`) when no sending-account
+   user id is supplied, instead of the application-permission
+   `/users/{id}/sendMail`. `setSendingAccountUserId()` and
+   `useFromAddressAsSendingAccountUserId()` retain the explicit-mailbox
+   behavior for callers that need it, and `isUsingMeEndpoint()` reports the
+   active mode.
 
  Bug Fixes:
 
@@ -33,6 +40,10 @@ Symfony Mailer while preserving full backward compatibility.
  * Microsoft Graph transport: the reported recipient count now reflects only
    recipients actually notified (a `CANCEL` that matches no event counts as
    zero rather than inflating the total with parsed `.ics` attendees).
+ * Microsoft Graph transport: CC and BCC recipients are no longer dropped with
+   a `TypeError`. They were built by mapping over the address=>name array,
+   which handed the callback display-name strings where recipient arrays were
+   expected; recipients are now iterated by key.
 
 6.4.0 (2026-02-28)
 ------------------
