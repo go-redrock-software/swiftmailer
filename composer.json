@@ -25,7 +25,7 @@
     }
   ],
   "require": {
-    "php": ">=8.5",
+    "php": ">=8.4",
     "ext-iconv": "*",
     "ext-mbstring": "*",
     "ext-intl": "*",
@@ -87,6 +87,7 @@
     }
   },
   "scripts": {
+    "test": "SYMFONY_DEPRECATIONS_HELPER='max[direct]=0&baselineFile=./tests/deprecation-baseline.json' vendor/bin/simple-phpunit",
     "php-cs-fixer": "php-cs-fixer --config=.php-cs-fixer.dist.php fix",
     "phpstan": "phpstan analyse --configuration=phpstan.neon.dist",
     "infection:coverage": "SYMFONY_DEPRECATIONS_HELPER=disabled XDEBUG_MODE=coverage vendor/bin/phpunit --testsuite='SwiftMailer unit tests' --coverage-xml=.infection/infection/coverage-xml --log-junit=.infection/infection/junit.xml",

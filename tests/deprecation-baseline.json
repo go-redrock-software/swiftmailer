@@ -1,0 +1,62 @@
+[
+    {
+        "location": "Composer\\Autoload\\ClassLoader::loadClass",
+        "message": "PHPUnit\\Framework\\TestCase::run(): Implicitly marking parameter $result as nullable is deprecated, the explicit nullable type must be used instead",
+        "count": 1
+    },
+    {
+        "location": "Composer\\Autoload\\ClassLoader::loadClass",
+        "message": "PHPUnit\\Framework\\Test::run(): Implicitly marking parameter $result as nullable is deprecated, the explicit nullable type must be used instead",
+        "count": 1
+    },
+    {
+        "location": "Swift_Signers_DKIMSignerTest::testSetBodySignedLenTrue",
+        "message": "setBodySignedLen() is deprecated and will be removed. The DKIM l= tag enables content injection attacks (RFC 8301 \u00a75).",
+        "count": 1
+    },
+    {
+        "location": "Swift_Signers_DKIMSignerTest::testSetBodySignedLenNumeric",
+        "message": "setBodySignedLen() is deprecated and will be removed. The DKIM l= tag enables content injection attacks (RFC 8301 \u00a75).",
+        "count": 1
+    },
+    {
+        "location": "Swift_Signers_DKIMSignerTest::testSetBodySignedLenFalse",
+        "message": "setBodySignedLen() is deprecated and will be removed. The DKIM l= tag enables content injection attacks (RFC 8301 \u00a75).",
+        "count": 1
+    },
+    {
+        "location": "Swift_Transport_EsmtpTransportTest::testUndefinedMixinMethodTriggersError",
+        "message": "Call to undefined method noSuchMethod",
+        "count": 1
+    },
+    {
+        "location": "Swift_Transport_Esmtp_Auth_NTLMAuthenticatorTest::testDesEncrypt",
+        "message": "Use of \"self\" in callables is deprecated",
+        "count": 16
+    },
+    {
+        "location": "Swift_Transport_Esmtp_Auth_NTLMAuthenticatorTest::testSi2binNegative",
+        "message": "Invalid characters passed for attempted conversion, these have been ignored",
+        "count": 1
+    },
+    {
+        "location": "Swift_Transport_Esmtp_Auth_CramMd5AuthenticatorTest::testSuccessfulAuthentication",
+        "message": "CRAM-MD5 authentication uses the cryptographically weak MD5 algorithm. Consider using XOAUTH2 or PLAIN over TLS instead.",
+        "count": 1
+    },
+    {
+        "location": "Swift_Transport_Esmtp_Auth_CramMd5AuthenticatorTest::testAuthenticationFailureSendRset",
+        "message": "CRAM-MD5 authentication uses the cryptographically weak MD5 algorithm. Consider using XOAUTH2 or PLAIN over TLS instead.",
+        "count": 1
+    },
+    {
+        "location": "Swift_Transport_Esmtp_Auth_CramMd5AuthenticatorTest::testAuthenticationWithLongPassword",
+        "message": "CRAM-MD5 authentication uses the cryptographically weak MD5 algorithm. Consider using XOAUTH2 or PLAIN over TLS instead.",
+        "count": 1
+    },
+    {
+        "location": "Swift_Transport_EsmtpTransport_ExtensionSupportTest::testUndefinedMixinMethodTriggersError",
+        "message": "Call to undefined method noSuchMethod",
+        "count": 1
+    }
+]

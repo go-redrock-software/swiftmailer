@@ -1,0 +1,34 @@
+{
+  "planPath": "docs/plans/2026-06-03-17-graph-calendar-cancel-update.md",
+  "tasks": [
+    {
+      "id": 4,
+      "subject": "Task 4 (CAL): ParsedEvent::isCancel()",
+      "status": "completed",
+      "blockedBy": [3],
+      "description": "Add isCancel() after isRequest(): return 'CANCEL' === strtoupper((string) method). New ParsedEventTest.php parsing .ics with varying METHOD. Mutually exclusive with isRequest().\n\n```json:metadata\n{\"files\": [\"lib/classes/Swift/Transport/Api/Calendar/ParsedEvent.php\", \"tests/unit/Swift/Transport/Api/Calendar/ParsedEventTest.php\"], \"verifyCommand\": \"vendor/bin/simple-phpunit tests/unit/Swift/Transport/Api/Calendar/ParsedEventTest.php\", \"acceptanceCriteria\": [\"isCancel true only for CANCEL case-insensitive\", \"isCancel/isRequest mutually exclusive\"]}\n```"
+    },
+    {
+      "id": 5,
+      "subject": "Task 5 (CAL): Detect CANCEL parts in extractCalendarInvites()",
+      "status": "completed",
+      "blockedBy": [4],
+      "description": "Broaden guard to: if (null === parsed || (!isRequest() && !isCancel())) continue; update docblock. Add icsWithMethod/messageWithIcs/extractInvites helpers + 3 tests (reflection). CANCEL and REQUEST extracted; PUBLISH/REPLY not; malformed still silent.\n\n```json:metadata\n{\"files\": [\"lib/classes/Swift/Transport/Api/MicrosoftGraphTransport.php\", \"tests/unit/Swift/Transport/Api/MicrosoftGraphCalendarTest.php\"], \"verifyCommand\": \"vendor/bin/simple-phpunit tests/unit/Swift/Transport/Api/MicrosoftGraphCalendarTest.php --filter Extract\", \"acceptanceCriteria\": [\"CANCEL extracted\", \"REQUEST still extracted\", \"PUBLISH/REPLY not extracted\", \"malformed no exception\"]}\n```"
+    },
+    {
+      "id": 6,
+      "subject": "Task 6 (CAL): Event lookup, cancel, and update seams",
+      "status": "completed",
+      "blockedBy": [5],
+      "description": "Add protected findEventIdByICalUId() (GET with $filter iCalUId eq '<escaped>', quotes doubled, first id or null via response?->getValue() ?? []), cancelGraphEvent() (cancel action + optional comment), updateGraphEvent() (patch by id). 3 new imports. Tests capture config to assert escaped filter.\n\n```json:metadata\n{\"files\": [\"lib/classes/Swift/Transport/Api/MicrosoftGraphTransport.php\", \"tests/unit/Swift/Transport/Api/MicrosoftGraphCalendarTest.php\"], \"verifyCommand\": \"vendor/bin/simple-phpunit tests/unit/Swift/Transport/Api/MicrosoftGraphCalendarTest.php --filter 'FindEvent|CancelGraph|UpdateGraph'\", \"acceptanceCriteria\": [\"filter iCalUId eq '<uid>' returns first id or null\", \"quotes escaped by doubling\", \"cancelGraphEvent posts cancel + optional comment\", \"updateGraphEvent patches by id\"]}\n```"
+    },
+    {
+      "id": 7,
+      "subject": "Task 7 (CAL): Dispatch CREATE/UPDATE/CANCEL inside send()",
+      "status": "completed",
+      "blockedBy": [6],
+      "description": "Drop pre-built graphEvents; shouldSendEmail = empty(calendarInvites) || sendEmailAlongsideEvent; replace events loop with dispatchCalendarOperation() per entry; keep recipient-count loop. dispatchCalendarOperation: CANCEL->lookup+cancel else trigger_error notice; REQUEST seq>0->lookup+patch else create; seq0->create. Tests with partial mocks + @ to suppress E_USER_NOTICE. Full Graph suite green.\n\n```json:metadata\n{\"files\": [\"lib/classes/Swift/Transport/Api/MicrosoftGraphTransport.php\", \"tests/unit/Swift/Transport/Api/MicrosoftGraphCalendarTest.php\"], \"verifyCommand\": \"vendor/bin/simple-phpunit --testsuite=\\\"SwiftMailer unit tests\\\" --filter MicrosoftGraph\", \"acceptanceCriteria\": [\"REQUEST seq0 creates\", \"REQUEST seq>0 resolved patches\", \"REQUEST seq>0 unresolved creates\", \"CANCEL resolved cancels; unresolved no call + notice\", \"prior Graph tests green\"]}\n```"
+    }
+  ],
+  "lastUpdated": "2026-06-03T21:32:00Z"
+}

@@ -6,8 +6,8 @@ Maintained by `Redrock Software Corporation <https://www.go-redrock.com/>`_ sinc
 applications that cannot migrate to Symfony Mailer, integrating features from
 Symfony Mailer while preserving full backward compatibility.
 
-Unreleased
-----------
+6.5.0 (2026-06-03)
+------------------
 
  New Features:
 
