@@ -71,7 +71,7 @@ security-audit:
   image: php:8.5-cli
   before_script:
     - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-    - composer install --no-interaction --no-progress
+    - composer install --no-interaction --no-progress --ignore-platform-reqs
   script:
     - composer audit
   rules:
