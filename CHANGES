@@ -6,7 +6,7 @@ Maintained by `Redrock Software Corporation <https://www.go-redrock.com/>`_ sinc
 applications that cannot migrate to Symfony Mailer, integrating features from
 Symfony Mailer while preserving full backward compatibility.
 
-6.5.0 (2026-06-03)
+6.5.0 (2026-06-04)
 ------------------
 
  New Features:
@@ -44,6 +44,14 @@ Symfony Mailer while preserving full backward compatibility.
    a `TypeError`. They were built by mapping over the address=>name array,
    which handed the callback display-name strings where recipient arrays were
    expected; recipients are now iterated by key.
+
+ Changed:
+
+ * The minimum required PHP version is now 8.3 (previously 8.5). The
+   `protected(set)` asymmetric-visibility modifier (a PHP 8.4 feature) was
+   removed from the API transport base classes, so the affected properties
+   (`$started`, `$eventDispatcher`, `$apiKey`, `$httpClient`,
+   `$activeEnvelope`) are now plain public properties.
 
 6.4.0 (2026-02-28)
 ------------------

@@ -28,7 +28,7 @@ composer update swiftmailer/swiftmailer
 
 ## Step 2 -- Verify PHP Version
 
-The fork requires **PHP 8.2+** (the original required PHP 7.0+). Ensure your environment meets this requirement.
+The fork requires **PHP 8.3+** (the original required PHP 7.0+). Ensure your environment meets this requirement.
 
 ### Required Extensions
 

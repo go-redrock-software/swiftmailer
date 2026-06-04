@@ -13,7 +13,7 @@ with stock SwiftMailer 6.x.
 System Requirements
 -------------------
 
-Swift Mailer requires PHP 8.2 or later with the following extensions:
+Swift Mailer requires PHP 8.3 or later with the following extensions:
 
 * ``iconv``
 * ``mbstring``
