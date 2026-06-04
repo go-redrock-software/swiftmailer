@@ -1,0 +1,26 @@
+{
+  "planPath": "docs/plans/2026-06-03-16-graph-large-attachments.md",
+  "tasks": [
+    {
+      "id": 1,
+      "subject": "Task 1 (LA): Attachment-size threshold config and partitioning",
+      "status": "completed",
+      "description": "Add LARGE_ATTACHMENT_THRESHOLD (3*1024*1024), threshold property + getter/setter (setter rejects <1 with InvalidArgumentException), attachmentExceedsThreshold() measuring strlen(getBody()), and partitionAttachmentsBySize() returning [small,large] with >= threshold as large. TDD via reflection. No send() change.\n\n```json:metadata\n{\"files\": [\"lib/classes/Swift/Transport/Api/MicrosoftGraphTransport.php\", \"tests/unit/Swift/Transport/Api/MicrosoftGraphTransportTest.php\"], \"verifyCommand\": \"vendor/bin/simple-phpunit tests/unit/Swift/Transport/Api/MicrosoftGraphTransportTest.php\", \"acceptanceCriteria\": [\"constant === 3*1024*1024\", \"getter/setter; setter rejects <1\", \"partition splits at threshold\", \"prior tests green\"]}\n```"
+    },
+    {
+      "id": 2,
+      "subject": "Task 2 (LA): Draft-then-send flow with upload sessions",
+      "status": "completed",
+      "blockedBy": [1],
+      "description": "Add sendViaDraft() (draft POST -> attach small inline -> createUploadSession + uploadLargeAttachment per large -> send()->post()) and protected uploadLargeAttachment() seam using getRequestAdapter()+Utils::streamFor()+LargeFileUploadTask. id-less draft throws Swift_TransportException. 5 new imports. Test via reflection + partial mock stubbing uploadLargeAttachment.\n\n```json:metadata\n{\"files\": [\"lib/classes/Swift/Transport/Api/MicrosoftGraphTransport.php\", \"tests/unit/Swift/Transport/Api/MicrosoftGraphTransportTest.php\"], \"verifyCommand\": \"vendor/bin/simple-phpunit tests/unit/Swift/Transport/Api/MicrosoftGraphTransportTest.php --filter SendViaDraft\", \"acceptanceCriteria\": [\"draft->attach->upload->send order\", \"id-less draft throws\", \"uploadLargeAttachment protected/stubbable\", \"AttachmentItem fields set\"]}\n```"
+    },
+    {
+      "id": 3,
+      "subject": "Task 3 (LA): Route large-attachment sends through draft flow in send()",
+      "status": "completed",
+      "blockedBy": [2],
+      "description": "Branch send(): collect attachments minus invite parts, partitionAttachmentsBySize, useDraftFlow = [] !== large; only setAttachments on non-draft path; transmission branches between sendViaDraft() and sendMail()->post(). Tests: 4MB routes to draft (partial-mock sendViaDraft); tiny still uses sendMail. Full Graph suite must stay green.\n\n```json:metadata\n{\"files\": [\"lib/classes/Swift/Transport/Api/MicrosoftGraphTransport.php\", \"tests/unit/Swift/Transport/Api/MicrosoftGraphTransportTest.php\"], \"verifyCommand\": \"vendor/bin/simple-phpunit --testsuite=\\\"SwiftMailer unit tests\\\" --filter MicrosoftGraph\", \"acceptanceCriteria\": [\"small-only uses sendMail\", \"large routes to sendViaDraft\", \"large excluded from sendMail payload\", \"all prior Graph tests green\"]}\n```"
+    }
+  ],
+  "lastUpdated": "2026-06-03T21:00:00Z"
+}

@@ -1,3 +1,5 @@
+/.claude/
+/.idea/php-test-framework.xml
 /.php_cs.cache
 /.phpunit
 /.phpunit.result.cache
