@@ -452,7 +452,7 @@ class MailChimpTransportTest extends TestCase
     public function testGetAuthHeadersReturnsEmptyArray(): void
     {
         $reflection = new \ReflectionMethod($this->transport, 'getAuthHeaders');
-        $result = $reflection->invoke($this->transport);
+        $result     = $reflection->invoke($this->transport);
         $this->assertSame([], $result);
     }
 

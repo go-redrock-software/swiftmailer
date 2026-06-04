@@ -369,12 +369,12 @@ class Swift_Webhook_Converter_SendgridConverterTest extends PHPUnit\Framework\Te
             'curve_name'       => 'prime256v1',
             'private_key_type' => OPENSSL_KEYTYPE_EC,
         ]);
-        $details = \openssl_pkey_get_details($privateKey);
+        $details      = \openssl_pkey_get_details($privateKey);
         $publicKeyPem = $details['key'];
 
         $timestamp = '1706000000';
-        $body = '[{"event":"delivered"}]';
-        $payload = $timestamp . $body;
+        $body      = '[{"event":"delivered"}]';
+        $payload   = $timestamp.$body;
 
         \openssl_sign($payload, $signature, $privateKey, OPENSSL_ALGO_SHA256);
         $encodedSig = \base64_encode($signature);

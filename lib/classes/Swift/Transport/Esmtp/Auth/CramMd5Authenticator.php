@@ -29,7 +29,7 @@ class Swift_Transport_Esmtp_Auth_CramMd5Authenticator implements Swift_Transport
     {
         \trigger_error(
             'CRAM-MD5 authentication uses the cryptographically weak MD5 algorithm. Consider using XOAUTH2 or PLAIN over TLS instead.',
-            \E_USER_DEPRECATED
+            \E_USER_DEPRECATED,
         );
 
         try {

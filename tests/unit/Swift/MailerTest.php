@@ -149,7 +149,7 @@ class Swift_MailerTest extends SwiftMailerTestCase
         $transport = $this->createTransport();
         $mailer    = $this->createMailer($transport);
 
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $mailer->createMessage('../evil');
     }
 

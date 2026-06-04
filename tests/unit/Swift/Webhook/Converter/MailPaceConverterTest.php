@@ -296,7 +296,7 @@ class Swift_Webhook_Converter_MailPaceConverterTest extends PHPUnit\Framework\Te
         // Provide a valid base64 signature and a public key of wrong length
         // to trigger a SodiumException
         $headers = ['x-mailpace-signature' => \base64_encode(\str_repeat("\0", 64))];
-        $secret = \base64_encode('short-key'); // wrong length for Ed25519
+        $secret  = \base64_encode('short-key'); // wrong length for Ed25519
 
         $this->assertFalse($this->converter->verify('{}', $headers, $secret));
     }

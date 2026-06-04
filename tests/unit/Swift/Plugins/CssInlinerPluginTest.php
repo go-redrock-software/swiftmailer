@@ -8,7 +8,7 @@ class Swift_Plugins_CssInlinerPluginTest extends PHPUnit\Framework\TestCase
         // When the library IS installed, this code path is covered by other tests
         // reaching the class_exists branch. We simply verify the plugin can be
         // instantiated and called.
-        $plugin = new Swift_Plugins_CssInlinerPlugin();
+        $plugin  = new Swift_Plugins_CssInlinerPlugin();
         $message = (new Swift_Message())
             ->setFrom(['a@b.com' => 'A'])
             ->setTo(['c@d.com' => 'C'])

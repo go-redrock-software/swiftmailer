@@ -112,7 +112,7 @@ class Swift_Plugins_PopBeforeSmtpPlugin implements Swift_Events_TransportChangeL
      *
      * @return $this
      */
-    public function setPassword(#[\SensitiveParameter] $password)
+    public function setPassword(#[SensitiveParameter] $password)
     {
         $this->password = $password;
 
@@ -129,7 +129,7 @@ class Swift_Plugins_PopBeforeSmtpPlugin implements Swift_Events_TransportChangeL
     {
         if (isset($this->connection)) {
             $this->connection->connect();
-            // @codeCoverageIgnoreStart
+        // @codeCoverageIgnoreStart
         } else {
             if (!isset($this->socket)) {
                 if (!$socket = \fsockopen(
@@ -165,7 +165,7 @@ class Swift_Plugins_PopBeforeSmtpPlugin implements Swift_Events_TransportChangeL
     {
         if (isset($this->connection)) {
             $this->connection->disconnect();
-            // @codeCoverageIgnoreStart
+        // @codeCoverageIgnoreStart
         } else {
             $this->command("QUIT\r\n");
             if (!\fclose($this->socket)) {
@@ -256,5 +256,5 @@ class Swift_Plugins_PopBeforeSmtpPlugin implements Swift_Events_TransportChangeL
 
         return $host;
     }
-    /** @codeCoverageIgnoreEnd */
+    /* @codeCoverageIgnoreEnd */
 }

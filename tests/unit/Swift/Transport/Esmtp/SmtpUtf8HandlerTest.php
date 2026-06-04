@@ -18,7 +18,7 @@ class Swift_Transport_Esmtp_SmtpUtf8HandlerTest extends SwiftMailerTestCase
     public function testAfterEhloIsNoOp()
     {
         $handler = new Swift_Transport_Esmtp_SmtpUtf8Handler();
-        $agent = $this->getMockery('Swift_Transport_SmtpAgent')->shouldIgnoreMissing();
+        $agent   = $this->getMockery('Swift_Transport_SmtpAgent')->shouldIgnoreMissing();
         $handler->afterEhlo($agent);
         $this->addToAssertionCount(1);
     }
@@ -37,10 +37,10 @@ class Swift_Transport_Esmtp_SmtpUtf8HandlerTest extends SwiftMailerTestCase
 
     public function testOnCommandIsNoOp()
     {
-        $handler = new Swift_Transport_Esmtp_SmtpUtf8Handler();
-        $agent = $this->getMockery('Swift_Transport_SmtpAgent')->shouldIgnoreMissing();
+        $handler          = new Swift_Transport_Esmtp_SmtpUtf8Handler();
+        $agent            = $this->getMockery('Swift_Transport_SmtpAgent')->shouldIgnoreMissing();
         $failedRecipients = null;
-        $stop = false;
+        $stop             = false;
         $handler->onCommand($agent, "RCPT TO:<foo@bar>\r\n", [250], $failedRecipients, $stop);
         $this->assertFalse($stop);
     }

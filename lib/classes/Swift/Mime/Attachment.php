@@ -91,18 +91,18 @@ class Swift_Mime_Attachment extends Swift_Mime_SimpleMimeEntity
     public function setFilename($filename)
     {
         if (null !== $filename && '' !== $filename) {
-            $filename = str_replace(['/', '\\'], '', $filename);
-            $filename = str_replace("\0", '', $filename);
-            $filename = preg_replace('/[\x00-\x1F\x7F]/', '', $filename);
-            $filename = preg_replace('/[\x{202A}-\x{202E}\x{2066}-\x{2069}]/u', '', $filename);
+            $filename = \str_replace(['/', '\\'], '', $filename);
+            $filename = \str_replace("\0", '', $filename);
+            $filename = \preg_replace('/[\x00-\x1F\x7F]/', '', $filename);
+            $filename = \preg_replace('/[\x{202A}-\x{202E}\x{2066}-\x{2069}]/u', '', $filename);
 
-            if (strlen($filename) > 255) {
-                $ext = pathinfo($filename, PATHINFO_EXTENSION);
-                $name = pathinfo($filename, PATHINFO_FILENAME);
+            if (\strlen($filename) > 255) {
+                $ext  = \pathinfo($filename, PATHINFO_EXTENSION);
+                $name = \pathinfo($filename, PATHINFO_FILENAME);
                 if ('' !== $ext) {
-                    $filename = substr($name, 0, 255 - strlen($ext) - 1).'.'.$ext;
+                    $filename = \substr($name, 0, 255 - \strlen($ext) - 1).'.'.$ext;
                 } else {
-                    $filename = substr($filename, 0, 255);
+                    $filename = \substr($filename, 0, 255);
                 }
             }
         }

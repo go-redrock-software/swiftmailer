@@ -35,9 +35,9 @@ class Swift_FileSpool extends Swift_ConfigurableSpool
      *
      * @throws Swift_IoException
      */
-    public function __construct($path, #[\SensitiveParameter] ?string $signingKey = null)
+    public function __construct($path, #[SensitiveParameter] ?string $signingKey = null)
     {
-        $this->path = $path;
+        $this->path       = $path;
         $this->signingKey = $signingKey;
 
         if (!\file_exists($this->path)) {
@@ -83,7 +83,7 @@ class Swift_FileSpool extends Swift_ConfigurableSpool
         $this->retryLimit = $limit;
     }
 
-    public function setSigningKey(#[\SensitiveParameter] ?string $signingKey): void
+    public function setSigningKey(#[SensitiveParameter] ?string $signingKey): void
     {
         $this->signingKey = $signingKey;
     }
@@ -99,10 +99,10 @@ class Swift_FileSpool extends Swift_ConfigurableSpool
      */
     public function queueMessage(Swift_Mime_SimpleMessage $message)
     {
-        $ser      = \serialize($message);
+        $ser = \serialize($message);
         if (null !== $this->signingKey) {
             $hmac = \hash_hmac('sha256', $ser, $this->signingKey);
-            $ser = $hmac."\n".$ser;
+            $ser  = $hmac."\n".$ser;
         }
         $fileName = $this->path.'/'.$this->getRandomString(32);
         for ($i = 0; $i < $this->retryLimit; ++$i) {
@@ -258,8 +258,8 @@ class Swift_FileSpool extends Swift_ConfigurableSpool
                         if (false === $newlinePos) {
                             continue;
                         }
-                        $storedHmac = \substr($contents, 0, $newlinePos);
-                        $ser = \substr($contents, $newlinePos + 1);
+                        $storedHmac   = \substr($contents, 0, $newlinePos);
+                        $ser          = \substr($contents, $newlinePos + 1);
                         $expectedHmac = \hash_hmac('sha256', $ser, $this->signingKey);
                         if (!\hash_equals($expectedHmac, $storedHmac)) {
                             continue;

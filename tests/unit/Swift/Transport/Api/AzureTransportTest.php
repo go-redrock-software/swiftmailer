@@ -385,7 +385,7 @@ class AzureTransportTest extends TestCase
     public function testGetPingEndpoint(): void
     {
         $reflection = new \ReflectionMethod($this->transport, 'getPingEndpoint');
-        $result = $reflection->invoke($this->transport);
+        $result     = $reflection->invoke($this->transport);
         $this->assertStringContainsString('/emails/operations/00000000-0000-0000-0000-000000000000', $result);
         $this->assertStringContainsString('api-version=', $result);
     }

@@ -41,8 +41,7 @@ class Swift_Plugins_ReadReceiptPlugin implements Swift_Events_SendListener
 
     private bool $hadReadReceiptHeader = false;
 
-    /** @var mixed */
-    private $originalReadReceiptTo = null;
+    private $originalReadReceiptTo;
 
     /**
      * @param int           $mode              MODE_MDN, MODE_PIXEL, or MODE_BOTH
@@ -55,16 +54,14 @@ class Swift_Plugins_ReadReceiptPlugin implements Swift_Events_SendListener
         ?callable $pixelUrlGenerator = null,
     ) {
         $this->setMode($mode);
-        $this->address = $address;
+        $this->address           = $address;
         $this->pixelUrlGenerator = $pixelUrlGenerator;
     }
 
     public function setMode(int $mode): void
     {
         if ($mode < 1 || $mode > 3) {
-            throw new Swift_SwiftException(
-                'Invalid read receipt mode. Use MODE_MDN (1), MODE_PIXEL (2), or MODE_BOTH (3).'
-            );
+            throw new Swift_SwiftException('Invalid read receipt mode. Use MODE_MDN (1), MODE_PIXEL (2), or MODE_BOTH (3).');
         }
         $this->mode = $mode;
     }
@@ -123,7 +120,7 @@ class Swift_Plugins_ReadReceiptPlugin implements Swift_Events_SendListener
             return;
         }
 
-        $this->hadReadReceiptHeader = $message->getHeaders()->has('Disposition-Notification-To');
+        $this->hadReadReceiptHeader  = $message->getHeaders()->has('Disposition-Notification-To');
         $this->originalReadReceiptTo = $message->getReadReceiptTo();
 
         $message->setReadReceiptTo($address);
@@ -141,10 +138,10 @@ class Swift_Plugins_ReadReceiptPlugin implements Swift_Events_SendListener
         }
 
         $pixel = '<img src="'
-            . \htmlspecialchars($url, \ENT_QUOTES, 'UTF-8')
-            . '" alt="" width="1" height="1" border="0"'
-            . ' style="height:1px !important;width:1px !important;border:0 !important;'
-            . 'margin:0 !important;padding:0 !important;" />';
+            .\htmlspecialchars($url, \ENT_QUOTES, 'UTF-8')
+            .'" alt="" width="1" height="1" border="0"'
+            .' style="height:1px !important;width:1px !important;border:0 !important;'
+            .'margin:0 !important;padding:0 !important;" />';
 
         $contentType = $message->getContentType();
         if (null !== $contentType && false !== \stripos($contentType, 'text/html')) {
@@ -173,10 +170,10 @@ class Swift_Plugins_ReadReceiptPlugin implements Swift_Events_SendListener
     {
         $pos = \stripos($html, '</body>');
         if (false !== $pos) {
-            return \substr($html, 0, $pos) . $pixel . \substr($html, $pos);
+            return \substr($html, 0, $pos).$pixel.\substr($html, $pos);
         }
 
-        return $html . $pixel;
+        return $html.$pixel;
     }
 
     private function restoreMessage(Swift_Mime_SimpleMessage $message): void
@@ -206,9 +203,9 @@ class Swift_Plugins_ReadReceiptPlugin implements Swift_Events_SendListener
             $message->setReadReceiptTo($this->originalReadReceiptTo);
         }
 
-        $this->hadReadReceiptHeader = false;
+        $this->hadReadReceiptHeader  = false;
         $this->originalReadReceiptTo = null;
-        $this->lastMessage = null;
+        $this->lastMessage           = null;
     }
 
     private function resolveFromAddress(Swift_Mime_SimpleMessage $message): ?string

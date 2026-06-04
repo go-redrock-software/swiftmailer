@@ -94,7 +94,7 @@ class Swift_ByteStream_TemporaryFileByteStreamTest extends PHPUnit\Framework\Tes
     public function testGetContentThrowsWhenFileDeleted()
     {
         $stream = new Swift_ByteStream_TemporaryFileByteStream();
-        $path = $stream->getPath();
+        $path   = $stream->getPath();
         // Delete the file to simulate failure
         \unlink($path);
 

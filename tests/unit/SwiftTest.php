@@ -5,20 +5,21 @@ use PHPUnit\Framework\TestCase;
 class SwiftTest extends TestCase
 {
     private bool $wasInitialized;
+
     private array $savedInits;
 
     protected function setUp(): void
     {
         $this->wasInitialized = Swift::$initialized;
-        $this->savedInits = Swift::$inits;
-        Swift::$initialized = false;
-        Swift::$inits = [];
+        $this->savedInits     = Swift::$inits;
+        Swift::$initialized   = false;
+        Swift::$inits         = [];
     }
 
     protected function tearDown(): void
     {
         Swift::$initialized = $this->wasInitialized;
-        Swift::$inits = $this->savedInits;
+        Swift::$inits       = $this->savedInits;
     }
 
     public function testInit(): void
@@ -61,7 +62,7 @@ class SwiftTest extends TestCase
         //
         // Let's test the init mechanism by directly manipulating the state.
         Swift::$initialized = false;
-        Swift::$inits = [function () use (&$counter) {
+        Swift::$inits       = [function () use (&$counter) {
             ++$counter;
         }];
 
@@ -77,7 +78,7 @@ class SwiftTest extends TestCase
         $this->assertTrue(Swift::$initialized);
 
         // Second time should not run inits
-        $counter2 = 0;
+        $counter2     = 0;
         Swift::$inits = [function () use (&$counter2) {
             ++$counter2;
         }];
@@ -107,5 +108,4 @@ class SwiftTest extends TestCase
         $this->assertCount(0, Swift::$inits);
         \spl_autoload_unregister(['Swift', 'autoload']);
     }
-
 }

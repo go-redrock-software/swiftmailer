@@ -76,8 +76,8 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticator implements Swift_Transport_Es
     {
         $bin = null;
         if ($bits > 62) {
-            $maxVal = \bcsub(\bcpow('2', (string) ($bits - 1)), '1');
-            $minVal = \bcmul('-1', \bcpow('2', (string) ($bits - 1)));
+            $maxVal  = \bcsub(\bcpow('2', (string) ($bits - 1)), '1');
+            $minVal  = \bcmul('-1', \bcpow('2', (string) ($bits - 1)));
             $inRange = (\bccomp((string) $si, $minVal) >= 0 && \bccomp((string) $si, $maxVal) <= 0);
         } else {
             $inRange = ($si >= -(2 ** ($bits - 1)) && $si <= 2 ** ($bits - 1));
@@ -85,7 +85,7 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticator implements Swift_Transport_Es
 
         if ($inRange) {
             if ($si >= 0) {
-                $bin = \base_convert((string) $si, 10, 2);
+                $bin        = \base_convert((string) $si, 10, 2);
                 $bin_length = \strlen($bin);
                 if ($bin_length < $bits) {
                     $bin = \str_repeat('0', $bits - $bin_length).$bin;
@@ -135,20 +135,20 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticator implements Swift_Transport_Es
             throw new Swift_TransportException('NTLM Type 2 message too short ('.\strlen($response).' bytes, minimum 56)');
         }
 
-        $responseHex                                                                    = \bin2hex($response);
-        $length                                                                         = \floor(\hexdec(\substr($responseHex, 28, 4)) / 256) * 2;
-        $offset                                                                         = \floor(\hexdec(\substr($responseHex, 32, 4)) / 256) * 2;
+        $responseHex = \bin2hex($response);
+        $length      = \floor(\hexdec(\substr($responseHex, 28, 4)) / 256) * 2;
+        $offset      = \floor(\hexdec(\substr($responseHex, 32, 4)) / 256) * 2;
 
         $responseHexLen = \strlen($responseHex);
         if ($offset < 0 || $offset >= $responseHexLen || ($offset + $length) > $responseHexLen) {
             throw new Swift_TransportException('NTLM Type 2 message offset/length out of bounds');
         }
 
-        $challenge                                                                      = \hex2bin(\substr($responseHex, 48, 16));
-        $context                                                                        = \hex2bin(\substr($responseHex, 64, 16));
-        $targetInfoH                                                                    = \hex2bin(\substr($responseHex, 80, 16));
-        $targetName                                                                     = \hex2bin(\substr($responseHex, $offset, $length));
-        $offset                                                                         = \floor(\hexdec(\substr($responseHex, 88, 4)) / 256) * 2;
+        $challenge   = \hex2bin(\substr($responseHex, 48, 16));
+        $context     = \hex2bin(\substr($responseHex, 64, 16));
+        $targetInfoH = \hex2bin(\substr($responseHex, 80, 16));
+        $targetName  = \hex2bin(\substr($responseHex, $offset, $length));
+        $offset      = \floor(\hexdec(\substr($responseHex, 88, 4)) / 256) * 2;
 
         if ($offset < 0 || $offset > $responseHexLen) {
             throw new Swift_TransportException('NTLM Type 2 target info offset out of bounds');
@@ -229,10 +229,10 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticator implements Swift_Transport_Es
         $client,
         Swift_Transport_SmtpAgent $agent,
     ) {
-        list($domain, $username) = $this->getDomainAndUsername($username);
+        list($domain, $username)                          = $this->getDomainAndUsername($username);
         list($challenge, , , , , $workstation, , , $blob) = $this->parseMessage2($response);
 
-        $lmResponse = $this->createLMv2Password($password, $username, $domain, $challenge, $client);
+        $lmResponse   = $this->createLMv2Password($password, $username, $domain, $challenge, $client);
         $ntlmResponse = $this->createNTLMv2Hash(
             $password,
             $username,

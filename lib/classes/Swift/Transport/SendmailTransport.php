@@ -73,9 +73,7 @@ class Swift_Transport_SendmailTransport extends Swift_Transport_AbstractSmtpTran
     public function setCommand($command)
     {
         if (\preg_match('/[;&|`$(){}]/', $command)) {
-            throw new \InvalidArgumentException(
-                'Sendmail command contains disallowed shell metacharacters.'
-            );
+            throw new InvalidArgumentException('Sendmail command contains disallowed shell metacharacters.');
         }
 
         $this->params['command'] = $command;

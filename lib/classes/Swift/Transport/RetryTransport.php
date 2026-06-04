@@ -50,10 +50,10 @@ class Swift_Transport_RetryTransport implements Swift_Transport
         ?Swift_Transport_RetryClassifier $classifier = null,
     ) {
         if ($maxRetries < 0 || $maxRetries > self::MAX_RETRIES_LIMIT) {
-            throw new \InvalidArgumentException(\sprintf('maxRetries must be between 0 and %d, got %d.', self::MAX_RETRIES_LIMIT, $maxRetries));
+            throw new InvalidArgumentException(\sprintf('maxRetries must be between 0 and %d, got %d.', self::MAX_RETRIES_LIMIT, $maxRetries));
         }
         if ($baseDelayMs < 0 || $baseDelayMs > self::MAX_BASE_DELAY_MS) {
-            throw new \InvalidArgumentException(\sprintf('baseDelayMs must be between 0 and %d, got %d.', self::MAX_BASE_DELAY_MS, $baseDelayMs));
+            throw new InvalidArgumentException(\sprintf('baseDelayMs must be between 0 and %d, got %d.', self::MAX_BASE_DELAY_MS, $baseDelayMs));
         }
 
         $this->innerTransport = $innerTransport;

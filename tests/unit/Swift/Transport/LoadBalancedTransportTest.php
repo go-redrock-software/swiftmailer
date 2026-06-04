@@ -1280,7 +1280,7 @@ class Swift_Transport_LoadBalancedTransportTest extends SwiftMailerTestCase
 
         $t1->shouldReceive('isStarted')->andReturn(true);
         $t1->shouldReceive('send')->once()->andThrow(new Swift_TransportException('smtp down'));
-        $t1->shouldReceive('stop')->once()->andThrow(new \RuntimeException('stop failed'));
+        $t1->shouldReceive('stop')->once()->andThrow(new RuntimeException('stop failed'));
 
         $t2->shouldReceive('isStarted')->andReturn(true);
         $t2->shouldReceive('send')->once()->andReturn(1);

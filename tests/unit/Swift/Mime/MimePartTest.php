@@ -289,8 +289,8 @@ class Swift_Mime_MimePartTest extends Swift_Mime_AbstractMimeEntityTest
 
         // Use reflection to call the protected convertString method
         $reflection = new ReflectionClass($part);
-        $method = $reflection->getMethod('convertString');
-        $result = $method->invoke($part, 'test');
+        $method     = $reflection->getMethod('convertString');
+        $result     = $method->invoke($part, 'test');
         $this->assertIsString($result);
     }
 

@@ -252,11 +252,9 @@ class Swift_Signers_DomainKeySigner implements Swift_Signers_HeaderSigner
      */
     public function setHashAlgorithm($hash)
     {
-        $algorithm = strtolower($hash);
-        if (!in_array($algorithm, ['rsa-sha1', 'rsa-sha256'], true)) {
-            throw new Swift_SwiftException(
-                sprintf('DomainKeys hash algorithm "%s" is not recognized. Use rsa-sha1 or rsa-sha256.', $hash)
-            );
+        $algorithm = \strtolower($hash);
+        if (!\in_array($algorithm, ['rsa-sha1', 'rsa-sha256'], true)) {
+            throw new Swift_SwiftException(\sprintf('DomainKeys hash algorithm "%s" is not recognized. Use rsa-sha1 or rsa-sha256.', $hash));
         }
         if ('rsa-sha1' === $algorithm) {
             \trigger_error('DomainKeys rsa-sha1 is deprecated. Use rsa-sha256.', \E_USER_DEPRECATED);

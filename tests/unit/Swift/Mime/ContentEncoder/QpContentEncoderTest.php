@@ -495,7 +495,7 @@ class Swift_Mime_ContentEncoder_QpContentEncoderTest extends SwiftMailerTestCase
     public function testSleepReturnsCorrectProperties()
     {
         $charStream = $this->createCharacterStream();
-        $encoder = new Swift_Mime_ContentEncoder_QpContentEncoder($charStream);
+        $encoder    = new Swift_Mime_ContentEncoder_QpContentEncoder($charStream);
 
         $props = $encoder->__sleep();
         $this->assertContains('charStream', $props);

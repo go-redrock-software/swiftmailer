@@ -206,7 +206,7 @@ class Swift_KeyCache_DiskKeyCacheTest extends PHPUnit\Framework\TestCase
     public function testImportFromByteStreamWithInvalidModeThrows()
     {
         $cache = $this->createCache();
-        $os = $this->createMock(Swift_OutputByteStream::class);
+        $os    = $this->createMock(Swift_OutputByteStream::class);
 
         $this->expectException(Swift_SwiftException::class);
         $cache->importFromByteStream('ns1', 'key1', $os, 999);

@@ -48,10 +48,7 @@ class Swift_AddressEncoder_IdnAddressEncoder implements Swift_AddressEncoder
             if (\preg_match('/[^\x00-\x7F]/', $domain)) {
                 $ascii = \idn_to_ascii($domain, IDNA_DEFAULT, INTL_IDNA_VARIANT_UTS46);
                 if (false === $ascii) {
-                    throw new Swift_AddressEncoderException(
-                        \sprintf('IDN conversion failed for domain "%s"', $domain),
-                        $address
-                    );
+                    throw new Swift_AddressEncoderException(\sprintf('IDN conversion failed for domain "%s"', $domain), $address);
                 }
                 $address = \sprintf('%s@%s', $local, $ascii);
             }

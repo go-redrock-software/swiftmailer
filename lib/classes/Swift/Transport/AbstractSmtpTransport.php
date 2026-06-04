@@ -115,6 +115,7 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
      * Returns the IP used to connect to the destination.
      *
      * @return string
+     *
      * @codeCoverageIgnore Covered via EsmtpTransport subclass tests
      */
     public function getSourceIp()

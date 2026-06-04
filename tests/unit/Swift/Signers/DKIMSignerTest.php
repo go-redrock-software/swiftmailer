@@ -26,7 +26,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
     public function testSigningSHA1ThrowsException()
     {
         $signer = new Swift_Signers_DKIMSigner(\file_get_contents(\dirname(__DIR__, 3).'/_samples/dkim/dkim.test.priv'), 'dummy.nxdomain.be', 'dummySelector');
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('rsa-sha1 is no longer supported');
         $signer->setHashAlgorithm('rsa-sha1');
     }
@@ -135,7 +135,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
             'dummySelector',
         );
 
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('rsa-sha1 is no longer supported');
         $signer->setHashAlgorithm('rsa-sha1');
     }
@@ -1275,7 +1275,7 @@ class Swift_Signers_DKIMSignerTest extends SwiftMailerTestCase
             'dummy.nxdomain.be',
             'dummySelector',
         );
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $signer->setHashAlgorithm('rsa-sha1');
     }
 

@@ -305,14 +305,15 @@ class Swift_Transport_AbstractHttpApiTransportTest extends TestCase
     public function testOversizedStreamingResponseThrows(): void
     {
         $callCount = 0;
-        $stream = $this->createMock(\Psr\Http\Message\StreamInterface::class);
+        $stream    = $this->createMock(\Psr\Http\Message\StreamInterface::class);
         $stream->method('getSize')->willReturn(null);
         $stream->method('eof')->willReturnCallback(function () use (&$callCount) {
             return $callCount > 200;
         });
         $stream->method('read')->willReturnCallback(function () use (&$callCount) {
             ++$callCount;
-            return str_repeat('x', 8192);
+
+            return \str_repeat('x', 8192);
         });
 
         $response = $this->createMock(\Psr\Http\Message\ResponseInterface::class);
@@ -354,7 +355,7 @@ class Swift_Transport_AbstractHttpApiTransportTest extends TestCase
             }
         };
 
-        $ref = new \ReflectionProperty($transport, 'httpClient');
+        $ref    = new \ReflectionProperty($transport, 'httpClient');
         $client = $ref->getValue($transport);
         $this->assertInstanceOf(\GuzzleHttp\Client::class, $client);
 

@@ -14,7 +14,7 @@ class Swift_Mime_HeaderEncoder_Base64HeaderEncoderTest extends PHPUnit\Framework
     public function testEncodeStringWithIso2022JpCharset()
     {
         $encoder = new Swift_Mime_HeaderEncoder_Base64HeaderEncoder();
-        $result = $encoder->encodeString('Test', 0, 0, 'iso-2022-jp');
+        $result  = $encoder->encodeString('Test', 0, 0, 'iso-2022-jp');
         $this->assertIsString($result);
     }
 }

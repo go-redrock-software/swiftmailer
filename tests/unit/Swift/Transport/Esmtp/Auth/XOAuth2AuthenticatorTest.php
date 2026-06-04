@@ -19,13 +19,13 @@ class Swift_Transport_Esmtp_Auth_XOAuth2AuthenticatorTest extends SwiftMailerTes
     {
         $auth = new Swift_Transport_Esmtp_Auth_XOAuth2Authenticator();
 
-        $email = 'user@gmail.com';
-        $token = 'ya29.access-token';
+        $email         = 'user@gmail.com';
+        $token         = 'ya29.access-token';
         $expectedParam = \base64_encode("user=$email\1auth=Bearer $token\1\1");
 
         $this->agent->shouldReceive('executeCommand')
             ->once()
-            ->with('AUTH XOAUTH2 ' . $expectedParam . "\r\n", [235]);
+            ->with('AUTH XOAUTH2 '.$expectedParam."\r\n", [235]);
 
         $this->assertTrue($auth->authenticate($this->agent, $email, $token));
     }
@@ -39,7 +39,7 @@ class Swift_Transport_Esmtp_Auth_XOAuth2AuthenticatorTest extends SwiftMailerTes
         $this->agent->shouldReceive('executeCommand')
             ->once()
             ->with(Mockery::on(function ($cmd) {
-                return str_starts_with($cmd, 'AUTH XOAUTH2 ');
+                return \str_starts_with($cmd, 'AUTH XOAUTH2 ');
             }), [235])
             ->andThrow(new Swift_TransportException('Auth failed'));
 

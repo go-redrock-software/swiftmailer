@@ -772,10 +772,10 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
 
     public function testStreamOptionsCanBeSetAndFetched()
     {
-        $buf  = $this->getBuffer();
-        $smtp = $this->getTransport($buf);
+        $buf     = $this->getBuffer();
+        $smtp    = $this->getTransport($buf);
         $options = ['ssl' => ['verify_peer' => false]];
-        $result = $smtp->setStreamOptions($options);
+        $result  = $smtp->setStreamOptions($options);
         $this->assertSame($smtp, $result);
         $this->assertEquals($options, $smtp->getStreamOptions());
     }
@@ -959,9 +959,9 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
 
     public function testAutoAddressEncoderIsUpdatedOnSmtpUtf8()
     {
-        $buf  = $this->getBuffer();
+        $buf         = $this->getBuffer();
         $autoEncoder = new Swift_AddressEncoder_AutoAddressEncoder();
-        $smtp = $this->getTransport($buf, null, $autoEncoder);
+        $smtp        = $this->getTransport($buf, null, $autoEncoder);
 
         $buf->shouldReceive('initialize')
             ->once();
@@ -1006,7 +1006,7 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
 
         $dispatcher     = $this->createEventDispatcher();
         $addressEncoder = new Swift_AddressEncoder_IdnAddressEncoder();
-        $smtp = new Swift_Transport_EsmtpTransport($buf, [$handler], $dispatcher, 'example.org', $addressEncoder);
+        $smtp           = new Swift_Transport_EsmtpTransport($buf, [$handler], $dispatcher, 'example.org', $addressEncoder);
 
         // Simulate that the handler's keyword is in capabilities
         // by starting the transport with EHLO returning TEST capability
@@ -1067,7 +1067,7 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
 
         $dispatcher     = $this->createEventDispatcher();
         $addressEncoder = new Swift_AddressEncoder_IdnAddressEncoder();
-        $smtp = new Swift_Transport_EsmtpTransport($buf, [$handler], $dispatcher, 'example.org', $addressEncoder);
+        $smtp           = new Swift_Transport_EsmtpTransport($buf, [$handler], $dispatcher, 'example.org', $addressEncoder);
 
         $result = $smtp->setUsername('jack');
         $this->assertSame($smtp, $result);
@@ -1095,7 +1095,7 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
 
         $dispatcher     = $this->createEventDispatcher();
         $addressEncoder = new Swift_AddressEncoder_IdnAddressEncoder();
-        $smtp = new Swift_Transport_EsmtpTransport($buf, [$handler], $dispatcher, 'example.org', $addressEncoder);
+        $smtp           = new Swift_Transport_EsmtpTransport($buf, [$handler], $dispatcher, 'example.org', $addressEncoder);
 
         $this->assertEquals('jack', $smtp->getUsername());
     }

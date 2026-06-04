@@ -245,9 +245,7 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
     {
         switch ($hash) {
             case 'rsa-sha1':
-                throw new \InvalidArgumentException(
-                    'rsa-sha1 is no longer supported for DKIM signing (RFC 8301). Use rsa-sha256 or ed25519-sha256.'
-                );
+                throw new InvalidArgumentException('rsa-sha1 is no longer supported for DKIM signing (RFC 8301). Use rsa-sha256 or ed25519-sha256.');
             case 'rsa-sha256':
                 $this->hashAlgorithm = 'rsa-sha256';
                 // @codeCoverageIgnoreStart
@@ -332,7 +330,7 @@ class Swift_Signers_DKIMSigner implements Swift_Signers_HeaderSigner
     {
         \trigger_error(
             'setBodySignedLen() is deprecated and will be removed. The DKIM l= tag enables content injection attacks (RFC 8301 §5).',
-            \E_USER_DEPRECATED
+            \E_USER_DEPRECATED,
         );
 
         if (true === $len) {

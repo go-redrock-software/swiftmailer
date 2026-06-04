@@ -303,17 +303,17 @@ class Swift_Webhook_Converter_AmazonSesConverterTest extends PHPUnit\Framework\T
     {
         // Use a converter that returns empty cert
         $converter = new TestableAmazonSesConverter('');
-        $payload = $this->buildSnsNotification($this->topicArn, $this->privateKeyPem);
-        $headers = ['x-amz-sns-message-type' => 'Notification'];
+        $payload   = $this->buildSnsNotification($this->topicArn, $this->privateKeyPem);
+        $headers   = ['x-amz-sns-message-type' => 'Notification'];
 
         $this->assertFalse($converter->verify(\json_encode($payload), $headers, $this->topicArn));
     }
 
     public function testVerifyReturnsFalseWithInvalidSignatureBase64()
     {
-        $payload = $this->buildSnsNotification($this->topicArn, $this->privateKeyPem);
+        $payload              = $this->buildSnsNotification($this->topicArn, $this->privateKeyPem);
         $payload['Signature'] = '!!!invalid-base64!!!';
-        $headers = ['x-amz-sns-message-type' => 'Notification'];
+        $headers              = ['x-amz-sns-message-type' => 'Notification'];
 
         $this->assertFalse($this->converter->verify(\json_encode($payload), $headers, $this->topicArn));
     }
@@ -355,7 +355,7 @@ class Swift_Webhook_Converter_AmazonSesConverterTest extends PHPUnit\Framework\T
             'Type'    => 'Notification',
             'Message' => \json_encode([
                 'notificationType' => 'UnknownType',
-                'mail' => ['messageId' => 'ses-unknown'],
+                'mail'             => ['messageId' => 'ses-unknown'],
             ]),
         ];
 

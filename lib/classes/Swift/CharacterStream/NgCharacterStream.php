@@ -119,7 +119,7 @@ class Swift_CharacterStream_NgCharacterStream implements Swift_CharacterStream
         $this->charCount  = 0;
         $this->currentPos = 0; // @codeCoverageIgnoreStart
         // @codeCoverageIgnoreEnd
-        $this->datasSize  = 0;
+        $this->datasSize = 0;
     }
 
     /**

@@ -735,7 +735,9 @@ OEL;
 
         // Suppress the OpenSSL warning from openssl_pkcs7_sign
         $thrown = null;
-        \set_error_handler(static function () { return true; });
+        \set_error_handler(static function () {
+            return true;
+        });
         try {
             $messageStream = new Swift_ByteStream_TemporaryFileByteStream();
             $message->toByteStream($messageStream);
@@ -757,7 +759,7 @@ OEL;
             ->setTo(['receiver@domain.org'])
             ->setBody('Body');
 
-        $signer = new Swift_Signers_SMimeSigner();
+        $signer   = new Swift_Signers_SMimeSigner();
         $tempFile = \tempnam(\sys_get_temp_dir(), 'smime_test_');
         \file_put_contents($tempFile, 'not a valid certificate');
 
@@ -767,7 +769,9 @@ OEL;
             $message->attachSigner($signer);
 
             // Suppress the OpenSSL warning from openssl_pkcs7_encrypt
-            \set_error_handler(static function () { return true; });
+            \set_error_handler(static function () {
+                return true;
+            });
             try {
                 $messageStream = new Swift_ByteStream_TemporaryFileByteStream();
                 $message->toByteStream($messageStream);

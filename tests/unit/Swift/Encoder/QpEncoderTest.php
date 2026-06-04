@@ -396,10 +396,10 @@ class Swift_Encoder_QpEncoderTest extends SwiftMailerTestCase
 
     public function testQpEncoderCannotBeUnserialized()
     {
-        $encoder = $this->createEncoder();
+        $encoder    = $this->createEncoder();
         $serialized = \serialize($encoder);
 
-        $this->expectException(\BadMethodCallException::class);
+        $this->expectException(BadMethodCallException::class);
         $this->expectExceptionMessage('QpEncoder cannot be unserialized.');
 
         \unserialize($serialized);
@@ -409,7 +409,7 @@ class Swift_Encoder_QpEncoderTest extends SwiftMailerTestCase
     {
         $encoder = $this->createEncoder();
 
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('firstLineOffset must be non-negative');
 
         $encoder->encodeString('test', -1);

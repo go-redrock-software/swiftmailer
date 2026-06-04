@@ -217,14 +217,15 @@ class Swift_CharacterStream_NgCharacterStreamTest extends PHPUnit\Framework\Test
         $reader->method('getCharPositions')->willReturnCallback(
             function ($string, $startOffset, &$currentMap, &$ignoredChars) {
                 // Mark positions 1 and 3 as invalid in the map
-                $currentMap = [1 => true, 3 => true];
+                $currentMap   = [1 => true, 3 => true];
                 $ignoredChars = '';
+
                 return \strlen($string);
             },
         );
 
         $factory = $this->createFactory($reader);
-        $stream = new Swift_CharacterStream_NgCharacterStream($factory, 'utf-8');
+        $stream  = new Swift_CharacterStream_NgCharacterStream($factory, 'utf-8');
         $stream->importString('abcde');
 
         $result = $stream->read(5);
@@ -239,14 +240,15 @@ class Swift_CharacterStream_NgCharacterStreamTest extends PHPUnit\Framework\Test
         $reader->method('getCharPositions')->willReturnCallback(
             function ($string, $startOffset, &$currentMap, &$ignoredChars) {
                 // Simulate UTF-8 positions for 2-byte chars: "\xC3\xA9\xC3\xA8"
-                $currentMap = ['p' => [2, 4], 'i' => []];
+                $currentMap   = ['p' => [2, 4], 'i' => []];
                 $ignoredChars = '';
+
                 return 2;
             },
         );
 
         $factory = $this->createFactory($reader);
-        $stream = new Swift_CharacterStream_NgCharacterStream($factory, 'utf-8');
+        $stream  = new Swift_CharacterStream_NgCharacterStream($factory, 'utf-8');
         $stream->importString("\xC3\xA9\xC3\xA8");
 
         $result = $stream->read(1);
@@ -259,14 +261,15 @@ class Swift_CharacterStream_NgCharacterStreamTest extends PHPUnit\Framework\Test
         $reader->method('getMapType')->willReturn(Swift_CharacterReader::MAP_TYPE_POSITIONS);
         $reader->method('getCharPositions')->willReturnCallback(
             function ($string, $startOffset, &$currentMap, &$ignoredChars) {
-                $currentMap = ['p' => [1, 3, 5], 'i' => [0 => true]];
+                $currentMap   = ['p' => [1, 3, 5], 'i' => [0 => true]];
                 $ignoredChars = '';
+
                 return 3;
             },
         );
 
         $factory = $this->createFactory($reader);
-        $stream = new Swift_CharacterStream_NgCharacterStream($factory, 'utf-8');
+        $stream  = new Swift_CharacterStream_NgCharacterStream($factory, 'utf-8');
         $stream->importString("\x80AB\xC3\xA9");
 
         $result = $stream->read(3);
@@ -277,7 +280,7 @@ class Swift_CharacterStream_NgCharacterStreamTest extends PHPUnit\Framework\Test
     public function testWriteWithoutPriorImportInitializesReader()
     {
         $factory = $this->createFactory($this->createFixedWidthReader());
-        $stream = new Swift_CharacterStream_NgCharacterStream($factory, 'utf-8');
+        $stream  = new Swift_CharacterStream_NgCharacterStream($factory, 'utf-8');
         // write() without importString first should work
         $stream->write('hello');
         $this->assertEquals('hello', $stream->read(10));

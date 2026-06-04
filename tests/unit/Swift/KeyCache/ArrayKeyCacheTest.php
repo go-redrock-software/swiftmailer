@@ -278,8 +278,8 @@ class Swift_KeyCache_ArrayKeyCacheTest extends PHPUnit\Framework\TestCase
 
     public function testImportFromByteStreamWithInvalidModeThrows()
     {
-        $os = $this->createOutputStream();
-        $is = $this->createKeyCacheInputStream();
+        $os    = $this->createOutputStream();
+        $is    = $this->createKeyCacheInputStream();
         $cache = $this->createCache($is);
 
         $this->expectException(Swift_SwiftException::class);

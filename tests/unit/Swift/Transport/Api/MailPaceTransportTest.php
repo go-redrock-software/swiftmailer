@@ -286,7 +286,7 @@ class MailPaceTransportTest extends TestCase
     public function testGetPingEndpoint(): void
     {
         $reflection = new \ReflectionMethod($this->transport, 'getPingEndpoint');
-        $result = $reflection->invoke($this->transport);
+        $result     = $reflection->invoke($this->transport);
         $this->assertSame('https://app.mailpace.com/api/v1/send', $result);
     }
 

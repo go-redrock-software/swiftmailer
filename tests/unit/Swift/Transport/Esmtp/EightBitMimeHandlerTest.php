@@ -19,7 +19,7 @@ class Swift_Transport_Esmtp_EightBitMimeHandlerTest extends SwiftMailerTestCase
     public function testAfterEhloIsNoOp()
     {
         $handler = new Swift_Transport_Esmtp_EightBitMimeHandler();
-        $agent = $this->getMockery('Swift_Transport_SmtpAgent')->shouldIgnoreMissing();
+        $agent   = $this->getMockery('Swift_Transport_SmtpAgent')->shouldIgnoreMissing();
         $handler->afterEhlo($agent);
         $this->addToAssertionCount(1);
     }
@@ -44,10 +44,10 @@ class Swift_Transport_Esmtp_EightBitMimeHandlerTest extends SwiftMailerTestCase
 
     public function testOnCommandIsNoOp()
     {
-        $handler = new Swift_Transport_Esmtp_EightBitMimeHandler();
-        $agent = $this->getMockery('Swift_Transport_SmtpAgent')->shouldIgnoreMissing();
+        $handler          = new Swift_Transport_Esmtp_EightBitMimeHandler();
+        $agent            = $this->getMockery('Swift_Transport_SmtpAgent')->shouldIgnoreMissing();
         $failedRecipients = null;
-        $stop = false;
+        $stop             = false;
         $handler->onCommand($agent, "MAIL FROM:<foo@bar>\r\n", [250], $failedRecipients, $stop);
         $this->assertFalse($stop);
     }

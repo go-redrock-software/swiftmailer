@@ -37,8 +37,8 @@ class Swift_Mailer
      */
     public function createMessage($service = 'message')
     {
-        if (!preg_match('/^[a-zA-Z0-9_-]+$/', $service)) {
-            throw new \InvalidArgumentException('Invalid message service name: '.$service);
+        if (!\preg_match('/^[a-zA-Z0-9_-]+$/', $service)) {
+            throw new InvalidArgumentException('Invalid message service name: '.$service);
         }
 
         return Swift_DependencyContainer::getInstance()

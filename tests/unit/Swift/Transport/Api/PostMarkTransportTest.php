@@ -278,7 +278,7 @@ class PostMarkTransportTest extends TestCase
             ->setFrom(['from@example.com' => 'Sender'])
             ->setTo(['to@example.com' => 'Recipient'])
             ->setSubject('Inline test');
-        $message->setBody('<p>Hello <img src="' . $message->embed(new \Swift_Image('image data', 'logo.png', 'image/png')) . '" /></p>', 'text/html');
+        $message->setBody('<p>Hello <img src="'.$message->embed(new \Swift_Image('image data', 'logo.png', 'image/png')).'" /></p>', 'text/html');
 
         $this->httpClientMock->expects($this->once())
             ->method('request')

@@ -90,8 +90,8 @@ class Swift_CharacterReader_Utf8ReaderTest extends PHPUnit\Framework\TestCase
 
     public function testGetCharPositionsWithInvalidBytes()
     {
-        $reader = new Swift_CharacterReader_Utf8Reader();
-        $map = ['p' => [], 'i' => []];
+        $reader  = new Swift_CharacterReader_Utf8Reader();
+        $map     = ['p' => [], 'i' => []];
         $ignored = '';
 
         // A continuation byte (0x80) alone is invalid
@@ -104,8 +104,8 @@ class Swift_CharacterReader_Utf8ReaderTest extends PHPUnit\Framework\TestCase
 
     public function testGetCharPositionsWithIncompleteMultibyte()
     {
-        $reader = new Swift_CharacterReader_Utf8Reader();
-        $map = ['p' => [], 'i' => []];
+        $reader  = new Swift_CharacterReader_Utf8Reader();
+        $map     = ['p' => [], 'i' => []];
         $ignored = '';
 
         // 0xC3 starts a 2-byte sequence but is at end of string
@@ -118,8 +118,8 @@ class Swift_CharacterReader_Utf8ReaderTest extends PHPUnit\Framework\TestCase
 
     public function testGetCharPositionsWithInvalidContinuationByte()
     {
-        $reader = new Swift_CharacterReader_Utf8Reader();
-        $map = ['p' => [], 'i' => []];
+        $reader  = new Swift_CharacterReader_Utf8Reader();
+        $map     = ['p' => [], 'i' => []];
         $ignored = '';
 
         // 0xC3 starts a 2-byte sequence, 0x41 is not a valid continuation byte

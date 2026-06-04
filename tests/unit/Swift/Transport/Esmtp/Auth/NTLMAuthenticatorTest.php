@@ -74,7 +74,7 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticatorTest extends SwiftMailerTestCa
 
     public function testGetDomainAndUsername()
     {
-        $username = "DOMAIN\\user";
+        $username = 'DOMAIN\\user';
 
         $login               = $this->getAuthenticator();
         list($domain, $user) = $this->invokePrivateMethod('getDomainAndUsername', $login, [$username]);
@@ -85,7 +85,7 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticatorTest extends SwiftMailerTestCa
 
     public function testGetDomainAndUsernameWithExtension()
     {
-        $username = "domain.com\\user";
+        $username = 'domain.com\\user';
 
         $login               = $this->getAuthenticator();
         list($domain, $user) = $this->invokePrivateMethod('getDomainAndUsername', $login, [$username]);
@@ -197,7 +197,7 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticatorTest extends SwiftMailerTestCa
         $login = $this->getAuthenticator();
 
         $unicodeValue = \iconv('UTF-8', 'UTF-16LE', 'TESTNT');
-        $result = $this->invokePrivateMethod('createSecurityBuffer', $login, [$unicodeValue, 64, true]);
+        $result       = $this->invokePrivateMethod('createSecurityBuffer', $login, [$unicodeValue, 64, true]);
         $this->assertEquals(8, \strlen($result));
 
         // Read back the security buffer
@@ -211,7 +211,7 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticatorTest extends SwiftMailerTestCa
         $login = $this->getAuthenticator();
 
         // Use a known epoch time in milliseconds
-        $time = '1000000000000'; // ~Sep 2001
+        $time   = '1000000000000'; // ~Sep 2001
         $result = $this->invokePrivateMethod('getCorrectTimestamp', $login, [$time]);
 
         // Timestamp should be 8 bytes (64-bit Windows FILETIME)
@@ -251,8 +251,8 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticatorTest extends SwiftMailerTestCa
         $login = $this->getAuthenticator();
 
         // HMAC-MD5 with known key and message
-        $key = 'testkey';
-        $msg = 'testmessage';
+        $key    = 'testkey';
+        $msg    = 'testmessage';
         $result = $this->invokePrivateMethod('md5Encrypt', $login, [$key, $msg]);
 
         // Should return 16 bytes (MD5 hash length)
@@ -323,7 +323,7 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticatorTest extends SwiftMailerTestCa
         $login = $this->getAuthenticator();
 
         // 7-byte input should produce an 8-byte DES key
-        $key7 = \substr('ABCDEFG', 0, 7);
+        $key7   = \substr('ABCDEFG', 0, 7);
         $result = $this->invokePrivateMethod('createDesKey', $login, [$key7]);
         $this->assertEquals(8, \strlen($result), '%s: DES key should be 8 bytes');
     }
@@ -332,8 +332,8 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticatorTest extends SwiftMailerTestCa
     {
         $login = $this->getAuthenticator();
 
-        $key7    = \substr('ABCDEFG', 0, 7);
-        $desKey  = $this->invokePrivateMethod('createDesKey', $login, [$key7]);
+        $key7      = \substr('ABCDEFG', 0, 7);
+        $desKey    = $this->invokePrivateMethod('createDesKey', $login, [$key7]);
         $plaintext = Swift_Transport_Esmtp_Auth_NTLMAuthenticator::DESCONST;
 
         $result = $this->invokePrivateMethod('desEncrypt', $login, [$plaintext, $desKey]);
@@ -359,7 +359,7 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticatorTest extends SwiftMailerTestCa
 
         // Password > 15 chars should return a default '00' padded response
         $longPassword = 'ThisIsAVeryLongPassword123';
-        $result = $this->invokePrivateMethod('createLMv2Password', $login, [
+        $result       = $this->invokePrivateMethod('createLMv2Password', $login, [
             $longPassword, 'user', 'DOMAIN', \hex2bin('0123456789abcdef'), \hex2bin('ffffff0011223344'),
         ]);
 
@@ -387,7 +387,7 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticatorTest extends SwiftMailerTestCa
 
     public function testSi2binNegative()
     {
-        $login = $this->getAuthenticator();
+        $login  = $this->getAuthenticator();
         $result = $this->invokePrivateMethod('si2bin', $login, [-1, 32]);
         $this->assertNotNull($result);
         $this->assertEquals(32, \strlen($result));
@@ -512,9 +512,9 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticatorTest extends SwiftMailerTestCa
     {
         $login = $this->getAuthenticator();
 
-        list($domain, $user) = $this->invokePrivateMethod('getDomainAndUsername', $login, ["DOMAIN\\sub\\user"]);
+        list($domain, $user) = $this->invokePrivateMethod('getDomainAndUsername', $login, ['DOMAIN\\sub\\user']);
         $this->assertEquals('DOMAIN', $domain);
-        $this->assertEquals("sub\\user", $user);
+        $this->assertEquals('sub\\user', $user);
     }
 
     public function testReadSubBlockOverflowThrows()
@@ -524,16 +524,16 @@ class Swift_Transport_Esmtp_Auth_NTLMAuthenticatorTest extends SwiftMailerTestCa
 
         $login = $this->getAuthenticator();
         // Header claims 12 bytes of data (0c00 = 3072, /256 = 12) but only 2 hex chars follow
-        $block = '02000c005400' . '0000000000000000';
+        $block = '02000c0054000000000000000000';
         $this->invokePrivateMethod('readSubBlock', $login, [$block]);
     }
 
     public function testSendMessage3AlwaysUsesV2()
     {
-        $login = $this->getAuthenticator();
-        $ref = new ReflectionMethod($login, 'sendMessage3');
-        $params = $ref->getParameters();
-        $paramNames = \array_map(fn($p) => $p->getName(), $params);
+        $login      = $this->getAuthenticator();
+        $ref        = new ReflectionMethod($login, 'sendMessage3');
+        $params     = $ref->getParameters();
+        $paramNames = \array_map(fn ($p) => $p->getName(), $params);
 
         $this->assertNotContains('v2', $paramNames, 'sendMessage3 should no longer accept a $v2 parameter');
     }

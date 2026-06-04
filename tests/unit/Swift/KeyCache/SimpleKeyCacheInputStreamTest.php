@@ -130,7 +130,7 @@ class Swift_KeyCache_SimpleKeyCacheInputStreamTest extends PHPUnit\Framework\Tes
 
     public function testBindDoesNothing()
     {
-        $is = $this->getMockBuilder('Swift_InputByteStream')->getMock();
+        $is     = $this->getMockBuilder('Swift_InputByteStream')->getMock();
         $stream = new Swift_KeyCache_SimpleKeyCacheInputStream();
         $stream->bind($is);
         $this->addToAssertionCount(1);
@@ -138,7 +138,7 @@ class Swift_KeyCache_SimpleKeyCacheInputStreamTest extends PHPUnit\Framework\Tes
 
     public function testUnbindDoesNothing()
     {
-        $is = $this->getMockBuilder('Swift_InputByteStream')->getMock();
+        $is     = $this->getMockBuilder('Swift_InputByteStream')->getMock();
         $stream = new Swift_KeyCache_SimpleKeyCacheInputStream();
         $stream->unbind($is);
         $this->addToAssertionCount(1);

@@ -112,7 +112,7 @@ class Swift_Encoder_QpEncoder implements Swift_Encoder
         if (!isset(self::$safeMapShare[$this->getSafeMapShareId()])) {
             $this->initSafeMap();
             self::$safeMapShare[$this->getSafeMapShareId()] = $this->safeMap;
-            // @codeCoverageIgnoreStart
+        // @codeCoverageIgnoreStart
         } else {
             $this->safeMap = self::$safeMapShare[$this->getSafeMapShareId()];
         }
@@ -127,7 +127,7 @@ class Swift_Encoder_QpEncoder implements Swift_Encoder
 
     public function __wakeup(): void
     {
-        throw new \BadMethodCallException('QpEncoder cannot be unserialized.');
+        throw new BadMethodCallException('QpEncoder cannot be unserialized.');
     }
 
     protected function getSafeMapShareId()
@@ -163,7 +163,7 @@ class Swift_Encoder_QpEncoder implements Swift_Encoder
     public function encodeString($string, $firstLineOffset = 0, $maxLineLength = 0)
     {
         if ($firstLineOffset < 0) {
-            throw new \InvalidArgumentException('firstLineOffset must be non-negative');
+            throw new InvalidArgumentException('firstLineOffset must be non-negative');
         }
 
         if ($maxLineLength > 76 || $maxLineLength <= 0) {

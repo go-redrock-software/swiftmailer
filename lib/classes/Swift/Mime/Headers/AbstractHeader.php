@@ -191,7 +191,7 @@ abstract class Swift_Mime_Headers_AbstractHeader implements Swift_Mime_Header
      */
     protected function setFieldName($name)
     {
-        $this->name = str_replace(["\r", "\n", "\0"], '', $name);
+        $this->name = \str_replace(["\r", "\n", "\0"], '', $name);
     }
 
     /**
@@ -234,7 +234,7 @@ abstract class Swift_Mime_Headers_AbstractHeader implements Swift_Mime_Header
                 if ($shorten) {
                     // @codeCoverageIgnoreStart
                     $usedLength = \strlen($header->getFieldName().': ');
-                    // @codeCoverageIgnoreEnd
+                // @codeCoverageIgnoreEnd
                 // @codeCoverageIgnoreStart
                 } else {
                     $usedLength = 0;

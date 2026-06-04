@@ -211,7 +211,7 @@ class Swift_Transport_Api_GoogleTransportTest extends TestCase
 
     public function testSendSuccessReturnsRecipientCount(): void
     {
-        $client = $this->createGoogleClientWithMockHttp(200, '{"id": "msg-123"}');
+        $client     = $this->createGoogleClientWithMockHttp(200, '{"id": "msg-123"}');
         $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
 
         $sendEvt = $this->createMock(\Swift_Events_SendEvent::class);
@@ -233,7 +233,7 @@ class Swift_Transport_Api_GoogleTransportTest extends TestCase
 
     public function testSendWithCcAndBccCountsAllRecipients(): void
     {
-        $client = $this->createGoogleClientWithMockHttp(200, '{"id": "msg-456"}');
+        $client     = $this->createGoogleClientWithMockHttp(200, '{"id": "msg-456"}');
         $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
 
         $sendEvt = $this->createMock(\Swift_Events_SendEvent::class);
@@ -287,7 +287,7 @@ class Swift_Transport_Api_GoogleTransportTest extends TestCase
     public function testSendReturnsZeroOnException(): void
     {
         // Use a mock handler that throws an exception
-        $client = $this->createGoogleClientWithMockHttp(500, '{"error": {"message": "Server Error"}}');
+        $client     = $this->createGoogleClientWithMockHttp(500, '{"error": {"message": "Server Error"}}');
         $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
 
         $sendEvt = $this->createMock(\Swift_Events_SendEvent::class);
@@ -311,7 +311,7 @@ class Swift_Transport_Api_GoogleTransportTest extends TestCase
 
     public function testSendWithoutSendEvent(): void
     {
-        $client = $this->createGoogleClientWithMockHttp(200, '{"id": "msg-789"}');
+        $client     = $this->createGoogleClientWithMockHttp(200, '{"id": "msg-789"}');
         $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
         $dispatcher->method('createSendEvent')->willReturn(null);
 

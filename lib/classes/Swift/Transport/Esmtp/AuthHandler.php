@@ -263,7 +263,7 @@ class Swift_Transport_Esmtp_AuthHandler implements Swift_Transport_EsmtpHandler
     {
         if (!$mode = \strtolower($this->auth_mode ?? '')) {
             $priority = ['xoauth2' => 0, 'plain' => 1, 'login' => 2, 'cram-md5' => 3, 'ntlm' => 4];
-            $sorted = $this->authenticators;
+            $sorted   = $this->authenticators;
             \usort($sorted, function ($a, $b) use ($priority) {
                 $pa = $priority[\strtolower($a->getAuthKeyword() ?? '')] ?? 99;
                 $pb = $priority[\strtolower($b->getAuthKeyword() ?? '')] ?? 99;

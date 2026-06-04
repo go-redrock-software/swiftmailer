@@ -16,7 +16,7 @@ class Swift_MessageLimitsTest extends PHPUnit\Framework\TestCase
             to: ['a@b.com' => 'A'],
             cc: [],
             bcc: [],
-            children: []
+            children: [],
         );
 
         $this->limits->validate($message);
@@ -35,7 +35,7 @@ class Swift_MessageLimitsTest extends PHPUnit\Framework\TestCase
             to: $to,
             cc: $cc,
             bcc: [],
-            children: []
+            children: [],
         );
 
         $this->expectException(Swift_SwiftException::class);
@@ -48,11 +48,11 @@ class Swift_MessageLimitsTest extends PHPUnit\Framework\TestCase
         $this->limits->maxBodySize = 10;
 
         $message = $this->createMessage(
-            body: str_repeat('x', 11),
+            body: \str_repeat('x', 11),
             to: ['a@b.com' => 'A'],
             cc: [],
             bcc: [],
-            children: []
+            children: [],
         );
 
         $this->expectException(Swift_SwiftException::class);
@@ -72,7 +72,7 @@ class Swift_MessageLimitsTest extends PHPUnit\Framework\TestCase
             to: ['a@b.com' => 'A'],
             cc: [],
             bcc: [],
-            children: [$att1, $att2]
+            children: [$att1, $att2],
         );
 
         $this->expectException(Swift_SwiftException::class);
@@ -84,14 +84,14 @@ class Swift_MessageLimitsTest extends PHPUnit\Framework\TestCase
     {
         $this->limits->maxAttachmentSize = 5;
 
-        $att = $this->createAttachment('big.txt', str_repeat('x', 6));
+        $att = $this->createAttachment('big.txt', \str_repeat('x', 6));
 
         $message = $this->createMessage(
             body: 'Hello',
             to: ['a@b.com' => 'A'],
             cc: [],
             bcc: [],
-            children: [$att]
+            children: [$att],
         );
 
         $this->expectException(Swift_SwiftException::class);
@@ -103,14 +103,14 @@ class Swift_MessageLimitsTest extends PHPUnit\Framework\TestCase
     {
         $this->limits->maxTotalSize = 10;
 
-        $att = $this->createAttachment('a.txt', str_repeat('x', 6));
+        $att = $this->createAttachment('a.txt', \str_repeat('x', 6));
 
         $message = $this->createMessage(
-            body: str_repeat('y', 6),
+            body: \str_repeat('y', 6),
             to: ['a@b.com' => 'A'],
             cc: [],
             bcc: [],
-            children: [$att]
+            children: [$att],
         );
 
         $this->expectException(Swift_SwiftException::class);
@@ -121,11 +121,11 @@ class Swift_MessageLimitsTest extends PHPUnit\Framework\TestCase
     public function testDefaultLimitsAcceptReasonableMessage()
     {
         $message = $this->createMessage(
-            body: str_repeat('a', 1000),
+            body: \str_repeat('a', 1000),
             to: ['a@b.com' => 'A'],
             cc: [],
             bcc: [],
-            children: []
+            children: [],
         );
 
         $this->limits->validate($message);

@@ -6,7 +6,7 @@ class Swift_SpoolTransportTest extends TestCase
 {
     public function testConstructorSetsSpool(): void
     {
-        $spool = new Swift_MemorySpool();
+        $spool     = new Swift_MemorySpool();
         $transport = new Swift_SpoolTransport($spool);
 
         $this->assertInstanceOf(Swift_SpoolTransport::class, $transport);
@@ -15,7 +15,7 @@ class Swift_SpoolTransportTest extends TestCase
 
     public function testIsAlwaysStarted(): void
     {
-        $spool = new Swift_MemorySpool();
+        $spool     = new Swift_MemorySpool();
         $transport = new Swift_SpoolTransport($spool);
 
         $this->assertTrue($transport->isStarted());

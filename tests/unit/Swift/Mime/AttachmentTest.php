@@ -391,7 +391,7 @@ class Swift_Mime_AttachmentTest extends Swift_Mime_AbstractMimeEntityTest
     {
         $disposition = $this->createHeader('Content-Disposition', 'attachment', [], false);
         $disposition->shouldReceive('setParameter')->withArgs(function ($key, $value) {
-            return 'filename' === $key && strlen($value) <= 255 && str_ends_with($value, '.pdf');
+            return 'filename' === $key && \strlen($value) <= 255 && \str_ends_with($value, '.pdf');
         })->once();
         $disposition->shouldReceive('setParameter')->zeroOrMoreTimes();
 
@@ -400,7 +400,7 @@ class Swift_Mime_AttachmentTest extends Swift_Mime_AbstractMimeEntityTest
             $this->createEncoder(),
             $this->createCache(),
         );
-        $attachment->setFilename(str_repeat('a', 300).'.pdf');
+        $attachment->setFilename(\str_repeat('a', 300).'.pdf');
     }
 
     public function testControlCharsStrippedFromFilename()

@@ -183,9 +183,9 @@ class Swift_Plugins_PopBeforeSmtpPluginTest extends PHPUnit\Framework\TestCase
 
     public function testSetPasswordHasSensitiveParameterAttribute()
     {
-        $method = new \ReflectionMethod(Swift_Plugins_PopBeforeSmtpPlugin::class, 'setPassword');
+        $method = new ReflectionMethod(Swift_Plugins_PopBeforeSmtpPlugin::class, 'setPassword');
         $param  = $method->getParameters()[0];
-        $attrs  = $param->getAttributes(\SensitiveParameter::class);
+        $attrs  = $param->getAttributes(SensitiveParameter::class);
         $this->assertNotEmpty($attrs, 'setPassword parameter must have #[\SensitiveParameter]');
     }
 
@@ -234,7 +234,7 @@ class Swift_Plugins_PopBeforeSmtpPluginTest extends PHPUnit\Framework\TestCase
         $connection->expects($this->once())->method('connect');
         $connection->expects($this->once())->method('disconnect');
 
-        $plugin    = $this->createPlugin('pop.host.tld', 110);
+        $plugin = $this->createPlugin('pop.host.tld', 110);
         $plugin->setConnection($connection);
         $transport = $this->createTransport();
         $evt       = $this->createTransportChangeEvent($transport);
@@ -247,9 +247,9 @@ class Swift_Plugins_PopBeforeSmtpPluginTest extends PHPUnit\Framework\TestCase
         $connection = $this->createConnection();
         $connection->expects($this->never())->method('connect');
 
-        $smtp      = $this->createTransport();
-        $other     = $this->createTransport();
-        $plugin    = $this->createPlugin('pop.host.tld', 110);
+        $smtp   = $this->createTransport();
+        $other  = $this->createTransport();
+        $plugin = $this->createPlugin('pop.host.tld', 110);
         $plugin->setConnection($connection);
         $plugin->bindSmtp($smtp);
 
@@ -348,7 +348,7 @@ class Swift_Plugins_PopBeforeSmtpPluginTest extends PHPUnit\Framework\TestCase
     {
         // Exercises beforeTransportStarted -> connect() -> disconnect() without
         // a delegate, triggering the direct socket path.
-        $plugin    = $this->createPlugin('127.0.0.1', 19999);
+        $plugin = $this->createPlugin('127.0.0.1', 19999);
         $plugin->setTimeout(1);
         $transport = $this->createTransport();
         $evt       = $this->createTransportChangeEvent($transport);

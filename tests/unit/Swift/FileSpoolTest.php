@@ -326,7 +326,7 @@ class Swift_FileSpoolTest extends TestCase
 
     public function testHmacSignedMessageRoundTrip(): void
     {
-        $key = \bin2hex(\random_bytes(32));
+        $key   = \bin2hex(\random_bytes(32));
         $spool = new Swift_FileSpool($this->spoolDir, $key);
 
         $msg = $this->createMessage();
@@ -346,7 +346,7 @@ class Swift_FileSpoolTest extends TestCase
 
     public function testHmacTamperedMessageIsSkipped(): void
     {
-        $key = \bin2hex(\random_bytes(32));
+        $key   = \bin2hex(\random_bytes(32));
         $spool = new Swift_FileSpool($this->spoolDir, $key);
 
         $msg = $this->createMessage();
@@ -356,10 +356,10 @@ class Swift_FileSpoolTest extends TestCase
         // Tamper with the serialized payload after the HMAC line
         $files = \glob($this->spoolDir.'/*.message');
         $this->assertCount(1, $files);
-        $contents = \file_get_contents($files[0]);
+        $contents   = \file_get_contents($files[0]);
         $newlinePos = \strpos($contents, "\n");
-        $hmac = \substr($contents, 0, $newlinePos);
-        \file_put_contents($files[0], $hmac."\n"."tampered-payload");
+        $hmac       = \substr($contents, 0, $newlinePos);
+        \file_put_contents($files[0], $hmac."\n".'tampered-payload');
 
         $transport = $this->createMock(Swift_Transport::class);
         $transport->method('isStarted')->willReturn(true);
@@ -375,7 +375,7 @@ class Swift_FileSpoolTest extends TestCase
         $key2 = \bin2hex(\random_bytes(32));
 
         $spool = new Swift_FileSpool($this->spoolDir, $key1);
-        $msg = $this->createMessage();
+        $msg   = $this->createMessage();
         $msg->setSubject('Wrong key');
         $spool->queueMessage($msg);
 

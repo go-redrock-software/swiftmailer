@@ -16,23 +16,23 @@ class Swift_Transport_UrlValidator
         $parsed = \parse_url($url);
         $scheme = $parsed['scheme'] ?? '';
         if ('https' !== $scheme) {
-            throw new \InvalidArgumentException('API endpoint must use HTTPS, got: '.$scheme);
+            throw new InvalidArgumentException('API endpoint must use HTTPS, got: '.$scheme);
         }
 
-        $host = $parsed['host'] ?? '';
+        $host           = $parsed['host'] ?? '';
         $normalizedHost = \trim($host, '[]');
         if (\in_array($normalizedHost, self::BLOCKED_HOSTS, true)) {
-            throw new \InvalidArgumentException('API endpoint must not point to localhost or loopback.');
+            throw new InvalidArgumentException('API endpoint must not point to localhost or loopback.');
         }
 
         if (\filter_var($normalizedHost, \FILTER_VALIDATE_IP)) {
-            if (\filter_var($normalizedHost, \FILTER_VALIDATE_IP, \FILTER_FLAG_NO_PRIV_RANGE | \FILTER_FLAG_NO_RES_RANGE) === false) {
-                throw new \InvalidArgumentException('API endpoint resolves to a private/reserved IP address.');
+            if (false === \filter_var($normalizedHost, \FILTER_VALIDATE_IP, \FILTER_FLAG_NO_PRIV_RANGE | \FILTER_FLAG_NO_RES_RANGE)) {
+                throw new InvalidArgumentException('API endpoint resolves to a private/reserved IP address.');
             }
         } else {
             $ip = @\gethostbyname($normalizedHost);
-            if ($ip !== $normalizedHost && \filter_var($ip, \FILTER_VALIDATE_IP, \FILTER_FLAG_NO_PRIV_RANGE | \FILTER_FLAG_NO_RES_RANGE) === false) {
-                throw new \InvalidArgumentException('API endpoint resolves to a private/reserved IP address.');
+            if ($ip !== $normalizedHost && false === \filter_var($ip, \FILTER_VALIDATE_IP, \FILTER_FLAG_NO_PRIV_RANGE | \FILTER_FLAG_NO_RES_RANGE)) {
+                throw new InvalidArgumentException('API endpoint resolves to a private/reserved IP address.');
             }
         }
     }

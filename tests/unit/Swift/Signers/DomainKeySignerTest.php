@@ -307,7 +307,7 @@ class Swift_Signers_DomainKeySignerTest extends PHPUnit\Framework\TestCase
         $signer->reset();
         $signer->setHeaders($headerSet);
         $signer->startBody();
-        $signer->write("Line without trailing CRLF");
+        $signer->write('Line without trailing CRLF');
         $signer->endBody();
         $signer->addSignature($headerSet);
         $this->assertTrue($headerSet->has('DomainKey-Signature'));

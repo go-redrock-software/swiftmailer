@@ -1211,7 +1211,7 @@ class Swift_Transport_RetryTransportTest extends PHPUnit\Framework\TestCase
     {
         $inner = $this->createMock(Swift_Transport::class);
 
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('maxRetries must be between 0 and 10');
         new Swift_Transport_RetryTransport($inner, maxRetries: 11);
     }
@@ -1220,7 +1220,7 @@ class Swift_Transport_RetryTransportTest extends PHPUnit\Framework\TestCase
     {
         $inner = $this->createMock(Swift_Transport::class);
 
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('maxRetries must be between 0 and 10');
         new Swift_Transport_RetryTransport($inner, maxRetries: -1);
     }
@@ -1229,7 +1229,7 @@ class Swift_Transport_RetryTransportTest extends PHPUnit\Framework\TestCase
     {
         $inner = $this->createMock(Swift_Transport::class);
 
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('baseDelayMs must be between 0 and 30000');
         new Swift_Transport_RetryTransport($inner, maxRetries: 3, baseDelayMs: 30001);
     }
@@ -1238,7 +1238,7 @@ class Swift_Transport_RetryTransportTest extends PHPUnit\Framework\TestCase
     {
         $inner = $this->createMock(Swift_Transport::class);
 
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('baseDelayMs must be between 0 and 30000');
         new Swift_Transport_RetryTransport($inner, maxRetries: 3, baseDelayMs: -1);
     }

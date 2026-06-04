@@ -6,7 +6,7 @@ class Swift_Cli_ConsoleOutputTest extends TestCase
 {
     public function testWriteln(): void
     {
-        $stream = \fopen('php://memory', 'r+');
+        $stream    = \fopen('php://memory', 'r+');
         $errStream = \fopen('php://memory', 'r+');
         // Force NO_COLOR so colorize() returns plain text
         $_SERVER['NO_COLOR'] = '1';
@@ -26,8 +26,8 @@ class Swift_Cli_ConsoleOutputTest extends TestCase
 
     public function testInfo(): void
     {
-        $stream = \fopen('php://memory', 'r+');
-        $errStream = \fopen('php://memory', 'r+');
+        $stream              = \fopen('php://memory', 'r+');
+        $errStream           = \fopen('php://memory', 'r+');
         $_SERVER['NO_COLOR'] = '1';
 
         try {
@@ -44,8 +44,8 @@ class Swift_Cli_ConsoleOutputTest extends TestCase
 
     public function testSuccess(): void
     {
-        $stream = \fopen('php://memory', 'r+');
-        $errStream = \fopen('php://memory', 'r+');
+        $stream              = \fopen('php://memory', 'r+');
+        $errStream           = \fopen('php://memory', 'r+');
         $_SERVER['NO_COLOR'] = '1';
 
         try {
@@ -62,8 +62,8 @@ class Swift_Cli_ConsoleOutputTest extends TestCase
 
     public function testError(): void
     {
-        $stream = \fopen('php://memory', 'r+');
-        $errStream = \fopen('php://memory', 'r+');
+        $stream              = \fopen('php://memory', 'r+');
+        $errStream           = \fopen('php://memory', 'r+');
         $_SERVER['NO_COLOR'] = '1';
 
         try {
@@ -80,8 +80,8 @@ class Swift_Cli_ConsoleOutputTest extends TestCase
 
     public function testWarning(): void
     {
-        $stream = \fopen('php://memory', 'r+');
-        $errStream = \fopen('php://memory', 'r+');
+        $stream              = \fopen('php://memory', 'r+');
+        $errStream           = \fopen('php://memory', 'r+');
         $_SERVER['NO_COLOR'] = '1';
 
         try {
@@ -98,8 +98,8 @@ class Swift_Cli_ConsoleOutputTest extends TestCase
 
     public function testColorDisabledByNoColorEnv(): void
     {
-        $stream = \fopen('php://memory', 'r+');
-        $errStream = \fopen('php://memory', 'r+');
+        $stream              = \fopen('php://memory', 'r+');
+        $errStream           = \fopen('php://memory', 'r+');
         $_SERVER['NO_COLOR'] = '1';
 
         try {
@@ -124,9 +124,9 @@ class Swift_Cli_ConsoleOutputTest extends TestCase
         \putenv('NO_COLOR');
 
         try {
-            $stream = \fopen('php://memory', 'r+');
+            $stream    = \fopen('php://memory', 'r+');
             $errStream = \fopen('php://memory', 'r+');
-            $output = new \Swift_Cli_ConsoleOutput($stream, $errStream);
+            $output    = new Swift_Cli_ConsoleOutput($stream, $errStream);
             $output->info('test');
             \rewind($stream);
             $content = \stream_get_contents($stream);
@@ -134,7 +134,7 @@ class Swift_Cli_ConsoleOutputTest extends TestCase
             \fclose($stream);
             \fclose($errStream);
         } finally {
-            if ($saved !== null) {
+            if (null !== $saved) {
                 $_SERVER['NO_COLOR'] = $saved;
             }
         }

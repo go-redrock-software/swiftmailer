@@ -27,7 +27,7 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
     {
         $plugin = new Swift_Plugins_ReadReceiptPlugin(
             Swift_Plugins_ReadReceiptPlugin::MODE_MDN,
-            'receipts@example.com'
+            'receipts@example.com',
         );
         $this->assertEquals('receipts@example.com', $plugin->getAddress());
 
@@ -38,10 +38,10 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
     public function testPixelUrlGeneratorCanBeSetAndFetched()
     {
         $generator = fn () => 'http://example.com/pixel.gif';
-        $plugin = new Swift_Plugins_ReadReceiptPlugin(
+        $plugin    = new Swift_Plugins_ReadReceiptPlugin(
             Swift_Plugins_ReadReceiptPlugin::MODE_PIXEL,
             null,
-            $generator
+            $generator,
         );
         $this->assertSame($generator, $plugin->getPixelUrlGenerator());
     }
@@ -62,11 +62,11 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
     {
         $plugin = new Swift_Plugins_ReadReceiptPlugin(
             Swift_Plugins_ReadReceiptPlugin::MODE_MDN,
-            'receipts@example.com'
+            'receipts@example.com',
         );
 
         $message = $this->createRealMessage();
-        $evt = $this->createSendEvent($message);
+        $evt     = $this->createSendEvent($message);
 
         $plugin->beforeSendPerformed($evt);
 
@@ -94,7 +94,7 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
         $plugin = new Swift_Plugins_ReadReceiptPlugin(Swift_Plugins_ReadReceiptPlugin::MODE_MDN);
 
         $message = $this->createRealMessage();
-        $evt = $this->createSendEvent($message);
+        $evt     = $this->createSendEvent($message);
 
         $plugin->beforeSendPerformed($evt);
 
@@ -105,11 +105,11 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
     {
         $plugin = new Swift_Plugins_ReadReceiptPlugin(
             Swift_Plugins_ReadReceiptPlugin::MODE_MDN,
-            'receipts@example.com'
+            'receipts@example.com',
         );
 
         $message = $this->createRealMessage();
-        $evt = $this->createSendEvent($message);
+        $evt     = $this->createSendEvent($message);
 
         $plugin->beforeSendPerformed($evt);
         $this->assertTrue($message->getHeaders()->has('Disposition-Notification-To'));
@@ -122,7 +122,7 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
     {
         $plugin = new Swift_Plugins_ReadReceiptPlugin(
             Swift_Plugins_ReadReceiptPlugin::MODE_MDN,
-            'new@example.com'
+            'new@example.com',
         );
 
         $message = $this->createRealMessage();
@@ -143,7 +143,7 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
         $plugin = new Swift_Plugins_ReadReceiptPlugin(
             Swift_Plugins_ReadReceiptPlugin::MODE_PIXEL,
             null,
-            fn () => 'http://track.example.com/open/abc123'
+            fn () => 'http://track.example.com/open/abc123',
         );
 
         $message = $this->createRealMessage();
@@ -163,7 +163,7 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
         $plugin = new Swift_Plugins_ReadReceiptPlugin(
             Swift_Plugins_ReadReceiptPlugin::MODE_PIXEL,
             null,
-            fn () => 'http://track.example.com/pixel'
+            fn () => 'http://track.example.com/pixel',
         );
 
         $message = $this->createRealMessage();
@@ -172,9 +172,9 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
 
         $plugin->beforeSendPerformed($evt);
 
-        $body = $message->getBody();
-        $imgPos = strpos($body, '<img ');
-        $bodyClosePos = strpos($body, '</body>');
+        $body         = $message->getBody();
+        $imgPos       = \strpos($body, '<img ');
+        $bodyClosePos = \strpos($body, '</body>');
         $this->assertLessThan($bodyClosePos, $imgPos);
     }
 
@@ -183,7 +183,7 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
         $plugin = new Swift_Plugins_ReadReceiptPlugin(
             Swift_Plugins_ReadReceiptPlugin::MODE_PIXEL,
             null,
-            fn () => 'http://track.example.com/pixel'
+            fn () => 'http://track.example.com/pixel',
         );
 
         $message = $this->createRealMessage();
@@ -202,7 +202,7 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
         $plugin = new Swift_Plugins_ReadReceiptPlugin(
             Swift_Plugins_ReadReceiptPlugin::MODE_PIXEL,
             null,
-            fn () => 'http://track.example.com/open?id=1&token=abc'
+            fn () => 'http://track.example.com/open?id=1&token=abc',
         );
 
         $message = $this->createRealMessage();
@@ -221,11 +221,11 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
         $plugin = new Swift_Plugins_ReadReceiptPlugin(
             Swift_Plugins_ReadReceiptPlugin::MODE_PIXEL,
             null,
-            fn () => 'http://track.example.com/pixel'
+            fn () => 'http://track.example.com/pixel',
         );
 
         $originalBody = '<html><body><p>Hello</p></body></html>';
-        $message = $this->createRealMessage();
+        $message      = $this->createRealMessage();
         $message->setBody($originalBody, 'text/html');
         $evt = $this->createSendEvent($message);
 
@@ -241,7 +241,7 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
         $plugin = new Swift_Plugins_ReadReceiptPlugin(Swift_Plugins_ReadReceiptPlugin::MODE_PIXEL);
 
         $originalBody = '<html><body><p>Hello</p></body></html>';
-        $message = $this->createRealMessage();
+        $message      = $this->createRealMessage();
         $message->setBody($originalBody, 'text/html');
         $evt = $this->createSendEvent($message);
 
@@ -255,11 +255,11 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
         $plugin = new Swift_Plugins_ReadReceiptPlugin(
             Swift_Plugins_ReadReceiptPlugin::MODE_PIXEL,
             null,
-            fn () => null
+            fn () => null,
         );
 
         $originalBody = '<html><body><p>Hello</p></body></html>';
-        $message = $this->createRealMessage();
+        $message      = $this->createRealMessage();
         $message->setBody($originalBody, 'text/html');
         $evt = $this->createSendEvent($message);
 
@@ -273,11 +273,11 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
         $plugin = new Swift_Plugins_ReadReceiptPlugin(
             Swift_Plugins_ReadReceiptPlugin::MODE_PIXEL,
             null,
-            fn () => ''
+            fn () => '',
         );
 
         $originalBody = '<html><body><p>Hello</p></body></html>';
-        $message = $this->createRealMessage();
+        $message      = $this->createRealMessage();
         $message->setBody($originalBody, 'text/html');
         $evt = $this->createSendEvent($message);
 
@@ -291,7 +291,7 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
         $plugin = new Swift_Plugins_ReadReceiptPlugin(
             Swift_Plugins_ReadReceiptPlugin::MODE_PIXEL,
             null,
-            fn () => 'http://track.example.com/pixel'
+            fn () => 'http://track.example.com/pixel',
         );
 
         $message = $this->createRealMessage();
@@ -308,7 +308,7 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
         $plugin = new Swift_Plugins_ReadReceiptPlugin(
             Swift_Plugins_ReadReceiptPlugin::MODE_BOTH,
             'receipts@example.com',
-            fn () => 'http://track.example.com/pixel'
+            fn () => 'http://track.example.com/pixel',
         );
 
         $message = $this->createRealMessage();
@@ -326,11 +326,11 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
         $plugin = new Swift_Plugins_ReadReceiptPlugin(
             Swift_Plugins_ReadReceiptPlugin::MODE_BOTH,
             'receipts@example.com',
-            fn () => 'http://track.example.com/pixel'
+            fn () => 'http://track.example.com/pixel',
         );
 
         $originalBody = '<html><body>Hi</body></html>';
-        $message = $this->createRealMessage();
+        $message      = $this->createRealMessage();
         $message->setBody($originalBody, 'text/html');
         $evt = $this->createSendEvent($message);
 
@@ -344,13 +344,14 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
     public function testGeneratorReceivesMessage()
     {
         $receivedMessage = null;
-        $plugin = new Swift_Plugins_ReadReceiptPlugin(
+        $plugin          = new Swift_Plugins_ReadReceiptPlugin(
             Swift_Plugins_ReadReceiptPlugin::MODE_PIXEL,
             null,
             function (Swift_Mime_SimpleMessage $msg) use (&$receivedMessage) {
                 $receivedMessage = $msg;
-                return 'http://track.example.com/pixel/' . $msg->getId();
-            }
+
+                return 'http://track.example.com/pixel/'.$msg->getId();
+            },
         );
 
         $message = $this->createRealMessage();
@@ -368,7 +369,7 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
         $plugin = new Swift_Plugins_ReadReceiptPlugin(
             Swift_Plugins_ReadReceiptPlugin::MODE_PIXEL,
             'receipts@example.com',
-            fn () => 'http://track.example.com/pixel'
+            fn () => 'http://track.example.com/pixel',
         );
 
         $message = $this->createRealMessage();
@@ -385,11 +386,11 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
         $plugin = new Swift_Plugins_ReadReceiptPlugin(
             Swift_Plugins_ReadReceiptPlugin::MODE_MDN,
             'receipts@example.com',
-            fn () => 'http://track.example.com/pixel'
+            fn () => 'http://track.example.com/pixel',
         );
 
         $originalBody = '<html><body>Hello</body></html>';
-        $message = $this->createRealMessage();
+        $message      = $this->createRealMessage();
         $message->setBody($originalBody, 'text/html');
         $evt = $this->createSendEvent($message);
 
@@ -403,7 +404,7 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
         $plugin = new Swift_Plugins_ReadReceiptPlugin(
             Swift_Plugins_ReadReceiptPlugin::MODE_PIXEL,
             null,
-            fn () => 'http://track.example.com/pixel'
+            fn () => 'http://track.example.com/pixel',
         );
 
         $message = $this->createRealMessage();
@@ -418,7 +419,7 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
         // The HTML child should have the pixel
         $found = false;
         foreach ($message->getChildren() as $child) {
-            if (false !== stripos($child->getContentType() ?? '', 'text/html')) {
+            if (false !== \stripos($child->getContentType() ?? '', 'text/html')) {
                 $this->assertStringContainsString('<img ', $child->getBody());
                 $this->assertStringContainsString('track.example.com/pixel', $child->getBody());
                 $found = true;
@@ -432,11 +433,11 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
         $plugin = new Swift_Plugins_ReadReceiptPlugin(
             Swift_Plugins_ReadReceiptPlugin::MODE_PIXEL,
             null,
-            fn () => 'http://track.example.com/pixel'
+            fn () => 'http://track.example.com/pixel',
         );
 
         $originalHtml = '<html><body><p>Hello</p></body></html>';
-        $message = $this->createRealMessage();
+        $message      = $this->createRealMessage();
         $message->setBody('Plain text', 'text/plain');
         $message->addPart($originalHtml, 'text/html');
         $evt = $this->createSendEvent($message);
@@ -446,7 +447,7 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
 
         // The HTML child should be restored
         foreach ($message->getChildren() as $child) {
-            if (false !== stripos($child->getContentType() ?? '', 'text/html')) {
+            if (false !== \stripos($child->getContentType() ?? '', 'text/html')) {
                 $this->assertEquals($originalHtml, $child->getBody());
             }
         }
@@ -456,13 +457,13 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
     {
         $plugin = new Swift_Plugins_ReadReceiptPlugin(
             Swift_Plugins_ReadReceiptPlugin::MODE_MDN,
-            'receipts@example.com'
+            'receipts@example.com',
         );
 
         $message1 = $this->createRealMessage();
         $message2 = $this->createRealMessage();
-        $evt1 = $this->createSendEvent($message1);
-        $evt2 = $this->createSendEvent($message2);
+        $evt1     = $this->createSendEvent($message1);
+        $evt2     = $this->createSendEvent($message2);
 
         $plugin->beforeSendPerformed($evt1);
         // Send performed with a different message should not crash
@@ -487,7 +488,7 @@ class Swift_Plugins_ReadReceiptPluginTest extends PHPUnit\Framework\TestCase
 
     public function testSetPixelUrlGeneratorViaMethod()
     {
-        $gen = fn () => 'http://example.com';
+        $gen    = fn () => 'http://example.com';
         $plugin = new Swift_Plugins_ReadReceiptPlugin();
         $plugin->setPixelUrlGenerator($gen);
         $this->assertSame($gen, $plugin->getPixelUrlGenerator());

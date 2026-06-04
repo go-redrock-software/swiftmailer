@@ -214,9 +214,9 @@ class Swift_Transport_Esmtp_AuthHandlerTest extends SwiftMailerTestCase
 
     public function testOnCommandIsNoOp()
     {
-        $auth = $this->createHandler([]);
+        $auth             = $this->createHandler([]);
         $failedRecipients = null;
-        $stop = false;
+        $stop             = false;
         $auth->onCommand($this->agent, "MAIL FROM:<foo@bar>\r\n", [250], $failedRecipients, $stop);
         $this->assertFalse($stop);
     }

@@ -315,7 +315,7 @@ class Swift_KeyCache_DiskKeyCache implements Swift_KeyCache
         if ('' === $key) {
             throw new Swift_IoException('Cache key must not be empty');
         }
-        if (preg_match('/[^a-zA-Z0-9._-]/', $key)) {
+        if (\preg_match('/[^a-zA-Z0-9._-]/', $key)) {
             throw new Swift_IoException('Cache key contains invalid characters: '.$key);
         }
 

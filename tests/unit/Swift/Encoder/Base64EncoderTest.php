@@ -152,7 +152,7 @@ class Swift_Encoder_Base64EncoderTest extends PHPUnit\Framework\TestCase
 
     public function testNegativeFirstLineOffsetThrows()
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('firstLineOffset must be non-negative');
 
         $this->encoder->encodeString('test', -1);

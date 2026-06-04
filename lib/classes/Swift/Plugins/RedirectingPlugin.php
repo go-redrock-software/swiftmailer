@@ -28,7 +28,9 @@ class Swift_Plugins_RedirectingPlugin implements Swift_Events_SendListener
     private $whitelist = [];
 
     private ?array $originalTo = null;
+
     private ?array $originalCc = null;
+
     private ?array $originalBcc = null;
 
     /**
@@ -84,8 +86,8 @@ class Swift_Plugins_RedirectingPlugin implements Swift_Events_SendListener
         $headers = $message->getHeaders();
 
         // Store original recipients as instance properties (not in headers)
-        $this->originalTo = $headers->has('to') ? $message->getTo() : null;
-        $this->originalCc = $headers->has('cc') ? $message->getCc() : null;
+        $this->originalTo  = $headers->has('to') ? $message->getTo() : null;
+        $this->originalCc  = $headers->has('cc') ? $message->getCc() : null;
         $this->originalBcc = $headers->has('bcc') ? $message->getBcc() : null;
 
         // Filter remaining headers against whitelist
@@ -181,8 +183,8 @@ class Swift_Plugins_RedirectingPlugin implements Swift_Events_SendListener
             $message->setBcc($this->originalBcc);
         }
 
-        $this->originalTo = null;
-        $this->originalCc = null;
+        $this->originalTo  = null;
+        $this->originalCc  = null;
         $this->originalBcc = null;
     }
 }

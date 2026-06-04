@@ -96,7 +96,7 @@ class Swift_AddressEncoder_IdnAddressEncoderTest extends PHPUnit\Framework\TestC
     {
         $this->expectException(Swift_AddressEncoderException::class);
         $this->expectExceptionMessage('IDN conversion failed');
-        $this->encoder->encodeString('user@'.str_repeat('ä', 200).'.com');
+        $this->encoder->encodeString('user@'.\str_repeat('ä', 200).'.com');
     }
 
     public function testRejectsControlCharsInLocalPart()

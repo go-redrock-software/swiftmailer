@@ -49,9 +49,7 @@ class Swift_Webhook_RequestHandler
 
         if (null !== $allowedIps && null !== $remoteIp) {
             if (!\in_array($remoteIp, $allowedIps, true)) {
-                throw new Swift_Webhook_SignatureVerificationException(
-                    $converter->getProviderName() . ': remote IP not in allowlist'
-                );
+                throw new Swift_Webhook_SignatureVerificationException($converter->getProviderName().': remote IP not in allowlist');
             }
         }
 
