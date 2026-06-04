@@ -21,12 +21,12 @@ use Psr\Http\Message\ResponseInterface;
  */
 abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_AbstractApiTransport
 {
-    public protected(set) string $apiKey;
+    public string $apiKey;
 
-    public protected(set) ClientInterface $httpClient;
+    public ClientInterface $httpClient;
 
     /** @var Swift_Envelope|null Active envelope during send */
-    public protected(set) ?Swift_Envelope $activeEnvelope = null;
+    public ?Swift_Envelope $activeEnvelope = null;
 
     public function __construct(
         #[SensitiveParameter] string $apiKey,
@@ -193,9 +193,7 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
         $size = $body->getSize();
 
         if (null !== $size && $size > static::MAX_RESPONSE_SIZE) {
-            throw new Swift_TransportException(
-                \sprintf('API response body too large: %d bytes (max %d)', $size, static::MAX_RESPONSE_SIZE)
-            );
+            throw new Swift_TransportException(\sprintf('API response body too large: %d bytes (max %d)', $size, static::MAX_RESPONSE_SIZE));
         }
 
         $contents = '';
@@ -203,9 +201,7 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
             $chunk = $body->read(8192);
             $contents .= $chunk;
             if (\strlen($contents) > static::MAX_RESPONSE_SIZE) {
-                throw new Swift_TransportException(
-                    \sprintf('API response body exceeded max size of %d bytes', static::MAX_RESPONSE_SIZE)
-                );
+                throw new Swift_TransportException(\sprintf('API response body exceeded max size of %d bytes', static::MAX_RESPONSE_SIZE));
             }
         }
 
