@@ -93,8 +93,7 @@ class Swift_Transport_Api_MailPaceTransport extends Swift_Transport_AbstractHttp
      */
     private function getPayload(Swift_Mime_SimpleMessage $message): array
     {
-        $tags     = $this->extractTags($message);
-        $metadata = $this->extractMetadata($message);
+        $tags = $this->extractTags($message);
 
         $from        = $message->getFrom();
         $fromAddress = \array_key_first($from);
@@ -139,14 +138,10 @@ class Swift_Transport_Api_MailPaceTransport extends Swift_Transport_AbstractHttp
             }, $attachments);
         }
 
-        // Tags → tags (array)
+        // Tags → tags (array). MailPace's API has no metadata field, so
+        // X-Mailer-Metadata-* headers are intentionally not forwarded.
         if (!empty($tags)) {
             $payload['tags'] = $tags;
-        }
-
-        // Metadata → metadata (object)
-        if (!empty($metadata)) {
-            $payload['metadata'] = $metadata;
         }
 
         return $payload;

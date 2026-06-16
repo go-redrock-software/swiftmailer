@@ -65,6 +65,12 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
 
     private const array MAILERSEND_ATTACHMENT = ['content', 'disposition', 'filename', 'id'];
 
+    // MailPace -- POST /api/v1/send
+    // Source: https://docs.mailpace.com/reference/send (fetched 2026-06-16)
+    private const array MAILPACE_TOP = ['from', 'to', 'htmlbody', 'textbody', 'cc', 'bcc', 'subject', 'replyto', 'inreplyto', 'references', 'list_unsubscribe', 'attachments', 'tags'];
+
+    private const array MAILPACE_ATTACHMENT = ['name', 'content', 'content_type', 'cid'];
+
     public function testSendgridPayloadConformsToPublishedSchema(): void
     {
         $payload = $this->capturePayload('sendgrid');
@@ -143,6 +149,22 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
         }
     }
 
+    public function testMailPacePayloadConformsToPublishedSchema(): void
+    {
+        $payload = $this->capturePayload('mailpace');
+
+        $this->assertOnlyAllowedKeys($payload, self::MAILPACE_TOP, 'MailPace top-level');
+        $this->assertRequiredKeys($payload, ['from', 'to'], 'MailPace');
+        $this->assertTrue(
+            isset($payload['htmlbody']) || isset($payload['textbody']),
+            'MailPace requires htmlbody or textbody',
+        );
+
+        foreach ($payload['attachments'] as $attachment) {
+            $this->assertOnlyAllowedKeys($attachment, self::MAILPACE_ATTACHMENT, 'MailPace attachment');
+        }
+    }
+
     private function assertOnlyAllowedKeys(array $payload, array $allowed, string $context): void
     {
         $unknown = \array_values(\array_diff(\array_keys($payload), $allowed));
@@ -192,6 +214,7 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
             'postmark'   => new Swift_Transport_Api_PostMarkTransport('api-key', $client),
             'resend'     => new Swift_Transport_Api_ResendTransport('api-key', $client),
             'mailersend' => new Swift_Transport_Api_MailerSendTransport('api-key', $client),
+            'mailpace'   => new Swift_Transport_Api_MailPaceTransport('api-key', $client),
             default      => throw new InvalidArgumentException($provider),
         };
     }
@@ -204,6 +227,7 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
             'postmark'   => new Response(200, [], '{"ErrorCode":0,"MessageID":"id","Message":"OK"}'),
             'resend'     => new Response(200, [], '{"id":"resend-id"}'),
             'mailersend' => new Response(202),
+            'mailpace'   => new Response(200, [], '{"id":"mp-id","status":"queued"}'),
             default      => throw new InvalidArgumentException($provider),
         };
     }

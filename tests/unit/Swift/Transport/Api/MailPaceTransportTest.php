@@ -250,7 +250,7 @@ class MailPaceTransportTest extends TestCase
         $this->assertEquals(1, $sent);
     }
 
-    public function testSendWithTagsAndMetadata(): void
+    public function testSendWithTagsAndOmitsUnsupportedMetadata(): void
     {
         $message = $this->createSwiftMessage();
         $message
@@ -270,7 +270,9 @@ class MailPaceTransportTest extends TestCase
                     $payload = $options['json'];
 
                     $this->assertEquals(['billing'], $payload['tags']);
-                    $this->assertEquals(['invoice' => 'INV-100'], $payload['metadata']);
+                    // MailPace's API has no metadata field; it must not be emitted
+                    // even when the caller sets X-Mailer-Metadata-* headers.
+                    $this->assertArrayNotHasKey('metadata', $payload);
 
                     return true;
                 }),
