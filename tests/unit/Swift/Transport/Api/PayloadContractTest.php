@@ -103,6 +103,14 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
 
     private const array MAILJET_ATTACHMENT = ['ContentType', 'Filename', 'Base64Content', 'ContentID'];
 
+    // Mandrill (Mailchimp Transactional) -- POST /messages/send
+    // Source: https://mailchimp.com/developer/transactional/api/messages/send-new-message/ (fetched 2026-06-16)
+    private const array MAILCHIMP_TOP = ['key', 'message', 'async', 'ip_pool', 'send_at'];
+
+    private const array MAILCHIMP_MESSAGE = ['html', 'text', 'subject', 'from_email', 'from_name', 'to', 'headers', 'important', 'track_opens', 'track_clicks', 'auto_text', 'auto_html', 'inline_css', 'attachments', 'images', 'tags', 'metadata', 'merge_vars', 'subaccount'];
+
+    private const array MAILCHIMP_ATTACHMENT = ['type', 'name', 'content'];
+
     public function testSendgridPayloadConformsToPublishedSchema(): void
     {
         $payload = $this->capturePayload('sendgrid');
@@ -267,6 +275,25 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
         }
     }
 
+    public function testMailChimpPayloadConformsToPublishedSchema(): void
+    {
+        $payload = $this->capturePayload('mailchimp');
+
+        $this->assertOnlyAllowedKeys($payload, self::MAILCHIMP_TOP, 'MailChimp top-level');
+        $this->assertArrayHasKey('message', $payload);
+
+        $message = $payload['message'];
+        $this->assertOnlyAllowedKeys($message, self::MAILCHIMP_MESSAGE, 'MailChimp message');
+        $this->assertRequiredKeys($message, ['from_email', 'subject', 'to'], 'MailChimp message');
+
+        foreach ($message['attachments'] ?? [] as $attachment) {
+            $this->assertOnlyAllowedKeys($attachment, self::MAILCHIMP_ATTACHMENT, 'MailChimp attachment');
+        }
+        foreach ($message['images'] ?? [] as $image) {
+            $this->assertOnlyAllowedKeys($image, self::MAILCHIMP_ATTACHMENT, 'MailChimp image');
+        }
+    }
+
     private function assertOnlyAllowedKeys(array $payload, array $allowed, string $context): void
     {
         $unknown = \array_values(\array_diff(\array_keys($payload), $allowed));
@@ -322,6 +349,7 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
             'mailtrap'   => new Swift_Transport_Api_MailtrapTransport('api-key', false, null, $client),
             'ahasend'    => new Swift_Transport_Api_AhaSendTransport('api-key', $client),
             'mailjet'    => new Swift_Transport_Api_MailJetTransport('public-key', 'private-key', $client),
+            'mailchimp'  => new Swift_Transport_Api_MailChimpTransport('api-key', $client),
             default      => throw new InvalidArgumentException($provider),
         };
     }
@@ -340,6 +368,7 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
             'mailtrap'   => new Response(200, [], '{"success":true,"message_ids":["mt-id"]}'),
             'ahasend'    => new Response(200, [], '{"object":"list","data":[{"object":"message","id":"aha-id","status":"queued"}]}'),
             'mailjet'    => new Response(200, [], '{"Messages":[{"Status":"success"}]}'),
+            'mailchimp'  => new Response(200, [], '[{"email":"to@example.com","status":"queued","_id":"abc123"}]'),
             default      => throw new InvalidArgumentException($provider),
         };
     }
