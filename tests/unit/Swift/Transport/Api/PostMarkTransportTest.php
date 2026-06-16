@@ -306,6 +306,41 @@ class PostMarkTransportTest extends TestCase
         $this->transport->send($message);
     }
 
+    public function testSendWithTextAndHtmlBody(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['sender@example.com' => 'Sender'])
+            ->setTo(['recipient@example.com' => 'Recipient'])
+            ->setSubject('Multipart test')
+            ->setBody('Plain text fallback')
+            ->attach(new \Swift_MimePart('<p>HTML body</p>', 'text/html'));
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                'https://api.postmarkapp.com/email',
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    // Both alternative parts must be present in the payload
+                    $this->assertEquals('Plain text fallback', $payload['TextBody']);
+                    $this->assertEquals('<p>HTML body</p>', $payload['HtmlBody']);
+
+                    return true;
+                }),
+            )
+            ->willReturn(new Response(200, [], \json_encode([
+                'ErrorCode' => 0,
+                'Message'   => 'OK',
+                'MessageID' => 'uuid-multipart',
+            ])));
+
+        $sent = $this->transport->send($message);
+        $this->assertEquals(1, $sent);
+    }
+
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
     {
         return new \Swift_Mime_SimpleMessage(

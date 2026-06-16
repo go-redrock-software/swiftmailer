@@ -138,6 +138,39 @@ class MailChimpTransportTest extends TestCase
         $this->assertEquals(4, $sent);
     }
 
+    public function testSendWithTextAndHtmlBody(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['sender@example.com' => 'Sender'])
+            ->setTo(['recipient@example.com' => 'Recipient'])
+            ->setSubject('Multipart test')
+            ->setBody('Plain text body');
+        $message->attach(new \Swift_MimePart('<p>HTML alternative</p>', 'text/html'));
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                'https://mandrillapp.com/api/1.0/messages/send',
+                $this->callback(function (array $options): bool {
+                    $msg = $options['json']['message'];
+
+                    // Both alternative parts must be present in the payload
+                    $this->assertEquals('Plain text body', $msg['text']);
+                    $this->assertEquals('<p>HTML alternative</p>', $msg['html']);
+
+                    return true;
+                }),
+            )
+            ->willReturn(new Response(200, [], \json_encode([
+                ['email' => 'recipient@example.com', 'status' => 'sent', '_id' => 'mp1'],
+            ])));
+
+        $sent = $this->transport->send($message);
+        $this->assertEquals(1, $sent);
+    }
+
     public function testAuthKeyIsInBodyNotHeaders(): void
     {
         $message = $this->createSwiftMessage();

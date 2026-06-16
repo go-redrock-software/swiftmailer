@@ -524,6 +524,83 @@ class MailtrapTransportTest extends TestCase
         $this->transport->send($message);
     }
 
+    public function testSendWithMultipleRecipients(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['sender@example.com' => 'Sender'])
+            ->setTo([
+                'first@example.com'  => 'First Recipient',
+                'second@example.com' => 'Second Recipient',
+            ])
+            ->setSubject('Multiple Recipients Test')
+            ->setBody('Body for many');
+
+        $response = $this->createMockResponse(200, [
+            'success'     => true,
+            'message_ids' => ['msg-uuid-multi'],
+        ]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    $this->assertSame([
+                        ['email' => 'first@example.com', 'name' => 'First Recipient'],
+                        ['email' => 'second@example.com', 'name' => 'Second Recipient'],
+                    ], $payload['to']);
+
+                    return true;
+                }),
+            )
+            ->willReturn($response);
+
+        $this->setupEventMocks();
+
+        $count = $this->transport->send($message);
+        $this->assertSame(2, $count);
+    }
+
+    public function testSendWithTextAndHtmlParts(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['sender@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'Recipient'])
+            ->setSubject('Multipart Test')
+            ->setBody('Plain text alternative');
+        $message->attach(new \Swift_MimePart('<h1>HTML alternative</h1>', 'text/html'));
+
+        $response = $this->createMockResponse(200, [
+            'success'     => true,
+            'message_ids' => ['msg-uuid-multipart'],
+        ]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    $this->assertSame('Plain text alternative', $payload['text']);
+                    $this->assertSame('<h1>HTML alternative</h1>', $payload['html']);
+
+                    return true;
+                }),
+            )
+            ->willReturn($response);
+
+        $this->setupEventMocks();
+
+        $this->transport->send($message);
+    }
+
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
     {
         return new \Swift_Mime_SimpleMessage(

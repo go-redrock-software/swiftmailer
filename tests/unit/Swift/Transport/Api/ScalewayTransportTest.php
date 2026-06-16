@@ -103,6 +103,41 @@ class ScalewayTransportTest extends TestCase
         $this->transport->send($message);
     }
 
+    public function testSendMessageWithHtmlAndTextBody(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['sender@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'To User'])
+            ->setSubject('Multipart Test')
+            ->setBody('Plain text version')
+            ->attach(new \Swift_MimePart('<h1>HTML version</h1>', 'text/html'));
+
+        $response = $this->createMockResponse(200, [
+            'emails' => [['id' => 'email-uuid-mp', 'message_id' => '<msg-id-mp@scaleway>']],
+        ]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    // When both parts exist, the payload carries text and html together
+                    $this->assertSame('Plain text version', $payload['text']);
+                    $this->assertSame('<h1>HTML version</h1>', $payload['html']);
+
+                    return true;
+                }),
+            )
+            ->willReturn($response);
+
+        $this->transport->start();
+        $this->transport->send($message);
+    }
+
     public function testSendMessageWithCc(): void
     {
         $message = $this->createSwiftMessage();
@@ -232,6 +267,49 @@ class ScalewayTransportTest extends TestCase
         $this->assertSame(3, $count);
     }
 
+    public function testSendMessageWithMultipleRecipients(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['sender@example.com' => 'Sender'])
+            ->setTo([
+                'first@example.com'  => 'First User',
+                'second@example.com' => 'Second User',
+                'third@example.com'  => 'Third User',
+            ])
+            ->setSubject('Multiple Recipients Test')
+            ->setBody('Body text');
+
+        $response = $this->createMockResponse(200, [
+            'emails' => [['id' => 'email-uuid-mr', 'message_id' => '<msg-id-mr@scaleway>']],
+        ]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    // All To recipients are mapped into the to array, none into headers
+                    $this->assertCount(3, $payload['to']);
+                    $this->assertSame(['email' => 'first@example.com', 'name' => 'First User'], $payload['to'][0]);
+                    $this->assertSame(['email' => 'second@example.com', 'name' => 'Second User'], $payload['to'][1]);
+                    $this->assertSame(['email' => 'third@example.com', 'name' => 'Third User'], $payload['to'][2]);
+                    $this->assertArrayNotHasKey('additional_headers', $payload);
+
+                    return true;
+                }),
+            )
+            ->willReturn($response);
+
+        $this->transport->start();
+        $count = $this->transport->send($message);
+
+        $this->assertSame(3, $count);
+    }
+
     public function testSendMessageWithReplyTo(): void
     {
         $message = $this->createSwiftMessage();
@@ -295,6 +373,47 @@ class ScalewayTransportTest extends TestCase
                     $this->assertSame('document.txt', $payload['attachments'][0]['name']);
                     $this->assertSame('text/plain', $payload['attachments'][0]['type']);
                     $this->assertSame(\base64_encode('file contents'), $payload['attachments'][0]['content']);
+
+                    return true;
+                }),
+            )
+            ->willReturn($response);
+
+        $this->transport->start();
+        $this->transport->send($message);
+    }
+
+    public function testSendMessageWithMultipleAttachments(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['sender@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'To User'])
+            ->setSubject('Multiple Attachments Test')
+            ->setBody('Body with attachments')
+            ->attach(new \Swift_Attachment('first file', 'first.txt', 'text/plain'))
+            ->attach(new \Swift_Attachment('second file', 'second.csv', 'text/csv'));
+
+        $response = $this->createMockResponse(200, [
+            'emails' => [['id' => 'email-uuid-ma', 'message_id' => '<msg-id-ma@scaleway>']],
+        ]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    $this->assertArrayHasKey('attachments', $payload);
+                    $this->assertCount(2, $payload['attachments']);
+                    $this->assertSame('first.txt', $payload['attachments'][0]['name']);
+                    $this->assertSame('text/plain', $payload['attachments'][0]['type']);
+                    $this->assertSame(\base64_encode('first file'), $payload['attachments'][0]['content']);
+                    $this->assertSame('second.csv', $payload['attachments'][1]['name']);
+                    $this->assertSame('text/csv', $payload['attachments'][1]['type']);
+                    $this->assertSame(\base64_encode('second file'), $payload['attachments'][1]['content']);
 
                     return true;
                 }),

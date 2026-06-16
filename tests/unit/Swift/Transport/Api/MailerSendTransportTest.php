@@ -295,6 +295,68 @@ class MailerSendTransportTest extends TestCase
         $this->transport->send($message);
     }
 
+    public function testAddressObjectsOmitNameWhenNotProvided(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['from@example.com'])
+            ->setTo(['to@example.com'])
+            ->setReplyTo(['reply@example.com'])
+            ->setSubject('No-name addresses')
+            ->setBody('body');
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                'https://api.mailersend.com/v1/email',
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    // from has only an email key (array_filter drops the null name)
+                    $this->assertEquals(['email' => 'from@example.com'], $payload['from']);
+                    $this->assertArrayNotHasKey('name', $payload['from']);
+
+                    // to address object has only an email key
+                    $this->assertEquals(['email' => 'to@example.com'], $payload['to'][0]);
+                    $this->assertArrayNotHasKey('name', $payload['to'][0]);
+
+                    // reply_to has only an email key
+                    $this->assertEquals(['email' => 'reply@example.com'], $payload['reply_to']);
+                    $this->assertArrayNotHasKey('name', $payload['reply_to']);
+
+                    return true;
+                }),
+            )
+            ->willReturn(new Response(202, ['x-message-id' => 'msg-noname']));
+
+        $this->transport->send($message);
+    }
+
+    public function testSendApiErrorIncludesFieldDetails(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['from@example.com'])
+            ->setTo(['to@example.com'])
+            ->setSubject('Detailed error test')
+            ->setBody('body');
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn(new Response(422, [], \json_encode([
+                'message' => 'Validation failed.',
+                'errors'  => [
+                    'to.0.email' => ['The to.0.email must be a valid email address.'],
+                ],
+            ])));
+
+        $this->expectException(\Swift_TransportException::class);
+        $this->expectExceptionMessage('to.0.email: The to.0.email must be a valid email address.');
+
+        $this->transport->send($message);
+    }
+
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
     {
         return new \Swift_Mime_SimpleMessage(

@@ -199,6 +199,110 @@ class MailomatTransportTest extends TestCase
         $this->transport->send($message);
     }
 
+    public function testSendMessageWithEmbeddedImage(): void
+    {
+        $message = $this->createSwiftMessage();
+        $image   = new \Swift_Image('binary-image-data', 'logo.png', 'image/png');
+        $message
+            ->setFrom(['sender@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'To User'])
+            ->setSubject('Embedded Image Test')
+            ->setBody('<img src="'.$message->embed($image).'"/>', 'text/html');
+
+        $expectedContentId = $image->getId();
+
+        $response = $this->createMockResponse(202, ['messageUuid' => 'uuid-image']);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                'https://api.mailomat.swiss/message',
+                $this->callback(function (array $options) use ($expectedContentId): bool {
+                    $payload = $options['json'];
+
+                    $this->assertArrayHasKey('attachments', $payload);
+                    $this->assertCount(1, $payload['attachments']);
+                    $this->assertSame('logo.png', $payload['attachments'][0]['filename']);
+                    $this->assertSame('image/png', $payload['attachments'][0]['contentType']);
+                    $this->assertSame(\base64_encode('binary-image-data'), $payload['attachments'][0]['contentBase64']);
+                    $this->assertSame($expectedContentId, $payload['attachments'][0]['contentId']);
+
+                    return true;
+                }),
+            )
+            ->willReturn($response);
+
+        $this->transport->start();
+        $this->transport->send($message);
+    }
+
+    public function testSendMessageWithMultipleRecipients(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['sender@example.com' => 'Sender'])
+            ->setTo(['alice@example.com' => 'Alice', 'bob@example.com'])
+            ->setSubject('Multiple Recipients Test')
+            ->setBody('Body text');
+
+        $response = $this->createMockResponse(202, ['messageUuid' => 'uuid-multi']);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                'https://api.mailomat.swiss/message',
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    $this->assertCount(2, $payload['to']);
+                    $this->assertSame(['email' => 'alice@example.com', 'name' => 'Alice'], $payload['to'][0]);
+                    $this->assertSame(['email' => 'bob@example.com'], $payload['to'][1]);
+
+                    return true;
+                }),
+            )
+            ->willReturn($response);
+
+        $this->transport->start();
+        $count = $this->transport->send($message);
+
+        $this->assertSame(2, $count);
+    }
+
+    public function testSendMessageWithTextAndHtmlBody(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['sender@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'To User'])
+            ->setSubject('Multipart Test')
+            ->setBody('Plain text version');
+        $message->attach(new \Swift_MimePart('<p>HTML version</p>', 'text/html'));
+
+        $response = $this->createMockResponse(202, ['messageUuid' => 'uuid-multipart']);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                'https://api.mailomat.swiss/message',
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    $this->assertSame('Plain text version', $payload['text']);
+                    $this->assertSame('<p>HTML version</p>', $payload['html']);
+
+                    return true;
+                }),
+            )
+            ->willReturn($response);
+
+        $this->transport->start();
+        $this->transport->send($message);
+    }
+
     public function testAuthHeaderContainsBearerToken(): void
     {
         $message = $this->createSwiftMessage();

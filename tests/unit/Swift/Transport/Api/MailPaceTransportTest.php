@@ -283,6 +283,72 @@ class MailPaceTransportTest extends TestCase
         $this->transport->send($message);
     }
 
+    public function testSendWithBothTextAndHtmlBody(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['sender@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'Recipient'])
+            ->setSubject('Multipart test')
+            ->setBody('<p>HTML version</p>', 'text/html');
+        $message->attach(new \Swift_MimePart('Plain text version', 'text/plain'));
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    // Both parts must be present, under MailPace field names
+                    $this->assertArrayHasKey('textbody', $payload);
+                    $this->assertArrayHasKey('htmlbody', $payload);
+                    $this->assertEquals('Plain text version', $payload['textbody']);
+                    $this->assertEquals('<p>HTML version</p>', $payload['htmlbody']);
+
+                    return true;
+                }),
+            )
+            ->willReturn(new Response(200, [], \json_encode([
+                'id'     => 321,
+                'status' => 'pending',
+            ])));
+
+        $this->transport->send($message);
+    }
+
+    public function testSendWithFromWithoutName(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['noreply@example.com'])
+            ->setTo(['to@example.com' => 'Recipient'])
+            ->setSubject('No-name from test')
+            ->setBody('Body');
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    // No display name → bare email, not "<email>" or " <email>"
+                    $this->assertEquals('noreply@example.com', $payload['from']);
+
+                    return true;
+                }),
+            )
+            ->willReturn(new Response(200, [], \json_encode([
+                'id'     => 322,
+                'status' => 'pending',
+            ])));
+
+        $this->transport->send($message);
+    }
+
     public function testGetPingEndpoint(): void
     {
         $reflection = new \ReflectionMethod($this->transport, 'getPingEndpoint');

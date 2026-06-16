@@ -446,6 +446,78 @@ class Swift_Transport_Api_InfoBipTransportTest extends TestCase
         $this->transport->send($message);
     }
 
+    public function testSendWithTextAndHtmlBody(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message->setFrom(['sender@example.com' => 'Sender']);
+        $message->setTo(['to@example.com' => 'Recipient']);
+        $message->setSubject('Multipart Alternative Test');
+        $message->setBody('<p>Hello HTML</p>', 'text/html');
+        $message->attach(new \Swift_MimePart('Hello plain text', 'text/plain'));
+
+        $response = $this->createMockResponse(200, [
+            'messages' => [
+                ['status' => ['groupName' => 'PENDING'], 'messageId' => 'alt-123'],
+            ],
+        ]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options) {
+                    $fields = $this->indexMultipart($options['multipart']);
+
+                    // When both parts exist, Infobip receives both text and html fields
+                    $this->assertSame('Hello plain text', $fields['text'][0]);
+                    $this->assertSame('<p>Hello HTML</p>', $fields['html'][0]);
+
+                    return true;
+                }),
+            )
+            ->willReturn($response);
+
+        $this->setupEventMocks();
+
+        $this->transport->send($message);
+    }
+
+    public function testSendFromWithoutDisplayName(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message->setFrom('sender@example.com');
+        $message->setTo(['to@example.com' => 'Recipient']);
+        $message->setSubject('From Without Name Test');
+        $message->setBody('Body');
+
+        $response = $this->createMockResponse(200, [
+            'messages' => [
+                ['status' => ['groupName' => 'PENDING'], 'messageId' => 'noname-123'],
+            ],
+        ]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options) {
+                    $fields = $this->indexMultipart($options['multipart']);
+
+                    // No display name -> bare email, no angle brackets
+                    $this->assertSame('sender@example.com', $fields['from'][0]);
+
+                    return true;
+                }),
+            )
+            ->willReturn($response);
+
+        $this->setupEventMocks();
+
+        $this->transport->send($message);
+    }
+
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
     {
         return new \Swift_Mime_SimpleMessage(

@@ -107,6 +107,44 @@ class PostalTransportTest extends TestCase
         $this->transport->send($message);
     }
 
+    public function testSendWithTextAndHtmlBody(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message->setFrom(['sender@example.com' => 'Sender']);
+        $message->setTo(['to@example.com' => 'Recipient']);
+        $message->setSubject('Multipart Test');
+        $message->setBody('Plain text version');
+        // Swift_Mime_SimpleMessage has no addPart(); attach the HTML part directly
+        // (this is what Swift_Message::addPart() does internally).
+        $message->attach(new \Swift_MimePart('<p>HTML version</p>', 'text/html'));
+
+        $response = $this->createMockResponse(200, [
+            'status' => 'success',
+            'data'   => ['message_id' => 'multipart-uuid'],
+        ]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    // Both parts present when a message carries text and HTML
+                    $this->assertSame('Plain text version', $payload['plain_body']);
+                    $this->assertSame('<p>HTML version</p>', $payload['html_body']);
+
+                    return true;
+                }),
+            )
+            ->willReturn($response);
+
+        $this->setupEventMocks();
+
+        $this->transport->send($message);
+    }
+
     public function testSendWithCcAndBcc(): void
     {
         $message = $this->createSwiftMessage();
@@ -134,6 +172,48 @@ class PostalTransportTest extends TestCase
                     $this->assertSame(['to@example.com'], $payload['to']);
                     $this->assertSame(['cc@example.com'], $payload['cc']);
                     $this->assertSame(['bcc@example.com'], $payload['bcc']);
+
+                    return true;
+                }),
+            )
+            ->willReturn($response);
+
+        $this->setupEventMocks();
+
+        $count = $this->transport->send($message);
+        $this->assertSame(3, $count);
+    }
+
+    public function testSendWithMultipleRecipients(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message->setFrom(['sender@example.com' => 'Sender']);
+        $message->setTo([
+            'first@example.com'  => 'First Recipient',
+            'second@example.com' => 'Second Recipient',
+            'third@example.com'  => 'Third Recipient',
+        ]);
+        $message->setSubject('Multiple Recipients Test');
+        $message->setBody('Body');
+
+        $response = $this->createMockResponse(200, [
+            'status' => 'success',
+            'data'   => ['message_id' => 'multi-uuid'],
+        ]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    // Postal serialises recipients as a plain email-address array
+                    $this->assertSame(
+                        ['first@example.com', 'second@example.com', 'third@example.com'],
+                        $payload['to'],
+                    );
 
                     return true;
                 }),

@@ -344,6 +344,83 @@ class Swift_Transport_Api_BrevoTransportTest extends TestCase
         $this->assertSame(1, $count);
     }
 
+    public function testSendWithMultipleRecipients(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message->setFrom(['sender@example.com' => 'Sender']);
+        $message->setTo([
+            'first@example.com'  => 'First User',
+            'second@example.com' => 'Second User',
+        ]);
+        $message->setSubject('Multiple Recipients Test');
+        $message->setBody('Body');
+
+        $response = $this->createMockResponse(201, ['messageId' => '<multi@brevo.com>']);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options) {
+                    $json = $options['json'];
+
+                    $this->assertCount(2, $json['to']);
+                    $this->assertSame('first@example.com', $json['to'][0]['email']);
+                    $this->assertSame('First User', $json['to'][0]['name']);
+                    $this->assertSame('second@example.com', $json['to'][1]['email']);
+                    $this->assertSame('Second User', $json['to'][1]['name']);
+
+                    return true;
+                }),
+            )
+            ->willReturn($response);
+
+        $evt = $this->createMock(\Swift_Events_TransportChangeEvent::class);
+        $this->eventDispatcherMock->method('createTransportChangeEvent')->willReturn($evt);
+
+        $sendEvt = $this->createMock(\Swift_Events_SendEvent::class);
+        $this->eventDispatcherMock->method('createSendEvent')->willReturn($sendEvt);
+
+        $count = $this->transport->send($message);
+        $this->assertSame(2, $count);
+    }
+
+    public function testSendWithHtmlAndTextBody(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message->setFrom(['sender@example.com' => 'Sender']);
+        $message->setTo(['to@example.com' => 'To User']);
+        $message->setSubject('Multipart Test');
+        $message->setBody('<p>HTML body</p>', 'text/html');
+        $message->attach(new \Swift_MimePart('Plain text alternative', 'text/plain'));
+
+        $response = $this->createMockResponse(201, ['messageId' => '<multipart@brevo.com>']);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options) {
+                    $json = $options['json'];
+                    $this->assertSame('<p>HTML body</p>', $json['htmlContent']);
+                    $this->assertSame('Plain text alternative', $json['textContent']);
+
+                    return true;
+                }),
+            )
+            ->willReturn($response);
+
+        $evt = $this->createMock(\Swift_Events_TransportChangeEvent::class);
+        $this->eventDispatcherMock->method('createTransportChangeEvent')->willReturn($evt);
+
+        $sendEvt = $this->createMock(\Swift_Events_SendEvent::class);
+        $this->eventDispatcherMock->method('createSendEvent')->willReturn($sendEvt);
+
+        $this->transport->send($message);
+    }
+
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
     {
         return new \Swift_Mime_SimpleMessage(

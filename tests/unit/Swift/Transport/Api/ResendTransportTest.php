@@ -101,6 +101,41 @@ class ResendTransportTest extends TestCase
         $this->assertSame(3, $count);
     }
 
+    public function testSendMessageWithMultipleRecipients(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['sender@example.com' => 'Sender'])
+            ->setTo(['alice@example.com' => 'Alice', 'bob@example.com' => 'Bob'])
+            ->setSubject('Multiple Recipients Test')
+            ->setBody('Body text');
+
+        $response = $this->createMockResponse(200, ['id' => 'msg-uuid-multi']);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                'https://api.resend.com/emails',
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    $this->assertSame(
+                        ['Alice <alice@example.com>', 'Bob <bob@example.com>'],
+                        $payload['to'],
+                    );
+
+                    return true;
+                }),
+            )
+            ->willReturn($response);
+
+        $this->transport->start();
+        $count = $this->transport->send($message);
+
+        $this->assertSame(2, $count);
+    }
+
     public function testSendMessageWithReplyTo(): void
     {
         $message = $this->createSwiftMessage();
@@ -153,6 +188,38 @@ class ResendTransportTest extends TestCase
 
                     $this->assertSame('<h1>Hello</h1>', $payload['html']);
                     $this->assertArrayNotHasKey('text', $payload);
+
+                    return true;
+                }),
+            )
+            ->willReturn($response);
+
+        $this->transport->start();
+        $this->transport->send($message);
+    }
+
+    public function testSendMessageWithTextAndHtmlBody(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['sender@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'To User'])
+            ->setSubject('Multipart Test')
+            ->setBody('Plain text version');
+        $message->attach(new \Swift_MimePart('<h1>HTML version</h1>', 'text/html'));
+
+        $response = $this->createMockResponse(200, ['id' => 'msg-uuid-multipart']);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                'https://api.resend.com/emails',
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    $this->assertSame('Plain text version', $payload['text']);
+                    $this->assertSame('<h1>HTML version</h1>', $payload['html']);
 
                     return true;
                 }),

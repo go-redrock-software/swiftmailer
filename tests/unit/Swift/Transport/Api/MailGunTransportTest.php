@@ -208,6 +208,57 @@ class Swift_Transport_Api_MailGunTransportTest extends TestCase
         $this->transport->send($message);
     }
 
+    public function testSendWithMultipleToRecipients(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message->setFrom(['from@example.com' => 'Sender']);
+        $message->setTo([
+            'alice@example.com' => 'Alice',
+            'bob@example.com'   => 'Bob',
+        ]);
+        $message->setSubject('Test');
+        $message->setBody('Hello');
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('POST', $this->anything(), $this->callback(function ($options) {
+                $fields = $this->indexMultipart($options['multipart']);
+
+                return 'Alice <alice@example.com>, Bob <bob@example.com>' === $fields['to'];
+            }))
+            ->willReturn(new Response(200, [], '{"id":"<abc@mailgun.org>","message":"Queued."}'));
+
+        $this->stubEventDispatcher();
+
+        $result = $this->transport->send($message);
+        $this->assertEquals(2, $result);
+    }
+
+    public function testSendWithTextAndHtmlBody(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message->setFrom(['from@example.com' => 'Sender']);
+        $message->setTo(['to@example.com' => 'Recipient']);
+        $message->setSubject('Test');
+        $message->setBody('Plain text version', 'text/plain');
+        $message->attach(new \Swift_MimePart('<p>HTML version</p>', 'text/html'));
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('POST', $this->anything(), $this->callback(function ($options) {
+                $fields = $this->indexMultipart($options['multipart']);
+
+                return isset($fields['text'], $fields['html'])
+                    && 'Plain text version'  === $fields['text']
+                    && '<p>HTML version</p>' === $fields['html'];
+            }))
+            ->willReturn(new Response(200, [], '{"id":"<abc@mailgun.org>","message":"Queued."}'));
+
+        $this->stubEventDispatcher();
+
+        $this->transport->send($message);
+    }
+
     public function testPingSuccess(): void
     {
         $this->httpClientMock->expects($this->once())

@@ -415,6 +415,82 @@ class AzureTransportTest extends TestCase
         $this->assertInstanceOf(\Swift_Transport_Api_AzureTransport::class, $transport);
     }
 
+    public function testSendWithTextAndHtmlBody(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['sender@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'Recipient'])
+            ->setSubject('Multipart test')
+            ->setBody('Plain text version')
+            ->attach(new \Swift_MimePart('<p>HTML version</p>', 'text/html'));
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options): bool {
+                    $payload = \json_decode($options['body'], true);
+
+                    // Both alternative parts must be present in the payload
+                    $this->assertEquals('Plain text version', $payload['content']['plainText']);
+                    $this->assertEquals('<p>HTML version</p>', $payload['content']['html']);
+
+                    return true;
+                }),
+            )
+            ->willReturn(new Response(202, [], \json_encode([
+                'id'     => 'uuid-multipart',
+                'status' => 'Running',
+            ])));
+
+        $sent = $this->transport->send($message);
+        $this->assertEquals(1, $sent);
+    }
+
+    public function testSendWithMultipleAttachments(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['from@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'Recipient'])
+            ->setSubject('Multiple attachments test')
+            ->setBody('Body text')
+            ->attach(new \Swift_Attachment('first content', 'one.txt', 'text/plain'))
+            ->attach(new \Swift_Attachment('second content', 'two.csv', 'text/csv'));
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options): bool {
+                    $payload = \json_decode($options['body'], true);
+
+                    $this->assertArrayHasKey('attachments', $payload);
+                    $this->assertCount(2, $payload['attachments']);
+
+                    $this->assertEquals('one.txt', $payload['attachments'][0]['name']);
+                    $this->assertEquals('text/plain', $payload['attachments'][0]['contentType']);
+                    $this->assertEquals(\base64_encode('first content'), $payload['attachments'][0]['contentInBase64']);
+
+                    $this->assertEquals('two.csv', $payload['attachments'][1]['name']);
+                    $this->assertEquals('text/csv', $payload['attachments'][1]['contentType']);
+                    $this->assertEquals(\base64_encode('second content'), $payload['attachments'][1]['contentInBase64']);
+
+                    return true;
+                }),
+            )
+            ->willReturn(new Response(202, [], \json_encode([
+                'id'     => 'uuid-multi-attach',
+                'status' => 'Running',
+            ])));
+
+        $sent = $this->transport->send($message);
+        $this->assertEquals(1, $sent);
+    }
+
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
     {
         return new \Swift_Mime_SimpleMessage(

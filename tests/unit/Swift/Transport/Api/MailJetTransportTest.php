@@ -293,6 +293,81 @@ class Swift_Transport_Api_MailJetTransportTest extends TestCase
         $this->assertSame(\base64_encode('file content'), $msg['Attachments'][0]['Base64Content']);
     }
 
+    public function testSendWithMultipleRecipients(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message->setFrom(['from@example.com' => 'Sender']);
+        $message->setTo([
+            'first@example.com'  => 'First Recipient',
+            'second@example.com' => null,
+        ]);
+        $message->setSubject('Multi Test');
+        $message->setBody('Hello');
+
+        $capturedPayload = null;
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('POST', $this->anything(), $this->callback(function ($options) use (&$capturedPayload) {
+                $capturedPayload = $options['json'];
+
+                return true;
+            }))
+            ->willReturn(new Response(200, [], \json_encode([
+                'Messages' => [['Status' => 'success']],
+            ])));
+
+        $evt = $this->createMock(\Swift_Events_SendEvent::class);
+        $this->eventDispatcherMock->method('createSendEvent')->willReturn($evt);
+        $this->eventDispatcherMock->method('createTransportChangeEvent')
+            ->willReturn($this->createMock(\Swift_Events_TransportChangeEvent::class));
+
+        $this->transport->send($message);
+
+        $msg = $capturedPayload['Messages'][0];
+        $this->assertCount(2, $msg['To']);
+        $this->assertEquals(
+            [
+                ['Email' => 'first@example.com', 'Name' => 'First Recipient'],
+                ['Email' => 'second@example.com'],
+            ],
+            $msg['To'],
+        );
+    }
+
+    public function testSendWithoutSenderName(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message->setFrom(['from@example.com']);
+        $message->setTo(['to@example.com' => 'Recipient']);
+        $message->setSubject('No Name Test');
+        $message->setBody('Hello');
+
+        $capturedPayload = null;
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('POST', $this->anything(), $this->callback(function ($options) use (&$capturedPayload) {
+                $capturedPayload = $options['json'];
+
+                return true;
+            }))
+            ->willReturn(new Response(200, [], \json_encode([
+                'Messages' => [['Status' => 'success']],
+            ])));
+
+        $evt = $this->createMock(\Swift_Events_SendEvent::class);
+        $this->eventDispatcherMock->method('createSendEvent')->willReturn($evt);
+        $this->eventDispatcherMock->method('createTransportChangeEvent')
+            ->willReturn($this->createMock(\Swift_Events_TransportChangeEvent::class));
+
+        $this->transport->send($message);
+
+        $msg = $capturedPayload['Messages'][0];
+        $this->assertSame(['Email' => 'from@example.com'], $msg['From']);
+        $this->assertArrayNotHasKey('Name', $msg['From']);
+    }
+
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
     {
         return new \Swift_Mime_SimpleMessage(

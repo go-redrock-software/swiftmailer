@@ -397,6 +397,149 @@ class SweegoTransportTest extends TestCase
         $this->transport->send($message);
     }
 
+    public function testSendMessageWithInlineImage(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['sender@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'To User'])
+            ->setSubject('Inline Image Test');
+        $message->setBody('<p>Hello <img src="'.$message->embed(new \Swift_Image('image data', 'logo.png', 'image/png')).'" /></p>', 'text/html');
+
+        $response = $this->createMockResponse(200, ['transaction_id' => 'uuid-inline']);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    // Embedded images are emitted as inline attachments carrying a content_id
+                    $this->assertArrayHasKey('attachments', $payload);
+                    $this->assertCount(1, $payload['attachments']);
+                    $this->assertSame('image data', $payload['attachments'][0]['content']);
+                    $this->assertSame('logo.png', $payload['attachments'][0]['filename']);
+                    $this->assertSame('inline', $payload['attachments'][0]['disposition']);
+                    $this->assertArrayHasKey('content_id', $payload['attachments'][0]);
+                    $this->assertNotEmpty($payload['attachments'][0]['content_id']);
+
+                    return true;
+                }),
+            )
+            ->willReturn($response);
+
+        $this->transport->start();
+        $this->transport->send($message);
+    }
+
+    public function testSendMessageWithMultipartBody(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['sender@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'To User'])
+            ->setSubject('Multipart Test')
+            ->setBody('Plain text body');
+        // Swift_Mime_SimpleMessage has no addPart(); attaching a MimePart is exactly
+        // what Swift_Message::addPart() does internally to add the HTML alternative.
+        $message->attach(new \Swift_MimePart('<h1>Hello</h1>', 'text/html'));
+
+        $response = $this->createMockResponse(200, ['transaction_id' => 'uuid-multipart']);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    // Both plain-text and HTML bodies are sent together
+                    $this->assertSame('Plain text body', $payload['message-txt']);
+                    $this->assertSame('<h1>Hello</h1>', $payload['message-html']);
+                    // A MimePart alternative is not treated as an attachment
+                    $this->assertArrayNotHasKey('attachments', $payload);
+
+                    return true;
+                }),
+            )
+            ->willReturn($response);
+
+        $this->transport->start();
+        $this->transport->send($message);
+    }
+
+    public function testSendMessageWithMultipleRecipients(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['sender@example.com' => 'Sender'])
+            ->setTo([
+                'first@example.com'  => 'First User',
+                'second@example.com' => 'Second User',
+            ])
+            ->setSubject('Multiple Recipients Test')
+            ->setBody('Body text');
+
+        $response = $this->createMockResponse(200, ['transaction_id' => 'uuid-multi']);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    // Each To recipient becomes its own entry; the display name is omitted
+                    $this->assertCount(2, $payload['recipients']);
+                    $this->assertSame(['email' => 'first@example.com'], $payload['recipients'][0]);
+                    $this->assertSame(['email' => 'second@example.com'], $payload['recipients'][1]);
+
+                    return true;
+                }),
+            )
+            ->willReturn($response);
+
+        $this->transport->start();
+        $count = $this->transport->send($message);
+
+        $this->assertSame(2, $count);
+    }
+
+    public function testSendMessageFromWithoutName(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom('sender@example.com')
+            ->setTo(['to@example.com' => 'To User'])
+            ->setSubject('From Without Name Test')
+            ->setBody('Body text');
+
+        $response = $this->createMockResponse(200, ['transaction_id' => 'uuid-noname']);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    // With no display name the 'name' key is filtered out of the from object
+                    $this->assertSame(['email' => 'sender@example.com'], $payload['from']);
+
+                    return true;
+                }),
+            )
+            ->willReturn($response);
+
+        $this->transport->start();
+        $this->transport->send($message);
+    }
+
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
     {
         return new \Swift_Mime_SimpleMessage(

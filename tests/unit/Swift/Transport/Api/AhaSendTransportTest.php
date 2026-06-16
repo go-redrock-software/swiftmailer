@@ -104,6 +104,44 @@ class AhaSendTransportTest extends TestCase
         $this->assertEquals(1, $sent);
     }
 
+    public function testSendWithTextAndHtmlBody(): void
+    {
+        $message = $this->createSwiftMessage();
+        $message
+            ->setFrom(['sender@example.com' => 'Sender'])
+            ->setTo(['to@example.com' => 'Recipient'])
+            ->setSubject('Multipart test')
+            ->setBody('Plain text version');
+        // Bare Swift_Mime_SimpleMessage has no addPart(); attach the HTML alternative
+        // directly so getMessageBody() picks it up as the html part.
+        $message->attach(new \Swift_MimePart('<p>HTML version</p>', 'text/html'));
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                $this->anything(),
+                $this->callback(function (array $options): bool {
+                    $payload = $options['json'];
+
+                    // Both alternative parts must land in the content block
+                    $this->assertEquals('Plain text version', $payload['content']['text_body']);
+                    $this->assertEquals('<p>HTML version</p>', $payload['content']['html_body']);
+
+                    return true;
+                }),
+            )
+            ->willReturn($this->createMockResponse(200, [
+                'object' => 'list',
+                'data'   => [
+                    ['object' => 'message', 'id' => 'uuid-multipart', 'status' => 'queued'],
+                ],
+            ]));
+
+        $sent = $this->transport->send($message);
+        $this->assertEquals(1, $sent);
+    }
+
     public function testSendWithCcAndBcc(): void
     {
         $message = $this->createSwiftMessage();
