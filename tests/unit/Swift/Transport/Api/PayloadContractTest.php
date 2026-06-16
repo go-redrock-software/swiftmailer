@@ -133,6 +133,10 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
 
     private const array SWEEGO_ATTACHMENT = ['content', 'filename', 'disposition', 'content_id'];
 
+    // Infobip -- POST /email/3/send (multipart/form-data; field names)
+    // Source: https://www.infobip.com/docs/api/channels/email/send-email-v3 (fetched 2026-06-16)
+    private const array INFOBIP_FIELDS = ['from', 'to', 'cc', 'bcc', 'subject', 'text', 'html', 'replyTo', 'attachment', 'inlineImage', 'messageId', 'templateId', 'intermediateReport', 'notifyUrl', 'track'];
+
     public function testSendgridPayloadConformsToPublishedSchema(): void
     {
         $payload = $this->capturePayload('sendgrid');
@@ -361,6 +365,17 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
         }
     }
 
+    public function testInfoBipFormFieldsConformToPublishedSchema(): void
+    {
+        foreach ($this->captureMultipartFields('infobip') as $field) {
+            $this->assertContains(
+                $field,
+                self::INFOBIP_FIELDS,
+                \sprintf('Infobip multipart field "%s" is not in the provider schema.', $field),
+            );
+        }
+    }
+
     private function assertOnlyAllowedKeys(array $payload, array $allowed, string $context): void
     {
         $unknown = \array_values(\array_diff(\array_keys($payload), $allowed));
@@ -402,6 +417,32 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
         return $captured;
     }
 
+    /**
+     * Build the transport with a capturing client, send a rich message, and
+     * return the list of multipart/form-data field names it emitted.
+     *
+     * @return string[]
+     */
+    private function captureMultipartFields(string $provider): array
+    {
+        $captured = [];
+
+        $client = $this->createMock(ClientInterface::class);
+        $client->method('request')->willReturnCallback(
+            function (string $method, string $uri, array $options) use (&$captured, $provider): Response {
+                $captured = \array_map(static fn (array $part): string => $part['name'], $options['multipart']);
+
+                return $this->successResponse($provider);
+            },
+        );
+
+        $this->makeTransport($provider, $client)->send($this->richMessage());
+
+        $this->assertNotEmpty($captured, $provider.' produced no multipart fields');
+
+        return $captured;
+    }
+
     private function makeTransport(string $provider, ClientInterface $client): Swift_Transport_AbstractHttpApiTransport
     {
         return match ($provider) {
@@ -420,6 +461,7 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
             'azure'      => new Swift_Transport_Api_AzureTransport('endpoint=https://test.communication.azure.com/;accesskey='.\base64_encode('secret'), $client),
             'mailomat'   => new Swift_Transport_Api_MailomatTransport('api-key', $client),
             'sweego'     => new Swift_Transport_Api_SweegoTransport('api-key', $client),
+            'infobip'    => new Swift_Transport_Api_InfoBipTransport('api-key', 'xyz.api.infobip.com', $client),
             default      => throw new InvalidArgumentException($provider),
         };
     }
@@ -442,6 +484,7 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
             'azure'      => new Response(202, [], '{"id":"op-id","status":"NotStarted"}'),
             'mailomat'   => new Response(200, [], '{"id":"mo-id","status":"queued"}'),
             'sweego'     => new Response(200, [], '{"transaction_id":"sw-id"}'),
+            'infobip'    => new Response(200, [], '{"messages":[{"messageId":"ib-id","status":{"groupName":"PENDING"}}]}'),
             default      => throw new InvalidArgumentException($provider),
         };
     }
