@@ -121,6 +121,12 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
 
     private const array AZURE_ATTACHMENT = ['name', 'contentType', 'contentInBase64', 'contentId'];
 
+    // Mailomat -- POST /message
+    // Source: https://api.mailomat.swiss/docs (fetched 2026-06-16)
+    private const array MAILOMAT_TOP = ['from', 'to', 'cc', 'bcc', 'replyTo', 'subject', 'text', 'html', 'attachments'];
+
+    private const array MAILOMAT_ATTACHMENT = ['filename', 'contentBase64', 'contentType', 'contentId'];
+
     public function testSendgridPayloadConformsToPublishedSchema(): void
     {
         $payload = $this->capturePayload('sendgrid');
@@ -320,6 +326,18 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
         }
     }
 
+    public function testMailomatPayloadConformsToPublishedSchema(): void
+    {
+        $payload = $this->capturePayload('mailomat');
+
+        $this->assertOnlyAllowedKeys($payload, self::MAILOMAT_TOP, 'Mailomat top-level');
+        $this->assertRequiredKeys($payload, ['from', 'subject'], 'Mailomat');
+
+        foreach ($payload['attachments'] ?? [] as $attachment) {
+            $this->assertOnlyAllowedKeys($attachment, self::MAILOMAT_ATTACHMENT, 'Mailomat attachment');
+        }
+    }
+
     private function assertOnlyAllowedKeys(array $payload, array $allowed, string $context): void
     {
         $unknown = \array_values(\array_diff(\array_keys($payload), $allowed));
@@ -377,6 +395,7 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
             'mailjet'    => new Swift_Transport_Api_MailJetTransport('public-key', 'private-key', $client),
             'mailchimp'  => new Swift_Transport_Api_MailChimpTransport('api-key', $client),
             'azure'      => new Swift_Transport_Api_AzureTransport('endpoint=https://test.communication.azure.com/;accesskey='.\base64_encode('secret'), $client),
+            'mailomat'   => new Swift_Transport_Api_MailomatTransport('api-key', $client),
             default      => throw new InvalidArgumentException($provider),
         };
     }
@@ -397,6 +416,7 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
             'mailjet'    => new Response(200, [], '{"Messages":[{"Status":"success"}]}'),
             'mailchimp'  => new Response(200, [], '[{"email":"to@example.com","status":"queued","_id":"abc123"}]'),
             'azure'      => new Response(202, [], '{"id":"op-id","status":"NotStarted"}'),
+            'mailomat'   => new Response(200, [], '{"id":"mo-id","status":"queued"}'),
             default      => throw new InvalidArgumentException($provider),
         };
     }
