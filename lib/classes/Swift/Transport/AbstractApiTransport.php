@@ -85,7 +85,7 @@ abstract class Swift_Transport_AbstractApiTransport implements Swift_Transport
     #[Override]
     public function stop(): void
     {
-        if ($this->started && $evt = $this->eventDispatcher->createTransportChangeEvent($this)) {
+        if ($this->started && $evt = $this->eventDispatcher?->createTransportChangeEvent($this)) {
             $this->eventDispatcher->dispatchEvent($evt, 'beforeTransportStopped');
             if ($evt->bubbleCancelled()) {
                 return;
@@ -114,7 +114,7 @@ abstract class Swift_Transport_AbstractApiTransport implements Swift_Transport
      */
     protected function throwException(Swift_TransportException $e): void
     {
-        if ($evt = $this->eventDispatcher->createTransportExceptionEvent($this, $e)) {
+        if ($evt = $this->eventDispatcher?->createTransportExceptionEvent($this, $e)) {
             $this->eventDispatcher->dispatchEvent($evt, 'exceptionThrown');
             if (!$evt->bubbleCancelled()) {
                 throw $e;
