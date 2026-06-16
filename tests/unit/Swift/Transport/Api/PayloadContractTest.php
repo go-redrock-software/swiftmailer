@@ -111,6 +111,16 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
 
     private const array MAILCHIMP_ATTACHMENT = ['type', 'name', 'content'];
 
+    // Azure Communication Services -- POST /emails:send
+    // Source: https://learn.microsoft.com/en-us/rest/api/communication/email/email/send (fetched 2026-06-16)
+    private const array AZURE_TOP = ['headers', 'senderAddress', 'content', 'recipients', 'attachments', 'replyTo', 'userEngagementTrackingDisabled'];
+
+    private const array AZURE_CONTENT = ['subject', 'plainText', 'html'];
+
+    private const array AZURE_RECIPIENTS = ['to', 'cc', 'bcc'];
+
+    private const array AZURE_ATTACHMENT = ['name', 'contentType', 'contentInBase64', 'contentId'];
+
     public function testSendgridPayloadConformsToPublishedSchema(): void
     {
         $payload = $this->capturePayload('sendgrid');
@@ -294,6 +304,22 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
         }
     }
 
+    public function testAzurePayloadConformsToPublishedSchema(): void
+    {
+        $payload = $this->capturePayload('azure');
+
+        $this->assertOnlyAllowedKeys($payload, self::AZURE_TOP, 'Azure top-level');
+        $this->assertRequiredKeys($payload, ['senderAddress', 'content', 'recipients'], 'Azure');
+
+        $this->assertOnlyAllowedKeys($payload['content'], self::AZURE_CONTENT, 'Azure content');
+        $this->assertArrayHasKey('subject', $payload['content'], 'Azure requires content.subject');
+        $this->assertOnlyAllowedKeys($payload['recipients'], self::AZURE_RECIPIENTS, 'Azure recipients');
+
+        foreach ($payload['attachments'] ?? [] as $attachment) {
+            $this->assertOnlyAllowedKeys($attachment, self::AZURE_ATTACHMENT, 'Azure attachment');
+        }
+    }
+
     private function assertOnlyAllowedKeys(array $payload, array $allowed, string $context): void
     {
         $unknown = \array_values(\array_diff(\array_keys($payload), $allowed));
@@ -350,6 +376,7 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
             'ahasend'    => new Swift_Transport_Api_AhaSendTransport('api-key', $client),
             'mailjet'    => new Swift_Transport_Api_MailJetTransport('public-key', 'private-key', $client),
             'mailchimp'  => new Swift_Transport_Api_MailChimpTransport('api-key', $client),
+            'azure'      => new Swift_Transport_Api_AzureTransport('endpoint=https://test.communication.azure.com/;accesskey='.\base64_encode('secret'), $client),
             default      => throw new InvalidArgumentException($provider),
         };
     }
@@ -369,6 +396,7 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
             'ahasend'    => new Response(200, [], '{"object":"list","data":[{"object":"message","id":"aha-id","status":"queued"}]}'),
             'mailjet'    => new Response(200, [], '{"Messages":[{"Status":"success"}]}'),
             'mailchimp'  => new Response(200, [], '[{"email":"to@example.com","status":"queued","_id":"abc123"}]'),
+            'azure'      => new Response(202, [], '{"id":"op-id","status":"NotStarted"}'),
             default      => throw new InvalidArgumentException($provider),
         };
     }
