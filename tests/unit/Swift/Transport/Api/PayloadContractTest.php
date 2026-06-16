@@ -53,6 +53,18 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
 
     private const array POSTMARK_ATTACHMENT = ['Name', 'Content', 'ContentType', 'ContentID'];
 
+    // Resend -- POST /emails
+    // Source: https://resend.com/docs/api-reference/emails/send-email (fetched 2026-06-16)
+    private const array RESEND_TOP = ['from', 'to', 'cc', 'bcc', 'reply_to', 'subject', 'html', 'text', 'headers', 'attachments', 'tags', 'scheduled_at'];
+
+    private const array RESEND_ATTACHMENT = ['filename', 'content', 'path', 'contentType', 'contentId'];
+
+    // MailerSend -- POST /v1/email
+    // Source: https://developers.mailersend.com/api/v1/email.html (fetched 2026-06-16)
+    private const array MAILERSEND_TOP = ['from', 'to', 'cc', 'bcc', 'reply_to', 'subject', 'text', 'html', 'attachments', 'tags', 'personalization', 'template_id', 'headers'];
+
+    private const array MAILERSEND_ATTACHMENT = ['content', 'disposition', 'filename', 'id'];
+
     public function testSendgridPayloadConformsToPublishedSchema(): void
     {
         $payload = $this->capturePayload('sendgrid');
@@ -103,6 +115,34 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
         }
     }
 
+    public function testResendPayloadConformsToPublishedSchema(): void
+    {
+        $payload = $this->capturePayload('resend');
+
+        $this->assertOnlyAllowedKeys($payload, self::RESEND_TOP, 'Resend top-level');
+        $this->assertRequiredKeys($payload, ['from', 'to', 'subject'], 'Resend');
+
+        foreach ($payload['attachments'] as $attachment) {
+            $this->assertOnlyAllowedKeys($attachment, self::RESEND_ATTACHMENT, 'Resend attachment');
+        }
+        foreach ($payload['tags'] as $tag) {
+            $this->assertOnlyAllowedKeys($tag, ['name', 'value'], 'Resend tag');
+        }
+    }
+
+    public function testMailerSendPayloadConformsToPublishedSchema(): void
+    {
+        $payload = $this->capturePayload('mailersend');
+
+        $this->assertOnlyAllowedKeys($payload, self::MAILERSEND_TOP, 'MailerSend top-level');
+        $this->assertRequiredKeys($payload, ['from', 'to', 'subject'], 'MailerSend');
+
+        $this->assertArrayHasKey('email', $payload['from'], 'MailerSend from requires email');
+        foreach ($payload['attachments'] as $attachment) {
+            $this->assertOnlyAllowedKeys($attachment, self::MAILERSEND_ATTACHMENT, 'MailerSend attachment');
+        }
+    }
+
     private function assertOnlyAllowedKeys(array $payload, array $allowed, string $context): void
     {
         $unknown = \array_values(\array_diff(\array_keys($payload), $allowed));
@@ -147,20 +187,24 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
     private function makeTransport(string $provider, ClientInterface $client): Swift_Transport_AbstractHttpApiTransport
     {
         return match ($provider) {
-            'sendgrid' => new Swift_Transport_Api_SendgridTransport('api-key', $client),
-            'brevo'    => new Swift_Transport_Api_BrevoTransport('api-key', $client),
-            'postmark' => new Swift_Transport_Api_PostMarkTransport('api-key', $client),
-            default    => throw new InvalidArgumentException($provider),
+            'sendgrid'   => new Swift_Transport_Api_SendgridTransport('api-key', $client),
+            'brevo'      => new Swift_Transport_Api_BrevoTransport('api-key', $client),
+            'postmark'   => new Swift_Transport_Api_PostMarkTransport('api-key', $client),
+            'resend'     => new Swift_Transport_Api_ResendTransport('api-key', $client),
+            'mailersend' => new Swift_Transport_Api_MailerSendTransport('api-key', $client),
+            default      => throw new InvalidArgumentException($provider),
         };
     }
 
     private function successResponse(string $provider): Response
     {
         return match ($provider) {
-            'sendgrid' => new Response(202),
-            'brevo'    => new Response(201, [], '{"messageId":"<test>"}'),
-            'postmark' => new Response(200, [], '{"ErrorCode":0,"MessageID":"id","Message":"OK"}'),
-            default    => throw new InvalidArgumentException($provider),
+            'sendgrid'   => new Response(202),
+            'brevo'      => new Response(201, [], '{"messageId":"<test>"}'),
+            'postmark'   => new Response(200, [], '{"ErrorCode":0,"MessageID":"id","Message":"OK"}'),
+            'resend'     => new Response(200, [], '{"id":"resend-id"}'),
+            'mailersend' => new Response(202),
+            default      => throw new InvalidArgumentException($provider),
         };
     }
 
