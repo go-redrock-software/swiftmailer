@@ -71,6 +71,24 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
 
     private const array MAILPACE_ATTACHMENT = ['name', 'content', 'content_type', 'cid'];
 
+    // Scaleway TEM -- POST /transactional-email/v1alpha1/regions/{region}/emails
+    // Source: https://www.scaleway.com/en/developers/api/transactional-email/ (fetched 2026-06-16)
+    private const array SCALEWAY_TOP = ['from', 'to', 'cc', 'bcc', 'subject', 'text', 'html', 'project_id', 'attachments', 'additional_headers', 'send_before'];
+
+    private const array SCALEWAY_ATTACHMENT = ['name', 'type', 'content'];
+
+    // Postal -- POST /api/v1/send/message
+    // Source: https://docs.postalserver.io/developer/api (fetched 2026-06-16)
+    private const array POSTAL_TOP = ['to', 'cc', 'bcc', 'from', 'sender', 'subject', 'tag', 'reply_to', 'plain_body', 'html_body', 'attachments', 'headers', 'bounce'];
+
+    private const array POSTAL_ATTACHMENT = ['name', 'content_type', 'data'];
+
+    // Mailtrap -- POST /api/send
+    // Source: https://mailtrap.io/blog/api-send-email/ (fetched 2026-06-16)
+    private const array MAILTRAP_TOP = ['from', 'to', 'cc', 'bcc', 'subject', 'text', 'html', 'category', 'custom_variables', 'attachments', 'headers', 'reply_to'];
+
+    private const array MAILTRAP_ATTACHMENT = ['content', 'filename', 'type', 'disposition', 'content_id'];
+
     public function testSendgridPayloadConformsToPublishedSchema(): void
     {
         $payload = $this->capturePayload('sendgrid');
@@ -165,6 +183,45 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
         }
     }
 
+    public function testScalewayPayloadConformsToPublishedSchema(): void
+    {
+        $payload = $this->capturePayload('scaleway');
+
+        $this->assertOnlyAllowedKeys($payload, self::SCALEWAY_TOP, 'Scaleway top-level');
+        $this->assertRequiredKeys($payload, ['from', 'to', 'subject', 'project_id'], 'Scaleway');
+
+        foreach ($payload['attachments'] as $attachment) {
+            $this->assertOnlyAllowedKeys($attachment, self::SCALEWAY_ATTACHMENT, 'Scaleway attachment');
+        }
+        foreach ($payload['additional_headers'] as $header) {
+            $this->assertOnlyAllowedKeys($header, ['key', 'value'], 'Scaleway additional_headers');
+        }
+    }
+
+    public function testPostalPayloadConformsToPublishedSchema(): void
+    {
+        $payload = $this->capturePayload('postal');
+
+        $this->assertOnlyAllowedKeys($payload, self::POSTAL_TOP, 'Postal top-level');
+        $this->assertRequiredKeys($payload, ['from', 'to', 'subject'], 'Postal');
+
+        foreach ($payload['attachments'] as $attachment) {
+            $this->assertOnlyAllowedKeys($attachment, self::POSTAL_ATTACHMENT, 'Postal attachment');
+        }
+    }
+
+    public function testMailtrapPayloadConformsToPublishedSchema(): void
+    {
+        $payload = $this->capturePayload('mailtrap');
+
+        $this->assertOnlyAllowedKeys($payload, self::MAILTRAP_TOP, 'Mailtrap top-level');
+        $this->assertRequiredKeys($payload, ['from', 'to', 'subject'], 'Mailtrap');
+
+        foreach ($payload['attachments'] as $attachment) {
+            $this->assertOnlyAllowedKeys($attachment, self::MAILTRAP_ATTACHMENT, 'Mailtrap attachment');
+        }
+    }
+
     private function assertOnlyAllowedKeys(array $payload, array $allowed, string $context): void
     {
         $unknown = \array_values(\array_diff(\array_keys($payload), $allowed));
@@ -215,6 +272,9 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
             'resend'     => new Swift_Transport_Api_ResendTransport('api-key', $client),
             'mailersend' => new Swift_Transport_Api_MailerSendTransport('api-key', $client),
             'mailpace'   => new Swift_Transport_Api_MailPaceTransport('api-key', $client),
+            'scaleway'   => new Swift_Transport_Api_ScalewayTransport('api-key', 'project-id', 'fr-par', $client),
+            'postal'     => new Swift_Transport_Api_PostalTransport('api-key', 'postal.example.com', $client),
+            'mailtrap'   => new Swift_Transport_Api_MailtrapTransport('api-key', false, null, $client),
             default      => throw new InvalidArgumentException($provider),
         };
     }
@@ -228,6 +288,9 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
             'resend'     => new Response(200, [], '{"id":"resend-id"}'),
             'mailersend' => new Response(202),
             'mailpace'   => new Response(200, [], '{"id":"mp-id","status":"queued"}'),
+            'scaleway'   => new Response(200, [], '{"emails":[{"message_id":"sc-id"}]}'),
+            'postal'     => new Response(200, [], '{"status":"success","data":{"message_id":"po-id"}}'),
+            'mailtrap'   => new Response(200, [], '{"success":true,"message_ids":["mt-id"]}'),
             default      => throw new InvalidArgumentException($provider),
         };
     }
