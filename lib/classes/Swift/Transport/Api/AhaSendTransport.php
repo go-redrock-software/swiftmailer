@@ -92,11 +92,13 @@ class Swift_Transport_Api_AhaSendTransport extends Swift_Transport_AbstractHttpA
         $payload = [
             'from'       => $fromField,
             'recipients' => $recipients,
-            'subject'    => $message->getSubject(),
         ];
 
+        // AhaSend v1 nests subject, bodies, and attachments inside `content`.
         $body    = $this->getMessageBody($message);
-        $content = [];
+        $content = [
+            'subject' => $message->getSubject(),
+        ];
 
         if (null !== $body['text']) {
             $content['text_body'] = $body['text'];
@@ -106,17 +108,14 @@ class Swift_Transport_Api_AhaSendTransport extends Swift_Transport_AbstractHttpA
             $content['html_body'] = $body['html'];
         }
 
-        if (!empty($content)) {
-            $payload['content'] = $content;
-        }
-
         $attachments = $this->getMessageAttachments($message);
         if (!empty($attachments)) {
-            $payload['attachments'] = \array_map(static function (array $attachment): array {
+            $content['attachments'] = \array_map(static function (array $attachment): array {
                 $item = [
                     'file_name'    => $attachment['filename'],
                     'content_type' => $attachment['contentType'],
                     'data'         => \base64_encode($attachment['content']),
+                    'base64'       => true,
                 ];
 
                 if ('inline' === $attachment['disposition'] && $attachment['contentId']) {
@@ -126,6 +125,8 @@ class Swift_Transport_Api_AhaSendTransport extends Swift_Transport_AbstractHttpA
                 return $item;
             }, $attachments);
         }
+
+        $payload['content'] = $content;
 
         return $payload;
     }

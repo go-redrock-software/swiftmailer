@@ -52,10 +52,11 @@ class AhaSendTransportTest extends TestCase
                     $payload = $options['json'];
                     $this->assertEquals(['email' => 'sender@example.com', 'name' => 'Sender Name'], $payload['from']);
                     $this->assertEquals([['email' => 'recipient@example.com', 'name' => 'Recipient Name']], $payload['recipients']);
-                    $this->assertEquals('Test Subject', $payload['subject']);
+                    $this->assertEquals('Test Subject', $payload['content']['subject']);
                     $this->assertEquals('Plain text body', $payload['content']['text_body']);
                     $this->assertArrayNotHasKey('html_body', $payload['content']);
-                    $this->assertArrayNotHasKey('attachments', $payload);
+                    $this->assertArrayNotHasKey('subject', $payload);
+                    $this->assertArrayNotHasKey('attachments', $payload['content']);
 
                     return true;
                 }),
@@ -204,13 +205,14 @@ class AhaSendTransportTest extends TestCase
                 $this->callback(function (array $options): bool {
                     $payload = $options['json'];
 
-                    $this->assertArrayHasKey('attachments', $payload);
-                    $this->assertCount(1, $payload['attachments']);
+                    $this->assertArrayHasKey('attachments', $payload['content']);
+                    $this->assertCount(1, $payload['content']['attachments']);
 
-                    $attachment = $payload['attachments'][0];
+                    $attachment = $payload['content']['attachments'][0];
                     $this->assertEquals('document.pdf', $attachment['file_name']);
                     $this->assertEquals('application/pdf', $attachment['content_type']);
                     $this->assertEquals(\base64_encode('file content'), $attachment['data']);
+                    $this->assertTrue($attachment['base64']);
                     $this->assertArrayNotHasKey('content_id', $attachment);
 
                     return true;
@@ -327,9 +329,9 @@ class AhaSendTransportTest extends TestCase
             ->with('POST', $this->anything(), $this->callback(function (array $options): bool {
                 $payload = $options['json'];
 
-                $this->assertArrayHasKey('attachments', $payload);
+                $this->assertArrayHasKey('attachments', $payload['content']);
                 $inlineFound = false;
-                foreach ($payload['attachments'] as $att) {
+                foreach ($payload['content']['attachments'] as $att) {
                     if (isset($att['content_id'])) {
                         $inlineFound = true;
                     }

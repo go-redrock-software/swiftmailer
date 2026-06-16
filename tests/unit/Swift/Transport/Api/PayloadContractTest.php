@@ -89,6 +89,14 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
 
     private const array MAILTRAP_ATTACHMENT = ['content', 'filename', 'type', 'disposition', 'content_id'];
 
+    // AhaSend v1 -- POST /v1/email/send (subject/bodies/attachments nest under content)
+    // Source: https://ahasend.com/docs/api-reference/v1 (fetched 2026-06-16)
+    private const array AHASEND_TOP = ['from', 'recipients', 'content'];
+
+    private const array AHASEND_CONTENT = ['subject', 'text_body', 'html_body', 'attachments', 'headers'];
+
+    private const array AHASEND_ATTACHMENT = ['data', 'content_type', 'file_name', 'base64', 'content_id'];
+
     public function testSendgridPayloadConformsToPublishedSchema(): void
     {
         $payload = $this->capturePayload('sendgrid');
@@ -222,6 +230,21 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
         }
     }
 
+    public function testAhaSendPayloadConformsToPublishedSchema(): void
+    {
+        $payload = $this->capturePayload('ahasend');
+
+        $this->assertOnlyAllowedKeys($payload, self::AHASEND_TOP, 'AhaSend top-level');
+        $this->assertRequiredKeys($payload, ['from', 'recipients', 'content'], 'AhaSend');
+
+        $this->assertOnlyAllowedKeys($payload['content'], self::AHASEND_CONTENT, 'AhaSend content');
+        $this->assertArrayHasKey('subject', $payload['content'], 'AhaSend requires content.subject');
+
+        foreach ($payload['content']['attachments'] ?? [] as $attachment) {
+            $this->assertOnlyAllowedKeys($attachment, self::AHASEND_ATTACHMENT, 'AhaSend attachment');
+        }
+    }
+
     private function assertOnlyAllowedKeys(array $payload, array $allowed, string $context): void
     {
         $unknown = \array_values(\array_diff(\array_keys($payload), $allowed));
@@ -275,6 +298,7 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
             'scaleway'   => new Swift_Transport_Api_ScalewayTransport('api-key', 'project-id', 'fr-par', $client),
             'postal'     => new Swift_Transport_Api_PostalTransport('api-key', 'postal.example.com', $client),
             'mailtrap'   => new Swift_Transport_Api_MailtrapTransport('api-key', false, null, $client),
+            'ahasend'    => new Swift_Transport_Api_AhaSendTransport('api-key', $client),
             default      => throw new InvalidArgumentException($provider),
         };
     }
@@ -291,6 +315,7 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
             'scaleway'   => new Response(200, [], '{"emails":[{"message_id":"sc-id"}]}'),
             'postal'     => new Response(200, [], '{"status":"success","data":{"message_id":"po-id"}}'),
             'mailtrap'   => new Response(200, [], '{"success":true,"message_ids":["mt-id"]}'),
+            'ahasend'    => new Response(200, [], '{"object":"list","data":[{"object":"message","id":"aha-id","status":"queued"}]}'),
             default      => throw new InvalidArgumentException($provider),
         };
     }
