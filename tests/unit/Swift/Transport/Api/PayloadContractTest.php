@@ -97,6 +97,12 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
 
     private const array AHASEND_ATTACHMENT = ['data', 'content_type', 'file_name', 'base64', 'content_id'];
 
+    // Mailjet -- POST /v3.1/send (per-message objects inside Messages[])
+    // Source: https://dev.mailjet.com/email/reference/send-emails/ (fetched 2026-06-16)
+    private const array MAILJET_MESSAGE = ['From', 'To', 'Cc', 'Bcc', 'ReplyTo', 'Subject', 'TextPart', 'HTMLPart', 'Attachments', 'InlinedAttachments', 'Headers', 'CustomCampaign', 'CustomID', 'EventPayload', 'TemplateID', 'TemplateLanguage', 'Variables', 'MonitoringCategory', 'DeduplicateCampaign', 'TrackOpens', 'TrackClicks', 'Priority', 'URLTags'];
+
+    private const array MAILJET_ATTACHMENT = ['ContentType', 'Filename', 'Base64Content', 'ContentID'];
+
     public function testSendgridPayloadConformsToPublishedSchema(): void
     {
         $payload = $this->capturePayload('sendgrid');
@@ -245,6 +251,22 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
         }
     }
 
+    public function testMailJetPayloadConformsToPublishedSchema(): void
+    {
+        $payload = $this->capturePayload('mailjet');
+
+        $this->assertOnlyAllowedKeys($payload, ['Messages'], 'MailJet top-level');
+        $this->assertArrayHasKey('Messages', $payload);
+
+        $message = $payload['Messages'][0];
+        $this->assertOnlyAllowedKeys($message, self::MAILJET_MESSAGE, 'MailJet message');
+        $this->assertRequiredKeys($message, ['From', 'To', 'Subject'], 'MailJet message');
+
+        foreach ($message['Attachments'] ?? [] as $attachment) {
+            $this->assertOnlyAllowedKeys($attachment, self::MAILJET_ATTACHMENT, 'MailJet attachment');
+        }
+    }
+
     private function assertOnlyAllowedKeys(array $payload, array $allowed, string $context): void
     {
         $unknown = \array_values(\array_diff(\array_keys($payload), $allowed));
@@ -299,6 +321,7 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
             'postal'     => new Swift_Transport_Api_PostalTransport('api-key', 'postal.example.com', $client),
             'mailtrap'   => new Swift_Transport_Api_MailtrapTransport('api-key', false, null, $client),
             'ahasend'    => new Swift_Transport_Api_AhaSendTransport('api-key', $client),
+            'mailjet'    => new Swift_Transport_Api_MailJetTransport('public-key', 'private-key', $client),
             default      => throw new InvalidArgumentException($provider),
         };
     }
@@ -316,6 +339,7 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
             'postal'     => new Response(200, [], '{"status":"success","data":{"message_id":"po-id"}}'),
             'mailtrap'   => new Response(200, [], '{"success":true,"message_ids":["mt-id"]}'),
             'ahasend'    => new Response(200, [], '{"object":"list","data":[{"object":"message","id":"aha-id","status":"queued"}]}'),
+            'mailjet'    => new Response(200, [], '{"Messages":[{"Status":"success"}]}'),
             default      => throw new InvalidArgumentException($provider),
         };
     }

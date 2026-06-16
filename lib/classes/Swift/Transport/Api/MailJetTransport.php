@@ -139,9 +139,11 @@ class Swift_Transport_Api_MailJetTransport extends Swift_Transport_AbstractHttpA
             $msg['CustomCampaign'] = $tags[0];
         }
 
-        // Metadata → Properties (object)
+        // Metadata → EventPayload (JSON string). Mailjet Send v3.1 has no
+        // metadata/Properties object; EventPayload carries arbitrary caller data
+        // that is echoed back in event webhooks.
         if (!empty($metadata)) {
-            $msg['Properties'] = $metadata;
+            $msg['EventPayload'] = \json_encode($metadata);
         }
 
         return ['Messages' => [$msg]];

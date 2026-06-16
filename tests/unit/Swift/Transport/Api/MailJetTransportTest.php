@@ -253,7 +253,8 @@ class Swift_Transport_Api_MailJetTransportTest extends TestCase
 
         $msg = $capturedPayload['Messages'][0];
         $this->assertEquals('summer-sale', $msg['CustomCampaign']);
-        $this->assertEquals(['campaign' => 'summer'], $msg['Properties']);
+        // Mailjet v3.1 has no Properties field; metadata is sent via EventPayload as JSON.
+        $this->assertEquals(\json_encode(['campaign' => 'summer']), $msg['EventPayload']);
     }
 
     public function testSendWithAttachments(): void
