@@ -127,6 +127,12 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
 
     private const array MAILOMAT_ATTACHMENT = ['filename', 'contentBase64', 'contentType', 'contentId'];
 
+    // Sweego -- POST /send
+    // Source: https://www.sweego.io/channel/email/integrate-sweegos-api-to-send-transactional-emails (fetched 2026-06-16)
+    private const array SWEEGO_TOP = ['channel', 'provider', 'campaign-type', 'recipients', 'from', 'subject', 'message-txt', 'message-html', 'attachments', 'headers'];
+
+    private const array SWEEGO_ATTACHMENT = ['content', 'filename', 'disposition', 'content_id'];
+
     public function testSendgridPayloadConformsToPublishedSchema(): void
     {
         $payload = $this->capturePayload('sendgrid');
@@ -338,6 +344,23 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
         }
     }
 
+    public function testSweegoPayloadConformsToPublishedSchema(): void
+    {
+        $payload = $this->capturePayload('sweego');
+
+        $this->assertOnlyAllowedKeys($payload, self::SWEEGO_TOP, 'Sweego top-level');
+        $this->assertRequiredKeys($payload, ['channel', 'recipients', 'from', 'subject'], 'Sweego');
+        // Documented campaign-type value (the code previously sent the undocumented 'transac').
+        $this->assertSame('transactional', $payload['campaign-type'], 'Sweego campaign-type must match the documented value');
+
+        foreach ($payload['attachments'] ?? [] as $attachment) {
+            $this->assertOnlyAllowedKeys($attachment, self::SWEEGO_ATTACHMENT, 'Sweego attachment');
+        }
+        foreach ($payload['recipients'] as $recipient) {
+            $this->assertOnlyAllowedKeys($recipient, ['email', 'name'], 'Sweego recipient');
+        }
+    }
+
     private function assertOnlyAllowedKeys(array $payload, array $allowed, string $context): void
     {
         $unknown = \array_values(\array_diff(\array_keys($payload), $allowed));
@@ -396,6 +419,7 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
             'mailchimp'  => new Swift_Transport_Api_MailChimpTransport('api-key', $client),
             'azure'      => new Swift_Transport_Api_AzureTransport('endpoint=https://test.communication.azure.com/;accesskey='.\base64_encode('secret'), $client),
             'mailomat'   => new Swift_Transport_Api_MailomatTransport('api-key', $client),
+            'sweego'     => new Swift_Transport_Api_SweegoTransport('api-key', $client),
             default      => throw new InvalidArgumentException($provider),
         };
     }
@@ -417,6 +441,7 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
             'mailchimp'  => new Response(200, [], '[{"email":"to@example.com","status":"queued","_id":"abc123"}]'),
             'azure'      => new Response(202, [], '{"id":"op-id","status":"NotStarted"}'),
             'mailomat'   => new Response(200, [], '{"id":"mo-id","status":"queued"}'),
+            'sweego'     => new Response(200, [], '{"transaction_id":"sw-id"}'),
             default      => throw new InvalidArgumentException($provider),
         };
     }

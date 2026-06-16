@@ -126,7 +126,7 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
         $payload = [
             'channel'       => 'email',
             'provider'      => 'sweego',
-            'campaign-type' => 'transac',
+            'campaign-type' => 'transactional',
             'from'          => \array_filter([
                 'email' => $fromEmail,
                 'name'  => $fromName,
