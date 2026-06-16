@@ -137,6 +137,11 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
     // Source: https://www.infobip.com/docs/api/channels/email/send-email-v3 (fetched 2026-06-16)
     private const array INFOBIP_FIELDS = ['from', 'to', 'cc', 'bcc', 'subject', 'text', 'html', 'replyTo', 'attachment', 'inlineImage', 'messageId', 'templateId', 'intermediateReport', 'notifyUrl', 'track'];
 
+    // Mailgun -- POST /v3/{domain}/messages (multipart/form-data; field names)
+    // Source: https://documentation.mailgun.com/docs/mailgun/api-reference/send/mailgun/messages (fetched 2026-06-16)
+    // Plus prefixed fields: h:* (headers), v:* (variables), o:* (options).
+    private const array MAILGUN_FIELDS = ['from', 'to', 'cc', 'bcc', 'subject', 'text', 'html', 'attachment', 'inline', 'template'];
+
     public function testSendgridPayloadConformsToPublishedSchema(): void
     {
         $payload = $this->capturePayload('sendgrid');
@@ -376,6 +381,18 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
         }
     }
 
+    public function testMailGunFormFieldsConformToPublishedSchema(): void
+    {
+        foreach ($this->captureMultipartFields('mailgun') as $field) {
+            $valid = \in_array($field, self::MAILGUN_FIELDS, true)
+                || \str_starts_with($field, 'h:')   // custom headers
+                || \str_starts_with($field, 'v:')   // custom variables
+                || \str_starts_with($field, 'o:');  // options (e.g. o:tag)
+
+            $this->assertTrue($valid, \sprintf('Mailgun multipart field "%s" is not in the provider schema.', $field));
+        }
+    }
+
     private function assertOnlyAllowedKeys(array $payload, array $allowed, string $context): void
     {
         $unknown = \array_values(\array_diff(\array_keys($payload), $allowed));
@@ -462,6 +479,7 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
             'mailomat'   => new Swift_Transport_Api_MailomatTransport('api-key', $client),
             'sweego'     => new Swift_Transport_Api_SweegoTransport('api-key', $client),
             'infobip'    => new Swift_Transport_Api_InfoBipTransport('api-key', 'xyz.api.infobip.com', $client),
+            'mailgun'    => new Swift_Transport_Api_MailGunTransport('api-key', 'mail.example.com', 'https://api.mailgun.net', $client),
             default      => throw new InvalidArgumentException($provider),
         };
     }
@@ -485,6 +503,7 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
             'mailomat'   => new Response(200, [], '{"id":"mo-id","status":"queued"}'),
             'sweego'     => new Response(200, [], '{"transaction_id":"sw-id"}'),
             'infobip'    => new Response(200, [], '{"messages":[{"messageId":"ib-id","status":{"groupName":"PENDING"}}]}'),
+            'mailgun'    => new Response(200, [], '{"id":"mg-id","message":"Queued. Thank you."}'),
             default      => throw new InvalidArgumentException($provider),
         };
     }
