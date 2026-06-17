@@ -1,315 +1,93 @@
 <?php
 
+use AsyncAws\Ses\Exception\NotFoundException;
+use AsyncAws\Ses\Input\SendEmailRequest;
+use AsyncAws\Ses\Result\GetSuppressedDestinationResponse;
 use AsyncAws\Ses\Result\SendEmailResponse;
 use AsyncAws\Ses\SesClient;
 use PHPUnit\Framework\TestCase;
 
-/*
- * Stub classes for Symfony Mime components not installed in this project.
- * AmazonSesApiTransport references these in the global namespace.
- */
-if (!\class_exists('Address', false)) {
-    class Address
-    {
-        private string $address;
-
-        private string $name;
-
-        public function __construct(mixed $address, string $name = '')
-        {
-            if (\is_array($address)) {
-                $this->address = (string) \array_key_first($address);
-                $this->name    = (string) \array_values($address)[0];
-            } else {
-                $this->address = (string) $address;
-                $this->name    = $name;
-            }
-        }
-
-        public function getAddress(): string
-        {
-            return $this->address;
-        }
-
-        public function getName(): string
-        {
-            return $this->name;
-        }
-
-        public function getEncodedAddress(): string
-        {
-            return $this->address;
-        }
-
-        public function toString(): string
-        {
-            return $this->name ? "{$this->name} <{$this->address}>" : $this->address;
-        }
-    }
-}
-
-if (!\class_exists('Email', false)) {
-    class Email
-    {
-        private ?string $subject = null;
-
-        private array $from = [];
-
-        private array $to = [];
-
-        private array $cc = [];
-
-        private array $bcc = [];
-
-        private array $replyTo = [];
-
-        private ?string $textBody = null;
-
-        private ?string $htmlBody = null;
-
-        private ?Address $returnPath = null;
-
-        private object $headers;
-
-        public function __construct()
-        {
-            $this->headers = new class {
-                private array $headers = [];
-
-                public function get(string $name): ?object
-                {
-                    return $this->headers[$name] ?? null;
-                }
-
-                public function addHeader(string $name, object $header): void
-                {
-                    $this->headers[$name] = $header;
-                }
-
-                public function all(): array
-                {
-                    return \array_values($this->headers);
-                }
-            };
-        }
-
-        public function subject(string $subject): self
-        {
-            $this->subject = $subject;
-
-            return $this;
-        }
-
-        public function getSubject(): ?string
-        {
-            return $this->subject;
-        }
-
-        public function from(Address $a): self
-        {
-            $this->from = [$a];
-
-            return $this;
-        }
-
-        public function getFrom(): array
-        {
-            return $this->from;
-        }
-
-        public function to(Address ...$a): self
-        {
-            $this->to = $a;
-
-            return $this;
-        }
-
-        public function getTo(): array
-        {
-            return $this->to;
-        }
-
-        public function cc(Address ...$a): self
-        {
-            $this->cc = $a;
-
-            return $this;
-        }
-
-        public function getCc(): array
-        {
-            return $this->cc;
-        }
-
-        public function bcc(Address ...$a): self
-        {
-            $this->bcc = $a;
-
-            return $this;
-        }
-
-        public function getBcc(): array
-        {
-            return $this->bcc;
-        }
-
-        public function replyTo(Address ...$a): self
-        {
-            $this->replyTo = $a;
-
-            return $this;
-        }
-
-        public function getReplyTo(): array
-        {
-            return $this->replyTo;
-        }
-
-        public function text(string $t): self
-        {
-            $this->textBody = $t;
-
-            return $this;
-        }
-
-        public function getTextBody(): ?string
-        {
-            return $this->textBody;
-        }
-
-        public function html(string $h): self
-        {
-            $this->htmlBody = $h;
-
-            return $this;
-        }
-
-        public function getHtmlBody(): ?string
-        {
-            return $this->htmlBody;
-        }
-
-        public function returnPath(Address $a): self
-        {
-            $this->returnPath = $a;
-
-            return $this;
-        }
-
-        public function getReturnPath(): ?Address
-        {
-            return $this->returnPath;
-        }
-
-        public function getHeaders(): object
-        {
-            return $this->headers;
-        }
-    }
-}
-
-// Alias AsyncAws classes to global namespace -- the transport uses them unqualified
-if (!\class_exists('Content', false)) {
-    \class_alias(AsyncAws\Ses\ValueObject\Content::class, 'Content');
-}
-if (!\class_exists('SendEmailRequest', false)) {
-    \class_alias(AsyncAws\Ses\Input\SendEmailRequest::class, 'SendEmailRequest');
-}
-
-// MetadataHeader stub (from Symfony Mime, not installed)
-if (!\class_exists('MetadataHeader', false)) {
-    class MetadataHeader
-    {
-        private string $key;
-
-        private string $value;
-
-        public function __construct(string $key, string $value)
-        {
-            $this->key   = $key;
-            $this->value = $value;
-        }
-
-        public function getKey(): string
-        {
-            return $this->key;
-        }
-
-        public function getValue(): string
-        {
-            return $this->value;
-        }
-    }
-}
-
 /**
- * Fake SES client -- extends real SesClient for type compatibility.
+ * Fake SES client backed by the REAL async-aws SesClient for type compatibility.
+ *
+ * The constructor is overridden to a no-op so the real client (which needs AWS
+ * configuration/credentials) is never instantiated. sendEmail() captures the
+ * real SendEmailRequest the transport builds so assertions run against the
+ * genuine async-aws getters, and ping behaviour is driven through
+ * getSuppressedDestination().
  */
-class FakeSesClient extends SesClient
+class FakeSesApiClient extends SesClient
 {
-    private ?SendEmailResponse $response = null;
+    public ?SendEmailRequest $capturedInput = null;
 
-    private ?Exception $sendException = null;
+    private ?SendEmailResponse $sendResponse = null;
 
-    private ?Exception $pingException = null;
+    private ?Throwable $sendException = null;
+
+    private ?Throwable $pingException = null;
 
     public function __construct()
     {
+        // Intentionally empty: skip the real SesClient constructor.
     }
 
-    public function setSendResponse(SendEmailResponse $r): void
+    public function setSendResponse(SendEmailResponse $response): void
     {
-        $this->response = $r;
+        $this->sendResponse = $response;
     }
 
-    public function setSendException(Exception $e): void
+    public function setSendException(Throwable $e): void
     {
         $this->sendException = $e;
     }
 
-    public function setPingException(Exception $e): void
+    public function setPingException(Throwable $e): void
     {
         $this->pingException = $e;
     }
 
     public function sendEmail($input): SendEmailResponse
     {
+        $this->capturedInput = $input;
+
         if ($this->sendException) {
             throw $this->sendException;
         }
 
-        return $this->response;
+        return $this->sendResponse;
     }
 
-    public function getAccountSendingEnabled(): object
+    public function getSuppressedDestination($input): GetSuppressedDestinationResponse
     {
-        if ($this->pingException) {
-            throw $this->pingException;
-        }
+        // ping() only ever inspects the thrown exception; it never reads a result.
+        throw $this->pingException ?? self::makeNotFound();
+    }
 
-        return new stdClass();
+    public static function makeNotFound(): NotFoundException
+    {
+        return (new ReflectionClass(NotFoundException::class))->newInstanceWithoutConstructor();
     }
 }
 
 /**
- * Fake SendEmailResponse -- adds the get() method the transport expects.
+ * Fake SendEmailResponse created without the real constructor (which needs an
+ * HTTP Response). getMessageId() returns a preset id, bypassing initialize().
  */
-class FakeSendEmailResponse extends SendEmailResponse
+class FakeSesApiResponse extends SendEmailResponse
 {
-    private ?string $fakeMessageId;
+    public ?string $messageId = null;
 
-    public static function create(?string $messageId = 'test-msg-id'): self
+    public static function withId(?string $id): self
     {
-        $rc                      = new ReflectionClass(self::class);
-        $instance                = $rc->newInstanceWithoutConstructor();
-        $instance->fakeMessageId = $messageId;
+        $r            = (new ReflectionClass(self::class))->newInstanceWithoutConstructor();
+        $r->messageId = $id;
 
-        return $instance;
+        return $r;
     }
 
     public function getMessageId(): ?string
     {
-        return $this->fakeMessageId;
+        return $this->messageId;
     }
 }
 
@@ -322,7 +100,7 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
         $this->eventDispatcherMock = $this->createMock(Swift_Events_EventDispatcher::class);
     }
 
-    // ── Construction & interface ─────────────────────────────────────────
+    // ── Construction & interface ───────────────────────────────────
 
     public function testImplementsSwiftTransport(): void
     {
@@ -334,7 +112,7 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
         $this->assertInstanceOf(Swift_Transport_AbstractApiTransport::class, $this->makeTransport());
     }
 
-    // ── start / isStarted ───────────────────────────────────────────────
+    // ── start / isStarted ──────────────────────────────────────
 
     public function testIsNotStartedByDefault(): void
     {
@@ -348,36 +126,36 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
         $this->assertTrue($t->isStarted());
     }
 
-    // ── ping ────────────────────────────────────────────────────────────
+    // ── ping ────────────────────────────────────────────
 
-    public function testPingReturnsTrueOnSuccess(): void
+    public function testPingReturnsTrueWhenAddressNotSuppressed(): void
     {
+        // NotFoundException means SES answered -- the address just isn't suppressed.
         $this->assertTrue($this->makeTransport()->ping());
     }
 
-    public function testPingReturnsFalseOnException(): void
+    public function testPingReturnsFalseOnTransportError(): void
     {
-        $c = new FakeSesClient();
-        $c->setPingException(new RuntimeException('fail'));
+        $c = new FakeSesApiClient();
+        $c->setPingException(new RuntimeException('network down'));
         $this->assertFalse($this->makeTransport($c)->ping());
     }
 
-    // ── getApiConnection ────────────────────────────────────────────────
+    // ── getApiConnection ────────────────────────────────────
 
     public function testGetApiConnectionReturnsSesClient(): void
     {
-        $c   = new FakeSesClient();
+        $c   = new FakeSesApiClient();
         $t   = $this->makeTransport($c);
         $ref = new ReflectionMethod($t, 'getApiConnection');
         $this->assertSame($c, $ref->invoke($t));
     }
 
-    // ── send: basic ─────────────────────────────────────────────────────
+    // ── send: basic ────────────────────────────────────────
 
     public function testSendBasicMessage(): void
     {
-        $c = new FakeSesClient();
-        $c->setSendResponse(FakeSendEmailResponse::create('msg-1'));
+        $c = $this->clientReturning('msg-1');
         $t = $this->makeTransport($c);
 
         $m = $this->msg();
@@ -387,135 +165,110 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
         $m->setBody('Body text');
 
         $this->assertSame(1, $t->send($m));
+
+        $req = $c->capturedInput;
+        $this->assertInstanceOf(SendEmailRequest::class, $req);
+        $this->assertSame('Sender <from@example.com>', $req->getFromEmailAddress());
+        $this->assertSame(['Recip <to@example.com>'], $req->getDestination()->getToAddresses());
+        $this->assertSame('Subj', $req->getContent()->getSimple()->getSubject()->getData());
+        $this->assertSame('Body text', $req->getContent()->getSimple()->getBody()->getText()->getData());
+        $this->assertNull($req->getContent()->getSimple()->getBody()->getHtml());
     }
 
     public function testSendAutoStarts(): void
     {
-        $c = new FakeSesClient();
-        $c->setSendResponse(FakeSendEmailResponse::create());
+        $c = $this->clientReturning('id');
         $t = $this->makeTransport($c);
         $this->assertFalse($t->isStarted());
 
-        $m = $this->msg();
-        $m->setFrom(['from@example.com' => 'S']);
-        $m->setTo(['to@example.com' => 'R']);
-        $m->setSubject('T');
-        $m->setBody('B');
-
-        $t->send($m);
+        $t->send($this->basicMsg());
         $this->assertTrue($t->isStarted());
     }
 
-    // ── send: CC / BCC ──────────────────────────────────────────────────
+    // ── send: CC / BCC ─────────────────────────────────────
 
     public function testSendWithCc(): void
     {
-        $c = new FakeSesClient();
-        $c->setSendResponse(FakeSendEmailResponse::create());
+        $c = $this->clientReturning('id');
         $t = $this->makeTransport($c);
 
-        $m = $this->msg();
-        $m->setFrom(['from@example.com' => 'S']);
-        $m->setTo(['to@example.com' => 'R']);
+        $m = $this->basicMsg();
         $m->setCc(['cc@example.com' => 'CC']);
-        $m->setSubject('T');
-        $m->setBody('B');
-
         $this->assertSame(1, $t->send($m));
+
+        $this->assertSame(['CC <cc@example.com>'], $c->capturedInput->getDestination()->getCcAddresses());
     }
 
     public function testSendWithBcc(): void
     {
-        $c = new FakeSesClient();
-        $c->setSendResponse(FakeSendEmailResponse::create());
+        $c = $this->clientReturning('id');
         $t = $this->makeTransport($c);
 
-        $m = $this->msg();
-        $m->setFrom(['from@example.com' => 'S']);
-        $m->setTo(['to@example.com' => 'R']);
+        $m = $this->basicMsg();
         $m->setBcc(['bcc@example.com' => 'BCC']);
-        $m->setSubject('T');
-        $m->setBody('B');
-
         $this->assertSame(1, $t->send($m));
+
+        $this->assertSame(['BCC <bcc@example.com>'], $c->capturedInput->getDestination()->getBccAddresses());
     }
 
-    public function testSendWithCcAndBcc(): void
+    // ── send: reply-to ─────────────────────────────────────
+
+    public function testSendWithReplyTo(): void
     {
-        $c = new FakeSesClient();
-        $c->setSendResponse(FakeSendEmailResponse::create());
+        $c = $this->clientReturning('id');
         $t = $this->makeTransport($c);
 
-        $m = $this->msg();
-        $m->setFrom(['from@example.com' => 'S']);
-        $m->setTo(['to@example.com' => 'R']);
-        $m->setCc(['cc@example.com' => 'CC']);
-        $m->setBcc(['bcc@example.com' => 'BCC']);
-        $m->setSubject('T');
-        $m->setBody('B');
-
+        $m = $this->basicMsg();
+        $m->setReplyTo(['reply@example.com' => 'Reply']);
         $this->assertSame(1, $t->send($m));
+
+        $this->assertSame(['Reply <reply@example.com>'], $c->capturedInput->getReplyToAddresses());
     }
 
-    // ── send: HTML body ─────────────────────────────────────────────────
+    // ── send: HTML body ────────────────────────────────────
 
-    public function testSendWithHtmlBody(): void
+    public function testSendWithHtmlBodySetsHtmlNotText(): void
     {
-        $c = new FakeSesClient();
-        $c->setSendResponse(FakeSendEmailResponse::create());
+        $c = $this->clientReturning('id');
         $t = $this->makeTransport($c);
 
-        $m = $this->msg();
-        $m->setFrom(['from@example.com' => 'S']);
-        $m->setTo(['to@example.com' => 'R']);
-        $m->setSubject('T');
+        $m = $this->basicMsg();
         $m->setBody('<p>HTML</p>', 'text/html');
-
         $this->assertSame(1, $t->send($m));
+
+        $body = $c->capturedInput->getContent()->getSimple()->getBody();
+        $this->assertSame('<p>HTML</p>', $body->getHtml()->getData());
+        $this->assertNull($body->getText());
     }
 
-    // ── send: no MessageId ──────────────────────────────────────────────
+    // ── send: no MessageId ───────────────────────────────────
 
     public function testSendReturnsZeroWhenNoMessageId(): void
     {
-        $c = new FakeSesClient();
-        $c->setSendResponse(FakeSendEmailResponse::create(null));
+        $c = $this->clientReturning(null);
         $t = $this->makeTransport($c);
-
-        $m = $this->msg();
-        $m->setFrom(['from@example.com' => 'S']);
-        $m->setTo(['to@example.com' => 'R']);
-        $m->setSubject('T');
-        $m->setBody('B');
-
-        $this->assertSame(0, $t->send($m));
+        $this->assertSame(0, $t->send($this->basicMsg()));
     }
 
-    // ── send: error paths ───────────────────────────────────────────────
+    // ── send: error paths ───────────────────────────────────
 
     public function testSendThrowsTransportExceptionOnFailure(): void
     {
-        $c = new FakeSesClient();
+        $c = new FakeSesApiClient();
         $c->setSendException(new RuntimeException('AWS fail'));
         $t = $this->makeTransport($c);
 
         $exEvt = $this->createMock(Swift_Events_TransportExceptionEvent::class);
         $this->eventDispatcherMock->method('createTransportExceptionEvent')->willReturn($exEvt);
 
-        $m = $this->msg();
-        $m->setFrom(['from@example.com' => 'S']);
-        $m->setTo(['to@example.com' => 'R']);
-        $m->setSubject('T');
-        $m->setBody('B');
-
         $this->expectException(Swift_TransportException::class);
         $this->expectExceptionMessage('Unable to send email');
-        $t->send($m);
+        $t->send($this->basicMsg());
     }
 
     public function testSendReturnsZeroWhenExceptionBubbleCancelled(): void
     {
-        $c = new FakeSesClient();
+        $c = new FakeSesApiClient();
         $c->setSendException(new RuntimeException('AWS fail'));
 
         $exEvt = $this->createMock(Swift_Events_TransportExceptionEvent::class);
@@ -523,57 +276,102 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
         $this->eventDispatcherMock->method('createTransportExceptionEvent')->willReturn($exEvt);
 
         $t = $this->makeTransport($c);
-
-        $m = $this->msg();
-        $m->setFrom(['from@example.com' => 'S']);
-        $m->setTo(['to@example.com' => 'R']);
-        $m->setSubject('T');
-        $m->setBody('B');
-
-        $this->assertSame(0, $t->send($m));
+        $this->assertSame(0, $t->send($this->basicMsg()));
     }
 
-    // ── send: X-Mailer-Tag headers ──────────────────────────────────────
+    // ── send: SES headers ───────────────────────────────────
 
-    public function testSendExtractsMailerTagHeaders(): void
+    public function testSendMapsConfigurationSetHeader(): void
     {
-        $c = new FakeSesClient();
-        $c->setSendResponse(FakeSendEmailResponse::create());
+        $c = $this->clientReturning('id');
         $t = $this->makeTransport($c);
 
-        $m = $this->msg();
-        $m->setFrom(['from@example.com' => 'S']);
-        $m->setTo(['to@example.com' => 'R']);
-        $m->setSubject('T');
-        $m->setBody('B');
-        $m->getHeaders()->addTextHeader('X-Mailer-Tag', 'campaign-1');
-
+        $m = $this->basicMsg();
+        $m->getHeaders()->addTextHeader('X-SES-CONFIGURATION-SET', 'my-config-set');
         $this->assertSame(1, $t->send($m));
+
+        $this->assertSame('my-config-set', $c->capturedInput->getConfigurationSetName());
+    }
+
+    public function testSendMapsSourceArnHeaderToIdentityArn(): void
+    {
+        $c = $this->clientReturning('id');
+        $t = $this->makeTransport($c);
+
+        $arn = 'arn:aws:ses:us-east-1:123:identity/example.com';
+        $m   = $this->basicMsg();
+        $m->getHeaders()->addTextHeader('X-SES-SOURCE-ARN', $arn);
+        $this->assertSame(1, $t->send($m));
+
+        $this->assertSame($arn, $c->capturedInput->getFromEmailAddressIdentityArn());
+    }
+
+    public function testSendMapsListManagementOptionsHeader(): void
+    {
+        $c = $this->clientReturning('id');
+        $t = $this->makeTransport($c);
+
+        $m = $this->basicMsg();
+        $m->getHeaders()->addTextHeader('X-SES-LIST-MANAGEMENT-OPTIONS', 'contactListName=MyList; topicName=MyTopic');
+        $this->assertSame(1, $t->send($m));
+
+        $lmo = $c->capturedInput->getListManagementOptions();
+        $this->assertNotNull($lmo);
+        $this->assertSame('MyList', $lmo->getContactListName());
+        $this->assertSame('MyTopic', $lmo->getTopicName());
+    }
+
+    public function testSendMapsReturnPathToFeedbackForwarding(): void
+    {
+        $c = $this->clientReturning('id');
+        $t = $this->makeTransport($c);
+
+        $m = $this->basicMsg();
+        $m->setReturnPath('bounce@example.com');
+        $this->assertSame(1, $t->send($m));
+
+        $this->assertSame('bounce@example.com', $c->capturedInput->getFeedbackForwardingEmailAddress());
+    }
+
+    // ── send: X-Mailer-Tag headers → EmailTags ────────────────────────
+
+    public function testSendExtractsMailerTagsIntoEmailTagsAndRemovesHeader(): void
+    {
+        $c = $this->clientReturning('id');
+        $t = $this->makeTransport($c);
+
+        $m = $this->basicMsg();
+        $m->getHeaders()->addTextHeader('X-Mailer-Tag', 'campaign-1');
+        $this->assertSame(1, $t->send($m));
+
+        $tags = $c->capturedInput->getEmailTags();
+        $this->assertCount(1, $tags);
+        $this->assertSame('tag', $tags[0]->getName());
+        $this->assertSame('campaign-1', $tags[0]->getValue());
         $this->assertEmpty($m->getHeaders()->getAll('X-Mailer-Tag'));
     }
 
     public function testSendWithMultipleMailerTags(): void
     {
-        $c = new FakeSesClient();
-        $c->setSendResponse(FakeSendEmailResponse::create());
+        $c = $this->clientReturning('id');
         $t = $this->makeTransport($c);
 
-        $m = $this->msg();
-        $m->setFrom(['from@example.com' => 'S']);
-        $m->setTo(['to@example.com' => 'R']);
-        $m->setSubject('T');
-        $m->setBody('B');
+        $m = $this->basicMsg();
         $m->getHeaders()->addTextHeader('X-Mailer-Tag', 't1');
         $m->getHeaders()->addTextHeader('X-Mailer-Tag', 't2');
-
         $this->assertSame(1, $t->send($m));
+
+        $tags = $c->capturedInput->getEmailTags();
+        $this->assertCount(2, $tags);
+        $this->assertSame(['t1', 't2'], [$tags[0]->getValue(), $tags[1]->getValue()]);
         $this->assertEmpty($m->getHeaders()->getAll('X-Mailer-Tag'));
     }
 
+    // ── send: recipients & encoding ──────────────────────────────
+
     public function testSendWithMultipleToRecipients(): void
     {
-        $c = new FakeSesClient();
-        $c->setSendResponse(FakeSendEmailResponse::create());
+        $c = $this->clientReturning('id');
         $t = $this->makeTransport($c);
 
         $m = $this->msg();
@@ -581,178 +379,77 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
         $m->setTo(['a@example.com' => 'A', 'b@example.com' => 'B']);
         $m->setSubject('T');
         $m->setBody('B');
-
         $this->assertSame(1, $t->send($m));
-    }
 
-    // ── stringifyAddress ────────────────────────────────────────────────
-
-    public function testStringifyAddressWithAsciiName(): void
-    {
-        $t   = $this->makeTransport();
-        $ref = new ReflectionMethod($t, 'stringifyAddress');
-        $a   = new Address('test@example.com', 'John Doe');
-
-        $this->assertSame('John Doe <test@example.com>', $ref->invoke($t, $a));
-    }
-
-    public function testStringifyAddressWithUtf8Name(): void
-    {
-        $t    = $this->makeTransport();
-        $ref  = new ReflectionMethod($t, 'stringifyAddress');
-        $name = "M\xC3\xBCller";
-        $a    = new Address('test@example.com', $name);
-
-        $expected = \sprintf('=?UTF-8?B?%s?= <test@example.com>', \base64_encode($name));
-        $this->assertSame($expected, $ref->invoke($t, $a));
-    }
-
-    public function testStringifyAddressWithNoName(): void
-    {
-        $t   = $this->makeTransport();
-        $ref = new ReflectionMethod($t, 'stringifyAddress');
-        $a   = new Address('test@example.com');
-
-        $this->assertSame('test@example.com', $ref->invoke($t, $a));
-    }
-
-    // ── stringifyAddresses ──────────────────────────────────────────────
-
-    public function testStringifyAddresses(): void
-    {
-        $t     = $this->makeTransport();
-        $ref   = new ReflectionMethod($t, 'stringifyAddresses');
-        $addrs = [new Address('a@example.com', 'Alice'), new Address('b@example.com', 'Bob')];
-
-        $result = $ref->invoke($t, $addrs);
-        $this->assertCount(2, $result);
-        $this->assertSame('Alice <a@example.com>', $result[0]);
-        $this->assertSame('Bob <b@example.com>', $result[1]);
-    }
-
-    // ── getRequest ──────────────────────────────────────────────────────
-
-    private function makeEmail(): Email
-    {
-        $e = new Email();
-        $e->subject('Test');
-        $e->from(new Address('from@example.com', 'Sender'));
-        $e->to(new Address('to@example.com', 'To'));
-        $e->text('Body');
-
-        return $e;
-    }
-
-    private function invokeGetRequest(Email $email, array $tags = []): object
-    {
-        $t   = $this->makeTransport();
-        $ref = new ReflectionMethod($t, 'getRequest');
-
-        return $ref->invoke($t, $email, $tags);
-    }
-
-    public function testGetRequestBasic(): void
-    {
-        $this->assertInstanceOf(
-            AsyncAws\Ses\Input\SendEmailRequest::class,
-            $this->invokeGetRequest($this->makeEmail()),
+        $this->assertSame(
+            ['A <a@example.com>', 'B <b@example.com>'],
+            $c->capturedInput->getDestination()->getToAddresses(),
         );
     }
 
-    public function testGetRequestWithHtmlBody(): void
+    public function testSendBEncodesUtf8DisplayName(): void
     {
-        $e = $this->makeEmail();
-        $e->html('<p>HTML</p>');
-        $this->assertInstanceOf(AsyncAws\Ses\Input\SendEmailRequest::class, $this->invokeGetRequest($e));
+        $c = $this->clientReturning('id');
+        $t = $this->makeTransport($c);
+
+        $name = "M\xC3\xBCller"; // "Müller" in UTF-8 -- non-ASCII bytes
+        $m    = $this->msg();
+        $m->setFrom(['from@example.com' => $name]);
+        $m->setTo(['to@example.com' => 'R']);
+        $m->setSubject('T');
+        $m->setBody('B');
+        $this->assertSame(1, $t->send($m));
+
+        $expected = \sprintf('=?UTF-8?B?%s?= <from@example.com>', \base64_encode($name));
+        $this->assertSame($expected, $c->capturedInput->getFromEmailAddress());
     }
 
-    public function testGetRequestWithCcAndBcc(): void
+    public function testSendWithoutDisplayNamesUsesBareEmails(): void
     {
-        $e = $this->makeEmail();
-        $e->cc(new Address('cc@example.com', 'CC'));
-        $e->bcc(new Address('bcc@example.com', 'BCC'));
-        $this->assertInstanceOf(AsyncAws\Ses\Input\SendEmailRequest::class, $this->invokeGetRequest($e));
+        $c = $this->clientReturning('id');
+        $t = $this->makeTransport($c);
+
+        $m = $this->msg();
+        $m->setFrom('from@example.com');
+        $m->setTo('to@example.com');
+        $m->setSubject('T');
+        $m->setBody('B');
+        $this->assertSame(1, $t->send($m));
+
+        $this->assertSame('from@example.com', $c->capturedInput->getFromEmailAddress());
+        $this->assertSame(['to@example.com'], $c->capturedInput->getDestination()->getToAddresses());
     }
 
-    public function testGetRequestWithReplyTo(): void
-    {
-        $e = $this->makeEmail();
-        $e->replyTo(new Address('reply@example.com', 'Reply'));
-        $this->assertInstanceOf(AsyncAws\Ses\Input\SendEmailRequest::class, $this->invokeGetRequest($e));
-    }
-
-    public function testGetRequestWithConfigurationSetHeader(): void
-    {
-        $e = $this->makeEmail();
-        $h = new class {
-            public function getBodyAsString(): string
-            {
-                return 'my-config-set';
-            }
-        };
-        $e->getHeaders()->addHeader('X-SES-CONFIGURATION-SET', $h);
-        $this->assertInstanceOf(AsyncAws\Ses\Input\SendEmailRequest::class, $this->invokeGetRequest($e));
-    }
-
-    public function testGetRequestWithSourceArnHeader(): void
-    {
-        $e = $this->makeEmail();
-        $h = new class {
-            public function getBodyAsString(): string
-            {
-                return 'arn:aws:ses:us-east-1:123:identity/x';
-            }
-        };
-        $e->getHeaders()->addHeader('X-SES-SOURCE-ARN', $h);
-        $this->assertInstanceOf(AsyncAws\Ses\Input\SendEmailRequest::class, $this->invokeGetRequest($e));
-    }
-
-    public function testGetRequestWithListManagementOptionsHeader(): void
-    {
-        $e = $this->makeEmail();
-        $h = new class {
-            public function getBodyAsString(): string
-            {
-                return 'contactListName=MyList; topicName=MyTopic';
-            }
-        };
-        $e->getHeaders()->addHeader('X-SES-LIST-MANAGEMENT-OPTIONS', $h);
-        $this->assertInstanceOf(AsyncAws\Ses\Input\SendEmailRequest::class, $this->invokeGetRequest($e));
-    }
-
-    public function testGetRequestWithReturnPath(): void
-    {
-        $e = $this->makeEmail();
-        $e->returnPath(new Address('bounce@example.com'));
-        $this->assertInstanceOf(AsyncAws\Ses\Input\SendEmailRequest::class, $this->invokeGetRequest($e));
-    }
-
-    public function testGetRequestWithMetadataHeaders(): void
-    {
-        $e = $this->makeEmail();
-        $e->getHeaders()->addHeader('X-Metadata', new MetadataHeader('campaign', 'welcome'));
-        $this->assertInstanceOf(AsyncAws\Ses\Input\SendEmailRequest::class, $this->invokeGetRequest($e));
-    }
-
-    public function testGetRequestWithTags(): void
-    {
-        $this->assertInstanceOf(
-            AsyncAws\Ses\Input\SendEmailRequest::class,
-            $this->invokeGetRequest($this->makeEmail(), ['tag1', 'tag2']),
-        );
-    }
-
-    // ── Helpers ─────────────────────────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────
 
     private function msg(): Swift_Message
     {
         return new Swift_Message();
     }
 
-    private function makeTransport(?FakeSesClient $client = null): Swift_Transport_Api_AmazonSesApiTransport
+    private function basicMsg(): Swift_Message
+    {
+        $m = $this->msg();
+        $m->setFrom(['from@example.com' => 'S']);
+        $m->setTo(['to@example.com' => 'R']);
+        $m->setSubject('T');
+        $m->setBody('B');
+
+        return $m;
+    }
+
+    private function clientReturning(?string $messageId): FakeSesApiClient
+    {
+        $c = new FakeSesApiClient();
+        $c->setSendResponse(FakeSesApiResponse::withId($messageId));
+
+        return $c;
+    }
+
+    private function makeTransport(?FakeSesApiClient $client = null): Swift_Transport_Api_AmazonSesApiTransport
     {
         return new Swift_Transport_Api_AmazonSesApiTransport(
-            $client ?? new FakeSesClient(),
+            $client ?? new FakeSesApiClient(),
             $this->eventDispatcherMock,
         );
     }

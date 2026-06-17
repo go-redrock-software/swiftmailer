@@ -61,6 +61,12 @@ class Swift_Transport_Api_ApiOfflineRoundTripTest extends TestCase
         $this->assertSame(1, $transport->send($this->basicMessage()));
     }
 
+    public function testAmazonSesApiRoundTripsThroughRealAsyncAwsStack(): void
+    {
+        $transport = new Swift_Transport_Api_AmazonSesApiTransport($this->mockSesClient('{"MessageId":"offline"}'));
+        $this->assertSame(1, $transport->send($this->basicMessage()));
+    }
+
     private function mockSesClient(string $body): AsyncAws\Ses\SesClient
     {
         $http = new Symfony\Component\HttpClient\MockHttpClient(

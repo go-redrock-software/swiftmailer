@@ -1,5 +1,6 @@
 <?php
 
+use AsyncAws\Ses\Input\SendEmailRequest;
 use AsyncAws\Ses\SesClient;
 
 class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_AbstractApiTransport
@@ -19,9 +20,15 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
 
     public function ping(): bool
     {
+        // async-aws's SesClient has no getAccountSendingEnabled(). Probe the
+        // SESv2 suppression endpoint instead: a reachable account returns either
+        // the suppressed-destination record or a NotFoundException -- both prove
+        // the API answered. Only a transport/credential failure is unhealthy.
         try {
-            $this->sesClient->getAccountSendingEnabled();
+            $this->sesClient->getSuppressedDestination(['EmailAddress' => 'ping@swiftmailer.invalid'])->resolve();
 
+            return true;
+        } catch (AsyncAws\Ses\Exception\NotFoundException $e) {
             return true;
         } catch (Exception $e) {
             return false;
@@ -36,8 +43,7 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
 
         try {
             $tags    = $this->extractSesTagsFromMessage($message);
-            $email   = $this->convertMessage($message);
-            $request = $this->getRequest($email, $tags);
+            $request = $this->getRequest($message, $tags);
 
             $result = $this->sesClient->sendEmail($request);
 
@@ -54,49 +60,25 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
         return $this->sesClient;
     }
 
-    private function convertMessage(Swift_Mime_SimpleMessage $message): Email
+    protected function getRequest(Swift_Mime_SimpleMessage $message, array $tags = []): SendEmailRequest
     {
-        $email = new Email();
+        // Amazon SES v2 (async-aws) SendEmail request. The v2 schema uses
+        // FromEmailAddress / Content / EmailTags -- NOT the v1 Source / Message /
+        // Tags keys. async-aws maps the plain nested arrays below into its value
+        // objects via SendEmailRequest::__construct, so no Content/Destination
+        // value objects are needed here.
+        $from      = $message->getFrom() ?? [];
+        $fromEmail = (string) \array_key_first($from);
 
-        $email->subject($message->getSubject());
-        $email->from(new Address($message->getFrom()));
-        $email->to(...$this->convertAddresses($message->getTo()));
-
-        if ($message->getCc()) {
-            $email->cc(...$this->convertAddresses($message->getCc()));
-        }
-
-        if ($message->getBcc()) {
-            $email->bcc(...$this->convertAddresses($message->getBcc()));
-        }
-
-        $email->text($message->getBody());
-
-        if ('text/html' === $message->getContentType()) {
-            $email->html($message->getBody());
-        }
-
-        return $email;
-    }
-
-    private function convertAddresses(array $addresses): array
-    {
-        return \array_map(function ($address, $name) {
-            return new Address($address, $name);
-        }, \array_keys($addresses), $addresses);
-    }
-
-    protected function getRequest(Email $email, array $tags = []): SendEmailRequest
-    {
         $request = [
-            'FromEmailAddress' => $this->stringifyAddress($email->getFrom()[0]),
+            'FromEmailAddress' => $this->stringifyAddress($fromEmail, $from[$fromEmail] ?? null),
             'Destination'      => [
-                'ToAddresses' => $this->stringifyAddresses($email->getTo()),
+                'ToAddresses' => $this->stringifyAddresses($message->getTo() ?? []),
             ],
             'Content' => [
                 'Simple' => [
                     'Subject' => [
-                        'Data'    => $email->getSubject(),
+                        'Data'    => $message->getSubject(),
                         'Charset' => 'utf-8',
                     ],
                     'Body' => [],
@@ -104,46 +86,55 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
             ],
         ];
 
-        if ($emails = $email->getCc()) {
-            $request['Destination']['CcAddresses'] = $this->stringifyAddresses($emails);
+        if ($cc = $message->getCc()) {
+            $request['Destination']['CcAddresses'] = $this->stringifyAddresses($cc);
         }
-        if ($emails = $email->getBcc()) {
-            $request['Destination']['BccAddresses'] = $this->stringifyAddresses($emails);
-        }
-        if ($email->getTextBody()) {
-            $request['Content']['Simple']['Body']['Text'] = new Content([
-                'Data'    => $email->getTextBody(),
-                'Charset' => 'utf-8',
-            ]);
-        }
-        if ($email->getHtmlBody()) {
-            $request['Content']['Simple']['Body']['Html'] = new Content([
-                'Data'    => $email->getHtmlBody(),
-                'Charset' => 'utf-8',
-            ]);
-        }
-        if ($emails = $email->getReplyTo()) {
-            $request['ReplyToAddresses'] = $this->stringifyAddresses($emails);
-        }
-        if ($header = $email->getHeaders()->get('X-SES-CONFIGURATION-SET')) {
-            $request['ConfigurationSetName'] = $header->getBodyAsString();
-        }
-        if ($header = $email->getHeaders()->get('X-SES-SOURCE-ARN')) {
-            $request['FromEmailAddressIdentityArn'] = $header->getBodyAsString();
-        }
-        if ($header = $email->getHeaders()->get('X-SES-LIST-MANAGEMENT-OPTIONS')) {
-            if (\preg_match("/^(contactListName=)*(?<ContactListName>[^;]+)(;\s?topicName=(?<TopicName>.+))?$/ix", $header->getBodyAsString(), $listManagementOptions)) {
-                $request['ListManagementOptions'] = \array_filter($listManagementOptions, fn ($e) => \in_array($e, ['ContactListName', 'TopicName']), \ARRAY_FILTER_USE_KEY);
-            }
-        }
-        if ($email->getReturnPath()) {
-            $request['FeedbackForwardingEmailAddress'] = $email->getReturnPath()->toString();
+        if ($bcc = $message->getBcc()) {
+            $request['Destination']['BccAddresses'] = $this->stringifyAddresses($bcc);
         }
 
-        foreach ($email->getHeaders()->all() as $header) {
-            if ($header instanceof MetadataHeader) {
-                $request['EmailTags'][] = ['Name' => $header->getKey(), 'Value' => $header->getValue()];
+        // SES Simple bodies are mutually exclusive: HTML or Text, never both.
+        $bodyPart = ['Data' => $message->getBody(), 'Charset' => 'utf-8'];
+        if ('text/html' === $message->getBodyContentType()) {
+            $request['Content']['Simple']['Body']['Html'] = $bodyPart;
+        } else {
+            $request['Content']['Simple']['Body']['Text'] = $bodyPart;
+        }
+
+        if ($replyTo = $message->getReplyTo()) {
+            $request['ReplyToAddresses'] = $this->stringifyAddresses($replyTo);
+        }
+
+        foreach ($message->getHeaders()->getAll() as $header) {
+            if (!$header instanceof Swift_Mime_Headers_UnstructuredHeader) {
+                continue;
             }
+
+            switch ($header->getFieldName()) {
+                case 'X-SES-CONFIGURATION-SET':
+                    $request['ConfigurationSetName'] = $header->getValue();
+                    break;
+                case 'X-SES-SOURCE-ARN':
+                    $request['FromEmailAddressIdentityArn'] = $header->getValue();
+                    break;
+                case 'X-SES-LIST-MANAGEMENT-OPTIONS':
+                    if (\preg_match(
+                        "/^(contactListName=)*(?<ContactListName>[^;]+)(;\s?topicName=(?<TopicName>.+))?$/ix",
+                        $header->getValue(),
+                        $listManagementOptions,
+                    )) {
+                        $request['ListManagementOptions'] = \array_filter(
+                            $listManagementOptions,
+                            static fn ($e) => \in_array($e, ['ContactListName', 'TopicName'], true),
+                            \ARRAY_FILTER_USE_KEY,
+                        );
+                    }
+                    break;
+            }
+        }
+
+        if ($returnPath = $message->getReturnPath()) {
+            $request['FeedbackForwardingEmailAddress'] = $returnPath;
         }
 
         // Tags from X-Mailer-Tag headers → EmailTags (array of {Name, Value})
@@ -175,22 +166,34 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
         return $tags;
     }
 
+    /**
+     * Stringify a Swift [email => name] address map for the SES request.
+     *
+     * @param array<string, ?string> $addresses
+     *
+     * @return string[]
+     */
     protected function stringifyAddresses(array $addresses): array
     {
-        return \array_map(fn (Address $a) => $this->stringifyAddress($a), $addresses);
-    }
-
-    protected function stringifyAddress(Address $a): string
-    {
-        // AWS does not support UTF-8 address
-        if (\preg_match('~[\x00-\x08\x10-\x19\x7F-\xFF\r\n]~', $name = $a->getName())) {
-            return \sprintf(
-                '=?UTF-8?B?%s?= <%s>',
-                \base64_encode($name),
-                $a->getEncodedAddress(),
-            );
+        $result = [];
+        foreach ($addresses as $email => $name) {
+            $result[] = $this->stringifyAddress((string) $email, $name);
         }
 
-        return $a->toString();
+        return $result;
+    }
+
+    protected function stringifyAddress(string $email, ?string $name): string
+    {
+        if (null === $name || '' === $name) {
+            return $email;
+        }
+
+        // AWS does not accept UTF-8 in addresses: B-encode a non-ASCII display name.
+        if (\preg_match('~[\x00-\x08\x10-\x19\x7F-\xFF\r\n]~', $name)) {
+            return \sprintf('=?UTF-8?B?%s?= <%s>', \base64_encode($name), $email);
+        }
+
+        return \sprintf('%s <%s>', $name, $email);
     }
 }
