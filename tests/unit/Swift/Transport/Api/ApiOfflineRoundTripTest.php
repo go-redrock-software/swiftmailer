@@ -81,6 +81,33 @@ class Swift_Transport_Api_ApiOfflineRoundTripTest extends TestCase
         $this->assertSame(1, $transport->send($this->basicMessage()));
     }
 
+    public function testMicrosoftGraphRoundTripsThroughRealSdkStack(): void
+    {
+        // A real Graph SDK client whose HTTP layer is a Guzzle MockHandler, with an
+        // anonymous auth provider so no token is fetched -- fully offline. History
+        // middleware captures the request the kiota adapter actually serialized.
+        $history = [];
+        $stack   = HandlerStack::create(new MockHandler([new Response(202)]));
+        $stack->push(Middleware::history($history));
+        $adapter = new Microsoft\Graph\GraphRequestAdapter(
+            new Microsoft\Kiota\Abstractions\Authentication\AnonymousAuthenticationProvider(),
+            new Client(['handler' => $stack]),
+        );
+        $graphClient = Microsoft\Graph\GraphServiceClient::createWithRequestAdapter($adapter);
+
+        $transport = new Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'sender@example.com', $this->stubDispatcher());
+        $transport->send($this->basicMessage());
+
+        // The message was built into Graph SDK models and posted through the real
+        // kiota request adapter + Guzzle stack -- one POST to /sendMail, no network.
+        $this->assertCount(1, $history, 'Graph should issue exactly one HTTP request');
+        $request = $history[0]['request'];
+        $this->assertSame('POST', $request->getMethod());
+        $this->assertStringContainsString('graph.microsoft.com', (string) $request->getUri());
+        $this->assertStringContainsString('sendMail', (string) $request->getUri());
+        $this->assertNotSame('', (string) $request->getBody(), 'Graph must serialize a non-empty sendMail body');
+    }
+
     private function stubDispatcher(): Swift_Events_EventDispatcher
     {
         $change = $this->createMock(Swift_Events_TransportChangeEvent::class);
