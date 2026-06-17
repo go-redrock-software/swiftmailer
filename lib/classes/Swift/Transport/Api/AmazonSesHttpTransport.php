@@ -51,61 +51,74 @@ class Swift_Transport_Api_AmazonSesHttpTransport extends Swift_Transport_Abstrac
 
     private function getRequest(Swift_Mime_SimpleMessage $message, array $tags = []): array
     {
+        // Amazon SES v2 (async-aws) SendEmail request. The v2 schema uses
+        // FromEmailAddress / Content / EmailTags -- NOT the v1 Source / Message /
+        // Tags keys, which async-aws silently discards, leaving the required
+        // Content empty and producing an invalid request.
         $request = [
-            'Source'      => $message->getSender() ?: $message->getFrom(),
-            'Destination' => [
-                'ToAddresses'  => \array_keys($message->getTo()),
+            'FromEmailAddress' => \array_key_first($message->getFrom() ?? []),
+            'Destination'      => [
+                'ToAddresses'  => \array_keys($message->getTo() ?? []),
                 'CcAddresses'  => \array_keys($message->getCc() ?? []),
                 'BccAddresses' => \array_keys($message->getBcc() ?? []),
             ],
-            'Message' => [
-                'Subject' => [
-                    'Data'    => $message->getSubject(),
-                    'Charset' => 'UTF-8',
-                ],
-                'Body' => [
-                    'Text' => [
-                        'Data'    => $message->getBody(),
+            'Content' => [
+                'Simple' => [
+                    'Subject' => [
+                        'Data'    => $message->getSubject(),
                         'Charset' => 'UTF-8',
                     ],
-                    'Html' => [
-                        'Data'    => $message->getBody(),
-                        'Charset' => 'UTF-8',
-                    ],
+                    'Body' => [],
                 ],
             ],
         ];
 
+        $bodyPart = ['Data' => $message->getBody(), 'Charset' => 'UTF-8'];
+        if ('text/html' === $message->getBodyContentType()) {
+            $request['Content']['Simple']['Body']['Html'] = $bodyPart;
+        } else {
+            $request['Content']['Simple']['Body']['Text'] = $bodyPart;
+        }
+
+        if ($replyTo = $message->getReplyTo()) {
+            $request['ReplyToAddresses'] = \array_keys($replyTo);
+        }
+
         if ($returnPath = $message->getReturnPath()) {
-            $request['ReturnPath'] = $returnPath;
+            $request['FeedbackForwardingEmailAddress'] = $returnPath;
         }
 
         foreach ($message->getHeaders()->getAll() as $header) {
-            if ($header instanceof Swift_Mime_Headers_UnstructuredHeader && 'X-SES-CONFIGURATION-SET' === $header->getFieldName(
-            )) {
-                $request['ConfigurationSetName'] = $header->getValue();
-            } elseif ($header instanceof Swift_Mime_Headers_UnstructuredHeader && 'X-SES-SOURCE-ARN' === $header->getFieldName(
-            )) {
-                $request['SourceArn'] = $header->getValue();
-            } elseif ($header instanceof Swift_Mime_Headers_UnstructuredHeader && 'X-SES-LIST-MANAGEMENT-OPTIONS' === $header->getFieldName(
-            )) {
-                if (\preg_match(
-                    "/^(contactListName=)*(?<ContactListName>[^;]+)(;\s?topicName=(?<TopicName>.+))?$/ix",
-                    $header->getValue(),
-                    $listManagementOptions,
-                )) {
-                    $request['ListManagementOptions'] = \array_filter(
+            if (!$header instanceof Swift_Mime_Headers_UnstructuredHeader) {
+                continue;
+            }
+
+            switch ($header->getFieldName()) {
+                case 'X-SES-CONFIGURATION-SET':
+                    $request['ConfigurationSetName'] = $header->getValue();
+                    break;
+                case 'X-SES-SOURCE-ARN':
+                    $request['FromEmailAddressIdentityArn'] = $header->getValue();
+                    break;
+                case 'X-SES-LIST-MANAGEMENT-OPTIONS':
+                    if (\preg_match(
+                        "/^(contactListName=)*(?<ContactListName>[^;]+)(;\s?topicName=(?<TopicName>.+))?$/ix",
+                        $header->getValue(),
                         $listManagementOptions,
-                        static fn ($e) => \in_array($e, ['ContactListName', 'TopicName']),
-                        \ARRAY_FILTER_USE_KEY,
-                    );
-                }
+                    )) {
+                        $request['ListManagementOptions'] = \array_filter(
+                            $listManagementOptions,
+                            static fn ($e) => \in_array($e, ['ContactListName', 'TopicName'], true),
+                            \ARRAY_FILTER_USE_KEY,
+                        );
+                    }
+                    break;
             }
         }
 
-        // Tags from X-Mailer-Tag headers → Tags (array of {Name, Value})
+        // Tags from X-Mailer-Tag headers → EmailTags (array of {Name, Value})
         foreach ($tags as $tag) {
-            $request['Tags'][] = ['Name' => 'tag', 'Value' => $tag];
+            $request['EmailTags'][] = ['Name' => 'tag', 'Value' => $tag];
         }
 
         return $request;

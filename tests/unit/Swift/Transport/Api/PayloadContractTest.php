@@ -393,6 +393,51 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
         }
     }
 
+    /**
+     * Amazon SES uses the async-aws SDK, not a Guzzle client, so validate the
+     * request our code builds by round-tripping it through async-aws's real
+     * SESv2 input model -- the model the AWS API is generated from. A v1-shaped
+     * key (Source/Message/Tags) would be silently dropped, leaving these getters
+     * empty (Content is required).
+     */
+    public function testAmazonSesHttpRequestConformsToAsyncAwsSesV2(): void
+    {
+        $client = new class {
+            public mixed $request = null;
+
+            public function sendEmail($request): object
+            {
+                $this->request = $request;
+
+                return new class {
+                    public function getMessageId(): string
+                    {
+                        return 'ses-id';
+                    }
+                };
+            }
+
+            public function listIdentities(): array
+            {
+                return [];
+            }
+        };
+
+        (new Swift_Transport_Api_AmazonSesHttpTransport($client))->send($this->richMessage());
+
+        $this->assertIsArray($client->request, 'SES http produced no request');
+
+        $request = AsyncAws\Ses\Input\SendEmailRequest::create($client->request);
+
+        $this->assertSame('from@example.com', $request->getFromEmailAddress(), 'SES FromEmailAddress (not v1 Source) must be populated');
+        $this->assertNotNull($request->getContent(), 'SES Content (required, not v1 Message) must be populated');
+        $this->assertNotNull($request->getContent()->getSimple(), 'SES Content.Simple must be populated');
+        $this->assertSame('Subject line', $request->getContent()->getSimple()->getSubject()->getData());
+        $this->assertSame(['to@example.com'], $request->getDestination()->getToAddresses());
+        $this->assertSame(['reply@example.com'], $request->getReplyToAddresses());
+        $this->assertNotEmpty($request->getEmailTags(), 'SES EmailTags (not v1 Tags) must be populated');
+    }
+
     private function assertOnlyAllowedKeys(array $payload, array $allowed, string $context): void
     {
         $unknown = \array_values(\array_diff(\array_keys($payload), $allowed));
