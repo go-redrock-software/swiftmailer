@@ -41,7 +41,7 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
 
             $result = $this->sesClient->sendEmail($request);
 
-            return $result->get('MessageId') ? 1 : 0;
+            return $result->getMessageId() ? 1 : 0;
         } catch (Exception $e) {
             $this->throwException(new Swift_TransportException('Unable to send email: '.$e->getMessage(), 0, $e));
         }

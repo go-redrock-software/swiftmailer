@@ -307,9 +307,9 @@ class FakeSendEmailResponse extends SendEmailResponse
         return $instance;
     }
 
-    public function get(string $key): ?string
+    public function getMessageId(): ?string
     {
-        return 'MessageId' === $key ? $this->fakeMessageId : null;
+        return $this->fakeMessageId;
     }
 }
 
