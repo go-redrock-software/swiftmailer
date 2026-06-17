@@ -67,6 +67,34 @@ class Swift_Transport_Api_ApiOfflineRoundTripTest extends TestCase
         $this->assertSame(1, $transport->send($this->basicMessage()));
     }
 
+    public function testGoogleRoundTripsThroughRealApiClientStack(): void
+    {
+        $history      = [];
+        $googleClient = new Google\Client();
+        $googleClient->setAccessToken(['access_token' => 'dummy', 'expires_in' => 3600, 'created' => \time()]);
+        $googleClient->setHttpClient($this->realClient(new Response(200, [], '{"id":"gmail-id"}'), $history));
+
+        $transport = new Swift_Transport_Api_GoogleTransport($googleClient, $this->stubDispatcher());
+
+        // Gmail send returns the recipient count; the message round-trips through
+        // the real google/apiclient HTTP stack (canned response, no network).
+        $this->assertSame(1, $transport->send($this->basicMessage()));
+    }
+
+    private function stubDispatcher(): Swift_Events_EventDispatcher
+    {
+        $change = $this->createMock(Swift_Events_TransportChangeEvent::class);
+        $change->method('bubbleCancelled')->willReturn(false);
+        $send = $this->createMock(Swift_Events_SendEvent::class);
+        $send->method('bubbleCancelled')->willReturn(false);
+
+        $dispatcher = $this->createMock(Swift_Events_EventDispatcher::class);
+        $dispatcher->method('createTransportChangeEvent')->willReturn($change);
+        $dispatcher->method('createSendEvent')->willReturn($send);
+
+        return $dispatcher;
+    }
+
     private function mockSesClient(string $body): AsyncAws\Ses\SesClient
     {
         $http = new Symfony\Component\HttpClient\MockHttpClient(
