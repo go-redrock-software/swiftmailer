@@ -55,6 +55,25 @@ class Swift_Transport_Api_ApiOfflineRoundTripTest extends TestCase
         $this->assertNotSame('', (string) $request->getBody(), $provider.' must serialize a non-empty body');
     }
 
+    public function testAmazonSesHttpRoundTripsThroughRealAsyncAwsStack(): void
+    {
+        $transport = new Swift_Transport_Api_AmazonSesHttpTransport($this->mockSesClient('{"MessageId":"offline"}'));
+        $this->assertSame(1, $transport->send($this->basicMessage()));
+    }
+
+    private function mockSesClient(string $body): AsyncAws\Ses\SesClient
+    {
+        $http = new Symfony\Component\HttpClient\MockHttpClient(
+            new Symfony\Component\HttpClient\Response\MockResponse($body, ['http_code' => 200]),
+        );
+
+        return new AsyncAws\Ses\SesClient(
+            ['region' => 'us-east-1', 'accessKeyId' => 'dummy', 'accessKeySecret' => 'dummy'],
+            null,
+            $http,
+        );
+    }
+
     /**
      * @return array<string, array{0: string}>
      */
