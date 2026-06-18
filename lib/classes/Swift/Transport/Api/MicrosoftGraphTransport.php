@@ -221,13 +221,12 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
 
         $recipient_count = 0;
 
-        $recipient    = new Recipient();
-        $emailAddress = new EmailAddress();
-
-        $failedRecipients[] = \array_key_first($message->getTo());
-        $emailAddress->setAddress(\array_key_first($message->getTo()));
-        $emailAddress->setName(\array_values($message->getTo())[0]);
-        $recipient->setEmailAddress($emailAddress);
+        $toRecipients = [];
+        foreach ($message->getTo() ?? [] as $address => $name) {
+            $failedRecipients[] = $address;
+            ++$recipient_count;
+            $toRecipients[] = $this->convertSwiftEmailAddressToGraphRecipient([$address => $name]);
+        }
 
         $graphMessage = new Message();
         $graphMessage->setSubject($message->getSubject());
@@ -249,7 +248,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         }
         // @codeCoverageIgnoreEnd
         $graphMessage->setBody($body);
-        $graphMessage->setToRecipients([$recipient]);
+        $graphMessage->setToRecipients($toRecipients);
 
         // Swift addresses are an [address => name] map, so iterate by key. (array_map
         // over the array would hand the callback the name strings, not the pairs.)

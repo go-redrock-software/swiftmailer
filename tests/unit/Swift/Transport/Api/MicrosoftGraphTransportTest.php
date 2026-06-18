@@ -387,7 +387,7 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $m->setBody('Hello body');
 
         $result = $transport->send($m);
-        $this->assertSame(0, $result); // recipient_count starts at 0, no CC/BCC/replyTo adds
+        $this->assertSame(1, $result); // 1 To recipient counted, no CC/BCC/replyTo
     }
 
     // -- send: with reply-to ---
@@ -425,7 +425,7 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $m->setBody('Hello');
 
         $result = $transport->send($m);
-        $this->assertSame(1, $result); // replyTo adds 1
+        $this->assertSame(2, $result); // 1 To + replyTo
     }
 
     // -- send: with attachments ---
@@ -463,7 +463,7 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $m->attach(new \Swift_Attachment('file content', 'test.txt', 'text/plain'));
 
         $result = $transport->send($m);
-        $this->assertSame(0, $result);
+        $this->assertSame(1, $result); // 1 To recipient counted
     }
 
     // -- send: with inline attachment ---
@@ -504,7 +504,7 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $m->attach($att);
 
         $result = $transport->send($m);
-        $this->assertSame(0, $result);
+        $this->assertSame(1, $result); // 1 To recipient counted
     }
 
     // -- send: bubble cancelled ---
@@ -630,7 +630,7 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $m->setBody('<p>HTML Content</p>', 'text/html');
 
         $result = $transport->send($m);
-        $this->assertSame(0, $result);
+        $this->assertSame(1, $result); // 1 To recipient counted
     }
 
     // Note: testSendWithoutSendEvent is not possible because the transport has a bug
@@ -680,7 +680,7 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         // TypeError here, so this test would have caught the regression.
         $result = $transport->send($m);
 
-        $this->assertSame(1, $result); // one CC recipient counted
+        $this->assertSame(2, $result); // 1 To + 1 CC recipient counted
 
         $cc = $captured->getMessage()->getCcRecipients();
         $this->assertCount(1, $cc);
@@ -731,12 +731,66 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         // on the recipient rather than triggering the old TypeError.
         $result = $transport->send($m);
 
-        $this->assertSame(1, $result); // one BCC recipient counted
+        $this->assertSame(2, $result); // 1 To + 1 BCC recipient counted
 
         $bcc = $captured->getMessage()->getBccRecipients();
         $this->assertCount(1, $bcc);
         $this->assertSame('bcc@example.com', $bcc[0]->getEmailAddress()->getAddress());
         $this->assertSame('BCC Name', $bcc[0]->getEmailAddress()->getName());
+    }
+
+    // -- send: with multiple To recipients (all sent and counted) ---
+
+    public function testSendWithMultipleToRecipientsSendsAndCountsAll(): void
+    {
+        $promise = $this->createMock(\Http\Promise\Promise::class);
+        $promise->method('wait')->willReturn(null);
+
+        $captured        = null;
+        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
+        $sendMailBuilder->method('post')->willReturnCallback(function ($body) use ($promise, &$captured) {
+            $captured = $body;
+
+            return $promise;
+        });
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
+
+        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
+        $usersBuilder->method('byUserId')->willReturn($userItemBuilder);
+
+        $graphClient = $this->createMock(GraphServiceClient::class);
+        $graphClient->method('users')->willReturn($usersBuilder);
+
+        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
+        $sendEvt    = $this->createMock(\Swift_Events_SendEvent::class);
+        $changeEvt  = $this->createMock(\Swift_Events_TransportChangeEvent::class);
+        $dispatcher->method('createSendEvent')->willReturn($sendEvt);
+        $dispatcher->method('createTransportChangeEvent')->willReturn($changeEvt);
+
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'user-id', $dispatcher);
+
+        $m = new \Swift_Message();
+        $m->setFrom(['from@example.com' => 'Sender']);
+        $m->setTo([
+            'first@example.com'  => 'First Recipient',
+            'second@example.com' => 'Second Recipient',
+        ]);
+        $m->setSubject('Test');
+        $m->setBody('Hello');
+
+        // Every To address must be sent (not just the first) and each must be counted.
+        $result = $transport->send($m);
+
+        $this->assertSame(2, $result); // both To recipients counted
+
+        $to = $captured->getMessage()->getToRecipients();
+        $this->assertCount(2, $to);
+        $this->assertSame('first@example.com', $to[0]->getEmailAddress()->getAddress());
+        $this->assertSame('First Recipient', $to[0]->getEmailAddress()->getName());
+        $this->assertSame('second@example.com', $to[1]->getEmailAddress()->getAddress());
+        $this->assertSame('Second Recipient', $to[1]->getEmailAddress()->getName());
     }
 
     // -- send: /me endpoint (delegated, no user ID) ---
