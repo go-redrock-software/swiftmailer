@@ -81,7 +81,7 @@ class Swift_Transport_Api_GoogleTransport extends Swift_Transport_AbstractApiTra
     public function start(): void
     {
         if (!$this->started) {
-            if ($evt = $this->eventDispatcher->createTransportChangeEvent($this)) {
+            if ($evt = $this->eventDispatcher?->createTransportChangeEvent($this)) {
                 $this->eventDispatcher->dispatchEvent($evt, 'beforeTransportStarted');
                 if ($evt->bubbleCancelled()) {
                     return;

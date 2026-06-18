@@ -183,6 +183,15 @@ class Swift_Transport_Api_GoogleTransportTest extends TestCase
         ];
     }
 
+    public function testStartWithoutDispatcherDoesNotFatal(): void
+    {
+        // A transport built with no event dispatcher must not fatal on start();
+        // start() now uses ?-> when creating the transport-change event.
+        $transport = new \Swift_Transport_Api_GoogleTransport($this->createMock(Client::class));
+        $transport->start();
+        $this->assertTrue($transport->isStarted());
+    }
+
     public function testStart(): void
     {
         $this->eventDispatcherMock->expects($this->once())
