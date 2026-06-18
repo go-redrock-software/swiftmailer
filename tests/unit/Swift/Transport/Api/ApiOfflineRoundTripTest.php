@@ -108,6 +108,21 @@ class Swift_Transport_Api_ApiOfflineRoundTripTest extends TestCase
         $this->assertNotSame('', (string) $request->getBody(), 'Graph must serialize a non-empty sendMail body');
     }
 
+    public function testMicrosoftGraphSendsWithoutDispatcher(): void
+    {
+        $guzzle  = new Client(['handler' => HandlerStack::create(new MockHandler([new Response(202)]))]);
+        $adapter = new Microsoft\Graph\GraphRequestAdapter(
+            new Microsoft\Kiota\Abstractions\Authentication\AnonymousAuthenticationProvider(),
+            $guzzle,
+        );
+        $graphClient = Microsoft\Graph\GraphServiceClient::createWithRequestAdapter($adapter);
+
+        // No event dispatcher: send() must not fatal on its dispatcher derefs
+        // (inline transport-start event + the sendPerformed dispatch in finally).
+        $transport = new Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'sender@example.com');
+        $this->assertSame(1, $transport->send($this->basicMessage()));
+    }
+
     private function stubDispatcher(): Swift_Events_EventDispatcher
     {
         $change = $this->createMock(Swift_Events_TransportChangeEvent::class);

@@ -207,16 +207,17 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
             }
         }
         // create and dispatch event before transport start
-        $event = $this->eventDispatcher->createTransportChangeEvent($this);
-        $this->eventDispatcher->dispatchEvent($event, 'beforeTransportStarted');
-        if ($event->bubbleCancelled()) {
-            if ($evt) {
-                $evt->setResult(Swift_Events_SendEvent::RESULT_FAILED);
-                $evt->cancelBubble(false);
-                $this->eventDispatcher->dispatchEvent($evt, 'sendPerformed');
-            }
+        if ($event = $this->eventDispatcher?->createTransportChangeEvent($this)) {
+            $this->eventDispatcher->dispatchEvent($event, 'beforeTransportStarted');
+            if ($event->bubbleCancelled()) {
+                if ($evt) {
+                    $evt->setResult(Swift_Events_SendEvent::RESULT_FAILED);
+                    $evt->cancelBubble(false);
+                    $this->eventDispatcher->dispatchEvent($evt, 'sendPerformed');
+                }
 
-            return 0;
+                return 0;
+            }
         }
 
         $recipient_count = 0;
@@ -351,7 +352,9 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
             $recipient_count = 0;
             $failure         = true;
         } finally {
-            $this->eventDispatcher->dispatchEvent($evt, 'sendPerformed');
+            if ($evt) {
+                $this->eventDispatcher->dispatchEvent($evt, 'sendPerformed');
+            }
         }
 
         if (($failure ?? false) && isset($exception)) {
