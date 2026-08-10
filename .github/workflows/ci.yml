@@ -109,7 +109,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['8.3', '8.4']
+        php: ['8.3', '8.4', '8.5']
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -132,5 +132,8 @@ jobs:
       - name: Install dependencies
         run: composer update --prefer-stable --no-interaction --no-progress
 
+      # Use the composer script so the Symfony deprecation baseline is applied; a bare
+      # simple-phpunit run exits non-zero on the known/intentional deprecations (and on
+      # PHP 8.4+ deprecations such as PHPUnit's nullable-parameter notices).
       - name: Run unit tests
-        run: vendor/bin/simple-phpunit --testsuite="SwiftMailer unit tests" --verbose
+        run: composer test -- --testsuite="SwiftMailer unit tests"
