@@ -227,7 +227,6 @@ class Swift_Transport_Api_ApiTransportConformanceTest extends TestCase
     private function callProtected(object $object, string $method): mixed
     {
         $reflection = new ReflectionMethod($object, $method);
-        $reflection->setAccessible(true);
 
         return $reflection->invoke($object);
     }

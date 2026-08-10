@@ -480,7 +480,6 @@ class MicrosoftGraphCalendarTest extends TestCase
     private function extractInvites(\Swift_Transport_Api_MicrosoftGraphTransport $t, \Swift_Message $m): array
     {
         $method = new \ReflectionMethod($t, 'extractCalendarInvites');
-        $method->setAccessible(true);
 
         return $method->invoke($t, $m);
     }
