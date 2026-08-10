@@ -3,6 +3,9 @@ includes:
 
 parameters:
     level: 5
+    # Pinned to the minimum supported runtime (composer platform php 8.3.0) so analysis is
+    # deterministic regardless of the CLI PHP version used to run PHPStan (local vs CI).
+    phpVersion: 80300
     paths:
         - lib/classes
     excludePaths:

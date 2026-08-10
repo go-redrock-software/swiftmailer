@@ -229,6 +229,18 @@ parameters:
 			path: lib/classes/Swift/MemorySpool.php
 
 		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 6
+			path: lib/classes/Swift/MessageLimits.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between null and string will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: lib/classes/Swift/Mime/Attachment.php
+
+		-
 			message: '#^Property Swift_Encoder_QpEncoder\:\:\$filter \(Swift_StreamFilter\) in isset\(\) is not nullable\.$#'
 			identifier: isset.property
 			count: 1
@@ -523,10 +535,22 @@ parameters:
 			path: lib/classes/Swift/Plugins/PopBeforeSmtpPlugin.php
 
 		-
-			message: '#^Call to an undefined method Swift_Mime_Header\:\:getNameAddresses\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: lib/classes/Swift/Plugins/RedirectingPlugin.php
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 2
+			path: lib/classes/Swift/Plugins/ReadReceiptPlugin.php
+
+		-
+			message: '#^Parameter \#1 \$addresses of method Swift_Mime_SimpleMessage\:\:setReadReceiptTo\(\) expects array, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: lib/classes/Swift/Plugins/ReadReceiptPlugin.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between null and string will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 2
+			path: lib/classes/Swift/Plugins/ReadReceiptPlugin.php
 
 		-
 			message: '#^Strict comparison using \=\=\= between null and array will always evaluate to false\.$#'
@@ -621,7 +645,7 @@ parameters:
 		-
 			message: '#^Property Swift_Signers_DomainKeySigner\:\:\$hashHandler \(resource\|null\) does not accept HashContext\.$#'
 			identifier: assign.propertyType
-			count: 1
+			count: 2
 			path: lib/classes/Swift/Signers/DomainKeySigner.php
 
 		-
@@ -639,7 +663,7 @@ parameters:
 		-
 			message: '#^Variable \$header_name on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.variable
-			count: 1
+			count: 2
 			path: lib/classes/Swift/Signers/DomainKeySigner.php
 
 		-
@@ -667,7 +691,13 @@ parameters:
 			path: lib/classes/Swift/Signers/SMimeSigner.php
 
 		-
-			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
+			message: '#^Offset 0 on array\{string, string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: lib/classes/Swift/Signers/SMimeSigner.php
+
+		-
+			message: '#^Offset 1 on array\{string, string\} on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.offset
 			count: 1
 			path: lib/classes/Swift/Signers/SMimeSigner.php
@@ -709,12 +739,6 @@ parameters:
 			path: lib/classes/Swift/StreamFilters/ByteArrayReplacementFilter.php
 
 		-
-			message: '#^If condition is always true\.$#'
-			identifier: if.alwaysTrue
-			count: 1
-			path: lib/classes/Swift/Transport/AbstractApiTransport.php
-
-		-
 			message: '#^Left side of && is always true\.$#'
 			identifier: booleanAnd.leftAlwaysTrue
 			count: 1
@@ -729,12 +753,6 @@ parameters:
 		-
 			message: '#^Property Swift_Transport_AbstractApiTransport\:\:\$started \(true\) does not accept false\.$#'
 			identifier: assign.propertyType
-			count: 1
-			path: lib/classes/Swift/Transport/AbstractApiTransport.php
-
-		-
-			message: '#^Right side of && is always true\.$#'
-			identifier: booleanAnd.rightAlwaysTrue
 			count: 1
 			path: lib/classes/Swift/Transport/AbstractApiTransport.php
 
@@ -781,201 +799,27 @@ parameters:
 			path: lib/classes/Swift/Transport/Api/AhaSendTransport.php
 
 		-
-			message: '#^Call to method bcc\(\) on an unknown class Email\.$#'
-			identifier: class.notFound
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
 			count: 1
 			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
 
 		-
-			message: '#^Call to method cc\(\) on an unknown class Email\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Call to method from\(\) on an unknown class Email\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Call to method getBcc\(\) on an unknown class Email\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Call to method getCc\(\) on an unknown class Email\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Call to method getEncodedAddress\(\) on an unknown class Address\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Call to method getFrom\(\) on an unknown class Email\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Call to method getHeaders\(\) on an unknown class Email\.$#'
-			identifier: class.notFound
-			count: 4
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Call to method getHtmlBody\(\) on an unknown class Email\.$#'
-			identifier: class.notFound
-			count: 2
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Call to method getKey\(\) on an unknown class MetadataHeader\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Call to method getName\(\) on an unknown class Address\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Call to method getReplyTo\(\) on an unknown class Email\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Call to method getReturnPath\(\) on an unknown class Email\.$#'
-			identifier: class.notFound
-			count: 2
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Call to method getSubject\(\) on an unknown class Email\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Call to method getTextBody\(\) on an unknown class Email\.$#'
-			identifier: class.notFound
-			count: 2
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Call to method getTo\(\) on an unknown class Email\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Call to method getValue\(\) on an unknown class MetadataHeader\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Call to method html\(\) on an unknown class Email\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Call to method subject\(\) on an unknown class Email\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Call to method text\(\) on an unknown class Email\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Call to method to\(\) on an unknown class Email\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Call to method toString\(\) on an unknown class Address\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Class MetadataHeader not found\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Instantiated class Address not found\.$#'
-			identifier: class.notFound
-			count: 2
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Instantiated class Content not found\.$#'
-			identifier: class.notFound
-			count: 2
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Instantiated class Email not found\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Instantiated class SendEmailRequest not found\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Method Swift_Transport_Api_AmazonSesApiTransport\:\:convertMessage\(\) has invalid return type Email\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Method Swift_Transport_Api_AmazonSesApiTransport\:\:getRequest\(\) has invalid return type SendEmailRequest\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Parameter \$a of anonymous function has invalid type Address\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Parameter \$a of method Swift_Transport_Api_AmazonSesApiTransport\:\:stringifyAddress\(\) has invalid type Address\.$#'
-			identifier: class.notFound
-			count: 1
-			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
-
-		-
-			message: '#^Parameter \$email of method Swift_Transport_Api_AmazonSesApiTransport\:\:getRequest\(\) has invalid type Email\.$#'
-			identifier: class.notFound
+			message: '#^Parameter \#1 \$addresses of method Swift_Transport_Api_AmazonSesApiTransport\:\:stringifyAddresses\(\) expects array\<string, string\|null\>, string given\.$#'
+			identifier: argument.type
 			count: 1
 			path: lib/classes/Swift/Transport/Api/AmazonSesApiTransport.php
 
 		-
 			message: '#^Expression on left side of \?\? is not nullable\.$#'
 			identifier: nullCoalesce.expr
-			count: 6
+			count: 7
+			path: lib/classes/Swift/Transport/Api/AmazonSesHttpTransport.php
+
+		-
+			message: '#^Parameter \#1 \$array of function array_keys expects array, string given\.$#'
+			identifier: argument.type
+			count: 1
 			path: lib/classes/Swift/Transport/Api/AmazonSesHttpTransport.php
 
 		-
@@ -1018,12 +862,6 @@ parameters:
 			message: '#^Expression on left side of \?\? is not nullable\.$#'
 			identifier: nullCoalesce.expr
 			count: 3
-			path: lib/classes/Swift/Transport/Api/GoogleTransport.php
-
-		-
-			message: '#^If condition is always true\.$#'
-			identifier: if.alwaysTrue
-			count: 2
 			path: lib/classes/Swift/Transport/Api/GoogleTransport.php
 
 		-
@@ -1141,6 +979,18 @@ parameters:
 			path: lib/classes/Swift/Transport/Api/MailtrapTransport.php
 
 		-
+			message: '#^Call to an undefined method Swift_Mime_SimpleMimeEntity\:\:getDisposition\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: lib/classes/Swift/Transport/Api/MicrosoftGraphTransport.php
+
+		-
+			message: '#^Call to an undefined method Swift_Mime_SimpleMimeEntity\:\:getFilename\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: lib/classes/Swift/Transport/Api/MicrosoftGraphTransport.php
+
+		-
 			message: '#^Call to function is_array\(\) with string will always evaluate to false\.$#'
 			identifier: function.impossibleType
 			count: 1
@@ -1149,7 +999,7 @@ parameters:
 		-
 			message: '#^Expression on left side of \?\? is not nullable\.$#'
 			identifier: nullCoalesce.expr
-			count: 5
+			count: 6
 			path: lib/classes/Swift/Transport/Api/MicrosoftGraphTransport.php
 
 		-
@@ -1165,6 +1015,12 @@ parameters:
 			path: lib/classes/Swift/Transport/Api/MicrosoftGraphTransport.php
 
 		-
+			message: '#^Parameter \#1 \$callback of function array_map expects \(callable\(Swift_Mime_SimpleMimeEntity\)\: mixed\)\|null, Closure\(Swift_Attachment\)\: Microsoft\\Graph\\Generated\\Models\\Attachment given\.$#'
+			identifier: argument.type
+			count: 1
+			path: lib/classes/Swift/Transport/Api/MicrosoftGraphTransport.php
+
+		-
 			message: '#^Parameter \#1 \$swiftAttachment of method Swift_Transport_Api_MicrosoftGraphTransport\:\:convertSwiftAttachmentToGraphAttachment\(\) expects Swift_Attachment, Swift_Mime_SimpleMimeEntity given\.$#'
 			identifier: argument.type
 			count: 1
@@ -1173,24 +1029,6 @@ parameters:
 		-
 			message: '#^Parameter \#3 \$previous of class Swift_TransportException constructor expects Exception\|null, Throwable given\.$#'
 			identifier: argument.type
-			count: 1
-			path: lib/classes/Swift/Transport/Api/MicrosoftGraphTransport.php
-
-		-
-			message: '#^Property Swift_Transport_Api_MicrosoftGraphTransport\:\:\$shouldUseFromAddress \(true\) does not accept default value of type false\.$#'
-			identifier: property.defaultValue
-			count: 1
-			path: lib/classes/Swift/Transport/Api/MicrosoftGraphTransport.php
-
-		-
-			message: '#^Property Swift_Transport_Api_MicrosoftGraphTransport\:\:\$shouldUseFromAddress \(true\) does not accept false\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: lib/classes/Swift/Transport/Api/MicrosoftGraphTransport.php
-
-		-
-			message: '#^Property Swift_Transport_Api_MicrosoftGraphTransport\:\:\$shouldUseFromAddress is never read, only written\.$#'
-			identifier: property.onlyWritten
 			count: 1
 			path: lib/classes/Swift/Transport/Api/MicrosoftGraphTransport.php
 
@@ -1297,12 +1135,6 @@ parameters:
 			path: lib/classes/Swift/Transport/Esmtp/Auth/NTLMAuthenticator.php
 
 		-
-			message: '#^Parameter \#1 \$num of function base_convert expects string, \(float\|int\) given\.$#'
-			identifier: argument.type
-			count: 1
-			path: lib/classes/Swift/Transport/Esmtp/Auth/NTLMAuthenticator.php
-
-		-
 			message: '#^Parameter \#1 \$num of function number_format expects float, string given\.$#'
 			identifier: argument.type
 			count: 1
@@ -1335,7 +1167,7 @@ parameters:
 		-
 			message: '#^Expression on left side of \?\? is not nullable\.$#'
 			identifier: nullCoalesce.expr
-			count: 1
+			count: 3
 			path: lib/classes/Swift/Transport/Esmtp/AuthHandler.php
 
 		-
