@@ -2,6 +2,11 @@
 
 use Psr\Http\Message\ResponseInterface;
 
+/**
+ * SendGrid HTTP API transport.
+ *
+ * Sends email via the SendGrid v3 Mail Send REST API (POST /v3/mail/send).
+ */
 class Swift_Transport_Api_SendgridTransport extends Swift_Transport_AbstractHttpApiTransport
 {
     private const HOST = 'https://api.sendgrid.com';

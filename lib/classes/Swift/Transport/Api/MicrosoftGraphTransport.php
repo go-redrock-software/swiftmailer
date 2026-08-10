@@ -24,6 +24,16 @@ use Microsoft\Graph\Generated\Users\Item\Messages\Item\Attachments\CreateUploadS
 use Microsoft\Graph\Generated\Users\Item\SendMail\SendMailPostRequestBody;
 use Microsoft\Graph\GraphServiceClient;
 
+/**
+ * Microsoft Graph API transport.
+ *
+ * Sends email through the Microsoft Graph API with an authenticated
+ * GraphServiceClient, using either the /me (delegated) or /users/{id}
+ * (application) mailbox. Attachments at or above the large-attachment threshold
+ * are delivered via the draft + upload-session flow, and iCalendar
+ * (METHOD:REQUEST) parts can optionally be turned into real Graph Calendar events
+ * (create/update/cancel) instead of raw .ics attachments.
+ */
 class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_AbstractApiTransport
 {
     private GraphServiceClient $client;

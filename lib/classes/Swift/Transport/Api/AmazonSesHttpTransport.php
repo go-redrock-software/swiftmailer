@@ -1,5 +1,13 @@
 <?php
 
+/**
+ * Amazon SES v2 API transport.
+ *
+ * Sends email through the Amazon SES v2 SendEmail API using an injected SES
+ * client and a plain v2-schema array request (FromEmailAddress / Content /
+ * EmailTags). The returned SES message id is added to the message as an
+ * X-SES-Message-ID header.
+ */
 class Swift_Transport_Api_AmazonSesHttpTransport extends Swift_Transport_AbstractApiTransport
 {
     private $sesClient;

@@ -4,6 +4,15 @@ use Google\Client;
 
 use function Swift\getRawMessage;
 
+/**
+ * Gmail HTTP API transport.
+ *
+ * Sends email through the Gmail API (users.messages.send) using an authenticated
+ * google/apiclient Google\Client. The Swift message is rendered to a raw RFC 2822
+ * string and submitted as the authenticated user ("me").
+ *
+ * @see https://developers.google.com/gmail/api/reference/rest/v1/users.messages/send
+ */
 class Swift_Transport_Api_GoogleTransport extends Swift_Transport_AbstractApiTransport
 {
     private Client $googleClient;

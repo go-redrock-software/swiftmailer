@@ -9,7 +9,7 @@
  */
 
 /**
- * An abstract base MIME Header.
+ * A MIME Header carrying parameter attributes, such as Content-Type or Content-Disposition.
  *
  * @author Chris Corbyn
  */

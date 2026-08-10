@@ -2,6 +2,11 @@
 
 use Psr\Http\Message\ResponseInterface;
 
+/**
+ * Brevo (formerly Sendinblue) HTTP API transport.
+ *
+ * Sends email via the Brevo transactional email REST API.
+ */
 class Swift_Transport_Api_BrevoTransport extends Swift_Transport_AbstractHttpApiTransport
 {
     #[Override]

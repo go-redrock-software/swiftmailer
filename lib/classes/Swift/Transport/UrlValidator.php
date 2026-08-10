@@ -7,6 +7,13 @@
  * file that was distributed with this source code.
  */
 
+/**
+ * SSRF guard for outbound API endpoint URLs.
+ *
+ * Rejects a URL unless it uses HTTPS and its host is neither a loopback address
+ * nor a private/reserved IP (DNS names are resolved first). Used to validate a
+ * custom API base URL before an HTTP API transport connects to it.
+ */
 class Swift_Transport_UrlValidator
 {
     private const BLOCKED_HOSTS = ['127.0.0.1', '0.0.0.0', 'localhost', '::1', '[::1]'];

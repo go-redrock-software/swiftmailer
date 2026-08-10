@@ -3,6 +3,13 @@
 use AsyncAws\Ses\Input\SendEmailRequest;
 use AsyncAws\Ses\SesClient;
 
+/**
+ * Amazon SES v2 API transport (async-aws).
+ *
+ * Sends email through the Amazon SES v2 SendEmail API using an async-aws
+ * AsyncAws\Ses\SesClient, building a SendEmailRequest with the v2 schema
+ * (FromEmailAddress / Content / EmailTags).
+ */
 class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_AbstractApiTransport
 {
     private $sesClient;
