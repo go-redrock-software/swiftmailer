@@ -1,15 +1,19 @@
 # Webhook System
 
-The webhook system processes inbound HTTP callbacks from email providers to track delivery status and engagement events (opens, clicks, bounces, complaints).
+The webhook system processes inbound HTTP callbacks from email providers to track delivery status and engagement events (opens, clicks, bounces, complaints). It complements the send-side [API transports](api-transports.md): transports deliver mail, webhooks report what happened to it afterwards.
 
 ## Architecture
 
 ```
-HTTP Request  -->  Swift_Webhook_RequestHandler
+HTTP Request  -->  Swift_Webhook_RequestHandler::handle()
                          |
-                         |  (signature verification + JSON decode)
+                         |  1. reject empty secret            (InvalidArgumentException)
+                         |  2. IP allowlist check (optional)  (SignatureVerificationException)
+                         |  3. verify signature -- always     (SignatureVerificationException)
+                         |  4. replay / timestamp check       (SignatureVerificationException)
+                         |  5. JSON-decode the body           (InvalidArgumentException)
                          v
-               PayloadConverterInterface  (provider-specific)
+               PayloadConverterInterface::convert()  (provider-specific)
                          |
                          v
                Swift_Webhook_Event[]  (normalized events)
@@ -19,11 +23,12 @@ HTTP Request  -->  Swift_Webhook_RequestHandler
 
 | Class | Purpose |
 |-|-|
-| `Swift_Webhook_RequestHandler` | Orchestrates verification, decoding, conversion |
-| `Swift_Webhook_PayloadConverterInterface` | Interface for provider converters |
-| `Swift_Webhook_AbstractPayloadConverter` | Base class with HMAC helpers and event factories |
+| `Swift_Webhook_RequestHandler` | Orchestrates verification, replay + IP checks, decoding, conversion |
+| `Swift_Webhook_PayloadConverterInterface` | Interface for provider converters (`convert`, `verify`, `getProviderName`) |
+| `Swift_Webhook_TimestampExtractorInterface` | Optional interface a converter implements to expose a timestamp for replay protection |
+| `Swift_Webhook_AbstractPayloadConverter` | Base class with HMAC helpers, event factories, and a default (null) timestamp extractor |
 | `Swift_Webhook_Event` | Normalized event value object (readonly) |
-| `Swift_Webhook_SignatureVerificationException` | Thrown when signature verification fails |
+| `Swift_Webhook_SignatureVerificationException` | Thrown on signature failure, expired timestamp, or IP not in allowlist |
 
 ## Event Types
 
@@ -74,7 +79,7 @@ $events = $handler->handle(
     new Swift_Webhook_Converter_SendgridConverter(),
     $rawBody,
     $headers,
-    'your-signing-secret' // null to skip verification
+    $signingSecret, // required and non-empty -- see the secret reference below
 );
 
 foreach ($events as $event) {
@@ -86,6 +91,83 @@ foreach ($events as $event) {
     }
 }
 ```
+
+### `RequestHandler::handle()` signature
+
+```php
+public function handle(
+    Swift_Webhook_PayloadConverterInterface $converter,
+    string $rawBody,
+    array $headers,
+    #[SensitiveParameter] string $secret,
+    int $maxAge = 300,
+    ?array $allowedIps = null,
+    ?string $remoteIp = null,
+): array
+```
+
+| Parameter | Description |
+|-|-|
+| `$converter` | Provider-specific converter (see [Supported Providers](#supported-providers)) |
+| `$rawBody` | Raw HTTP request body, exactly as received (needed for HMAC/signature checks) |
+| `$headers` | Request headers; keys are normalized to lowercase internally |
+| `$secret` | Signing secret -- **required and non-empty**. Its meaning is provider-specific (HMAC key, shared token, PEM public key, SNS Topic ARN, ...); see the [Secret reference](#secret-reference). An empty string throws `InvalidArgumentException` |
+| `$maxAge` | Maximum accepted webhook age in seconds for replay protection (default `300`; pass `0` to disable) |
+| `$allowedIps` | Optional list of source IPs permitted to call the endpoint; `null` disables the check |
+| `$remoteIp` | The caller's IP (e.g. from your framework/request). The allowlist check only runs when **both** `$allowedIps` and `$remoteIp` are non-null |
+
+Verification is **mandatory** -- there is no "skip verification" mode. The handler
+throws (see [Errors](#errors)) whenever a check fails, and only returns events
+once the signature, replay window, and optional IP allowlist all pass.
+
+### IP allowlist (optional)
+
+`handle()` can reject callers whose source IP is not in an allowlist -- a
+defense-in-depth layer on top of signature verification, added in the security
+series. It runs **before** signature verification, and only when both
+`$allowedIps` and `$remoteIp` are supplied:
+
+```php
+$events = $handler->handle(
+    new Swift_Webhook_Converter_MailgunConverter(),
+    $rawBody,
+    $headers,
+    $signingKey,
+    maxAge: 300,
+    allowedIps: ['3.19.44.0', '52.35.106.123'], // provider's documented egress IPs
+    remoteIp: $_SERVER['REMOTE_ADDR'] ?? null,
+);
+```
+
+If `$remoteIp` is not found in `$allowedIps` (strict comparison), a
+`Swift_Webhook_SignatureVerificationException` is thrown before any signature
+work happens. Omit either argument (or leave both `null`) to skip the check.
+
+### Replay protection
+
+When `$maxAge > 0` and the converter implements
+`Swift_Webhook_TimestampExtractorInterface`, the handler extracts the webhook
+timestamp and rejects it when `abs(time() - timestamp) > $maxAge`, throwing
+`Swift_Webhook_SignatureVerificationException`. `Swift_Webhook_AbstractPayloadConverter`
+provides a default extractor that returns `null` (check skipped), which each
+converter overrides when the provider supplies a timestamp.
+
+Converters that currently extract a timestamp: **SendGrid, Mailgun, Amazon SES,
+Resend, Sweego, AhaSend, Mailomat**. The rest (Postmark, Brevo, Mailjet,
+Mandrill, Mailtrap, MailerSend, MailPace) rely on signature verification alone
+and are not subject to the replay window.
+
+### Errors
+
+`handle()` throws -- it never returns partial results:
+
+| Exception | Cause |
+|-|-|
+| `InvalidArgumentException` | `$secret` is an empty string, or the body is not valid JSON |
+| `Swift_Webhook_SignatureVerificationException` | Signature invalid, timestamp outside the replay window, or `$remoteIp` not in `$allowedIps` |
+
+`Swift_Webhook_SignatureVerificationException` extends `RuntimeException`; its
+message has the form `Webhook signature verification failed for provider "<name>".`
 
 ## Supported Providers
 
@@ -108,6 +190,28 @@ foreach ($events as $event) {
 | Sweego | `Swift_Webhook_Converter_SweegoConverter` |
 | MailPace | `Swift_Webhook_Converter_MailPaceConverter` |
 
+## Secret reference
+
+The `$secret` argument means something different per provider. Pass the value
+described here (never `null` or an empty string):
+
+| Provider | What `$secret` must be | Verification method |
+|-|-|-|
+| SendGrid | PEM-encoded ECDSA public verification key | ECDSA (`openssl_verify`, SHA-256) over `timestamp + body` |
+| Mailgun | HTTP webhook signing key | HMAC-SHA256 of `timestamp + token` (from the body) |
+| Postmark | Shared webhook token | Timing-safe compare with `X-Postmark-Webhook-Token` |
+| Amazon SES | Expected SNS **Topic ARN** | Full SNS signature validation (fetches cert, RSA verify) |
+| Brevo | Webhook token | Timing-safe compare with `X-Brevo-Webhook-Token` |
+| Resend | Svix signing secret (`whsec_...`) | HMAC-SHA256 over `svix-id.svix-timestamp.body` |
+| MailerSend | HMAC signing secret | HMAC-SHA256 of the raw body (hex `Signature` header) |
+| Mailjet | Basic-Auth password portion | Timing-safe compare against the `Authorization: Basic` password |
+| Mandrill | `"webhook_key\|webhook_url"` (pipe-delimited) | HMAC-SHA1 of URL + sorted POST vars, base64 |
+| AhaSend | Base64 Standard-Webhooks secret | HMAC-SHA256 over `webhook-id.webhook-timestamp.body` |
+| Mailomat | Webhook secret | HMAC-SHA256 of `id.event.timestamp` (from headers) |
+| Mailtrap | HMAC signing secret | HMAC-SHA256 of the raw body (hex `Mailtrap-Signature` header) |
+| Sweego | Base64 webhook secret | HMAC-SHA256 over `webhook-id.webhook-timestamp.body` |
+| MailPace | Base64 Ed25519 public key | Ed25519 (`sodium_crypto_sign_verify_detached`) |
+
 ## Provider-Specific Setup
 
 ### SendGrid
@@ -116,7 +220,7 @@ foreach ($events as $event) {
 
 **Signature verification:** Uses ECDSA with SendGrid's public verification key. Headers: `X-Twilio-Email-Event-Webhook-Signature` and `X-Twilio-Email-Event-Webhook-Timestamp`.
 
-**Secret:** Your SendGrid Event Webhook verification key (begins with `MFkw...`).
+**Secret:** Your SendGrid Event Webhook verification key as a **PEM-encoded public key** -- the value is passed straight to `openssl_pkey_get_public()`. SendGrid shows the key as base64 DER (begins with `MFkw...`); wrap it in `-----BEGIN PUBLIC KEY-----` / `-----END PUBLIC KEY-----` armor before passing it.
 
 ```php
 $converter = new Swift_Webhook_Converter_SendgridConverter();
@@ -189,9 +293,11 @@ $events = $handler->handle($converter, $rawBody, $headers, $webhookToken);
 
 **Converter:** `Swift_Webhook_Converter_AmazonSesConverter`
 
-**Signature verification:** Basic validation only -- checks for the `X-Amz-Sns-Message-Type` header. For production use, validate SNS signatures using the AWS SDK or a dedicated SNS verification library.
+**Signature verification:** Full SNS signature validation. The converter (1) requires the `X-Amz-Sns-Message-Type` header, (2) checks the payload `TopicArn` against `$secret` with `hash_equals`, (3) requires the `SigningCertURL` to be HTTPS on `sns.<region>.amazonaws.com`, (4) fetches the signing certificate and RSA-verifies the SNS canonical string-to-sign, supporting `SignatureVersion` `"1"` (SHA-1) and `"2"` (SHA-256).
 
-**Note:** SES sends notifications through SNS. The converter automatically skips `SubscriptionConfirmation` and `UnsubscribeConfirmation` message types -- you must handle SNS subscription confirmation separately. The inner SES `Message` JSON is decoded and mapped by `notificationType`.
+**Secret:** The **expected SNS Topic ARN** (e.g. `arn:aws:sns:us-east-1:123456789012:ses-events`), compared against the notification's `TopicArn`. Do **not** pass `null` -- an empty secret throws `InvalidArgumentException`.
+
+**Note:** SES sends notifications through SNS. The converter automatically skips `SubscriptionConfirmation` and `UnsubscribeConfirmation` message types (returns no events) -- you must confirm the SNS subscription separately. The inner SES `Message` JSON is decoded and mapped by `notificationType`. For replay protection it extracts the SNS `Timestamp` field.
 
 **Event mapping:**
 
@@ -202,11 +308,11 @@ $events = $handler->handle($converter, $rawBody, $headers, $webhookToken);
 | `Delivery` | delivery / delivered |
 | `Complaint` | engagement / complained |
 
-SES bounces and deliveries may contain multiple recipients; the converter emits one event per recipient.
+SES bounces, deliveries, and complaints may contain multiple recipients; the converter emits one event per recipient.
 
 ```php
 $converter = new Swift_Webhook_Converter_AmazonSesConverter();
-$events = $handler->handle($converter, $rawBody, $headers, null);
+$events = $handler->handle($converter, $rawBody, $headers, $expectedTopicArn);
 ```
 
 ### Brevo
@@ -249,9 +355,14 @@ $events = $handler->handle($converter, $rawBody, $headers, $secret);
 
 **Converter:** `Swift_Webhook_Converter_MandrillConverter`
 
+**Signature verification:** HMAC-SHA1 of the webhook URL concatenated with the sorted form-POST keys/values, base64-encoded, compared against `X-Mandrill-Signature`. Mandrill POSTs form-encoded data (a `mandrill_events` JSON array).
+
+**Secret:** Must be the **pipe-delimited** string `"<webhook_key>|<webhook_url>"` -- the exact URL you registered with Mandrill is part of the signed data, so it has to be supplied here.
+
 ```php
 $converter = new Swift_Webhook_Converter_MandrillConverter();
-$events = $handler->handle($converter, $rawBody, $headers, $webhookKey);
+$secret    = $webhookKey.'|'.'https://example.com/webhooks/mandrill';
+$events    = $handler->handle($converter, $rawBody, $headers, $secret);
 ```
 
 ### AhaSend
@@ -332,6 +443,9 @@ class WebhookController extends Controller
 
 ### Plain PHP
 
+A complete endpoint -- signature verification, replay window, optional IP
+allowlist, and both failure modes handled:
+
 ```php
 <?php
 require 'vendor/autoload.php';
@@ -342,8 +456,11 @@ try {
     $events = $handler->handle(
         new Swift_Webhook_Converter_SendgridConverter(),
         file_get_contents('php://input'),
-        array_change_key_case(getallheaders(), CASE_LOWER),
-        $_ENV['SENDGRID_WEBHOOK_SECRET'],
+        getallheaders(), // handler lowercases keys itself
+        $_ENV['SENDGRID_WEBHOOK_SECRET'], // PEM public key
+        maxAge: 300,                       // reject webhooks older than 5 minutes
+        allowedIps: null,                  // e.g. ['1.2.3.4'] to enable the allowlist
+        remoteIp: $_SERVER['REMOTE_ADDR'] ?? null,
     );
 
     foreach ($events as $event) {
@@ -359,8 +476,13 @@ try {
     http_response_code(200);
     echo 'OK';
 } catch (Swift_Webhook_SignatureVerificationException $e) {
+    // Bad signature, stale timestamp, or IP not in the allowlist
     http_response_code(401);
     echo 'Invalid signature';
+} catch (InvalidArgumentException $e) {
+    // Empty secret or malformed JSON body
+    http_response_code(400);
+    echo 'Bad request';
 }
 ```
 
@@ -402,6 +524,7 @@ class MyProviderConverter extends Swift_Webhook_AbstractPayloadConverter
 
 The base class provides:
 - `verifyHmac(string $data, string $signature, string $secret, string $algo)` -- timing-safe HMAC comparison
-- `createDeliveryEvent(...)` -- factory for delivery events
-- `createEngagementEvent(...)` -- factory for engagement events
-- `parseTimestamp(int|string $timestamp)` -- parses Unix timestamps, ISO 8601, and common formats
+- `createDeliveryEvent(...)` -- factory for delivery events (takes a `DateTimeImmutable` timestamp)
+- `createEngagementEvent(...)` -- factory for engagement events (takes a `DateTimeImmutable` timestamp)
+- `parseTimestamp(int|string $timestamp)` -- parses Unix timestamps, ISO 8601, and common formats into a `DateTimeImmutable`
+- `extractTimestamp(string $rawBody, array $headers): ?int` -- override to expose a timestamp for [replay protection](#replay-protection); returns `null` by default (check skipped). `Swift_Webhook_AbstractPayloadConverter` already implements `Swift_Webhook_TimestampExtractorInterface`, so you only override this method

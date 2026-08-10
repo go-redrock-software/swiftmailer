@@ -1,6 +1,6 @@
 # API Transports
 
-Swiftmailer's API transports send email via provider HTTP APIs instead of SMTP. There are 21 concrete transport classes covering 19 distinct providers (Amazon SES has two variants).
+Swiftmailer's API transports send email via provider HTTP APIs instead of SMTP. There are 21 concrete transport classes covering 20 distinct providers (Amazon SES has two variants).
 
 ## Architecture
 
@@ -99,12 +99,12 @@ $message->getHeaders()->addTextHeader('X-Mailer-Metadata-campaign', 'feb-2026');
 | Mailgun | `o:tag` (multiple) | `v:{key}` variables | Yes |
 | Brevo | `tags` (array) | `headers` as `X-Metadata-{key}` | Yes |
 | MailerSend | `tags` (array) | Not supported | Yes |
-| Mailjet | `CustomCampaign` (first tag only) | `Properties` object | No |
+| Mailjet | `CustomCampaign` (first tag only) | `EventPayload` (JSON string) | No |
 | MailChimp | `tags` (array) | `metadata` object | Yes |
-| Amazon SES (API) | `EmailTags` with `Name=tag` | `EmailTags` with `Name=key` | Yes |
-| Amazon SES (HTTP) | `Tags` with `Name=tag` | Not extracted | Yes |
+| Amazon SES (API) | `EmailTags` with `Name=tag` | Not supported | Yes |
+| Amazon SES (HTTP) | `EmailTags` with `Name=tag` | Not extracted | Yes |
 | Resend | `tags` as `[{name, value}]` | `headers` object | Yes |
-| MailPace | `tags` (array) | `metadata` object | Yes |
+| MailPace | `tags` (array) | Not supported | Yes |
 | Mailtrap | `category` (first tag only) | `custom_variables` object | No |
 | Postal | `tag` (first tag only) | Not supported | No |
 | AhaSend | Not supported | Not supported | -- |
@@ -157,6 +157,8 @@ $transportClass = $dsn->getTransportClass();
 | `amazon+http` | `AmazonSesHttpTransport` |
 | `gmail+api` | `GoogleTransport` |
 | `microsoft-graph` | `MicrosoftGraphTransport` |
+
+> **Note:** Every provider also exposes a `{scheme}+smtp` variant (e.g. `sendgrid+smtp`, `mailgun+smtp`, `brevo+smtp`) that maps to `Swift_Transport_EsmtpTransport` for SMTP delivery, and Mailtrap adds `mailtrap+sandbox`. The map further covers `null`, `native`/`sendmail`, and `smtp`/`smtp+tls`/`smtp+ssl`.
 
 ---
 
@@ -255,7 +257,7 @@ $transport = new Swift_Transport_Api_BrevoTransport('your-api-key');
 | **Dependency** | `async-aws/ses` |
 | **Auth method** | AWS SDK credentials (IAM access key / secret) |
 | **Tags** | Yes -- `EmailTags` with `Name=tag` |
-| **Metadata** | Yes -- `EmailTags` with `Name=key` |
+| **Metadata** | No -- `X-Mailer-Metadata-*` headers are not extracted |
 
 Uses the SES v2 `SendEmail` API with the `Simple` content format. Supports SES-specific headers:
 
@@ -286,10 +288,10 @@ $transport = new Swift_Transport_Api_AmazonSesApiTransport($ses);
 | **Constructor** | `($sesClient, ?EventDispatcher $eventDispatcher)` |
 | **Dependency** | `async-aws/ses` |
 | **Auth method** | AWS SDK credentials (IAM access key / secret) |
-| **Tags** | Yes -- `Tags` with `Name=tag` |
+| **Tags** | Yes -- `EmailTags` with `Name=tag` |
 | **Metadata** | Not extracted |
 
-Uses the SES v1 `SendEmail` API with raw message format. Also supports `X-SES-CONFIGURATION-SET`, `X-SES-SOURCE-ARN`, and `X-SES-LIST-MANAGEMENT-OPTIONS` headers. Adds the `X-SES-Message-ID` response header to the message after sending.
+Uses the SES v2 `SendEmail` API (async-aws SDK) with the `Simple` content format -- the same request schema as the API variant, not the historical raw-HTTP path. Also supports `X-SES-CONFIGURATION-SET`, `X-SES-SOURCE-ARN`, and `X-SES-LIST-MANAGEMENT-OPTIONS` headers. Adds the `X-SES-Message-ID` response header to the message after sending.
 
 ```php
 $transport = new Swift_Transport_Api_AmazonSesHttpTransport($ses);
@@ -350,23 +352,29 @@ $transport = new Swift_Transport_Api_GoogleTransport($client);
 | **Class** | `Swift_Transport_Api_MicrosoftGraphTransport` |
 | **DSN** | `microsoft-graph://...` (not DSN-constructible -- requires GraphServiceClient) |
 | **Base class** | `AbstractApiTransport` (directly, no Guzzle) |
-| **Constructor** | `(GraphServiceClient $client, string $sendingAccountUserId, ?EventDispatcher $eventDispatcher)` |
+| **Constructor** | `(GraphServiceClient $client, ?string $sendingAccountUserId = null, ?EventDispatcher $eventDispatcher = null)` |
 | **Dependency** | `microsoft/microsoft-graph` |
 | **Auth method** | Microsoft Graph SDK (OAuth2 / app credentials) |
 | **Tags** | No |
 | **Metadata** | No |
 
-The `$sendingAccountUserId` identifies which user's mailbox to send from (typically an email address or user object ID).
+`$sendingAccountUserId` selects which mailbox to send from (an email address or user object ID). It is now **optional**: passing `null` (the default) sends via the `/me` endpoint, which requires delegated `Mail.Send` permissions.
 
 ```php
+// Application permissions -- send as a specific mailbox
 $transport = new Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'user@company.com');
 
-// Or dynamically use the message's From address as the sending account
+// Delegated /me endpoint -- omit the user id
+$transport = new Swift_Transport_Api_MicrosoftGraphTransport($graphClient);
+
+// Or resolve the sending account from the message's From address
 $transport->useFromAddressAsSendingAccountUserId();
 
 // Or set it manually later
 $transport->setSendingAccountUserId('other-user@company.com');
 ```
+
+The Graph transport has grown well beyond simple sends: large attachments (>= 3 MB, `LARGE_ATTACHMENT_THRESHOLD`) are routed through the draft + upload-session flow and rejected above Graph's 150 MB per-attachment cap (`MAX_ATTACHMENT_SIZE`), and `text/calendar` parts (`METHOD:REQUEST` / `CANCEL`) can be converted into real Calendar events via `enableCalendarEventConversion()`. Those flows are covered in the dedicated [Microsoft Graph guide](microsoft-graph.md); this page documents only the constructor and transport basics.
 
 ---
 
@@ -422,7 +430,7 @@ $transport = new Swift_Transport_Api_ScalewayTransport('scw-key', 'project-id-xx
 | **Tags** | No |
 | **Metadata** | No |
 
-> **Important:** The `$baseUrl` parameter should be the hostname only, without the `https://` protocol prefix. The transport prepends `https://` automatically.
+> **Important:** The `$baseUrl` parameter should be the hostname only, without the `https://` protocol prefix. The transport prepends `https://` automatically. The resulting host is validated at construction time -- HTTPS-only, with localhost/loopback and private/reserved IPs rejected (see [Security](#security)).
 
 ```php
 $transport = new Swift_Transport_Api_InfoBipTransport('your-api-key', 'xxx.api.infobip.com');
@@ -441,7 +449,7 @@ $transport = new Swift_Transport_Api_InfoBipTransport('your-api-key', 'xxx.api.i
 | **API endpoint** | `https://app.mailpace.com/api/v1/send` |
 | **Auth method** | Server token header (`MailPace-Server-Token: {apiKey}`) |
 | **Tags** | Yes -- `tags` (array) |
-| **Metadata** | Yes -- `metadata` object |
+| **Metadata** | No -- MailPace's API has no metadata field, so `X-Mailer-Metadata-*` headers are intentionally not forwarded |
 
 > **Note:** MailPace has no dedicated health/ping endpoint; `ping()` always returns `true`.
 
@@ -504,9 +512,9 @@ $transport = new Swift_Transport_Api_MailerSendTransport('mlsn.xxxxxxxxxxxx');
 | **API endpoint** | `https://api.mailjet.com/v3.1/send` |
 | **Auth method** | HTTP Basic Auth (`publicKey:privateKey`) |
 | **Tags** | Yes -- `CustomCampaign` (first tag only, single string) |
-| **Metadata** | Yes -- `Properties` object |
+| **Metadata** | Yes -- `EventPayload` (JSON-encoded string) |
 
-> **Note:** Mailjet requires both a public (API) key and a secret (private) key. The `$publicKey` is stored as `$apiKey` internally.
+> **Note:** Mailjet requires both a public (API) key and a secret (private) key (both marked `#[SensitiveParameter]`). The `$publicKey` is stored as `$apiKey` internally. Mailjet Send v3.1 has no metadata/`Properties` object, so metadata is JSON-encoded into `EventPayload`, which the provider echoes back in event webhooks.
 
 ```php
 $transport = new Swift_Transport_Api_MailJetTransport('public-key', 'private-key');
@@ -588,7 +596,7 @@ $transport = new Swift_Transport_Api_MailtrapTransport('your-api-key', true, 'in
 | **Tags** | Yes -- `tag` (first tag only, single string) |
 | **Metadata** | No |
 
-> **Important:** The `$host` parameter should be the hostname only, without the `https://` protocol prefix. The transport prepends `https://` automatically.
+> **Important:** The `$host` parameter should be the hostname only, without the `https://` protocol prefix. The transport prepends `https://` automatically. The resulting host is validated at construction time -- HTTPS-only, with localhost/loopback and private/reserved IPs rejected (see [Security](#security)).
 
 ```php
 $transport = new Swift_Transport_Api_PostalTransport('your-api-key', 'postal.example.com');
@@ -609,7 +617,7 @@ $transport = new Swift_Transport_Api_PostalTransport('your-api-key', 'postal.exa
 | **Tags** | No |
 | **Metadata** | No |
 
-> **Note:** Sweego payloads include fixed fields `channel: email`, `provider: sweego`, and `campaign-type: transac`.
+> **Note:** Sweego payloads include fixed fields `channel: email`, `provider: sweego`, and `campaign-type: transactional`.
 
 ```php
 $transport = new Swift_Transport_Api_SweegoTransport('your-api-key');
@@ -625,7 +633,7 @@ $transport = new Swift_Transport_Api_SweegoTransport('your-api-key');
 | Postmark | -- | Server token header | JSON | Yes (single) | Yes | No |
 | Mailgun | `$domain`, `$host` | HTTP Basic | multipart/form-data | Yes (multi) | Yes | No |
 | Brevo | -- | `api-key` header | JSON | Yes (multi) | Yes | No |
-| Amazon SES (API) | `SesClient` | AWS SDK | SDK call | Yes (multi) | Yes | Yes |
+| Amazon SES (API) | `SesClient` | AWS SDK | SDK call | Yes (multi) | No | Yes |
 | Amazon SES (HTTP) | `$sesClient` | AWS SDK | SDK call | Yes (multi) | No | Yes |
 | Azure | `$connectionString` | HMAC-SHA256 | JSON | No | No | No |
 | Google | `Google\Client` | OAuth2 | RFC 2822 raw | No | No | Yes |
@@ -633,7 +641,7 @@ $transport = new Swift_Transport_Api_SweegoTransport('your-api-key');
 | Resend | -- | Bearer token | JSON | Yes (multi) | Yes | No |
 | Scaleway | `$projectId`, `$region` | `X-Auth-Token` | JSON | No | No | No |
 | InfoBip | `$baseUrl` (no protocol) | `App` token | multipart/form-data | No | No | No |
-| MailPace | -- | Server token header | JSON | Yes (multi) | Yes | No |
+| MailPace | -- | Server token header | JSON | Yes (multi) | No | No |
 | MailChimp | -- | Key in body | JSON | Yes (multi) | Yes | No |
 | MailerSend | -- | Bearer token | JSON | Yes (multi) | No | No |
 | Mailjet | `$privateKey` | HTTP Basic | JSON | Yes (single) | Yes | No |
@@ -669,6 +677,18 @@ For transports extending `AbstractHttpApiTransport`, the `send()` method:
 3. On success: fires `sentMessage` event, returns recipient count
 4. On failure: fires `failedMessage` event, throws `Swift_TransportException`
 5. Always fires `sendPerformed` event in `finally` block
+
+> **Note:** The event dispatcher is optional across all API transports. Every dispatch site is null-safe (`$this->eventDispatcher?->...`), so a transport constructed without an `EventDispatcher` sends normally and simply skips event firing.
+
+---
+
+## Security
+
+Two safeguards apply across the HTTP API transports:
+
+**Response size limit.** `AbstractHttpApiTransport::getResponseBody()` caps each provider response at `MAX_RESPONSE_SIZE` (1 MB, i.e. `1048576` bytes). A declared `Content-Length` over the cap -- or a streamed body that grows past it while reading -- throws `Swift_TransportException`, guarding against memory exhaustion from a hostile or malfunctioning endpoint.
+
+**Endpoint URL validation.** Transports that accept a caller-supplied host -- `InfoBipTransport` (`$baseUrl`) and `PostalTransport` (`$host`) -- pass it through `Swift_Transport_UrlValidator::validate()` in the constructor. The validator enforces HTTPS, rejects `localhost`/loopback hosts (`127.0.0.1`, `0.0.0.0`, `localhost`, `::1`), and rejects hosts that resolve to private or reserved IP ranges -- an SSRF guard for configurable endpoints. An invalid host throws `InvalidArgumentException` before any request is made.
 
 ---
 
