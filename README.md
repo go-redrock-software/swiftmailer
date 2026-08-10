@@ -14,7 +14,7 @@ Since taking over, Redrock has shipped a major modernization of SwiftMailer (v6.
 - **DSN transport factory** -- create any transport from a connection string, with `failover()`, `roundrobin()`, and `retry()` wrappers
 - **Webhook system** -- process inbound delivery/bounce/engagement webhooks from 14 providers with signature verification
 - **New events** -- `SentMessageEvent` and `FailedMessageEvent` for post-send tracking
-- **New plugins** -- `AllowlistPlugin` (dev/staging safety), `CssInlinerPlugin` (auto CSS inlining), `SentMessagePlugin` (post-send inspection)
+- **New plugins** -- `AllowlistPlugin` (dev/staging safety), `CssInlinerPlugin` (auto CSS inlining), `SentMessagePlugin` (post-send inspection), `ReadReceiptPlugin` (MDN read receipts + tracking pixel)
 - **DKIM enhancements** -- Ed25519-SHA256 signing, header oversigning
 - **SMTP improvements** -- Auto TLS, Smart SMTPUTF8, explicit envelope control via `Swift_Envelope`
 - **RetryTransport** -- automatic retries with exponential backoff for any transport
@@ -41,7 +41,7 @@ If your application uses SwiftMailer, you don't have to migrate. Upgrade to this
 ## Installation
 
 ```bash
-composer require swiftmailer/swiftmailer
+composer require go-redrock/swiftmailer
 ```
 
 ## Quick Start
@@ -139,6 +139,7 @@ See [doc/webhooks.md](doc/webhooks.md) for setup and provider-specific examples.
 - **AllowlistPlugin** -- restrict delivery to allowed recipients/domains with descriptive rejection reasons (dev/staging safety)
 - **CssInlinerPlugin** -- automatically inline CSS in HTML emails before sending
 - **SentMessagePlugin** -- capture `Swift_SentMessage` objects for post-send inspection
+- **ReadReceiptPlugin** -- toggleable MDN read receipts and/or tracking-pixel injection
 
 See [doc/plugins.md](doc/plugins.md) for configuration and usage.
 
@@ -159,8 +160,8 @@ Enhanced DKIM signer with support for:
 
 ```php
 $signer = new Swift_Signers_DKIMSigner($privateKey, 'example.com', 'selector');
-$signer->setSignatureAlgorithm('ed25519-sha256');
-$signer->setOversignedHeaders(['From', 'Subject', 'To']);
+$signer->setHashAlgorithm('ed25519-sha256');
+// Oversigning of From/To/Subject/Date/Cc/Reply-To/Message-ID is on by default
 $message->attachSigner($signer);
 ```
 
@@ -195,23 +196,33 @@ The `bin/swiftmailer-test` command-line tool validates your transport configurat
 
 ### CI & Quality
 
-- GitHub Actions CI pipeline with PHP 8.3--8.4 test matrix
+- GitHub Actions CI pipeline with a PHP 8.3--8.5 test matrix
+- GitLab CI pipeline with unit tests (PHP 8.3/8.5), Mailpit smoke tests, and Infection mutation testing
 - PHPStan level 5 static analysis
-- Infection mutation testing
 - PHP-CS-Fixer code style enforcement
 
 ## Documentation
 
+The complete documentation lives in [doc/](doc/index.md) -- no external docs site required.
+
 | Document | Description |
 |-|-|
-| [doc/dsn.md](doc/dsn.md) | DSN syntax reference and all supported schemes |
+| [doc/introduction.md](doc/introduction.md) | Requirements, installation, first email |
+| [doc/messages.md](doc/messages.md) | Building messages: bodies, attachments, embedded files, MIME parts |
+| [doc/headers.md](doc/headers.md) | Header types and the header set API |
+| [doc/sending.md](doc/sending.md) | Transports, `send()`, envelopes, spooling, retries, message limits |
 | [doc/api-transports.md](doc/api-transports.md) | All 21 API transports -- constructors, auth, examples |
+| [doc/microsoft-graph.md](doc/microsoft-graph.md) | Microsoft Graph: auth modes, large attachments, calendar invites |
+| [doc/dsn.md](doc/dsn.md) | DSN syntax reference and all supported schemes |
+| [doc/cli.md](doc/cli.md) | The `swiftmailer-test` CLI tool |
+| [doc/events.md](doc/events.md) | Event lifecycle, listener interfaces, dispatch points |
 | [doc/webhooks.md](doc/webhooks.md) | Webhook processing for delivery and engagement events |
-| [doc/plugins.md](doc/plugins.md) | AllowlistPlugin, CssInlinerPlugin, SentMessagePlugin |
-| [doc/events.md](doc/events.md) | SentMessageEvent, FailedMessageEvent, event lifecycle |
+| [doc/plugins.md](doc/plugins.md) | All 14 bundled plugins and writing your own |
+| [doc/signers.md](doc/signers.md) | DKIM, DomainKeys, and S/MIME signing |
+| [doc/security.md](doc/security.md) | Security hardening: defaults and opt-in protections |
+| [doc/architecture.md](doc/architecture.md) | Codebase internals for contributors |
 | [doc/upgrading.md](doc/upgrading.md) | Migration guide from stock SwiftMailer 6.x |
-
-Legacy RST documentation (messages, headers, sending) remains in `doc/` for reference.
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Dev setup, tests, style, static analysis, CI |
 
 ## Sponsors
 

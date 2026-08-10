@@ -66,7 +66,7 @@ Sources: [Symfony Mailer 7.4 Docs](https://symfony.com/doc/7.4/mailer.html), [Sy
 | Retry transport | `Swift_Transport_RetryTransport` | Automatic retry with configurable max retries |
 | Null transport | `Swift_Transport_NullTransport` | No-op transport for testing |
 | DSN parsing | `Swift_Dsn` + `Swift_Transport_DsnTransportFactory` | Parses DSN strings into transport instances |
-| Message builder pattern | `Swift_Message::newInstance()` | Fluent message construction |
+| Message builder pattern | `new Swift_Message()` + fluent setters | Fluent message construction |
 | Embedded images | `Swift_Message::embed()` | Inline image attachments |
 | MIME parts | `Swift_Mime_SimpleMessage` | Multipart message construction |
 | Envelope class | `Swift_Envelope` | Standalone readonly envelope with `fromMessage()` factory; accepted by `Swift_Mailer::send()` |

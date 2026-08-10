@@ -6,6 +6,47 @@ Maintained by `Redrock Software Corporation <https://www.go-redrock.com/>`_ sinc
 applications that cannot migrate to Symfony Mailer, integrating features from
 Symfony Mailer while preserving full backward compatibility.
 
+Unreleased
+----------
+
+ Documentation:
+
+ * Complete in-repo documentation overhaul so no external docs site is
+   needed: legacy RST guides converted to source-verified Markdown
+   (messages, headers, sending, introduction, japanese), the plugin
+   reference expanded to all 14 plugins, and the API-transport, DSN,
+   event, and webhook guides re-verified against the code. New guides:
+   architecture internals, security hardening, message signing, Microsoft
+   Graph, and the swiftmailer-test CLI. Added CONTRIBUTING.md and a
+   doc/index.md table of contents.
+
+ Changed:
+
+ * The Composer package is now published on Packagist as
+   `go-redrock/swiftmailer` (previously consumed as
+   `swiftmailer/swiftmailer` via a VCS repository). Class names,
+   autoloading, and behavior are unchanged.
+
+ Bug Fixes:
+
+ * Amazon SES API transport rewritten to build the SESv2 request directly
+   (removing undefined globals) and to read the provider message id via
+   `getMessageId()`.
+ * Amazon SES HTTP transport rewritten to the SESv2 (async-aws) request
+   schema.
+ * AhaSend transport: corrected the v1 payload structure (subject and
+   attachments).
+ * Mailjet transport: metadata is now sent via `EventPayload` instead of an
+   invalid `Properties` field.
+ * MailPace transport: no longer emits an unsupported metadata field.
+ * Sweego transport: campaign-type value aligned with the documented value.
+ * Microsoft Graph transport: all To recipients are now sent and counted
+   (previously only the first To address was used and To recipients were
+   never counted, so a single-To message reported 0 sent).
+ * API transports: the event dispatcher is now null-safe across all code
+   paths, so transports constructed without a dispatcher no longer fail in
+   `start()`/`stop()`/exception dispatch.
+
 6.5.0 (2026-06-04)
 ------------------
 

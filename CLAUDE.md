@@ -40,7 +40,7 @@ The transport hierarchy is the most important architectural concept:
 
 ### MIME / Message
 
-`Swift_Message` extends `Swift_Mime_SimpleMessage`. Message construction uses a builder pattern: `Swift_Message::newInstance()`. Attachments, embedded files, and MIME parts are added via `attach()` / `embed()`.
+`Swift_Message` extends `Swift_Mime_SimpleMessage`. Messages are constructed directly (`new Swift_Message('Subject')`) and configured via fluent setters -- there is no `newInstance()` factory. Attachments, embedded files, and MIME parts are added via `attach()` / `embed()`.
 
 ### Event System
 

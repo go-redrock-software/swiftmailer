@@ -4,27 +4,18 @@ This guide covers migrating from the original `swiftmailer/swiftmailer` (abandon
 
 ## Step 1 -- Update Composer
 
-The fork uses the same Composer package name. Update your `composer.json` to point to the Redrock repository:
-
-```json
-{
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/redrock/swiftmailer"
-        }
-    ],
-    "require": {
-        "swiftmailer/swiftmailer": "^6.3"
-    }
-}
-```
-
-Then run:
+The fork is published on Packagist as [`go-redrock/swiftmailer`](https://packagist.org/packages/go-redrock/swiftmailer). Replace the abandoned package:
 
 ```bash
-composer update swiftmailer/swiftmailer
+composer remove swiftmailer/swiftmailer
+composer require go-redrock/swiftmailer
 ```
+
+All class names (`Swift_Message`, `Swift_Mailer`, ...) and autoloading are unchanged, so no application code changes are required.
+
+> **Note:** If other packages in your dependency tree still require `swiftmailer/swiftmailer`, Composer will install the abandoned original alongside the fork and the duplicate class definitions will conflict. Run `composer why swiftmailer/swiftmailer` to find them and update their constraints first.
+
+If you previously consumed this fork through a VCS `repositories` entry in `composer.json`, remove that entry -- the Packagist package replaces it.
 
 ## Step 2 -- Verify PHP Version
 
@@ -74,7 +65,7 @@ These are pulled in automatically by Composer. If you have dependency conflicts,
 
 1. **SMTPUTF8 Auto-Detection:** The ESMTP transport now uses `AutoAddressEncoder` by default, which detects whether the server supports SMTPUTF8 and switches between UTF-8 and IDN encoding automatically. This is transparent but may result in different address encoding than the original.
 
-2. **STARTTLS Mode:** A new `CONNECTION_MODE_STARTTLS` encryption constant is available for explicit STARTTLS negotiation.
+2. **Encryption Mode Constants:** Global constants are available for the SMTP encryption modes: `CONNECTION_ENCRYPTION_MODE_STARTTLS` (`'tls'`, STARTTLS negotiation on a plain connection), `CONNECTION_ENCRYPTION_MODE_TLS` (`'ssl'`, SMTPS -- TLS from the first byte), and `CONNECTION_ENCRYPTION_MODE_NONE` (`null`). The string values `'tls'`/`'ssl'` accepted by stock SwiftMailer 6.x continue to work unchanged.
 
 3. **Serialization Blocked:** Transport objects now throw `BadMethodCallException` on `__sleep()`/`__wakeup()`. If you were serializing transports (unusual), this will break.
 
@@ -176,7 +167,7 @@ $transport = $factory->fromDsnString('retry(sendgrid://KEY@default)');
 
 ```php
 $signer = new Swift_Signers_DKIMSigner($ed25519PrivateKey, 'example.com', 'selector');
-$signer->setSignatureAlgorithm('ed25519-sha256');
+$signer->setHashAlgorithm('ed25519-sha256');
 $message->attachSigner($signer);
 ```
 
