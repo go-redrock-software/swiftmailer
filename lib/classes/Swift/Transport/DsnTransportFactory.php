@@ -109,8 +109,6 @@ class Swift_Transport_DsnTransportFactory
         $dsn       = new Swift_Dsn($nyholmDsn);
         $this->validateDsnParameters($dsn->getParameters());
 
-        $this->validateDsnParameters($dsn->getParameters());
-
         $class = $dsn->getTransportClass();
 
         // NullTransport needs an event dispatcher
