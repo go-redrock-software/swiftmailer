@@ -1289,4 +1289,76 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $this->assertCount(1, $attachments);
         $this->assertSame('Usage Snapshot - Report.html', $attachments[0]->getName());
     }
+
+    // Regression: a text/calendar invite is a Swift_MimePart (like the application's
+    // Swift_Calendar) that reports LEVEL_MIXED so a mail client treats it as an
+    // attachment, not an alternative body. It must ride along as an attachment. A
+    // filter keyed on `instanceof Swift_Mime_Attachment` silently drops it (a MimePart
+    // is not a Swift_Mime_Attachment), losing the invite; keying on the nesting level
+    // keeps it. The converter then names it invite.ics and sends it inline, because a
+    // calendar MimePart has no filename or Content-Disposition.
+    public function testSendKeepsCalendarMimePartAsAttachmentInsteadOfDroppingIt(): void
+    {
+        $promise = $this->createMock(\Http\Promise\Promise::class);
+        $promise->method('wait')->willReturn(null);
+
+        $captured        = null;
+        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
+        $sendMailBuilder->method('post')->willReturnCallback(function ($body) use ($promise, &$captured) {
+            $captured = $body;
+
+            return $promise;
+        });
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
+
+        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
+        $usersBuilder->method('byUserId')->willReturn($userItemBuilder);
+
+        $graphClient = $this->createMock(GraphServiceClient::class);
+        $graphClient->method('users')->willReturn($usersBuilder);
+
+        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
+        $dispatcher->method('createSendEvent')->willReturn($this->createMock(\Swift_Events_SendEvent::class));
+        $dispatcher->method('createTransportChangeEvent')->willReturn($this->createMock(\Swift_Events_TransportChangeEvent::class));
+
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'user-id', $dispatcher);
+
+        $m = new \Swift_Message();
+        $m->setFrom(['from@example.com' => 'Sender']);
+        $m->setTo(['to@example.com' => 'Recipient']);
+        $m->setSubject('Appointment');
+        $m->setBody('<p>Your appointment</p>', 'text/html');
+        $m->addPart('Your appointment', 'text/plain'); // alternative body -> skipped
+        $m->attach(new CalendarLikeMimePart("BEGIN:VCALENDAR\r\nMETHOD:REQUEST\r\nEND:VCALENDAR\r\n"));
+
+        $result = $transport->send($m);
+        $this->assertSame(1, $result);
+
+        // The invite rides along as an attachment; the alternative body part does not.
+        $attachments = $captured->getMessage()->getAttachments();
+        $this->assertCount(1, $attachments);
+        $this->assertSame('invite.ics', $attachments[0]->getName());
+        $this->assertTrue($attachments[0]->getIsInline());
+        $this->assertStringStartsWith('text/calendar', (string) $attachments[0]->getContentType());
+    }
+}
+
+/**
+ * Mirrors the application's Swift_Calendar: a text/calendar MimePart that reports
+ * LEVEL_MIXED so mail clients treat it as an attachment rather than an alternative
+ * body. Used to prove the transport keeps calendar parts instead of dropping them.
+ */
+final class CalendarLikeMimePart extends \Swift_MimePart
+{
+    public function getNestingLevel()
+    {
+        return self::LEVEL_MIXED;
+    }
+
+    public function getContentType()
+    {
+        return 'text/calendar; charset="utf-8"; method=REQUEST';
+    }
 }

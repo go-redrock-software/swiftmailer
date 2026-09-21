@@ -64,6 +64,16 @@ class Swift_Transport_AbstractApiTransportNullDispatcherTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testRegisterPluginDoesNotFatalWithoutDispatcher(): void
+    {
+        $transport = new Swift_Transport_Api_SendgridTransport('api-key', $this->okClient());
+
+        // registerPlugin binds the listener on the dispatcher; with no dispatcher it must
+        // be a no-op, not a "Call to a member function bindEventListener() on null".
+        $transport->registerPlugin(new class implements Swift_Events_EventListener {});
+        $this->addToAssertionCount(1);
+    }
+
     private function okClient(): ClientInterface
     {
         $client = $this->createMock(ClientInterface::class);
