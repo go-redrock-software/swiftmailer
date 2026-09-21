@@ -292,6 +292,16 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
 
         $attachmentsToSend = [];
         foreach ($message->getChildren() ?? [] as $swiftAttachment) {
+            // getChildren() returns every MIME child, not just attachments: a
+            // multipart/alternative message carries its plain-text body as a
+            // Swift_MimePart, which is a sibling of Swift_Attachment, not a subtype.
+            // Only real attachments and embedded files extend Swift_Mime_Attachment;
+            // feeding a body MimePart to convertSwiftAttachmentToGraphAttachment()
+            // throws a TypeError and fails the whole send (even when there are no
+            // real attachments, because the alternative body part is always present).
+            if (!$swiftAttachment instanceof Swift_Mime_Attachment) {
+                continue;
+            }
             // Skip calendar parts we are converting to Graph events; shipping the raw
             // .ics alongside is exactly what M365 mangles.
             if (\in_array($swiftAttachment, $inviteAttachments, true)) {
@@ -307,7 +317,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         // large attachment is present the draft flow attaches everything itself.
         if (!$useDraftFlow) {
             $graphAttachments = \array_map(
-                fn (Swift_Attachment $a): Attachment => $this->convertSwiftAttachmentToGraphAttachment($a),
+                fn (Swift_Mime_Attachment $a): Attachment => $this->convertSwiftAttachmentToGraphAttachment($a),
                 $smallAttachments,
             );
             if (!empty($graphAttachments)) {
@@ -401,7 +411,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         return $recipient;
     }
 
-    public function convertSwiftAttachmentToGraphAttachment(Swift_Attachment $swiftAttachment): Attachment
+    public function convertSwiftAttachmentToGraphAttachment(Swift_Mime_Attachment $swiftAttachment): Attachment
     {
         $graphAttachment = new FileAttachment();
         $graphAttachment->setName($swiftAttachment->getFilename());

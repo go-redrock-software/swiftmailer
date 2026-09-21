@@ -1198,4 +1198,95 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
 
         $transport->send($m);
     }
+
+    // -- send: multipart/alternative body must not be treated as an attachment --
+
+    // Regression: a real HTML email carries a text/plain alternative body, which Swift
+    // stores as a Swift_MimePart child of the message. getChildren() returns that part
+    // alongside any real attachments, and send() used to feed every child to a closure
+    // typed Swift_Attachment, so the alternative body part threw
+    //   TypeError: Argument #1 ($a) must be of type Swift_Attachment, Swift_MimePart given
+    // This fired even when the message had NO real attachments (MailQueue.Attachment='[]'),
+    // because the alternative body part is always present on a multipart/alternative mail.
+    public function testSendMultipartAlternativeWithoutAttachmentsDoesNotRejectBodyMimePart(): void
+    {
+        $promise = $this->createMock(\Http\Promise\Promise::class);
+        $promise->method('wait')->willReturn(null);
+
+        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
+        $sendMailBuilder->expects($this->once())->method('post')->willReturn($promise);
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
+
+        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
+        $usersBuilder->method('byUserId')->willReturn($userItemBuilder);
+
+        $graphClient = $this->createMock(GraphServiceClient::class);
+        $graphClient->method('users')->willReturn($usersBuilder);
+
+        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
+        $dispatcher->method('createSendEvent')->willReturn($this->createMock(\Swift_Events_SendEvent::class));
+        $dispatcher->method('createTransportChangeEvent')->willReturn($this->createMock(\Swift_Events_TransportChangeEvent::class));
+
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'user-id', $dispatcher);
+
+        $m = new \Swift_Message();
+        $m->setFrom(['from@example.com' => 'Sender']);
+        $m->setTo(['to@example.com' => 'Recipient']);
+        $m->setSubject('Usage Snapshot - Report');
+        $m->setBody('<p>Report</p>', 'text/html');
+        $m->addPart('Report', 'text/plain'); // text/plain alternative => Swift_MimePart child
+
+        $result = $transport->send($m);
+        $this->assertSame(1, $result);
+    }
+
+    // Regression companion: with a real attachment present alongside the text/plain
+    // alternative, only the real attachment may be shipped to Graph -- the body
+    // MimePart must be filtered out, not attached and not crash the send.
+    public function testSendMultipartAlternativeWithAttachmentShipsOnlyTheAttachment(): void
+    {
+        $promise = $this->createMock(\Http\Promise\Promise::class);
+        $promise->method('wait')->willReturn(null);
+
+        $captured        = null;
+        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
+        $sendMailBuilder->method('post')->willReturnCallback(function ($body) use ($promise, &$captured) {
+            $captured = $body;
+
+            return $promise;
+        });
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
+
+        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
+        $usersBuilder->method('byUserId')->willReturn($userItemBuilder);
+
+        $graphClient = $this->createMock(GraphServiceClient::class);
+        $graphClient->method('users')->willReturn($usersBuilder);
+
+        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
+        $dispatcher->method('createSendEvent')->willReturn($this->createMock(\Swift_Events_SendEvent::class));
+        $dispatcher->method('createTransportChangeEvent')->willReturn($this->createMock(\Swift_Events_TransportChangeEvent::class));
+
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'user-id', $dispatcher);
+
+        $m = new \Swift_Message();
+        $m->setFrom(['from@example.com' => 'Sender']);
+        $m->setTo(['to@example.com' => 'Recipient']);
+        $m->setSubject('Usage Snapshot - Report');
+        $m->setBody('<p>Report</p>', 'text/html');
+        $m->addPart('Report', 'text/plain');
+        $m->attach(new \Swift_Attachment('<html></html>', 'Usage Snapshot - Report.html', 'text/html'));
+
+        $result = $transport->send($m);
+        $this->assertSame(1, $result);
+
+        // The body MimePart is filtered out; only the real file reaches Graph.
+        $attachments = $captured->getMessage()->getAttachments();
+        $this->assertCount(1, $attachments);
+        $this->assertSame('Usage Snapshot - Report.html', $attachments[0]->getName());
+    }
 }
