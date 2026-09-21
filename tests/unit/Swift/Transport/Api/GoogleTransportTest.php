@@ -7,6 +7,7 @@ use Google\Service\Gmail;
 use Google\Service\Gmail\Message;
 use PHPUnit\Framework\TestCase;
 
+use function Swift\base64url_decode;
 use function Swift\getRawMessage;
 
 class Swift_Transport_Api_GoogleTransportTest extends TestCase
@@ -35,7 +36,14 @@ class Swift_Transport_Api_GoogleTransportTest extends TestCase
         foreach ($testCases as $testCase) {
             [$description, $message, $expected] = $testCase;
             $rawMessage                         = getRawMessage($message);
-            $decodedMessage                     = \base64_decode($rawMessage);
+
+            // Gmail requires the `raw` field in base64URL (RFC 4648 §5): the '+' and '/'
+            // of standard base64 become '-' and '_' and the '=' padding is dropped. A real
+            // MIME message's standard base64 contains those characters, so asserting their
+            // absence fails if getRawMessage() regresses to plain base64_encode().
+            $this->assertDoesNotMatchRegularExpression('#[+/=]#', $rawMessage, $description . ' (Gmail raw must be base64url)');
+
+            $decodedMessage = base64url_decode($rawMessage);
 
             foreach ($expected as $expectedString) {
                 $this->assertStringContainsString($expectedString, $decodedMessage, $description);

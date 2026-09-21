@@ -359,8 +359,9 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
 
         $this->assertOnlyAllowedKeys($payload, self::SWEEGO_TOP, 'Sweego top-level');
         $this->assertRequiredKeys($payload, ['channel', 'recipients', 'from', 'subject'], 'Sweego');
-        // Documented campaign-type value (the code previously sent the undocumented 'transac').
-        $this->assertSame('transactional', $payload['campaign-type'], 'Sweego campaign-type must match the documented value');
+        // Documented campaign-type value is 'transac' (Sweego send API reference and the
+        // Symfony sweego-mailer bridge); 'transactional' is not what Sweego expects.
+        $this->assertSame('transac', $payload['campaign-type'], 'Sweego campaign-type must match the documented value');
 
         foreach ($payload['attachments'] ?? [] as $attachment) {
             $this->assertOnlyAllowedKeys($attachment, self::SWEEGO_ATTACHMENT, 'Sweego attachment');
