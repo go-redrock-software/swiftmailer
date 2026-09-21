@@ -292,14 +292,18 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
 
         $attachmentsToSend = [];
         foreach ($message->getChildren() ?? [] as $swiftAttachment) {
-            // getChildren() returns every MIME child, not just attachments: a
+            // getChildren() returns every MIME child, not just attachments. A
             // multipart/alternative message carries its plain-text body as a
-            // Swift_MimePart, which is a sibling of Swift_Attachment, not a subtype.
-            // Only real attachments and embedded files extend Swift_Mime_Attachment;
-            // feeding a body MimePart to convertSwiftAttachmentToGraphAttachment()
-            // throws a TypeError and fails the whole send (even when there are no
-            // real attachments, because the alternative body part is always present).
-            if (!$swiftAttachment instanceof Swift_Mime_Attachment) {
+            // Swift_MimePart at LEVEL_ALTERNATIVE; only that body part must be
+            // skipped. Real attachments (LEVEL_MIXED) and embedded files
+            // (LEVEL_RELATED) ride along, and so do calendar parts, which are
+            // MimeParts that report LEVEL_MIXED so a mail client treats them as an
+            // attachment rather than an alternative body. Keying off the nesting
+            // level (rather than instanceof Swift_Mime_Attachment) keeps those
+            // calendar parts instead of silently dropping them, while still
+            // excluding the body part that would otherwise hit the converter and
+            // throw a TypeError.
+            if (Swift_Mime_SimpleMimeEntity::LEVEL_ALTERNATIVE === $swiftAttachment->getNestingLevel()) {
                 continue;
             }
             // Skip calendar parts we are converting to Graph events; shipping the raw
@@ -317,7 +321,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         // large attachment is present the draft flow attaches everything itself.
         if (!$useDraftFlow) {
             $graphAttachments = \array_map(
-                fn (Swift_Mime_Attachment $a): Attachment => $this->convertSwiftAttachmentToGraphAttachment($a),
+                fn (Swift_Mime_SimpleMimeEntity $a): Attachment => $this->convertSwiftAttachmentToGraphAttachment($a),
                 $smallAttachments,
             );
             if (!empty($graphAttachments)) {
@@ -411,16 +415,30 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         return $recipient;
     }
 
-    public function convertSwiftAttachmentToGraphAttachment(Swift_Mime_Attachment $swiftAttachment): Attachment
+    public function convertSwiftAttachmentToGraphAttachment(Swift_Mime_SimpleMimeEntity $swiftAttachment): Attachment
     {
         $graphAttachment = new FileAttachment();
-        $graphAttachment->setName($swiftAttachment->getFilename());
+        if ($swiftAttachment instanceof Swift_Mime_Attachment) {
+            $graphAttachment->setName($swiftAttachment->getFilename());
+            $graphAttachment->setIsInline('attachment' !== $swiftAttachment->getDisposition());
+            $graphAttachment->setSize($swiftAttachment->getSize());
+        } else {
+            // A non-attachment part that still rides along — in practice a text/calendar
+            // invite that was not converted to a Graph event. Such parts are MimeParts
+            // with no filename or Content-Disposition, so give calendar parts the
+            // conventional name and send them inline (how Outlook surfaces meeting .ics
+            // parts); anything else falls back to a generic attachment name. The media
+            // type is matched by prefix because calendar parts carry charset/method
+            // parameters (text/calendar; charset="utf-8"; method=REQUEST).
+            $mediaType = \strtolower(\trim(\explode(';', (string) $swiftAttachment->getContentType())[0]));
+            $graphAttachment->setName('text/calendar' === $mediaType ? 'invite.ics' : 'attachment');
+            $graphAttachment->setIsInline(true);
+            $graphAttachment->setSize($this->attachmentByteSize($swiftAttachment));
+        }
         $graphAttachment->setContentType($swiftAttachment->getContentType());
-        $graphAttachment->setIsInline('attachment' !== $swiftAttachment->getDisposition());
         $graphAttachment->setContentBytes(
             Utils::streamFor(\base64_encode($swiftAttachment->getBody())),
         ); // Graph API requires the content to be base64-encoded
-        $graphAttachment->setSize($swiftAttachment->getSize());
 
         return $graphAttachment;
     }
