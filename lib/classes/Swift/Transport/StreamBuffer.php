@@ -86,11 +86,38 @@ class Swift_Transport_StreamBuffer extends Swift_ByteStream_AbstractFilterableIn
 
     public function startTLS()
     {
-        return \stream_socket_enable_crypto(
-            $this->stream,
-            true,
-            STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT | STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT,
-        );
+        // A TLS handshake against a throttling or slow relay (e.g. smtp-relay.gmail.com
+        // under load) fails by emitting a PHP warning such as "stream_socket_enable_crypto():
+        // SSL: Handshake timed out" and returning false. That warning is an expected,
+        // recoverable transport condition -- but a host error handler that promotes warnings
+        // to ErrorExceptions turns it into an *unhandled* error that escapes this method and
+        // the whole start() call, bypassing the caller's Swift_TransportException path. Scope
+        // an error handler around the single crypto call so the failure is captured and
+        // re-surfaced as a proper, catchable Swift_TransportException carrying the reason.
+        $handshakeError = null;
+        \set_error_handler(static function ($type, $message) use (&$handshakeError) {
+            $handshakeError = $message;
+
+            return true;
+        });
+        try {
+            $enabled = \stream_socket_enable_crypto(
+                $this->stream,
+                true,
+                STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT | STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT,
+            );
+        } finally {
+            \restore_error_handler();
+        }
+
+        if (true !== $enabled) {
+            throw new Swift_TransportException(
+                'Unable to establish TLS encryption'
+                .(null !== $handshakeError ? ': '.$handshakeError : ''),
+            );
+        }
+
+        return true;
     }
 
     /**
