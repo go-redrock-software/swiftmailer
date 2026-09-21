@@ -70,6 +70,7 @@ security-audit:
   stage: test
   image: php:8.5-cli
   before_script:
+    - apt-get update -qq && apt-get install -y -qq git unzip > /dev/null
     - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
     - composer install --no-interaction --no-progress --ignore-platform-reqs
   script:
