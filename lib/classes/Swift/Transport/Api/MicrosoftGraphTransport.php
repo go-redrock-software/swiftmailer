@@ -424,14 +424,12 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
             $graphAttachment->setSize($swiftAttachment->getSize());
         } else {
             // A non-attachment part that still rides along — in practice a text/calendar
-            // invite that was not converted to a Graph event. Such parts are MimeParts
-            // with no filename or Content-Disposition, so give calendar parts the
-            // conventional name and send them inline (how Outlook surfaces meeting .ics
-            // parts); anything else falls back to a generic attachment name. The media
-            // type is matched by prefix because calendar parts carry charset/method
-            // parameters (text/calendar; charset="utf-8"; method=REQUEST).
-            $mediaType = \strtolower(\trim(\explode(';', (string) $swiftAttachment->getContentType())[0]));
-            $graphAttachment->setName('text/calendar' === $mediaType ? 'invite.ics' : 'attachment');
+            // invite that was not converted to a Graph event (conversion disabled, or a
+            // PUBLISH/unparseable .ics). Such parts are MimeParts with no filename or
+            // Content-Disposition, so give calendar parts the conventional name and send
+            // them inline (how Outlook surfaces meeting .ics parts); anything else falls
+            // back to a generic attachment name.
+            $graphAttachment->setName($this->isCalendarPart($swiftAttachment) ? 'invite.ics' : 'attachment');
             $graphAttachment->setIsInline(true);
             $graphAttachment->setSize($this->attachmentByteSize($swiftAttachment));
         }
@@ -653,7 +651,12 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
      */
     private function isCalendarPart(Swift_Mime_SimpleMimeEntity $child): bool
     {
-        if ('text/calendar' === \strtolower((string) $child->getContentType())) {
+        // Match the media type by prefix. A calendar part's Content-Type normally carries
+        // parameters (e.g. text/calendar; charset="utf-8"; method=REQUEST), so an exact
+        // string comparison misses it — that is why parameterised invites (the common
+        // case for a real calendar MIME part) were never detected or converted to events.
+        $mediaType = \strtolower(\trim(\explode(';', (string) $child->getContentType())[0]));
+        if ('text/calendar' === $mediaType) {
             return true;
         }
 

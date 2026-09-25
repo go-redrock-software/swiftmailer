@@ -784,4 +784,55 @@ class MicrosoftGraphCalendarTest extends TestCase
         ]);
         $transport->send($this->messageWithIcs($updateIcs));
     }
+
+    // -- a parameterised text/calendar content-type (a real calendar MIME part, e.g. the
+    //    application's Swift_Calendar) must be detected and converted to an event, not
+    //    shipped as a raw .ics. Its Content-Type carries `; charset=...; method=REQUEST`
+    //    and it has no .ics filename, so an exact `text/calendar` match (or a filename
+    //    check) misses it — which is why such invites never converted before. ---
+
+    public function testParameterisedCalendarContentTypeInviteConvertsToEvent(): void
+    {
+        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
+        $eventsBuilder->expects($this->once())->method('post')->willReturn($this->promise());
+
+        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
+        $userItemBuilder->method('events')->willReturn($eventsBuilder);
+        $userItemBuilder->expects($this->never())->method('sendMail');
+
+        $graphClient = $this->createMock(GraphServiceClient::class);
+        $graphClient->method('me')->willReturn($userItemBuilder);
+
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $this->dispatcher());
+        $transport->enableCalendarEventConversion();
+
+        $message = new \Swift_Message();
+        $message->setFrom(['from@example.com' => 'Sender']);
+        $message->setTo(['to@example.com' => 'Recipient']);
+        $message->setSubject('Invitation');
+        $message->setBody('Please join.');
+        $message->attach(new RequestMethodCalendarMimePart($this->requestInviteIcs()));
+
+        // One attendee via the created event, plus the single To recipient.
+        $this->assertSame(2, $transport->send($message));
+    }
+}
+
+/**
+ * A calendar MIME part shaped like the application's Swift_Calendar: a text/calendar
+ * MimePart whose Content-Type carries parameters and which has no .ics filename, sitting
+ * at LEVEL_MIXED so it is collected as an attachment candidate. Proves the transport
+ * detects and converts such parts, not only bare `text/calendar` Swift_Attachments.
+ */
+final class RequestMethodCalendarMimePart extends \Swift_MimePart
+{
+    public function getNestingLevel()
+    {
+        return self::LEVEL_MIXED;
+    }
+
+    public function getContentType()
+    {
+        return 'text/calendar; charset="utf-8"; method=REQUEST';
+    }
 }
