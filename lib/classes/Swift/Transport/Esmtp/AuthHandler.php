@@ -262,7 +262,11 @@ class Swift_Transport_Esmtp_AuthHandler implements Swift_Transport_EsmtpHandler
     protected function getAuthenticatorsForAgent()
     {
         if (!$mode = \strtolower($this->auth_mode ?? '')) {
-            $priority = ['xoauth2' => 0, 'plain' => 1, 'login' => 2, 'cram-md5' => 3, 'ntlm' => 4];
+            // No explicit mode means the credential is a password, so password mechanisms go
+            // first. XOAUTH2 takes a bearer token: Gmail treats a password sent that way as a
+            // failed login and then rejects the valid password (535-5.7.8), so it is only a
+            // last resort here. OAuth callers select it with setAuthMode('XOAUTH2').
+            $priority = ['plain' => 0, 'login' => 1, 'cram-md5' => 2, 'ntlm' => 3, 'xoauth2' => 4];
             $sorted   = $this->authenticators;
             \usort($sorted, function ($a, $b) use ($priority) {
                 $pa = $priority[\strtolower($a->getAuthKeyword() ?? '')] ?? 99;

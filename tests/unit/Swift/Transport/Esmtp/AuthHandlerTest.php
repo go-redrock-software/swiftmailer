@@ -270,8 +270,12 @@ class Swift_Transport_Esmtp_AuthHandlerTest extends SwiftMailerTestCase
         $auth->afterEhlo($this->agent);
     }
 
-    public function testAuthenticatorPreferenceOrdering()
+    public function testPasswordMechanismsAreTriedBeforeXOAuth2WhenNoModeIsSet()
     {
+        // With no auth mode the credential is a password, but XOAUTH2 takes a bearer token.
+        // Gmail counts a password sent as a token as a failed login and then refuses the
+        // valid app password on the same connection (535-5.7.8), so a password must go to
+        // PLAIN first and XOAUTH2 must never be tried once a password mechanism succeeds.
         $aCram  = $this->getMockery('Swift_Transport_Esmtp_Authenticator');
         $aPlain = $this->getMockery('Swift_Transport_Esmtp_Authenticator');
         $aLogin = $this->getMockery('Swift_Transport_Esmtp_Authenticator');
@@ -282,21 +286,49 @@ class Swift_Transport_Esmtp_AuthHandlerTest extends SwiftMailerTestCase
         $aLogin->shouldReceive('getAuthKeyword')->andReturn('LOGIN');
         $aOauth->shouldReceive('getAuthKeyword')->andReturn('XOAUTH2');
 
-        // XOAUTH2 succeeds immediately — others must not be tried
-        $aOauth->shouldReceive('authenticate')
+        $aPlain->shouldReceive('authenticate')
             ->once()
-            ->with($this->agent, 'jack', 'pass')
+            ->with($this->agent, 'jack', 'app-password')
             ->andReturn(true);
-        $aPlain->shouldReceive('authenticate')->never();
+        $aOauth->shouldReceive('authenticate')->never();
         $aLogin->shouldReceive('authenticate')->never();
         $aCram->shouldReceive('authenticate')->never();
 
-        // Pass in worst-first order
-        $auth = $this->createHandler([$aCram, $aLogin, $aPlain, $aOauth]);
+        // XOAUTH2 registered first, and the mechanisms Gmail's EHLO advertises
+        $auth = $this->createHandler([$aOauth, $aCram, $aLogin, $aPlain]);
         $auth->setUsername('jack');
-        $auth->setPassword('pass');
+        $auth->setPassword('app-password');
 
-        $auth->setKeywordParams(['XOAUTH2', 'PLAIN', 'LOGIN', 'CRAM-MD5']);
+        $auth->setKeywordParams(['LOGIN', 'PLAIN', 'XOAUTH2', 'PLAIN-CLIENTTOKEN', 'OAUTHBEARER', 'XOAUTH']);
+        $auth->afterEhlo($this->agent);
+    }
+
+    public function testXOAuth2IsStillTriedLastWhenPasswordMechanismsFail()
+    {
+        // A caller that passes a token without setting the XOAUTH2 mode keeps working:
+        // every other advertised mechanism is tried first, then XOAUTH2 as the last resort.
+        $aPlain = $this->createMockAuthenticator('PLAIN');
+        $aLogin = $this->createMockAuthenticator('LOGIN');
+        $aOauth = $this->createMockAuthenticator('XOAUTH2');
+
+        $aPlain->shouldReceive('authenticate')
+            ->once()
+            ->ordered()
+            ->andThrow(new Swift_TransportException('PLAIN rejected', 535));
+        $aLogin->shouldReceive('authenticate')
+            ->once()
+            ->ordered()
+            ->andThrow(new Swift_TransportException('LOGIN rejected', 535));
+        $aOauth->shouldReceive('authenticate')
+            ->once()
+            ->ordered()
+            ->with($this->agent, 'jack', 'ya29.token')
+            ->andReturn(true);
+
+        $auth = $this->createHandler([$aOauth, $aLogin, $aPlain]);
+        $auth->setUsername('jack');
+        $auth->setPassword('ya29.token');
+        $auth->setKeywordParams(['LOGIN', 'PLAIN', 'XOAUTH2']);
         $auth->afterEhlo($this->agent);
     }
 

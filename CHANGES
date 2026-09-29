@@ -29,6 +29,14 @@ Unreleased
 
  Bug Fixes:
 
+ * SMTP authentication: with no explicit auth mode, password mechanisms
+   (PLAIN, LOGIN, CRAM-MD5, NTLM) are tried before XOAUTH2 again. Trying
+   XOAUTH2 first sent the password as a bearer token; Gmail rejects that and
+   then refuses the valid app password (535-5.7.8). OAuth callers select
+   XOAUTH2 with `setAuthMode('XOAUTH2')`.
+ * XOAUTH2 authenticator: a 334 error challenge is answered with the empty
+   reply SASL requires (not RSET), and a failed cleanup no longer hides the
+   original authentication error.
  * Amazon SES API transport rewritten to build the SESv2 request directly
    (removing undefined globals) and to read the provider message id via
    `getMessageId()`.
