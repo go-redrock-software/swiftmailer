@@ -43,7 +43,16 @@ class Swift_Transport_Esmtp_Auth_XOAuth2Authenticator implements Swift_Transport
 
             return true;
         } catch (Swift_TransportException $e) {
-            $agent->executeCommand("RSET\r\n", [250]);
+            try {
+                if (334 === $e->getCode()) {
+                    // The server sent an error challenge; SASL requires an empty reply to end it.
+                    $agent->executeCommand("\r\n", []);
+                } else {
+                    $agent->executeCommand("RSET\r\n", [250]);
+                }
+            } catch (Exception) {
+                // The server may have dropped the connection; keep the real auth error.
+            }
 
             throw $e;
         }
