@@ -70,7 +70,8 @@ class Swift_Transport_AbstractApiTransportNullDispatcherTest extends TestCase
 
         // registerPlugin binds the listener on the dispatcher; with no dispatcher it must
         // be a no-op, not a "Call to a member function bindEventListener() on null".
-        $transport->registerPlugin(new class implements Swift_Events_EventListener {});
+        $transport->registerPlugin(new class implements Swift_Events_EventListener {
+        });
         $this->addToAssertionCount(1);
     }
 

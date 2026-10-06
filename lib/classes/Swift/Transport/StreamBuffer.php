@@ -111,10 +111,7 @@ class Swift_Transport_StreamBuffer extends Swift_ByteStream_AbstractFilterableIn
         }
 
         if (true !== $enabled) {
-            throw new Swift_TransportException(
-                'Unable to establish TLS encryption'
-                .(null !== $handshakeError ? ': '.$handshakeError : ''),
-            );
+            throw new Swift_TransportException('Unable to establish TLS encryption'.(null !== $handshakeError ? ': '.$handshakeError : ''));
         }
 
         return true;

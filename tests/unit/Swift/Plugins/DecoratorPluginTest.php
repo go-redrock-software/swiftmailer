@@ -6,7 +6,7 @@ class Swift_Plugins_DecoratorPluginTest extends SwiftMailerTestCase
     {
         $message = $this->createMessage(
             $this->createHeaders(),
-            ['zip@button.tld'               => 'Zipathon'],
+            ['zip@button.tld' => 'Zipathon'],
             ['chris.corbyn@swiftmailer.org' => 'Chris'],
             'Subject',
             'Hello {name}, you are customer #{id}',
@@ -31,7 +31,7 @@ class Swift_Plugins_DecoratorPluginTest extends SwiftMailerTestCase
     {
         $message = $this->createMessage(
             $this->createHeaders(),
-            ['zip@button.tld'               => 'Zipathon', 'foo@bar.tld' => 'Foo'],
+            ['zip@button.tld' => 'Zipathon', 'foo@bar.tld' => 'Foo'],
             ['chris.corbyn@swiftmailer.org' => 'Chris'],
             'Subject',
             'Hello {name}, you are customer #{id}',
@@ -72,7 +72,7 @@ class Swift_Plugins_DecoratorPluginTest extends SwiftMailerTestCase
 
         $message = $this->createMessage(
             $headers,
-            ['zip@button.tld'               => 'Zipathon'],
+            ['zip@button.tld' => 'Zipathon'],
             ['chris.corbyn@swiftmailer.org' => 'Chris'],
             'A message for {name}!',
             'Hello {name}, you are customer #{id}',
@@ -109,7 +109,7 @@ class Swift_Plugins_DecoratorPluginTest extends SwiftMailerTestCase
         $part2   = $this->createPart('text/html', 'Your <em>name</em> is {name}?', '2@x');
         $message = $this->createMessage(
             $this->createHeaders(),
-            ['zip@button.tld'               => 'Zipathon'],
+            ['zip@button.tld' => 'Zipathon'],
             ['chris.corbyn@swiftmailer.org' => 'Chris'],
             'A message for {name}!',
             'Subject',
@@ -142,7 +142,7 @@ class Swift_Plugins_DecoratorPluginTest extends SwiftMailerTestCase
     {
         $message = $this->createMessage(
             $this->createHeaders(),
-            ['foo@bar'                      => 'Foobar', 'zip@zap' => 'Zip zap'],
+            ['foo@bar' => 'Foobar', 'zip@zap' => 'Zip zap'],
             ['chris.corbyn@swiftmailer.org' => 'Chris'],
             'Subject',
             'Something {a}',
