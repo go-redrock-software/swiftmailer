@@ -199,6 +199,57 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
         }
     }
 
+    public function testEhloReplyIsKeptWhenServerClosesBeforeHeloFallback()
+    {
+        // smtp-relay.gmail.com rejects EHLO [127.0.0.1] like this and closes the connection,
+        // so the HELO fallback reads nothing. The error must still name the 421.
+        $buf  = $this->getBuffer();
+        $smtp = $this->getTransport($buf);
+
+        $buf->shouldReceive('initialize')
+            ->once();
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(0)
+            ->andReturn("220 smtp-relay.gmail.com ESMTP - gsmtp\r\n");
+        $buf->shouldReceive('write')
+            ->once()
+            ->with(Mockery::pattern('~^EHLO .+?\r\n$~D'))
+            ->andReturn(1);
+        $buf->shouldReceive('readLine')
+            ->twice()
+            ->with(1)
+            ->andReturn(
+                "421-4.7.0 Try again later, closing connection. (EHLO)\r\n",
+                "421 4.7.0  https://support.google.com/a/answer/3221692 - gsmtp\r\n",
+            );
+        $buf->shouldReceive('write')
+            ->once()
+            ->with(Mockery::pattern('~^HELO .+?\r\n$~D'))
+            ->andReturn(2);
+        $buf->shouldReceive('readLine')
+            ->once()
+            ->with(2)
+            ->andReturn(false); // StreamBuffer::readLine() at EOF
+        $this->finishBuffer($buf);
+
+        try {
+            $smtp->start();
+            $this->fail('A closed connection after EHLO should raise an exception');
+        } catch (Swift_TransportException $e) {
+            $this->assertStringStartsWith(
+                'EHLO failed: Expected response code 250 but got code "421", with message "421-4.7.0 Try again later, closing connection. (EHLO)',
+                $e->getMessage(),
+            );
+            $this->assertStringEndsWith(
+                '; HELO fallback failed: Expected response code 250 but got an empty response',
+                $e->getMessage(),
+            );
+            $this->assertSame(421, $e->getCode());
+            $this->assertFalse($smtp->isStarted());
+        }
+    }
+
     public function testDomainNameIsPlacedInEhlo()
     {
         /* -- RFC 2821, 4.1.4.

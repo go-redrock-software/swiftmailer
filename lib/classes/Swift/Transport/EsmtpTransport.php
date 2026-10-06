@@ -354,7 +354,7 @@ class Swift_Transport_EsmtpTransport extends Swift_Transport_AbstractSmtpTranspo
                 [250],
             );
         } catch (Swift_TransportException $e) {
-            return parent::doHeloCommand();
+            return $this->doHeloAfterFailedEhlo($e);
         }
 
         if ($this->params[CONNECTION_ENCRYPTION_MODE_STARTTLS]) {
@@ -371,7 +371,7 @@ class Swift_Transport_EsmtpTransport extends Swift_Transport_AbstractSmtpTranspo
                         [250],
                     );
                 } catch (Swift_TransportException $e) {
-                    return parent::doHeloCommand();
+                    return $this->doHeloAfterFailedEhlo($e);
                 }
             } catch (Swift_TransportException $e) {
                 $this->throwException($e);
@@ -392,6 +392,20 @@ class Swift_Transport_EsmtpTransport extends Swift_Transport_AbstractSmtpTranspo
         $this->setHandlerParams();
         foreach ($this->getActiveHandlers() as $handler) {
             $handler->afterEhlo($this);
+        }
+    }
+
+    /**
+     * Fall back to HELO for servers without EHLO. If HELO fails too, keep the EHLO reply in the
+     * error: a server that closes the connection after EHLO (e.g. "421 4.7.0 ... (EHLO)") would
+     * otherwise show only HELO's "got an empty response".
+     */
+    private function doHeloAfterFailedEhlo(Swift_TransportException $ehloFailure)
+    {
+        try {
+            return parent::doHeloCommand();
+        } catch (Swift_TransportException $heloFailure) {
+            throw new Swift_TransportException('EHLO failed: '.$ehloFailure->getMessage().'; HELO fallback failed: '.$heloFailure->getMessage(), $ehloFailure->getCode(), $ehloFailure);
         }
     }
 
