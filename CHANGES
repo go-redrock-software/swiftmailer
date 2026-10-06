@@ -29,6 +29,11 @@ Unreleased
 
  Bug Fixes:
 
+ * ESMTP greeting: when EHLO fails and the HELO fallback fails too, the
+   exception keeps the EHLO reply (and its code). A server that closes the
+   connection after EHLO, such as smtp-relay.gmail.com answering
+   `EHLO [127.0.0.1]` with "421 4.7.0 ... (EHLO)", used to show only
+   "Expected response code 250 but got an empty response".
  * SMTP authentication: with no explicit auth mode, password mechanisms
    (PLAIN, LOGIN, CRAM-MD5, NTLM) are tried before XOAUTH2 again. Trying
    XOAUTH2 first sent the password as a bearer token; Gmail rejects that and
