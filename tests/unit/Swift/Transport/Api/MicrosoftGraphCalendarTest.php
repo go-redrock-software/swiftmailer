@@ -255,7 +255,11 @@ class MicrosoftGraphCalendarTest extends TestCase
         $this->assertSame('HQ', $graphEvent->getLocation()->getDisplayName());
         $this->assertCount(1, $graphEvent->getAttendees());
         $this->assertSame('bob@example.com', $graphEvent->getAttendees()[0]->getEmailAddress()->getAddress());
-        $this->assertSame('map-1', $graphEvent->getTransactionId());
+        $this->assertNull($graphEvent->getTransactionId(), 'a repeated transactionId makes Graph reject the next invite');
+        $properties = $graphEvent->getSingleValueExtendedProperties();
+        $this->assertCount(1, $properties);
+        $this->assertSame(\Swift_Transport_Api_MicrosoftGraphTransport::INVITE_KEY_PROPERTY_ID, $properties[0]->getId());
+        $this->assertSame('map-1|bob@example.com', $properties[0]->getValue());
     }
 
     // -- a malformed .ics must not crash the send; it falls back to an attachment ---
@@ -542,11 +546,14 @@ class MicrosoftGraphCalendarTest extends TestCase
         $userItemBuilder->method('events')->willReturn($eventsBuilder);
 
         $t      = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
-        $method = new \ReflectionMethod($t, 'findEventIdByICalUId');
+        $method = new \ReflectionMethod($t, 'findEventIdByInviteKey');
         $id     = $method->invoke($t, $userItemBuilder, "o'brien-uid");
 
         $this->assertSame('evt-graph-1', $id);
-        $this->assertSame("iCalUId eq 'o''brien-uid'", $capturedConfig->queryParameters->filter);
+        $this->assertSame(
+            "singleValueExtendedProperties/Any(ep: ep/id eq '".\Swift_Transport_Api_MicrosoftGraphTransport::INVITE_KEY_PROPERTY_ID."' and ep/value eq 'o''brien-uid')",
+            $capturedConfig->queryParameters->filter,
+        );
     }
 
     public function testFindEventIdReturnsNullWhenNoMatch(): void
@@ -562,7 +569,7 @@ class MicrosoftGraphCalendarTest extends TestCase
         $userItemBuilder->method('events')->willReturn($eventsBuilder);
 
         $t      = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
-        $method = new \ReflectionMethod($t, 'findEventIdByICalUId');
+        $method = new \ReflectionMethod($t, 'findEventIdByInviteKey');
         $this->assertNull($method->invoke($t, $userItemBuilder, 'missing-uid'));
     }
 
@@ -628,8 +635,8 @@ class MicrosoftGraphCalendarTest extends TestCase
         $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
         $userItemBuilder->expects($this->never())->method('sendMail');
 
-        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByICalUId', 'cancelGraphEvent']);
-        $transport->method('findEventIdByICalUId')->willReturn('evt-graph-1');
+        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByInviteKey', 'cancelGraphEvent']);
+        $transport->method('findEventIdByInviteKey')->willReturn('evt-graph-1');
         $transport->expects($this->once())->method('cancelGraphEvent')->with($userItemBuilder, 'evt-graph-1');
 
         $cancelIcs = \implode("\r\n", [
@@ -648,8 +655,8 @@ class MicrosoftGraphCalendarTest extends TestCase
         $userItemBuilder->expects($this->never())->method('events');
         $userItemBuilder->expects($this->never())->method('sendMail');
 
-        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByICalUId', 'cancelGraphEvent']);
-        $transport->method('findEventIdByICalUId')->willReturn(null);
+        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByInviteKey', 'cancelGraphEvent']);
+        $transport->method('findEventIdByInviteKey')->willReturn(null);
         $transport->expects($this->never())->method('cancelGraphEvent');
 
         $cancelIcs = \implode("\r\n", [
@@ -671,8 +678,8 @@ class MicrosoftGraphCalendarTest extends TestCase
         $userItemBuilder->expects($this->never())->method('events');
         $userItemBuilder->expects($this->never())->method('sendMail');
 
-        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByICalUId', 'cancelGraphEvent']);
-        $transport->method('findEventIdByICalUId')->willReturn(null);
+        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByInviteKey', 'cancelGraphEvent']);
+        $transport->method('findEventIdByInviteKey')->willReturn(null);
 
         $cancelIcs = \implode("\r\n", [
             'BEGIN:VCALENDAR', 'METHOD:CANCEL', 'BEGIN:VEVENT',
@@ -707,8 +714,8 @@ class MicrosoftGraphCalendarTest extends TestCase
         $userItemBuilder->expects($this->never())->method('events');
         $userItemBuilder->expects($this->never())->method('sendMail');
 
-        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByICalUId', 'cancelGraphEvent']);
-        $transport->method('findEventIdByICalUId')->willReturn(null);
+        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByInviteKey', 'cancelGraphEvent']);
+        $transport->method('findEventIdByInviteKey')->willReturn(null);
         $transport->expects($this->never())->method('cancelGraphEvent');
 
         $cancelIcs = \implode("\r\n", [
@@ -729,8 +736,8 @@ class MicrosoftGraphCalendarTest extends TestCase
         $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
         $userItemBuilder->expects($this->never())->method('sendMail');
 
-        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByICalUId', 'cancelGraphEvent']);
-        $transport->method('findEventIdByICalUId')->willReturn('evt-graph-1');
+        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByInviteKey', 'cancelGraphEvent']);
+        $transport->method('findEventIdByInviteKey')->willReturn('evt-graph-1');
         $transport->expects($this->once())->method('cancelGraphEvent')->with($userItemBuilder, 'evt-graph-1');
 
         $cancelIcs = \implode("\r\n", [
@@ -749,8 +756,8 @@ class MicrosoftGraphCalendarTest extends TestCase
         $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
         $userItemBuilder->expects($this->never())->method('sendMail');
 
-        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByICalUId', 'updateGraphEvent']);
-        $transport->method('findEventIdByICalUId')->willReturn('evt-graph-1');
+        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByInviteKey', 'updateGraphEvent']);
+        $transport->method('findEventIdByInviteKey')->willReturn('evt-graph-1');
         $transport->expects($this->once())->method('updateGraphEvent')->with($userItemBuilder, 'evt-graph-1', $this->isInstanceOf(\Microsoft\Graph\Generated\Models\Event::class));
 
         $updateIcs = \implode("\r\n", [
@@ -772,8 +779,8 @@ class MicrosoftGraphCalendarTest extends TestCase
         $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
         $userItemBuilder->method('events')->willReturn($eventsBuilder);
 
-        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByICalUId', 'updateGraphEvent']);
-        $transport->method('findEventIdByICalUId')->willReturn(null);
+        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByInviteKey', 'updateGraphEvent']);
+        $transport->method('findEventIdByInviteKey')->willReturn(null);
         $transport->expects($this->never())->method('updateGraphEvent');
 
         $updateIcs = \implode("\r\n", [
