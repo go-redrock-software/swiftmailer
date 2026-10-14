@@ -51,5 +51,8 @@ function getRawMessage(\Swift_Mime_SimpleMessage $message): string
         }
     }
 
-    return \base64_encode($messageString);
+    // Gmail's messages.send `raw` field must be base64URL-encoded (RFC 4648 §5),
+    // not standard base64: real MIME contains bytes that encode to '+' and '/', which
+    // Gmail rejects. base64url_encode() lives alongside this function.
+    return base64url_encode($messageString);
 }

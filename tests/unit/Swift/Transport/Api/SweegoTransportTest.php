@@ -305,7 +305,7 @@ class SweegoTransportTest extends TestCase
 
                     $this->assertSame('email', $payload['channel']);
                     $this->assertSame('sweego', $payload['provider']);
-                    $this->assertSame('transactional', $payload['campaign-type']);
+                    $this->assertSame('transac', $payload['campaign-type']);
 
                     return true;
                 }),
