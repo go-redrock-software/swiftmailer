@@ -16,6 +16,7 @@ use Microsoft\Graph\Generated\Models\ItemBody;
 use Microsoft\Graph\Generated\Models\Location;
 use Microsoft\Graph\Generated\Models\Message;
 use Microsoft\Graph\Generated\Models\Recipient;
+use Microsoft\Graph\Generated\Models\SingleValueLegacyExtendedProperty;
 use Microsoft\Graph\Generated\Models\UploadSession;
 use Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilderGetQueryParameters;
 use Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilderGetRequestConfiguration;
@@ -70,6 +71,13 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
      * session at 150 MB. Anything larger cannot be sent and is rejected up front.
      */
     public const MAX_ATTACHMENT_SIZE = 150 * 1024 * 1024;
+
+    /**
+     * Single-value extended property that stamps each created Graph event with the invite it
+     * came from (see inviteKey()). Graph generates its own iCalUId and ignores the .ics UID,
+     * so this property is the only way a later UPDATE or CANCEL .ics can find the event.
+     */
+    public const INVITE_KEY_PROPERTY_ID = 'String {FB3BCF2C-5777-47B4-9B1E-ABE7EB044EDE} Name SwiftInviteKey';
 
     private int $largeAttachmentThreshold = self::LARGE_ATTACHMENT_THRESHOLD;
 
@@ -734,19 +742,49 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
             $event->setAttendees($attendees);
         }
 
-        // Reuse the iCalendar UID as a Graph transactionId so a retried send doesn't
-        // create a duplicate calendar entry (Graph rejects a repeated transactionId).
-        if (null !== $parsed->uid) {
-            $event->setTransactionId(\substr($parsed->uid, 0, 256));
+        // No transactionId: one .ics UID is often sent to several recipients in separate
+        // messages (an appointment's student and staff invites), and Graph rejects a
+        // repeated transactionId, so every invite after the first failed.
+        $inviteKey = $this->inviteKey($parsed);
+        if (null !== $inviteKey) {
+            $property = new SingleValueLegacyExtendedProperty();
+            $property->setId(self::INVITE_KEY_PROPERTY_ID);
+            $property->setValue($inviteKey);
+            $event->setSingleValueExtendedProperties([$property]);
         }
 
         return $event;
     }
 
     /**
+     * Identifies the Graph event created for an invite: its .ics UID plus its attendees.
+     *
+     * The attendees are part of the key because the same UID is sent to each recipient in
+     * its own message, with its own wording. Each recipient gets its own event, and a later
+     * update or cancellation for that recipient finds that event and no other.
+     */
+    private function inviteKey(Swift_Transport_Api_Calendar_ParsedEvent $parsed): ?string
+    {
+        if (null === $parsed->uid || '' === $parsed->uid) {
+            return null;
+        }
+
+        $emails = [];
+        foreach ($parsed->attendees as $participant) {
+            if (!empty($participant['email'])) {
+                $emails[] = \strtolower($participant['email']);
+            }
+        }
+        \sort($emails);
+
+        return $parsed->uid.'|'.\implode(',', \array_unique($emails));
+    }
+
+    /**
      * Routes a single parsed calendar entry to the correct Graph Calendar operation:
-     * CANCEL -> cancel the matching event; REQUEST with SEQUENCE > 0 -> patch the
-     * matching event (create if it can't be found); REQUEST with SEQUENCE 0 -> create.
+     * CANCEL -> cancel the matching event; REQUEST -> patch the matching event, or create
+     * it when none matches. "Matching" means created for the same invite key (UID +
+     * attendees). SEQUENCE is not used: senders do not set it reliably.
      *
      * @return int the number of recipients actually notified by Graph for this entry
      *             (0 when the operation contacted Graph zero times, e.g. a CANCEL that
@@ -756,15 +794,17 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder $userRequestBuilder,
         Swift_Transport_Api_Calendar_ParsedEvent $parsed,
     ): int {
+        $inviteKey = $this->inviteKey($parsed);
+        $eventId   = null !== $inviteKey
+            ? $this->findEventIdByInviteKey($userRequestBuilder, $inviteKey)
+            : null;
+
         if ($parsed->isCancel()) {
-            $eventId = null !== $parsed->uid
-                ? $this->findEventIdByICalUId($userRequestBuilder, $parsed->uid)
-                : null;
             if (null === $eventId) {
                 // No matching event (e.g. it was not created via Graph). Nothing
                 // actionable; the broken .ics is intentionally not sent, and nobody
                 // was notified.
-                \trigger_error("Graph calendar CANCEL: no event matched iCalUId '{$parsed->uid}'", E_USER_NOTICE);
+                \trigger_error("Graph calendar CANCEL: no event matched invite '{$inviteKey}'", E_USER_NOTICE);
 
                 return 0;
             }
@@ -775,16 +815,12 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
 
         $graphEvent = $this->convertParsedEventToGraphEvent($parsed);
 
-        // SEQUENCE > 0 marks a revision to an existing invitation; patch it in place so
+        // An invite this mailbox already created is a revision: patch it in place so
         // Exchange sends an "updated" notice rather than a second invite.
-        if ($parsed->sequence > 0 && null !== $parsed->uid) {
-            $eventId = $this->findEventIdByICalUId($userRequestBuilder, $parsed->uid);
-            if (null !== $eventId) {
-                $this->updateGraphEvent($userRequestBuilder, $eventId, $graphEvent);
+        if (null !== $eventId) {
+            $this->updateGraphEvent($userRequestBuilder, $eventId, $graphEvent);
 
-                return \count($parsed->attendees);
-            }
-            // Fall through to create when the original can't be found.
+            return \count($parsed->attendees);
         }
 
         // POST /users/{id}/events (or /me/events) — Exchange sends a proper, actionable
@@ -795,20 +831,20 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
     }
 
     /**
-     * Looks up the Graph event id for a given iCalendar UID, or null if none matches.
-     *
-     * Graph stores the originating .ics UID in the event's iCalUId property, so this is
-     * the reliable key for correlating an UPDATE/CANCEL .ics back to the created event.
+     * Looks up the Graph event created for an invite key (see inviteKey()), or null if none
+     * matches. Events carry the key in the INVITE_KEY_PROPERTY_ID extended property.
      */
-    protected function findEventIdByICalUId(
+    protected function findEventIdByInviteKey(
         Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder $userRequestBuilder,
-        string $iCalUId,
+        string $inviteKey,
     ): ?string {
         $config                  = new EventsRequestBuilderGetRequestConfiguration();
         $config->queryParameters = new EventsRequestBuilderGetQueryParameters();
         // OData string literals escape a single quote by doubling it.
-        $escaped                         = \str_replace("'", "''", $iCalUId);
-        $config->queryParameters->filter = "iCalUId eq '{$escaped}'";
+        $escaped                         = \str_replace("'", "''", $inviteKey);
+        $config->queryParameters->filter = "singleValueExtendedProperties/Any(ep: ep/id eq '"
+            .self::INVITE_KEY_PROPERTY_ID."' and ep/value eq '{$escaped}')";
+        $config->queryParameters->select = ['id'];
 
         $response = $userRequestBuilder->events()->get($config)->wait();
         foreach ($response?->getValue() ?? [] as $event) {
