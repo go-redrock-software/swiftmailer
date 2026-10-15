@@ -9,6 +9,7 @@
 
 use Nyholm\Dsn\Configuration\Url;
 use Nyholm\Dsn\DsnParser;
+use Nyholm\Dsn\Exception\InvalidDsnException;
 
 /**
  * Factory that creates Swift_Transport instances from DSN strings.
@@ -132,7 +133,12 @@ class Swift_Transport_DsnTransportFactory
 
     private function parseDsnUrl(#[SensitiveParameter] string $dsnString): Url
     {
-        $parsed = DsnParser::parseUrl($dsnString);
+        try {
+            $parsed = DsnParser::parseUrl($dsnString);
+        } catch (InvalidDsnException) {
+            // Parser errors retain raw DSNs in messages, properties and trace arguments.
+            throw new InvalidArgumentException('Invalid DSN syntax; check the scheme, host, port and URL-encoded credentials.');
+        }
         // Nyholm 2.0.1 uses empty() on raw userinfo and loses the literal string '0'.
         // Restore only that value, retaining the validated parser result and query data.
         if (\preg_match('#\A[a-zA-Z0-9+.-]+:(?://)?([^/?\#@]*)@#D', $dsnString, $matches)) {

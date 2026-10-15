@@ -49,20 +49,29 @@ php bin/swiftmailer-test env --to=test@example.com
 
 ## Credential masking in output
 
-Before doing anything, the tool echoes the DSN, from, to, and subject. The DSN is masked by replacing the password component of a `user:password@` pair with `****`:
+The tool prints a fixed DSN placeholder, followed by from, to and subject:
 
 ```
-DSN:       smtp://user:****@smtp.example.com
+DSN:       [redacted]
 ```
 
-> Caveat: masking only covers the `user:password@` form. API DSNs where the key is the user with no password — e.g. `sendgrid://SG.xxxx@default` — are **not** masked, and the key is printed in full. Prefer redirecting or avoiding stdout capture when testing API transports with real keys. Console output additionally strips control/escape characters to prevent terminal-injection via crafted DSNs.
+It never previews DSN userinfo, API keys, host/path/query fields or nested DSN
+contents. After construction it prints the transport class for diagnostics.
+The placeholder is used for both environment and positional DSNs, including
+malformed input. Argument-based DSNs still expose credentials in the host's
+process list; use the environment pattern above.
+
+DSN parser failures produce a static configuration error without copying or
+chaining the parser's credential-bearing exception. This protection covers
+Swiftmailer's parser boundaries; direct Nyholm calls and arbitrary provider
+error messages are outside that guarantee.
 
 ## Behaviour
 
 The tool runs these steps, printing progress (info in cyan, success in green; warnings and errors go to stderr):
 
 1. Parse arguments.
-2. Resolve the DSN and print the masked summary.
+2. Resolve the DSN and print the redacted placeholder plus message summary.
 3. Build the transport via `Swift_Transport_DsnTransportFactory` and print its class.
 4. `start()` the transport (opens the connection / validates the API client).
 5. Build a `Swift_Message` and send it via `Swift_Mailer`.

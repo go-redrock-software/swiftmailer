@@ -26,8 +26,9 @@ class Swift_Dsn_Configuration
     {
         try {
             $dsn = DsnParser::parseFunc($dsnString);
-        } catch (InvalidDsnException $e) {
-            throw new InvalidArgumentException($e->getMessage(), $e->getCode(), $e);
+        } catch (InvalidDsnException) {
+            // Do not retain a cause containing the raw DSN or its parser trace.
+            throw new InvalidArgumentException('Invalid DSN syntax; check the scheme, host, port and URL-encoded credentials.');
         }
 
         // if $dsn->getName() is "dsn" we dont have a function (failover, roundrobin, etc.)

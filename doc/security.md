@@ -73,6 +73,15 @@ $mailer->registerPlugin(new Swift_Plugins_LoggerPlugin(new Swift_Plugins_Loggers
 
 **3. Guzzle error leakage prevention.** HTTP API transports issue Guzzle requests with `'http_errors' => false`. That stops Guzzle from throwing a `RequestException` whose message embeds the full outbound request -- including the `Authorization` header that carries the API key. Transports inspect the status code themselves and raise a `Swift_TransportException` containing only the provider's error message, never the request.
 
+**4. DSN diagnostics.** The operational factory, public mailer helper and metadata
+configuration helper replace Nyholm syntax/type/function parse failures with a
+static `InvalidArgumentException`. They discard the original exception because
+its message, private DSN property and trace can contain credentials. The CLI
+prints `DSN: [redacted]` instead of any DSN fields, including when using the
+environment variable. Use an environment-provided DSN to avoid argv process-list
+exposure as well. Direct Nyholm calls, caller-owned trace frames and arbitrary
+remote provider error messages are outside this boundary.
+
 ## Plugin output escaping
 
 Escaping in the debug/reporting plugins is **not uniform** -- know which output is safe to render in a browser:

@@ -56,6 +56,18 @@ The DSN is a URL, so any credential containing reserved characters (`@ : / ? # %
 smtp://user:p%40ss%3Aword@smtp.example.com:587
 ```
 
+## Parser failures and diagnostics
+
+Malformed input, disallowed parser functions and non-URL operational DSNs throw
+a static global `InvalidArgumentException` from Swiftmailer's entry points.
+The original Nyholm failure is not retained as a previous exception because it
+contains the raw DSN. Applications that previously caught a vendor-specific
+parser subclass or inspected its cause should catch `InvalidArgumentException`
+and use the static diagnostic instead. Valid metadata functions/paths and
+operational wrappers retain their existing behavior. This does not sanitize
+exceptions produced by direct calls to Nyholm or arbitrary caller/provider code.
+The [CLI](cli.md#credential-masking-in-output) also uses a fixed redacted preview.
+
 ## Supported Schemes
 
 Every scheme below is registered in `Swift_Dsn`'s transport class map. An unknown scheme throws `InvalidArgumentException` listing the supported schemes.
