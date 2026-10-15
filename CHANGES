@@ -59,6 +59,9 @@ Unreleased
  * API transports: the event dispatcher is now null-safe across all code
    paths, so transports constructed without a dispatcher no longer fail in
    `start()`/`stop()`/exception dispatch.
+ * SMTP transports now suppress Bcc headers when sending with an explicit
+   envelope, preventing disclosure of blind recipients (CWE-200). The original
+   Bcc field is restored after the transaction, including on failure.
 
 6.5.0 (2026-06-04)
 ------------------

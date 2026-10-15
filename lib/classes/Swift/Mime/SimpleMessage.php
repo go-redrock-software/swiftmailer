@@ -431,7 +431,7 @@ class Swift_Mime_SimpleMessage extends Swift_Mime_MimePart
     /**
      * Get the Bcc addresses of this message.
      *
-     * @return array
+     * @return array|null Null when no Bcc header exists
      */
     public function getBcc()
     {

@@ -209,12 +209,23 @@ abstract class Swift_Transport_AbstractSmtpTransport implements Swift_Transport
         }
 
         if (null !== $envelope) {
-            // Use explicit envelope -- no BCC stripping, no header inspection
+            // Use explicit delivery addresses while keeping Bcc private on the wire.
             $reversePath   = $envelope->getSender();
             $recipientArr  = $envelope->getRecipients();
             $totalExpected = \count($recipientArr);
 
-            $sent += $this->doMailTransaction($message, $reversePath, $recipientArr, $failedRecipients);
+            $bcc = $message->getBcc();
+            if (null !== $bcc) {
+                $message->setBcc([]);
+            }
+
+            try {
+                $sent += $this->doMailTransaction($message, $reversePath, $recipientArr, $failedRecipients);
+            } finally {
+                if (null !== $bcc) {
+                    $message->setBcc($bcc);
+                }
+            }
         } else {
             // Legacy behavior: derive from message headers
             if (!$reversePath = $this->getReversePath($message)) {

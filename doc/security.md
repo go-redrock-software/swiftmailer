@@ -51,6 +51,12 @@ This is automatic -- there is nothing to enable. Any CR/LF in a subject, custom 
 
 The result is also truncated to 255 characters, preserving the extension. `setFile()` runs the source path through `basename()` first. All automatic.
 
+## Bcc privacy with explicit SMTP envelopes
+
+SMTP transports suppress the `Bcc` header during transmission even when an explicit `Swift_Envelope` supplies the delivery addresses. Envelope recipients still receive the message as configured; their addresses are not copied into MIME headers. The original Bcc field is restored on the caller's message after the transaction, including when sending fails.
+
+Older releases skipped this suppression for explicit envelopes and could disclose blind recipients to every recipient through the transmitted `Bcc` header (CWE-200). On those releases, remove the Bcc header yourself before sending with an explicit envelope; retain any intended blind recipients in the envelope's recipient list.
+
 ## Credential protection
 
 Three independent layers keep secrets out of logs, traces, and error output:
