@@ -29,6 +29,11 @@ Unreleased
 
  Bug Fixes:
 
+ * AllowlistPlugin catch-all mode now preserves allowed To/Cc/Bcc recipients
+   and redirects blocked recipients from every field, including Cc-only and
+   Bcc-only messages. Recipient fields are restored after sending, and an
+   existing catch-all display name is preserved (GitLab #34).
+
  * ESMTP greeting: when EHLO fails and the HELO fallback fails too, the
    exception keeps the EHLO reply (and its code). A server that closes the
    connection after EHLO, such as smtp-relay.gmail.com answering

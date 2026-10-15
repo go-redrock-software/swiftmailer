@@ -373,17 +373,19 @@ AllowlistPlugin: all recipients removed by allowlist filter (a@x.com, b@y.com)
 That reason is available via `$evt->getRejectionReason()` (and is logged by
 [LoggerPlugin](#loggerplugin)).
 
-**Redirect mode (with `$redirectTo`):** allowed To recipients pass through; if
-any To recipient was filtered out, the catch-all is appended to To. Cc and Bcc
-are always cleared.
+**Redirect mode (with `$redirectTo`):** allowed recipients remain in their
+original To/Cc/Bcc fields, including display names. If any recipient in any
+field is blocked, the catch-all is added to To once. This also works for
+messages addressed only through Cc or Bcc. An existing allowed To entry for the
+catch-all retains its display name.
 
 **Gotchas:**
 - Patterns are case-insensitive. Wildcards use `*@domain` syntax; anything else
   is matched as an exact address.
 - Original recipients are restored on the message after sending — the message
   object is not permanently modified.
-- Redirect mode does **not** add an `X-Original-To` header (older docs claimed
-  it did); it only clears Cc/Bcc and appends the catch-all to To.
+- Redirect mode does **not** add an `X-Original-To` header; original blocked
+  recipients, including Bcc, are not copied into visible headers or metadata.
 
 ### ImpersonatePlugin
 

@@ -104,13 +104,12 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
         $message = $evt->getMessage();
 
         // Restore original recipients
-        $message->setTo($this->originalRecipients['to'] ?? []);
-
-        if (null !== $this->originalRecipients['cc']) {
-            $message->setCc($this->originalRecipients['cc']);
-        }
-        if (null !== $this->originalRecipients['bcc']) {
-            $message->setBcc($this->originalRecipients['bcc']);
+        foreach ($this->originalRecipients as $field => $recipients) {
+            if (null === $recipients) {
+                $message->getHeaders()->removeAll($field);
+            } else {
+                $message->{'set'.\ucfirst($field)}($recipients);
+            }
         }
 
         $this->originalRecipients = null;
@@ -118,24 +117,28 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
 
     private function applyRedirect(Swift_Mime_SimpleMessage $message): void
     {
-        $allOriginal = \array_merge(
-            $this->originalRecipients['to']  ?? [],
-            $this->originalRecipients['cc']  ?? [],
-            $this->originalRecipients['bcc'] ?? [],
-        );
-
-        $filteredTo    = $this->filterRecipients($this->originalRecipients['to'] ?? []);
-        $needsRedirect = \count($filteredTo) < \count($allOriginal);
+        $filtered      = [];
+        $needsRedirect = false;
+        foreach ($this->originalRecipients as $field => $recipients) {
+            $filtered[$field] = $this->filterRecipients($recipients ?? []);
+            if (\count($filtered[$field]) < \count($recipients ?? [])) {
+                $needsRedirect = true;
+            }
+        }
 
         // Allowed recipients go through, add catch-all for any non-allowed
-        $newTo = $filteredTo;
-        if (\count($filteredTo) < \count($this->originalRecipients['to'] ?? [])) {
+        $newTo = $filtered['to'];
+        if ($needsRedirect && !\array_key_exists($this->redirectTo, $newTo)) {
             $newTo[$this->redirectTo] = $this->redirectTo;
         }
 
         $message->setTo($newTo);
-        $message->setCc([]);
-        $message->setBcc([]);
+        if (null !== $this->originalRecipients['cc']) {
+            $message->setCc($filtered['cc']);
+        }
+        if (null !== $this->originalRecipients['bcc']) {
+            $message->setBcc($filtered['bcc']);
+        }
     }
 
     /**
