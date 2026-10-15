@@ -48,6 +48,7 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
     public function beforeSendPerformed(Swift_Events_SendEvent $evt): void
     {
         $message = $evt->getMessage();
+        $evt->captureRecipientState();
 
         // Store original recipients
         $this->originalRecipients = [
@@ -55,6 +56,11 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
             'cc'  => $message->getCc(),
             'bcc' => $message->getBcc(),
         ];
+
+        $envelope = $evt->getEnvelope();
+        if (null !== $envelope && !$this->filterEnvelope($evt, $envelope)) {
+            return;
+        }
 
         if (null !== $this->redirectTo) {
             $this->applyRedirect($message);
@@ -68,7 +74,7 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
         $filteredBcc = $this->filterRecipients($this->originalRecipients['bcc'] ?? []);
 
         // If no recipients left at all, reject with reason
-        if (empty($filteredTo) && empty($filteredCc) && empty($filteredBcc)) {
+        if (null === $envelope && empty($filteredTo) && empty($filteredCc) && empty($filteredBcc)) {
             $allOriginalAddresses = \array_keys(\array_merge(
                 $this->originalRecipients['to']  ?? [],
                 $this->originalRecipients['cc']  ?? [],
@@ -104,7 +110,7 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
         $message = $evt->getMessage();
 
         // Restore original recipients
-        foreach ($this->originalRecipients as $field => $recipients) {
+        foreach ($evt->captureRecipientState() as $field => $recipients) {
             if (null === $recipients) {
                 $message->getHeaders()->removeAll($field);
             } else {
@@ -113,6 +119,25 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
         }
 
         $this->originalRecipients = null;
+    }
+
+    private function filterEnvelope(Swift_Events_SendEvent $evt, Swift_Envelope $envelope): bool
+    {
+        $original   = $envelope->getRecipients();
+        $recipients = \array_values(\array_filter($original, fn (string $address): bool => $this->isAllowed($address)));
+        if (null !== $this->redirectTo && \count($recipients) < \count($original) && !\in_array($this->redirectTo, $recipients, true)) {
+            $recipients[] = $this->redirectTo;
+        }
+
+        if (!$recipients) {
+            $evt->reject('AllowlistPlugin: all envelope recipients removed by allowlist filter');
+
+            return false;
+        }
+
+        $evt->setEnvelope(new Swift_Envelope($envelope->getSender(), $recipients));
+
+        return true;
     }
 
     private function applyRedirect(Swift_Mime_SimpleMessage $message): void

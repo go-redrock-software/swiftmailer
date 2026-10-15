@@ -86,6 +86,26 @@ Escaping in the debug/reporting plugins is **not uniform** -- know which output 
 
 ## Transport hardening
 
+### Recipient safety policies and explicit envelopes
+
+`AllowlistPlugin` and `RedirectingPlugin` enforce their configured policies on
+both message headers and explicit `Swift_Envelope` recipients. Earlier versions
+rewrote headers alone, allowing blocked envelope-only recipients to bypass
+dev/staging delivery restrictions. Envelope senders remain unchanged, and the
+plugins replace the event's envelope without mutating the caller's value object.
+
+Policies compose in registration order. An allowlist rejection stops delivery
+before a later redirect can run. A configured catch-all or redirect target is an
+explicit delivery exception; choose these targets as carefully as the allowlist.
+Original envelope-only addresses are not copied into MIME headers or metadata.
+On older releases, avoid explicit envelopes when relying on these safety plugins.
+
+The integration regressions exercise SMTP command generation, an envelope-aware
+HTTP transport's request payload, and a header-based provider payload. Full
+envelope override support in concrete API providers is a separate gap tracked
+in [issue #39](https://code.go-redrock.com/trac/swiftmailer/-/issues/39); for
+example, SendGrid currently builds payload addresses from message headers.
+
 ### Sendmail command validation and allowlist
 
 `Swift_Transport_SendmailTransport::setCommand()` rejects any command containing shell metacharacters `; & | ` $ ( ) { }` with an `InvalidArgumentException`, blocking command injection. Only `-bs` and `-t` operating modes are accepted at send time; anything else throws a `Swift_TransportException`.

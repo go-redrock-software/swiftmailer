@@ -61,6 +61,18 @@ sources):
 
 ## New Events
 
+### Recipient policy snapshots
+
+`SendEvent::captureRecipientState()` captures To/Cc/Bcc before the first
+cooperating recipient policy changes them and returns that snapshot on later
+calls. The returned array contains `to`, `cc`, and `bcc`, with `null` for absent
+headers. Changing the returned array does not change the saved state.
+
+`AllowlistPlugin` and `RedirectingPlugin` use this shared snapshot to restore
+the original message during `sendPerformed`, regardless of their registration
+order. Delivery policies themselves still apply in registration order. Each
+send has a new event and a fresh snapshot.
+
 ### SentMessageEvent
 
 Fired after a message is successfully sent. Only dispatched by transports that extend `Swift_Transport_AbstractHttpApiTransport`.

@@ -9,6 +9,14 @@ Symfony Mailer while preserving full backward compatibility.
 Unreleased
 ----------
 
+ Security:
+
+ * AllowlistPlugin and RedirectingPlugin now enforce recipient policy on
+   explicit SMTP envelopes, preventing envelope-only recipients from bypassing
+   dev/staging delivery restrictions. The explicit sender is preserved, and
+   cooperating recipient plugins restore the original message in either
+   registration order.
+
  Documentation:
 
  * Complete in-repo documentation overhaul so no external docs site is

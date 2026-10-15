@@ -2,6 +2,23 @@
 
 class Swift_Events_SendEventTest extends PHPUnit\Framework\TestCase
 {
+    public function testRecipientSnapshotIsStableAndScopedToTheSendEvent(): void
+    {
+        $message  = (new Swift_Message())->setTo(['original@example.com' => 'Original']);
+        $event    = new Swift_Events_SendEvent($this->createTransport(), $message);
+        $original = ['to' => ['original@example.com' => 'Original'], 'cc' => null, 'bcc' => null];
+
+        $snapshot = $event->captureRecipientState();
+        $this->assertSame($original, $snapshot);
+        $snapshot['to'] = [];
+        $message->setTo('rewritten@example.com');
+
+        $this->assertSame($original, $event->captureRecipientState());
+        $this->assertSame(['rewritten@example.com' => null], $message->getTo());
+        $nextEvent = new Swift_Events_SendEvent($this->createTransport(), $message);
+        $this->assertSame(['rewritten@example.com' => null], $nextEvent->captureRecipientState()['to']);
+    }
+
     public function testMessageCanBeFetchedViaGetter()
     {
         $message   = $this->createMessage();

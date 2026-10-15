@@ -75,7 +75,7 @@ class Swift_Plugins_RedirectingPluginTest extends PHPUnit\Framework\TestCase
 
         $plugin->sendPerformed($evt);
 
-        $this->assertEquals($message->getTo(), []);
+        $this->assertNull($message->getTo());
         $this->assertEquals($message->getCc(), $cc);
         $this->assertEquals($message->getBcc(), $bcc);
     }
@@ -261,13 +261,6 @@ class Swift_Plugins_RedirectingPluginTest extends PHPUnit\Framework\TestCase
 
     private function createSendEvent(Swift_Mime_SimpleMessage $message)
     {
-        $evt = $this->getMockBuilder('Swift_Events_SendEvent')
-            ->disableOriginalConstructor()
-            ->getMock();
-        $evt->expects($this->any())
-            ->method('getMessage')
-            ->willReturn($message);
-
-        return $evt;
+        return new Swift_Events_SendEvent($this->createMock(Swift_Transport::class), $message);
     }
 }
