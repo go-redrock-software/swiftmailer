@@ -431,6 +431,9 @@ the existing zero-return behavior. Authentication callbacks and the shared token
 cache retain normal SDK behavior, including token updates by Google's default
 callback. Custom Google Client subclasses must support cloning and honor the
 HTTP-client/defer setters; unsupported customizations fail before reporting success.
+Injected HTTP clients must expose a Guzzle-compatible configuration with a callable
+handler. The isolated client uses those options and middleware; custom overrides
+of an injected HTTP client's send/request methods are not copied.
 
 ```php
 $client = new Google\Client();

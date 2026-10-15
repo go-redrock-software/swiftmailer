@@ -366,6 +366,36 @@ class Swift_Transport_Api_GmailSdkRequestPolicyTest extends TestCase
         yield 'redirected JWT exchange' => [true];
     }
 
+    /** @dataProvider serviceAccountResponses */
+    public function testCallerHttpRetriesCannotConsumeRedirectsWithoutAnAuthMiddleware(bool $redirect): void
+    {
+        $wire             = [];
+        [, $http, $stack] = $this->sdk([
+            $redirect ? new Response(307, ['Location' => '/other']) : new Response(503),
+            new Response(200, [], '{"id":"accepted-id"}'),
+        ], $wire);
+        $stack->push(GuzzleHttp\Middleware::retry(
+            static fn (int $retries, $request, $response): bool => $retries < 1 && null !== $response && \in_array($response->getStatusCode(), [307, 503], true),
+            static fn (): int => 0,
+        ), 'caller_retry');
+        $sdk = new GoogleClient();
+        $sdk->setHttpClient($http);
+        $snapshot  = $this->snapshot($sdk, $http, $stack);
+        $transport = new Swift_Transport_Api_GoogleTransport($sdk);
+        if ($redirect) {
+            try {
+                $transport->send($this->message());
+                $this->fail('HTTP retry middleware must not consume an unobserved redirect.');
+            } catch (Swift_Transport_NonRetryableException) {
+                $this->assertCount(1, $wire);
+            }
+        } else {
+            $this->assertSame(4, $transport->send($this->message()));
+            $this->assertCount(2, $wire);
+        }
+        $this->assertSame($snapshot, $this->snapshot($sdk, $http, $stack));
+    }
+
     private function stableMime(string $mime): string
     {
         // Transient multipart/alternative children generate a fresh boundary on

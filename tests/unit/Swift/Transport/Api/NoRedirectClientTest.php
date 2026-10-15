@@ -22,7 +22,11 @@ class Swift_Transport_Api_NoRedirectClientTest extends TestCase
             },
             new Response(200),
         ]);
-        $stack       = HandlerStack::create($handler);
+        $stack = HandlerStack::create($handler);
+        $stack->push(GuzzleHttp\Middleware::retry(
+            static fn (int $retries, $request, $response): bool => $retries < 1 && null !== $response && 307 === $response->getStatusCode(),
+            static fn (): int => 0,
+        ), 'caller_retry');
         $original    = new Client(['handler' => $stack, 'allow_redirects' => ['strict' => true], 'timeout' => 19]);
         $before      = $original->getConfig();
         $stackBefore = (string) $stack;

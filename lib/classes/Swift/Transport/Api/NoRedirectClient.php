@@ -16,6 +16,8 @@ class Swift_Transport_Api_NoRedirectClient implements ClientInterface
 {
     private ?array $configuration = null;
 
+    private ?ClientInterface $scopedClient = null;
+
     private ?Swift_Transport_NonRetryableException $failure = null;
 
     public function __construct(#[SensitiveParameter] private ClientInterface $client)
@@ -27,7 +29,7 @@ class Swift_Transport_Api_NoRedirectClient implements ClientInterface
     {
         $this->assertUsable();
 
-        return $this->validateResponse($this->client->send($request, self::options($options)));
+        return $this->validateResponse($this->scopedClient()->send($request, self::options($options)));
     }
 
     #[Override]
@@ -35,7 +37,7 @@ class Swift_Transport_Api_NoRedirectClient implements ClientInterface
     {
         $this->assertUsable();
 
-        return $this->client->sendAsync($request, self::options($options))->then($this->validateResponse(...));
+        return $this->scopedClient()->sendAsync($request, self::options($options))->then($this->validateResponse(...));
     }
 
     #[Override]
@@ -43,7 +45,7 @@ class Swift_Transport_Api_NoRedirectClient implements ClientInterface
     {
         $this->assertUsable();
 
-        return $this->validateResponse($this->client->request($method, $uri, self::options($options)));
+        return $this->validateResponse($this->scopedClient()->request($method, $uri, self::options($options)));
     }
 
     #[Override]
@@ -51,7 +53,7 @@ class Swift_Transport_Api_NoRedirectClient implements ClientInterface
     {
         $this->assertUsable();
 
-        return $this->client->requestAsync($method, $uri, self::options($options))->then($this->validateResponse(...));
+        return $this->scopedClient()->requestAsync($method, $uri, self::options($options))->then($this->validateResponse(...));
     }
 
     #[Override]
@@ -94,6 +96,13 @@ class Swift_Transport_Api_NoRedirectClient implements ClientInterface
         }
 
         return null === $option ? $this->configuration : $this->configuration['handler'];
+    }
+
+    private function scopedClient(): ClientInterface
+    {
+        // A client created from the isolated config also puts response rejection
+        // inside caller retry middleware when SDK authentication is not needed.
+        return $this->scopedClient ??= new GuzzleHttp\Client($this->getConfig());
     }
 
     private static function options(array $options): array
