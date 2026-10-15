@@ -164,6 +164,7 @@ return [
     'Swift_Transport_Api_BrevoTransport'                        => 'Swift\\Transport\\Api\\BrevoTransport',
     'Swift_Transport_Api_Calendar_IcsParser'                    => 'Swift\\Transport\\Api\\Calendar\\IcsParser',
     'Swift_Transport_Api_Calendar_ParsedEvent'                  => 'Swift\\Transport\\Api\\Calendar\\ParsedEvent',
+    'Swift_Transport_Api_GmailRefreshCredentials'               => 'Swift\\Transport\\Api\\GmailRefreshCredentials',
     'Swift_Transport_Api_GmailRequestPolicy'                    => 'Swift\\Transport\\Api\\GmailRequestPolicy',
     'Swift_Transport_Api_GoogleTransport'                       => 'Swift\\Transport\\Api\\GoogleTransport',
     'Swift_Transport_Api_GraphOAuthGrant'                       => 'Swift\\Transport\\Api\\GraphOAuthGrant',

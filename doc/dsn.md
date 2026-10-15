@@ -105,7 +105,7 @@ When no port is given, `smtp+ssl` defaults to 465 and the others to 587.
 
 ### HTTP API
 
-HTTP providers use their own constructor contracts. SDK-backed transports require explicit client construction and reject operational DSNs with a credential-safe `InvalidArgumentException`; registration in the metadata map does not imply construction support.
+HTTP providers use their own constructor contracts. SES and Gmail SDK routes support the explicit authentication forms below. Microsoft Graph still requires native client construction and rejects operational DSNs with a credential-safe `InvalidArgumentException`.
 
 | Scheme | Transport Class | DSN-constructible | Credential / notes |
 |-|-|-|-|
@@ -125,7 +125,7 @@ HTTP providers use their own constructor contracts. SDK-backed transports requir
 | `mailgun` | `Swift_Transport_Api_MailGunTransport` | Yes | User = API key; password = sending domain |
 | `mailjet` | `Swift_Transport_Api_MailJetTransport` | Yes | User = public key; password = private key |
 | `scaleway` | `Swift_Transport_Api_ScalewayTransport` | Yes | User = project ID; password = API key |
-| `gmail+api` | `Swift_Transport_Api_GoogleTransport` | No | Requires a Google `Client` object |
+| `gmail+api` | `Swift_Transport_Api_GoogleTransport` | Yes | Explicit bearer token or renewable OAuth; see below |
 | `microsoft-graph` | `Swift_Transport_Api_MicrosoftGraphTransport` | No | Requires a `GraphServiceClient` object |
 | `amazon+api` | `Swift_Transport_Api_AmazonSesApiTransport` | Yes | AWS access-key user and secret password; real AsyncAws SES v2 client |
 | `amazon+http` | `Swift_Transport_Api_AmazonSesHttpTransport` | Yes | Same SDK construction; preserves native response-ID behavior |
@@ -164,9 +164,49 @@ exclusive to Mailgun, Scaleway and the two SES API schemes; `inbox_id` is exclus
 Both options require a canonical scalar spelling and exactly one occurrence,
 using PHP's configured query separators. Invalid options fail before HTTP I/O.
 
-Google and Microsoft Graph SDK-backed routes still require explicitly
-constructed client objects in code. DSNs do not yet configure their authentication
-or client lifecycle. Their rejection does not change direct SDK-backed transports.
+Microsoft Graph still requires an explicitly constructed client object. Native SDK construction remains available for advanced Gmail and SES authentication.
+
+### Gmail SDK DSNs
+
+```text
+gmail+api://ACCESS_TOKEN@default
+gmail+api://CLIENT_ID:CLIENT_SECRET@default?refresh_token=REFRESH_TOKEN
+```
+
+The first form submits a caller-managed bearer token. It does not infer the token's
+remaining lifetime or refresh it; replace/recreate the transport when needed.
+The second form uses an explicit Google refresh-credential provider. Google handles
+token exchange, cache expiry and renewal, including after token callbacks. Reuse
+the transport to retain its in-memory cache. No network request occurs during
+construction; a renewable client exchanges credentials on its first send.
+
+Both forms use the `gmail.send` scope and the standard Google universe, Gmail and
+OAuth endpoints. They ignore ambient Google credential/universe settings. Require
+`@default` without a port, base path or fragment (a single `/` is allowed). Bearer
+mode requires only the user token, using the RFC 6750 bearer grammar; a password,
+even an explicit empty one, is ambiguous and rejects. Refresh mode requires all
+three nonempty visible-ASCII values. URL-encode reserved characters. Literal and
+encoded `0` values are preserved, including OAuth client fields that the upstream
+SDK otherwise filters out of its request body.
+
+Gmail accepts only `refresh_token`, `retries` and `retry_delay` query options.
+They must use canonical scalar names and occur once. `refresh_token` is exclusive
+to Gmail. Other schemes keep their existing option handling. Service accounts,
+managed identities, custom token callbacks and persistent cache configuration
+remain native Google Client setup.
+
+Inject an existing Guzzle client when constructing the factory:
+
+```php
+$factory = new Swift_Transport_DsnTransportFactory(gmailHttpClient: $httpClient);
+$transport = $factory->fromDsnString($gmailDsn);
+```
+
+The optional `gmailHttpClient` follows the existing SES HTTP parameter; named
+arguments avoid mixing their different client interfaces. Gmail uses operation-local
+SDK/handler copies, retaining caller HTTP settings and lifetime. Complete MIME,
+recipient policies, redirects, permanent acceptance validation and safe terminal
+failures use the same native [Gmail contract](api-transports.md#google-gmail-api).
 
 ### Amazon SES SDK DSNs
 

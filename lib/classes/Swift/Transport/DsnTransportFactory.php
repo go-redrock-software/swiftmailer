@@ -9,6 +9,9 @@
 
 use AsyncAws\Core\Credentials\Credentials;
 use AsyncAws\Ses\SesClient;
+use Google\Client as GoogleClient;
+use Google\Service\Gmail;
+use GuzzleHttp\ClientInterface as GuzzleClientInterface;
 use Nyholm\Dsn\Configuration\Url;
 use Nyholm\Dsn\DsnParser;
 use Nyholm\Dsn\Exception\InvalidDsnException;
@@ -44,6 +47,7 @@ class Swift_Transport_DsnTransportFactory
         'region',
         'inbox_id',
         'session_token',
+        'refresh_token',
     ];
 
     private const array SENDGRID_TRACKING_PARAMETERS = ['click_tracking', 'click_tracking_text', 'open_tracking'];
@@ -71,10 +75,13 @@ class Swift_Transport_DsnTransportFactory
 
     private ?HttpClientInterface $sesHttpClient = null;
 
-    /** HTTP client for factory-created SES SDK clients; other providers use their native clients. */
-    public function __construct(#[SensitiveParameter] ?HttpClientInterface $sesHttpClient = null)
+    private ?GuzzleClientInterface $gmailHttpClient = null;
+
+    /** Optional caller-owned HTTP clients for factory-created SDK clients. */
+    public function __construct(#[SensitiveParameter] ?HttpClientInterface $sesHttpClient = null, #[SensitiveParameter] ?GuzzleClientInterface $gmailHttpClient = null)
     {
-        $this->sesHttpClient = $sesHttpClient;
+        $this->sesHttpClient   = $sesHttpClient;
+        $this->gmailHttpClient = $gmailHttpClient;
     }
 
     public function fromDsnString(#[SensitiveParameter] string $dsnString): Swift_Transport
@@ -186,14 +193,19 @@ class Swift_Transport_DsnTransportFactory
 
     private function createTransport(#[SensitiveParameter] string $dsnString): Swift_Transport
     {
-        $nyholmDsn = $this->parseDsnUrl($dsnString);
-        $dsn       = new Swift_Dsn($nyholmDsn);
-        $this->validateDsnParameters($dsn->getParameters());
+        $nyholmDsn    = $this->parseDsnUrl($dsnString);
+        $dsn          = new Swift_Dsn($nyholmDsn);
+        $gmailOptions = null;
+        if ('gmail+api' === $dsn->getScheme()) {
+            $gmailOptions = $this->parseGmailOptions($dsnString, $dsn);
+        } else {
+            $this->validateDsnParameters($dsn->getParameters());
+        }
         $trackingOptions = $this->parseSendgridTrackingOptions($dsnString, $dsn);
 
         $class           = $dsn->getTransportClass();
         $smtpOptions     = $this->parseSmtpOptions($dsnString, $dsn, $class);
-        $providerOptions = $this->parseHttpProviderOptions($dsnString, $dsn);
+        $providerOptions = $gmailOptions ?? $this->parseHttpProviderOptions($dsnString, $dsn);
 
         // NullTransport needs an event dispatcher
         if (Swift_Transport_NullTransport::class === $class) {
@@ -243,7 +255,10 @@ class Swift_Transport_DsnTransportFactory
     /** @return array<string, string> */
     private function parseHttpProviderOptions(#[SensitiveParameter] string $dsnString, #[SensitiveParameter] Swift_Dsn $dsn): array
     {
-        $options = $this->canonicalOptions($dsnString, $dsn->getParameters(), ['region', 'inbox_id', 'session_token'], 'HTTP provider');
+        $options = $this->canonicalOptions($dsnString, $dsn->getParameters(), ['region', 'inbox_id', 'session_token', 'refresh_token'], 'HTTP provider');
+        if (isset($options['refresh_token'])) {
+            throw new InvalidArgumentException('refresh_token requires the Gmail API scheme.');
+        }
         if (isset($options['region'])) {
             if (\in_array($dsn->getScheme(), ['amazon+api', 'amazon+http'], true)) {
                 $this->sesRegion($options['region']);
@@ -281,7 +296,10 @@ class Swift_Transport_DsnTransportFactory
         if (\in_array($scheme, ['amazon+api', 'amazon+http'], true)) {
             return $this->createSesTransport($dsnString, $dsn, $class, $options);
         }
-        if (\in_array($scheme, ['gmail+api', 'microsoft-graph'], true)) {
+        if ('gmail+api' === $scheme) {
+            return $this->createGmailTransport($dsnString, $dsn, $options);
+        }
+        if ('microsoft-graph' === $scheme) {
             throw new InvalidArgumentException('This DSN scheme requires an explicitly constructed SDK client; construct its transport directly.');
         }
         $dispatcher = new Swift_Events_SimpleEventDispatcher();
@@ -323,6 +341,64 @@ class Swift_Transport_DsnTransportFactory
 
         // These remaining HTTP providers share the base constructor contract.
         return new $class($apiKey, null, $dispatcher);
+    }
+
+    /** @return array<string, string> */
+    private function parseGmailOptions(#[SensitiveParameter] string $dsnString, #[SensitiveParameter] Swift_Dsn $dsn): array
+    {
+        $names = ['refresh_token', 'retries', 'retry_delay'];
+        if (\array_diff(\array_keys($dsn->getParameters()), $names)) {
+            throw new InvalidArgumentException('Gmail DSN options may contain only refresh_token, retries and retry_delay.');
+        }
+        $options = $this->canonicalOptions($dsnString, $dsn->getParameters(), $names, 'Gmail');
+        if (isset($options['refresh_token'])) {
+            $this->gmailCredential($options['refresh_token']);
+        }
+
+        return $options;
+    }
+
+    /** @param array<string, string> $options */
+    private function createGmailTransport(#[SensitiveParameter] string $dsnString, #[SensitiveParameter] Swift_Dsn $dsn, #[SensitiveParameter] array $options): Swift_Transport
+    {
+        $this->requireFixedHttpEndpoint($dsnString, $dsn);
+        $user   = $this->gmailCredential($dsn->getUser());
+        $secret = null;
+        if (isset($options['refresh_token'])) {
+            $secret = $this->gmailCredential($dsn->getPassword());
+        } elseif (null !== \parse_url($dsnString, \PHP_URL_PASS) || !\preg_match('/\A[A-Za-z0-9._~+\/-]+=*\z/D', $user)) {
+            throw new InvalidArgumentException('Gmail bearer DSNs require one valid bearer token without a password.');
+        }
+        try {
+            $credentials = null === $secret ? null : new Swift_Transport_Api_GmailRefreshCredentials([Gmail::GMAIL_SEND], [
+                'client_id' => $user, 'client_secret' => $secret, 'refresh_token' => $options['refresh_token'],
+            ]);
+            $client = new GoogleClient([
+                'credentials'                         => $credentials,
+                'scopes'                              => [Gmail::GMAIL_SEND],
+                'use_application_default_credentials' => false,
+                'universe_domain'                     => 'googleapis.com',
+            ]);
+            if (null === $credentials) {
+                $client->setAccessToken(['access_token' => $user]);
+            }
+            if (null !== $this->gmailHttpClient) {
+                $client->setHttpClient($this->gmailHttpClient);
+            }
+
+            return new Swift_Transport_Api_GoogleTransport($client, new Swift_Events_SimpleEventDispatcher());
+        } catch (Throwable) {
+            throw new InvalidArgumentException('Unable to construct the Gmail SDK client from explicit DSN authentication.');
+        }
+    }
+
+    private function gmailCredential(#[SensitiveParameter] ?string $value): string
+    {
+        if (null === $value || '' === $value || \preg_match('/[^\x21-\x7e]/', $value)) {
+            throw new InvalidArgumentException('Gmail authentication fields must be nonempty visible ASCII strings.');
+        }
+
+        return $value;
     }
 
     /** @param array<string, string> $options */

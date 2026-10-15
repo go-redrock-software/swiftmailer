@@ -208,7 +208,7 @@ $transport = (new Swift_Transport_DsnTransportFactory())
     ->fromDsnString('mailjet://PUBLIC_KEY:PRIVATE_KEY@default');
 ```
 
-> **Note:** Google and Microsoft Graph transports are listed in the DSN map but reject DSN construction with a credential-safe `InvalidArgumentException`; inject an explicitly constructed SDK client into the native transport.
+> **Note:** Microsoft Graph is listed in the DSN map but rejects DSN construction with a credential-safe `InvalidArgumentException`; inject an explicitly constructed SDK client into its native transport. Gmail and SES support the explicit SDK DSNs documented below.
 
 Both Amazon SES routes now support [SDK DSN construction](dsn.md#amazon-ses-sdk-dsns) with explicit credentials/region/session-token and optional caller-owned HTTP injection. Direct SDK injection remains available for advanced credential providers.
 
@@ -540,13 +540,15 @@ $transport = new Swift_Transport_Api_AzureTransport($connectionString);
 | | |
 |-|-|
 | **Class** | `Swift_Transport_Api_GoogleTransport` |
-| **DSN** | `gmail+api://...` (not DSN-constructible -- requires Google Client) |
+| **DSN** | `gmail+api://ACCESS_TOKEN@default` or `gmail+api://CLIENT_ID:CLIENT_SECRET@default?refresh_token=TOKEN` |
 | **Base class** | `AbstractApiTransport` (directly, no Guzzle) |
 | **Constructor** | `(Google\Client $googleClient, ?EventDispatcher $eventDispatcher)` |
 | **Dependency** | `google/apiclient` |
 | **Auth method** | Google OAuth2 / Service Account |
 | **Tags** | No |
 | **Metadata** | No |
+
+The [Gmail DSN forms](dsn.md#gmail-sdk-dsns) construct a real Google Client with explicit bearer or renewable OAuth credentials. Native client injection remains available for advanced authentication/cache/callback settings. The factory can take a caller-owned Guzzle client through `gmailHttpClient` without altering the existing SES argument.
 
 Sends the complete MIME message once as a base64url-encoded RFC 2822 string via
 `users.messages.send`, including attachments and Bcc. Each send executes immediately

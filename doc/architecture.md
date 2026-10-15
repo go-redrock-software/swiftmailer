@@ -415,8 +415,12 @@ Two classes turn connection strings into transports:
   `RetryTransport`. SMTP `timeout`, `auth_mode` and `local_domain` options are
   validated before connection and applied through native setters. Plain HTTP providers use explicit constructor mappings for multi-part credentials,
   custom HTTPS endpoints and Mailtrap sandbox/live mode. SES SDK schemes construct a real AsyncAws client with explicit credentials, region
-  and endpoint and can share a caller-owned Symfony HTTP client. Google/Graph
-  schemes reject DSN construction before credentials reach a client parameter. Scoped SMTP,
+  and endpoint and can share a caller-owned Symfony HTTP client. Gmail constructs a real
+  Google Client using explicit bearer or renewable OAuth credentials, a fixed scope/universe,
+  and optional caller-owned Guzzle HTTP. Its refresh adapter preserves zero-valued form
+  credentials while retaining SDK request/response/cache handling. Gmail rejects unknown
+  options before construction. Graph still rejects DSN construction before credentials
+  reach a client parameter. Scoped SMTP,
   HTTP provider and SendGrid options share canonical-name/scalar/occurrence validation using PHP's
   configured query separators. A small adapter preserves literal-zero userinfo
   lost by the installed Nyholm 2.0.1 parser while retaining its validated URL/query representation.

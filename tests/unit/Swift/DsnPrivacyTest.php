@@ -90,7 +90,7 @@ class Swift_DsnPrivacyTest extends TestCase
             ['failover(null://PRIVATE-KEY@default null://PRIVATE-SECOND@default)', 0],
             ['roundrobin(null://PRIVATE-KEY@default null://PRIVATE-SECOND@default)', 0],
             ['smtp://PRIVATE-USER:PRIVATE-PASS@host.test:99999', 1],
-            ['gmail+api://PRIVATE-KEY@default', 1],
+            ['gmail+api://PRIVATE-KEY:PRIVATE-SECRET@default', 1],
             ['mailgun://PRIVATE-KEY@default', 1],
             ['unsupported://PRIVATE-KEY@default', 1],
             ['PRIVATE-WHOLE-INPUT', 1],

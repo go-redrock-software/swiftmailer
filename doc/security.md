@@ -101,6 +101,10 @@ callbacks remain caller-controlled. Ordinary SDK errors retain zero-return
 behavior. Successful sends require an observed valid Message JSON and decoded
 message ID; ambiguous acceptance cannot trigger automatic resend through retry
 or pool wrappers. Token exchange bodies are validated by the Google SDK.
+Gmail DSNs select explicit bearer or refresh credentials, fixed standard Google
+endpoints/universe and the send scope. Ambient credential selection is disabled.
+Invalid factory inputs and SDK-construction failures use static diagnostics
+without retaining credential-bearing SDK causes.
 
 ## Plugin output escaping
 
