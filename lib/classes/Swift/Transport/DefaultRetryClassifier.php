@@ -14,7 +14,7 @@
  * - Exception code: SMTP 4xx codes, HTTP 429/5xx codes, code 0 (connection-level)
  * - Exception message: connection timeouts, resets, refused, rate limits
  *
- * Permanent failures (SMTP 5xx, auth errors) are NOT retried.
+ * Permanent failures (SMTP 5xx, auth errors, PHP Error causes) are NOT retried.
  */
 class Swift_Transport_DefaultRetryClassifier implements Swift_Transport_RetryClassifier
 {
@@ -72,7 +72,7 @@ class Swift_Transport_DefaultRetryClassifier implements Swift_Transport_RetryCla
     public function isRetryable(Swift_TransportException $e): bool
     {
         for ($cause = $e; null !== $cause; $cause = $cause->getPrevious()) {
-            if ($cause instanceof Swift_Transport_NonRetryableException) {
+            if ($cause instanceof Swift_Transport_NonRetryableException || $cause instanceof Error) {
                 return false;
             }
         }

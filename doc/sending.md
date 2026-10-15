@@ -308,9 +308,10 @@ Constructor: `__construct(Swift_Transport $inner, int $maxRetries = 3, int $base
 **Classification.** The default `Swift_Transport_DefaultRetryClassifier`
 decides retryability in this order:
 
-1. A `Swift_Transport_NonRetryableException` anywhere in the exception chain
-   -- never retried. HTTP transports use this marker when a response leaves
-   acceptance uncertain, to avoid submitting the message again.
+1. A `Swift_Transport_NonRetryableException` or PHP `Error` anywhere in the cause
+   chain -- never retried. HTTP transports use the marker when acceptance is
+   uncertain. Wrapped `TypeError`, `ParseError` and other PHP errors remain
+   permanent even with transient message text or a retryable outer code.
 2. Permanent message patterns (e.g. `authentication failed`, `invalid api
    key`, `mailbox not found`, `relay access denied`) -- never retried.
 3. Retryable message patterns (e.g. `connection reset`, `rate limit`,

@@ -98,6 +98,12 @@ class Swift_Transport_Api_NoRedirectClient implements ClientInterface
         return null === $option ? $this->configuration : $this->configuration['handler'];
     }
 
+    /** Reassert the operation failure after an SDK handles or replaces an error. */
+    public function assertNoRedirect(): void
+    {
+        $this->assertUsable();
+    }
+
     private function scopedClient(): ClientInterface
     {
         // A client created from the isolated config also puts response rejection

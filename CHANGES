@@ -11,6 +11,11 @@ Unreleased
 
  Security:
 
+ * Standard Kiota/PhpLeague Graph OAuth token requests now refuse redirects,
+   including initial grants, refresh and CAE challenges. Scoped provider copies
+   preserve caller HTTP configuration and shared authentication state, while a
+   terminal redirect marker survives SDK fallback/error handling (GitLab #60).
+
  * Microsoft Graph resource requests now refuse HTTP redirects during mail,
    draft/upload-session and calendar operations. The transport uses a scoped
    Kiota adapter copy, preserving caller configuration and ordinary SDK
@@ -61,6 +66,11 @@ Unreleased
    autoloading, and behavior are unchanged.
 
  Bug Fixes:
+
+ * Swift, IO and transport exceptions now accept PHP Throwable causes,
+   preserving TypeError/ParseError identities and retry-marker chains instead
+   of throwing a second constructor TypeError. PHP Error causes are permanent
+   under the default retry classifier, preventing automatic replay (GitLab #61).
 
  * Gmail sends now execute immediately even when the supplied Google Client
    has deferred operations enabled; the caller's deferred mode is preserved.

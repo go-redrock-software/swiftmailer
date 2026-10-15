@@ -164,6 +164,7 @@
 \class_alias('Swift_Transport_Api_AzureTransport', 'Swift\Transport\Api\AzureTransport');
 \class_alias('Swift_Transport_Api_BrevoTransport', 'Swift\Transport\Api\BrevoTransport');
 \class_alias('Swift_Transport_Api_GoogleTransport', 'Swift\Transport\Api\GoogleTransport');
+\class_alias('Swift_Transport_Api_GraphOAuthPolicy', 'Swift\Transport\Api\GraphOAuthPolicy');
 \class_alias('Swift_Transport_Api_GraphRequestPolicy', 'Swift\Transport\Api\GraphRequestPolicy');
 \class_alias('Swift_Transport_Api_InfoBipTransport', 'Swift\Transport\Api\InfoBipTransport');
 \class_alias('Swift_Transport_Api_MailChimpTransport', 'Swift\Transport\Api\MailChimpTransport');

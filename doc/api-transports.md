@@ -476,7 +476,9 @@ $transport->setSendingAccountUserId('other-user@company.com');
 The Graph transport has grown well beyond simple sends: large attachments (>= 3 MB, `LARGE_ATTACHMENT_THRESHOLD`) are routed through the draft + upload-session flow and rejected above Graph's 150 MB per-attachment cap (`MAX_ATTACHMENT_SIZE`), and `text/calendar` parts (`METHOD:REQUEST` / `CANCEL`) can be converted into real Calendar events via `enableCalendarEventConversion()`. Those flows are covered in the dedicated [Microsoft Graph guide](microsoft-graph.md); this page documents only the constructor and transport basics.
 
 Graph resource requests refuse redirects through a scoped Kiota adapter without
-changing the supplied client. OAuth token HTTP policy remains separate. See
+changing the supplied client. Standard Kiota/PhpLeague OAuth token requests also
+refuse redirects through a scoped provider copy; custom authentication owns its
+HTTP policy. See
 [SDK compatibility and request destinations](microsoft-graph.md#request-destinations-and-sdk-compatibility).
 
 ---
@@ -845,9 +847,10 @@ This policy covers the 17 built-in providers that extend
 `AbstractHttpApiTransport`. Gmail separately enforces redirect refusal through
 scoped Google SDK/HTTP configuration, including authentication token exchanges.
 Graph resource requests separately use a scoped Kiota adapter/HTTP policy for
-mail, draft/upload and calendar operations. Graph OAuth token exchanges and SES
-use separate HTTP clients whose policies are retained; the direct HTTP, Gmail
-and Graph resource safeguards do not configure those clients.
+mail, draft/upload and calendar operations. Its standard Kiota/PhpLeague OAuth
+chain separately scopes token HTTP for initial grants, refresh and CAE, preserving
+the caller's provider/HTTP configuration and shared cache. Custom authentication
+outside that chain and SES retain their own HTTP policies.
 Custom HTTP transports should set both `http_errors: false` and
 `allow_redirects: false` when issuing requests, and supplied clients must honor
 Guzzle's request options.

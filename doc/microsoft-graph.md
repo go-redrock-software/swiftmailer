@@ -45,8 +45,8 @@ retry wrapper does not replay it. Later steps in that send are not attempted.
 `ping()` remains local-only.
 
 The caller's `GraphServiceClient`, adapter, base URL, HTTP options and handler
-stack remain intact. Authentication providers/cache objects, serializer factories,
-SDK retry handling, tracing and CAE reauthentication retain their behavior. A
+stack remain intact. Scoped authentication copies share the existing token cache;
+serializer factories, SDK retry handling, tracing and CAE retain their behavior. A
 subsequent request made directly through the original SDK client still uses its
 original HTTP policy. The service client is cloned without rerunning its
 constructor, preserving caller-registered serialization factories and global
@@ -62,9 +62,34 @@ Their options and middleware are retained; custom HTTP-client `send`/`request`
 method overrides are not copied. Adapter subclasses must honor the inherited
 HTTP configuration contract.
 
-Graph's OAuth provider owns a separate token HTTP client. The resource-request
-policy leaves that client unchanged and does not secure token exchanges. Its
-redirect behavior needs a separate safeguard. SES also has a separate SDK policy.
+### OAuth token requests
+
+The standard Kiota/PhpLeague token HTTP client also refuses redirects. This covers
+initial client-credential, authorization-code and on-behalf-of grants, token
+refresh, and CAE challenge grants through `PhpLeagueAccessTokenProvider`, including
+its use by `BaseBearerTokenAuthenticationProvider`, `PhpLeagueAuthenticationProvider`
+and `GraphPhpLeagueAuthenticationProvider`.
+
+The transport copies the known provider chain without constructors and attaches
+a scoped token HTTP client. The original provider and HTTP client identities,
+defaults and middleware remain available to the caller, including inside HTTP
+callbacks. The existing cache/context objects are shared. Normal SDK changes to
+derived scopes or a context returned by a CAE callback are published when
+authentication resolves; a newer caller/reentrant state update is preserved.
+Normal successful refresh, token reuse, CAE callbacks and ordinary errors retain
+SDK behavior. Callback PHP errors remain the previous cause of the transport
+exception.
+
+A refused token redirect remains non-retryable even if CAE replaces its exception
+or attempts another grant. No later token or resource request is sent through that
+failed scope. Compatibility is validated before traffic, including cache hits
+that could later require CAE. Known provider subclasses must support cloning and
+honor copied OAuth/token ownership and HTTP setters/getters.
+
+Custom `AuthenticationProvider` implementations and non-PhpLeague
+`AccessTokenProvider` implementations retain their own HTTP policy. Their private
+networking is outside this token safeguard; the Graph resource-request policy
+still applies. SES also retains its separate SDK policy.
 
 ---
 

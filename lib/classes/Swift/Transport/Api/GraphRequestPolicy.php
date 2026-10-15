@@ -51,7 +51,7 @@ class Swift_Transport_Api_GraphRequestPolicy
         return $reflection->getProperty('requestAdapter');
     }
 
-    private static function replace(ReflectionProperty $property, object $copy, object $replacement): void
+    private static function replace(ReflectionProperty $property, #[SensitiveParameter] object $copy, #[SensitiveParameter] object $replacement): void
     {
         $type = $property->getType();
         if ($property->isReadOnly() || $property->isStatic() || (null !== $type && (!$type instanceof ReflectionNamedType || !\is_a($replacement, $type->getName())))) {
@@ -79,6 +79,21 @@ class Swift_Transport_Api_GraphRequestPolicy
         }
         $copy = clone $adapter;
         self::replace($property, $copy, new Swift_Transport_Api_NoRedirectClient($http));
+        if (!$reflection->hasProperty('authenticationProvider')) {
+            throw new Swift_Transport_NonRetryableException('The Kiota adapter authentication configuration is unsupported.');
+        }
+        $authentication = $reflection->getProperty('authenticationProvider');
+        if (!$authentication->isInitialized($adapter)) {
+            throw new Swift_Transport_NonRetryableException('The Kiota adapter authentication provider must be initialized.');
+        }
+        $provider = $authentication->getValue($adapter);
+        if (!$provider instanceof Microsoft\Kiota\Abstractions\Authentication\AuthenticationProvider) {
+            throw new Swift_Transport_NonRetryableException('The Kiota adapter must use a compatible authentication provider.');
+        }
+        $scopedProvider = Swift_Transport_Api_GraphOAuthPolicy::scope($provider);
+        if ($scopedProvider !== $provider) {
+            self::replace($authentication, $copy, $scopedProvider);
+        }
 
         return $copy;
     }
