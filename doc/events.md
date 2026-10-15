@@ -191,6 +191,20 @@ class MySendListener implements Swift_Events_SendListener
 | `getRejectionReason()` | `?string` | Human-readable rejection reason, if provided |
 | `setEnvelope(?Swift_Envelope)` | `void` | Store an explicit SMTP envelope (kept as a defensive `clone`) |
 | `getEnvelope()` | `?Swift_Envelope` | Return a `clone` of the stored envelope, or `null` |
+| `setRecipientGroups(array $groups, bool $applyFilters = true)` | `void` | Set named transport audiences as address/name maps; use false only to record an already-verified delivery decision |
+| `getRecipientGroups()` | `array` | Current additional delivery audiences (for example, calendar attendee groups) |
+| `addRecipientFilter(callable $filter)` | `void` | Register a reusable address/name-map policy in listener order and apply it to current groups |
+| `filterRecipients(array $recipients)` | `array` | Apply registered policies to a later-discovered audience without another send event |
+| `hasRecipientFilters()` | `bool` | Whether this event has registered recipient policies |
+
+Graph supplies calendar groups before listeners run, then re-reads ICS parts after
+listeners and applies the same filters. AllowlistPlugin and RedirectingPlugin
+register their additional-audience filters while retaining their usual mail
+header/envelope handling. A custom recipient-policy listener must handle the
+message headers/envelope itself and register a pure filter for additional audiences.
+Transports record final delivery groups without filtering them again, so failure
+metadata does not invent another redirect or include unsent mail headers.
+
 
 **Envelope isolation (security fix):** `setEnvelope()` stores a `clone` of the
 envelope and `getEnvelope()` returns a fresh `clone` on every call, so a listener

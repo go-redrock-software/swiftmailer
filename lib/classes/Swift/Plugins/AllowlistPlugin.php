@@ -49,6 +49,7 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
     {
         $message = $evt->getMessage();
         $evt->captureRecipientState();
+        $evt->addRecipientFilter($this->filterDeliveryRecipients(...));
 
         // Store original recipients
         $this->originalRecipients = [
@@ -74,7 +75,7 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
         $filteredBcc = $this->filterRecipients($this->originalRecipients['bcc'] ?? []);
 
         // If no recipients left at all, reject with reason
-        if (null === $envelope && empty($filteredTo) && empty($filteredCc) && empty($filteredBcc)) {
+        if (null === $envelope && empty($filteredTo) && empty($filteredCc) && empty($filteredBcc) && !\array_filter($evt->getRecipientGroups())) {
             $allOriginalAddresses = \array_keys(\array_merge(
                 $this->originalRecipients['to']  ?? [],
                 $this->originalRecipients['cc']  ?? [],
@@ -181,6 +182,17 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
             if ($this->isAllowed((string) $email)) {
                 $filtered[$email] = $name;
             }
+        }
+
+        return $filtered;
+    }
+
+    /** @param array<string, string|null> $recipients */
+    private function filterDeliveryRecipients(array $recipients): array
+    {
+        $filtered = $this->filterRecipients($recipients);
+        if (null !== $this->redirectTo && \count($filtered) < \count($recipients)) {
+            $filtered[$this->redirectTo] ??= $this->redirectTo;
         }
 
         return $filtered;

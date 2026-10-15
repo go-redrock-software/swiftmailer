@@ -244,9 +244,8 @@ converted; everything else rides along untouched.
 
 | `.ics` `METHOD` + state | Action | Graph call |
 |-|-|-|
-| `REQUEST`, `SEQUENCE` = 0 | Create the event | `POST /{user}/events` |
-| `REQUEST`, `SEQUENCE` > 0, matching event found | Update in place (Exchange sends an "updated" notice) | `PATCH /{user}/events/{id}` (matched by `iCalUId`) |
-| `REQUEST`, `SEQUENCE` > 0, no matching event | Falls back to create | `POST /{user}/events` |
+| `REQUEST`, matching invite key found | Update in place (Exchange sends an "updated" notice) | `PATCH /{user}/events/{id}` |
+| `REQUEST`, no matching invite key | Create the event | `POST /{user}/events` |
 | `CANCEL`, matching event found | Cancel (sends a cancellation notice) | `POST /{user}/events/{id}/cancel` |
 | `CANCEL`, no matching event | No-op; emits an `E_USER_NOTICE`, nobody notified | — |
 | `PUBLISH`, `REPLY`, other | Left as an ordinary attachment | — |
@@ -262,14 +261,36 @@ converted; everything else rides along untouched.
   genuine non-`.ics` attachment next to the invite, the email *is* sent (so the attachment
   reaches the recipient) even though the invite was converted — only the `.ics` part is
   dropped from the outgoing mail.
-- **No duplicate on retry.** The originating iCalendar `UID` is reused as the Graph
-  `transactionId` (first 256 chars), so a retried send is de-duplicated by Graph rather than
-  creating a second calendar entry.
-- **Matching updates/cancels.** The event id is located by filtering
-  `iCalUId eq '{UID}'`, the property Graph stores the originating `.ics` UID in. If no id
-  matches, an update falls back to create and a cancel becomes a no-op.
+- **Matching updates/cancels.** Events carry an extended `SwiftInviteKey` property
+  containing the originating UID and the policy-adjusted attendee addresses. The
+  transport looks up this property, rather than assuming Graph retains the ICS UID
+  as `iCalUId`. A different recipient's copy of the same appointment gets a separate
+  event. SEQUENCE is not used to select create versus update. There is no
+  `transactionId`-based deduplication; concurrent creates can still race.
+- **Recipient policies cover calendar audiences.** AllowlistPlugin, its catch-all
+  mode and RedirectingPlugin filter/redirect ICS attendees in listener registration
+  order. Retained attendees keep names and required/optional/resource roles; added
+  targets are required attendees. If all attendees are filtered out, the transport
+  skips that calendar operation and does not send the removed ICS as fallback mail.
+- **Stored audiences are checked before mutation.** All lookups and audience reads
+  finish before the first create/update/cancel request. An existing event is read
+  again for its attendees. With recipient policy active, unknown audiences,
+  non-single-instance events and any stored audience the policy would change are
+  rejected. Removing an unsafe attendee by PATCH is not a safe repair: Graph may
+  notify removed attendees, and cancellation targets the stored audience. A
+  redirected invite key never deliberately looks up the original production audience.
+- **Provider concurrency limit.** These checks inspect the current stored audience;
+  they are not a transaction with Graph. The documented update/cancel contracts do
+  not establish an atomic If-Match guarantee here. Concurrent external changes to
+  attendee lists remain outside that preflight snapshot. Review shared-mailbox
+  workflows accordingly; no atomic enforcement or live-tenant validation is claimed.
 - **Times are passed as wall-clock + time-zone name**, with no UTC conversion math, which
   avoids DST off-by-one bugs.
+
+The audience checks follow Microsoft's [event update](https://learn.microsoft.com/en-us/graph/api/event-update?view=graph-rest-1.0)
+and [event cancellation](https://learn.microsoft.com/en-us/graph/api/event-cancel?view=graph-rest-1.0)
+contracts, checked on 2026-10-15. Calendar read/write permission is required for
+lookup, stored-audience inspection and mutation.
 
 ### Parser scope
 
@@ -293,17 +314,18 @@ attendees (mapping `ROLE`/`CUTYPE` to required/optional/resource), `UID`, `METHO
   (address + display name) and is set on the message via `setToRecipients` /
   `setCcRecipients` / `setBccRecipients`. (Earlier versions dropped CC/BCC with a
   `TypeError`; that was fixed by iterating the `address => name` map by key.)
-- **Reply-To**: only the **first** reply-to address is applied (as a bare address, without
-  its display name), and it counts toward the returned recipient total — see the quirk in
-  [Known limitations](#known-limitations).
-- **Return value / recipient count.** `send()` returns the number of recipients notified:
-  To + CC + BCC, plus one if a Reply-To is present, plus the attendees actually notified by
-  each calendar operation. A `CANCEL` that matches no event contributes **0** (it notified
-  no one) rather than inflating the count with the parsed `.ics` attendees. On failure the
-  count is `0`.
-- **`&$failedRecipients`.** Populated with the To/CC/BCC addresses while the payload is
-  built and cleared to `[]` on success; on failure the send event is given that recipient
-  list as the failed set.
+- **Reply-To**: only the **first** reply-to address is applied (as a bare address,
+  without its display name). It is not a delivery recipient and is not counted.
+- **Return value / recipient count.** Only submitted mail contributes To + Cc + Bcc.
+  A calendar-only operation contributes its distinct notification audience; an update
+  includes old and new attendees, while cancellation uses the stored attendees. A
+  no-match cancellation or a fully filtered operation contributes zero. Mail sent
+  alongside an invite contributes an additional mail delivery count. These are
+  submission/snapshot counts, not final delivery receipts.
+- **`&$failedRecipients`.** On failure, records the effective calendar notification
+  audiences and any intended ordinary mail audience, rather than unsent mail headers.
+  Policy rejection and operations with no delivery audience add no failed addresses.
+  Completion events restore caller headers in either recipient-plugin order.
 
 ---
 
@@ -344,8 +366,8 @@ wrap a hand-built transport in.
   but never `transportStarted` and never sets the `started` flag, so `isStarted()` stays
   `false` after a successful send. Call `start()` (or `ping()`, which starts on demand)
   explicitly if downstream code relies on the started state.
-- **Reply-To is lossy.** Only the first Reply-To address is used, its display name is
-  dropped, and it is counted as an extra recipient in the return value.
+- **Reply-To is lossy.** Only the first Reply-To address is used and its display name
+  is dropped.
 - **Body must be `text/plain` or `text/html`.** Any other body content type is unmapped and
   will surface as an unhandled error rather than a wrapped `Swift_TransportException`.
 - **No tags / metadata.** Unlike SendGrid/Mailgun/etc., the `X-Mailer-Tag` and
@@ -365,8 +387,8 @@ wrap a hand-built transport in.
 | `Cannot use from-address mode: message has no From address` | `useFromAddressAsSendingAccountUserId()` set but the message has no `From` | Set a `From` address, or use `setSendingAccountUserId()` / default `/me` |
 | `Attachment '…' is N bytes, exceeding Microsoft Graph's 157286400-byte limit` | Attachment over the 150 MB ceiling | Host the file and send a link, or split it |
 | Recipients get a dead `.ics` with no Accept/Decline | Calendar conversion not enabled, or the `.ics` isn't `METHOD:REQUEST`/`CANCEL` | Call `enableCalendarEventConversion()`; confirm the payload's `METHOD` and that it's `text/calendar` |
-| `Graph calendar CANCEL: no event matched iCalUId '…'` (E_USER_NOTICE) | Cancelling an event that was never created via Graph (so no `iCalUId` match) | Expected — nothing to cancel; the notice is informational |
-| Duplicate calendar entries on retry | `UID` missing from the `.ics` (no `transactionId` to de-dupe on) | Ensure invitations carry a stable `UID` |
+| `Graph calendar CANCEL: no event matched invite '…'` (E_USER_NOTICE) | No matching UID + policy-adjusted attendee key | Expected — nothing is cancelled; the notice is informational |
+| Duplicate calendar entries | Missing UID or concurrent creates before the invite-key lookup sees the other request | Use stable UIDs; coordinate concurrent sends for the same appointment and audience |
 | `InvalidArgumentException: Large-attachment threshold must be a positive byte count` | `setLargeAttachmentThreshold()` called with `< 1` | Pass a positive byte count |
 
 ---

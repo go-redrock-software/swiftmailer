@@ -37,11 +37,7 @@ class MicrosoftGraphCalendarTest extends TestCase
 
     private function dispatcher(): \Swift_Events_EventDispatcher
     {
-        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
-        $dispatcher->method('createSendEvent')->willReturn($this->createMock(\Swift_Events_SendEvent::class));
-        $dispatcher->method('createTransportChangeEvent')->willReturn($this->createMock(\Swift_Events_TransportChangeEvent::class));
-
-        return $dispatcher;
+        return new \Swift_Events_SimpleEventDispatcher();
     }
 
     private function message(string $ics): \Swift_Message
@@ -103,8 +99,8 @@ class MicrosoftGraphCalendarTest extends TestCase
 
         $result = $transport->send($this->message($this->requestInviteIcs()));
 
-        // One attendee via the created event, plus the single To recipient.
-        $this->assertSame(2, $result);
+        // The calendar operation notifies one attendee; no ordinary mail is sent.
+        $this->assertSame(1, $result);
     }
 
     // -- invite + a real (non-.ics) attachment: the attachment must still be delivered ---
@@ -163,7 +159,7 @@ class MicrosoftGraphCalendarTest extends TestCase
         $transport->setSendEmailAlongsideEvent(true);
 
         $result = $transport->send($this->message($this->requestInviteIcs()));
-        $this->assertSame(2, $result); // 1 To recipient + 1 attendee via the event
+        $this->assertSame(2, $result); // One calendar notification and one ordinary mail.
     }
 
     // -- conversion disabled: .ics rides along as a normal attachment ---
@@ -351,7 +347,7 @@ class MicrosoftGraphCalendarTest extends TestCase
 
         // Two attendees (one per invite) plus the single To recipient.
         $result = $transport->send($m);
-        $this->assertSame(3, $result);
+        $this->assertSame(2, $result);
     }
 
     // -- detection by .ics filename when the content type isn't text/calendar ---
@@ -380,7 +376,7 @@ class MicrosoftGraphCalendarTest extends TestCase
         $m->attach(new \Swift_Attachment($this->requestInviteIcs(), 'meeting.ics', 'application/octet-stream'));
 
         $result = $transport->send($m);
-        $this->assertSame(2, $result); // 1 To recipient + 1 attendee via the event
+        $this->assertSame(1, $result); // Only the calendar attendee is notified.
     }
 
     // -- explicit user id routes events through /users/{id}, not /me ---
@@ -404,7 +400,7 @@ class MicrosoftGraphCalendarTest extends TestCase
         $transport->enableCalendarEventConversion();
 
         $result = $transport->send($this->message($this->requestInviteIcs()));
-        $this->assertSame(2, $result); // 1 To recipient + 1 attendee via the event
+        $this->assertSame(1, $result); // Only the calendar attendee is notified.
     }
 
     // -- send-alongside strips the .ics but keeps real file attachments ---
@@ -623,8 +619,15 @@ class MicrosoftGraphCalendarTest extends TestCase
 
         $transport = $this->getMockBuilder(\Swift_Transport_Api_MicrosoftGraphTransport::class)
             ->setConstructorArgs([$graphClient, null, $this->dispatcher()])
-            ->onlyMethods($stub)
+            ->onlyMethods(\array_merge($stub, ['getCalendarEvent']))
             ->getMock();
+        $address = new \Microsoft\Graph\Generated\Models\EmailAddress();
+        $address->setAddress('bob@example.com');
+        $attendee = new \Microsoft\Graph\Generated\Models\Attendee();
+        $attendee->setEmailAddress($address);
+        $event = new \Microsoft\Graph\Generated\Models\Event();
+        $event->setAttendees([$attendee]);
+        $transport->method('getCalendarEvent')->willReturn($event);
         $transport->enableCalendarEventConversion();
 
         return $transport;
@@ -705,11 +708,10 @@ class MicrosoftGraphCalendarTest extends TestCase
         $this->assertStringContainsString('cancel-notice@example.com', $captured);
     }
 
-    public function testNoMatchCancelCountsOnlyToRecipient(): void
+    public function testNoMatchCancelCountsNoRecipients(): void
     {
         // A CANCEL that matches no Graph event cancels nothing, so the calendar op
-        // contributes 0. The single To recipient is still counted, so send() returns 1
-        // (count(To)=1 + calendar 0).
+        // contributes 0. Ordinary mail is not sent, so no recipients are counted.
         $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
         $userItemBuilder->expects($this->never())->method('events');
         $userItemBuilder->expects($this->never())->method('sendMail');
@@ -726,13 +728,13 @@ class MicrosoftGraphCalendarTest extends TestCase
             'END:VEVENT', 'END:VCALENDAR',
         ]);
         $result = @$transport->send($this->messageWithIcs($cancelIcs));
-        $this->assertSame(1, $result, 'no-match CANCEL: only the To recipient is counted');
+        $this->assertSame(0, $result, 'no-match CANCEL: nobody is notified');
     }
 
-    public function testMatchedCancelCountsToPlusAttendee(): void
+    public function testMatchedCancelCountsOnlyNotifiedAttendees(): void
     {
         // A CANCEL that matches a Graph event notifies its one attendee (calendar
-        // contributes 1) on top of the single To recipient, so send() returns 2.
+        // contributes 1); the unsent ordinary mail contributes nothing.
         $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
         $userItemBuilder->expects($this->never())->method('sendMail');
 
@@ -748,7 +750,7 @@ class MicrosoftGraphCalendarTest extends TestCase
             'END:VEVENT', 'END:VCALENDAR',
         ]);
         $result = $transport->send($this->messageWithIcs($cancelIcs));
-        $this->assertSame(2, $result, 'matched CANCEL: 1 To recipient + 1 cancelled-event attendee');
+        $this->assertSame(1, $result, 'matched CANCEL: only the cancelled-event attendee');
     }
 
     public function testUpdateInviteWithSequencePatchesMatchingEvent(): void
@@ -820,8 +822,8 @@ class MicrosoftGraphCalendarTest extends TestCase
         $message->setBody('Please join.');
         $message->attach(new RequestMethodCalendarMimePart($this->requestInviteIcs()));
 
-        // One attendee via the created event, plus the single To recipient.
-        $this->assertSame(2, $transport->send($message));
+        // The calendar operation notifies one attendee; no ordinary mail is sent.
+        $this->assertSame(1, $transport->send($message));
     }
 }
 

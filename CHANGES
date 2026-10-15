@@ -11,6 +11,12 @@ Unreleased
 
  Security:
 
+ * Graph calendar conversion now applies allowlist/catch-all/redirect policies to
+   ICS attendees. Invite lookups use the adjusted audience; existing-event
+   attendees are read before update/cancel, and unknown or policy-changing
+   audiences are rejected before mutation. Preflight reads are not atomic with
+   concurrent Graph edits (GitLab #42).
+
  * AllowlistPlugin and RedirectingPlugin now enforce recipient policy on
    explicit SMTP envelopes, preventing envelope-only recipients from bypassing
    dev/staging delivery restrictions. The explicit sender is preserved, and
@@ -36,6 +42,10 @@ Unreleased
    autoloading, and behavior are unchanged.
 
  Bug Fixes:
+
+ * Graph calendar-only sends no longer count unsent mail headers. Update/cancel
+   counts use stored notification audiences; zero-delivery operations add no
+   spurious failed mail recipients. Policy cleanup remains event-scoped (#42).
 
  * Explicit API envelopes now control raw delivery payloads for Postal,
    Mandrill, Mailgun, Infobip and both SES variants. Other API paths reject

@@ -170,9 +170,10 @@ abstract class Swift_Transport_AbstractApiTransport implements Swift_Transport
     /**
      * Run an SDK send with the same envelope-aware policy lifecycle as HTTP sends.
      *
-     * @param callable(?Swift_Envelope): int $send
+     * @param callable(?Swift_Envelope, ?Swift_Events_SendEvent): int $send
+     * @param array<string, array<string, string|null>>               $recipientGroups
      */
-    protected function sendWithEvents(Swift_Mime_SimpleMessage $message, &$failedRecipients, ?Swift_Envelope $envelope, callable $send): int
+    protected function sendWithEvents(Swift_Mime_SimpleMessage $message, &$failedRecipients, ?Swift_Envelope $envelope, callable $send, array $recipientGroups = []): int
     {
         $failedRecipients ??= [];
         $evt = $this->eventDispatcher?->createSendEvent($this, $message);
@@ -180,6 +181,7 @@ abstract class Swift_Transport_AbstractApiTransport implements Swift_Transport
         try {
             if ($evt) {
                 $evt->setEnvelope($envelope);
+                $evt->setRecipientGroups($recipientGroups);
                 $this->eventDispatcher->dispatchEvent($evt, 'beforeSendPerformed');
                 if ($evt->bubbleCancelled()) {
                     $evt->setResult(Swift_Events_SendEvent::RESULT_FAILED);
@@ -189,9 +191,9 @@ abstract class Swift_Transport_AbstractApiTransport implements Swift_Transport
                 $envelope = $evt->getEnvelope();
             }
 
-            $sent = $send($envelope);
+            $sent = $send($envelope, $evt);
             if (0 === $sent) {
-                $recipients       = null !== $envelope ? $envelope->getRecipients() : \array_keys(\array_merge($message->getTo() ?? [], $message->getCc() ?? [], $message->getBcc() ?? []));
+                $recipients       = $this->getSendRecipients($message, $envelope, $evt);
                 $failedRecipients = \array_values(\array_unique(\array_merge($failedRecipients, $recipients)));
             }
             if ($evt) {
@@ -201,7 +203,7 @@ abstract class Swift_Transport_AbstractApiTransport implements Swift_Transport
 
             return $sent;
         } catch (Throwable $e) {
-            $recipients       = null !== $envelope ? $envelope->getRecipients() : \array_keys(\array_merge($message->getTo() ?? [], $message->getCc() ?? [], $message->getBcc() ?? []));
+            $recipients       = $this->getSendRecipients($message, $envelope, $evt);
             $failedRecipients = \array_values(\array_unique(\array_merge($failedRecipients, $recipients)));
             if ($evt) {
                 $evt->setResult(Swift_Events_SendEvent::RESULT_FAILED);
@@ -215,6 +217,16 @@ abstract class Swift_Transport_AbstractApiTransport implements Swift_Transport
                 $this->eventDispatcher->dispatchEvent($evt, 'sendPerformed');
             }
         }
+    }
+
+    private function getSendRecipients(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope, ?Swift_Events_SendEvent $evt): array
+    {
+        $groups = $evt?->getRecipientGroups() ?? [];
+        if ($groups) {
+            return \array_keys(\array_merge(...\array_values($groups)));
+        }
+
+        return null !== $envelope ? $envelope->getRecipients() : \array_keys(\array_merge($message->getTo() ?? [], $message->getCc() ?? [], $message->getBcc() ?? []));
     }
 
     /**
