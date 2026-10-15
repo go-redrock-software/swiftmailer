@@ -20,10 +20,10 @@ class Swift_Transport_FailoverTransport extends Swift_Transport_LoadBalancedTran
      */
     private ?Swift_Transport $currentTransport = null;
 
-    // needed as __construct is called from elsewhere explicitly
-    public function __construct()
+    /** Failed-backend cooldown in seconds; this constructor may also be called explicitly. */
+    public function __construct(int $retryPeriod = 60)
     {
-        parent::__construct();
+        parent::__construct($retryPeriod);
     }
 
     #[Override]
@@ -36,15 +36,19 @@ class Swift_Transport_FailoverTransport extends Swift_Transport_LoadBalancedTran
     #[Override]
     public function ping()
     {
+        $this->restoreDueTransports();
         $maxTransports = \count($this->transports);
         for (
             $i        = 0; $i < $maxTransports
         && $transport = $this->getNextTransport(); ++$i
         ) {
+            $configurationVersion = $this->transportConfigurationVersion;
             if ($transport->ping()) {
                 return true;
             }
-            $this->killCurrentTransport();
+            if ($configurationVersion === $this->transportConfigurationVersion) {
+                $this->killCurrentTransport();
+            }
         }
 
         return \count($this->transports) > 0;
@@ -63,9 +67,10 @@ class Swift_Transport_FailoverTransport extends Swift_Transport_LoadBalancedTran
     #[Override]
     public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null)
     {
-        $maxTransports           = \count($this->transports);
-        $sent                    = 0;
         $this->lastUsedTransport = null;
+        $this->restoreDueTransports();
+        $maxTransports = \count($this->transports);
+        $sent          = 0;
 
         for (
             $i        = 0; $i < $maxTransports

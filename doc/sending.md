@@ -250,8 +250,8 @@ $mailer = new Swift_Mailer(new Swift_NullTransport());
 ### Failover
 
 `Swift_FailoverTransport` provides high availability. It tries each wrapped
-transport in order and returns as soon as one accepts the message. Dead
-transports are set aside for the remainder of the run.
+transport in order and returns as soon as one accepts the message. Failed
+backends are set aside for a configurable cooldown (60 seconds by default).
 
 ```php
 $transport = new Swift_FailoverTransport([
@@ -279,19 +279,47 @@ $transport = new Swift_LoadBalancedTransport([
 ]);
 ```
 
-A transport that throws an ordinary backend failure is retired for the rest of
-the run. Ordinary errors raised while stopping that backend are logged via
+A transport that throws an ordinary backend failure is retired until its
+configured cooldown expires (60 seconds by default). Ordinary errors raised while stopping that backend are logged via
 `trigger_error()` at `E_USER_WARNING`
 (`Swiftmailer: LoadBalancedTransport error from <class>: <message>`). If all
 transports are exhausted, a `Swift_TransportException` is thrown.
 
 ### Restoring and checking a pool
 
-Calling `start()` restores retired backends once. Repeated starts preserve the
-configured number of entries, including intentional duplicate references used
-for weighting. Failover keeps its current successful backend until that backend
-fails; restoring other backends does not change which backend a later failure
-retires.
+Both pools accept a non-negative integer retry period in seconds:
+
+```php
+$transport = new Swift_LoadBalancedTransport([
+    $primaryTransport,
+    $backupTransport,
+], 15);
+
+// The same second argument works on Swift_FailoverTransport.
+$transport->setRetryPeriod(30); // Fluent; applies to original failure times.
+$seconds = $transport->getRetryPeriod(); // 30
+
+// Low-level classes accept the period as their first constructor argument.
+$pool = new Swift_Transport_FailoverTransport(15);
+$pool->setTransports([$primaryTransport, $backupTransport]);
+```
+
+At entry to `send()`, `ping()` and `start()`, eligible backends return to the
+active pool. Recovery uses elapsed monotonic time and never sleeps or starts a
+background timer. A failed recovery attempt begins a new cooldown. Automatic
+startup by `Swift_Mailer` or a retry wrapper respects the same deadline.
+
+`start()` now respects this cooldown. To make retired backends immediately
+eligible on the next operation, explicitly set `setRetryPeriod(0)`. An operation
+tries only its initial eligible slots; zero does not create an unbounded retry
+loop for the same message. Replacing the pool with `setTransports()` also clears
+its failure history.
+
+Repeated starts preserve the configured number of entries, including intentional
+duplicate references used for weighting. All slots for the same backend object
+share one cooldown and return together. Different backend objects retain
+independent failure times. Failover keeps its current successful backend until
+that backend fails; recovery does not force a switch back to the primary.
 
 Plugins registered through a pool reach all currently configured backends,
 including retired backends that may later return. Each plugin is forwarded once

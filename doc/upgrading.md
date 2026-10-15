@@ -11,7 +11,7 @@ composer remove swiftmailer/swiftmailer
 composer require go-redrock/swiftmailer
 ```
 
-All class names (`Swift_Message`, `Swift_Mailer`, ...) and autoloading are unchanged, so no application code changes are required.
+Class names (`Swift_Message`, `Swift_Mailer`, ...) and autoloading are unchanged. Review the behavioral differences below before upgrading.
 
 > **Note:** If other packages in your dependency tree still require `swiftmailer/swiftmailer`, Composer will install the abandoned original alongside the fork and the duplicate class definitions will conflict. Run `composer why swiftmailer/swiftmailer` to find them and update their constraints first.
 
@@ -32,9 +32,9 @@ The fork requires **PHP 8.3+** (the original required PHP 7.0+). Ensure your env
 
 ## Step 3 -- Check for Breaking Changes
 
-### Fully Backward Compatible
+### Existing APIs
 
-The fork maintains full backward compatibility with stock SwiftMailer 6.x for existing code:
+The fork preserves these stock SwiftMailer 6.x APIs:
 
 - `Swift_SmtpTransport`, `Swift_SendmailTransport`, `Swift_NullTransport` work identically
 - `Swift_Message` API is unchanged
@@ -70,6 +70,8 @@ These are pulled in automatically by Composer. If you have dependency conflicts,
 3. **Serialization Blocked:** Transport objects now throw `BadMethodCallException` on `__sleep()`/`__wakeup()`. If you were serializing transports (unusual), this will break.
 
 4. **DKIM Signer Enhancements:** The DKIM signer now supports Ed25519-SHA256 in addition to RSA-SHA256, and includes oversigning capabilities. Existing RSA-SHA256 configurations continue to work unchanged.
+
+5. **Pool Recovery:** Failover and load-balanced pools now automatically make failed backends eligible after 60 seconds. Previously, retired backends returned only after a manual `start()`. `start()` now respects the cooldown, including automatic startup by `Swift_Mailer` and retry wrappers. To restore immediate eligibility on a later operation, set `setRetryPeriod(0)` before calling `start()`; repeated failure remains bounded within each operation. Constructors accept a custom non-negative period, and pool DSNs accept `?retry_period=N` after the closing parenthesis. Changing the period uses the original failure time; replacing the pool clears failure history. Failover keeps its healthy current backend when others recover. See [pool recovery](sending.md#restoring-and-checking-a-pool) and [DSN options](dsn.md#pool-retry-period).
 
 ## Step 4 -- Adopt New Features (Optional)
 

@@ -22,6 +22,11 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
      */
     private $deadTransports = [];
 
+    /** @var SplObjectStorage<Swift_Transport, float> */
+    private SplObjectStorage $failedSince;
+
+    private int $retryPeriod = 60;
+
     /**
      * The Transports which are used in rotation.
      *
@@ -39,9 +44,57 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
      */
     protected $lastUsedTransport;
 
-    // needed as __construct is called from elsewhere explicitly
-    public function __construct()
+    /** Failed-backend cooldown in seconds; this constructor may also be called explicitly. */
+    public function __construct(int $retryPeriod = 60)
     {
+        $this->failedSince ??= new SplObjectStorage();
+        $this->setRetryPeriod($retryPeriod);
+    }
+
+    /** Failed-backend cooldown in seconds. */
+    public function getRetryPeriod(): int
+    {
+        return $this->retryPeriod;
+    }
+
+    /** Apply a non-negative cooldown to the original failure times, without sleeping. */
+    public function setRetryPeriod(int $retryPeriod): static
+    {
+        if ($retryPeriod < 0) {
+            throw new InvalidArgumentException('retryPeriod must be a non-negative number of seconds.');
+        }
+        $this->retryPeriod = $retryPeriod;
+
+        return $this;
+    }
+
+    /** Monotonic seconds; overrides must provide the same clock throughout the pool's lifetime. */
+    protected function getCurrentTime(): float
+    {
+        return \hrtime(true) / 1_000_000_000;
+    }
+
+    /** Recover only at operation entry, so a zero period cannot create an inner retry loop. */
+    protected function restoreDueTransports(): void
+    {
+        if (!$this->deadTransports) {
+            return;
+        }
+        $now       = $this->getCurrentTime();
+        $waiting   = [];
+        $recovered = new SplObjectStorage();
+        foreach ($this->deadTransports as $transport) {
+            if ($now - $this->failedSince->offsetGet($transport) >= $this->retryPeriod) {
+                $this->transports[] = $transport;
+                $recovered->offsetSet($transport, true);
+            } else {
+                $waiting[] = $transport;
+            }
+        }
+        $this->deadTransports = $waiting;
+        foreach ($recovered as $transport) {
+            $this->failedSince->offsetUnset($transport);
+        }
     }
 
     /**
@@ -53,6 +106,7 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
     {
         $this->transports     = $transports;
         $this->deadTransports = [];
+        $this->failedSince    = new SplObjectStorage();
         ++$this->transportConfigurationVersion;
     }
 
@@ -93,8 +147,7 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
     #[Override]
     public function start()
     {
-        $this->transports     = \array_merge($this->transports, $this->deadTransports);
-        $this->deadTransports = [];
+        $this->restoreDueTransports();
     }
 
     /**
@@ -111,6 +164,7 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
     #[Override]
     public function ping()
     {
+        $this->restoreDueTransports();
         $maxTransports = \count($this->transports);
         for ($i = 0; $i < $maxTransports && $transport = $this->getNextTransport(); ++$i) {
             $configurationVersion = $this->transportConfigurationVersion;
@@ -135,9 +189,10 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
     #[Override]
     public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null)
     {
-        $maxTransports           = \count($this->transports);
-        $sent                    = 0;
         $this->lastUsedTransport = null;
+        $this->restoreDueTransports();
+        $maxTransports = \count($this->transports);
+        $sent          = 0;
 
         for (
             $i        = 0; $i < $maxTransports
@@ -205,29 +260,37 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
      */
     protected function killCurrentTransport()
     {
-        if ($transport = \array_pop($this->transports)) {
-            $remaining            = $this->transports;
-            $configurationVersion = $this->transportConfigurationVersion;
-            try {
-                $transport->stop();
-            } catch (Throwable $e) {
-                if (Swift_Transport_RetryPolicy::isTerminalFailure($e)) {
-                    // Keep this backend available without undoing a caller's
-                    // reentrant replacement of the transport pool.
-                    if ($configurationVersion === $this->transportConfigurationVersion && $this->transports === $remaining) {
-                        $this->transports[] = $transport;
-                    }
-                    throw $e;
+        if (!$this->transports) {
+            return;
+        }
+        $failedAt  = $this->getCurrentTime();
+        $original  = $this->transports;
+        $transport = \array_pop($this->transports);
+        // Every weighted slot for this backend shares its cooldown.
+        $retired              = \array_values(\array_filter($original, static fn ($candidate): bool => $candidate === $transport));
+        $this->transports     = \array_filter($this->transports, static fn ($candidate): bool => $candidate !== $transport);
+        $remaining            = $this->transports;
+        $configurationVersion = $this->transportConfigurationVersion;
+        try {
+            $transport->stop();
+        } catch (Throwable $e) {
+            if (Swift_Transport_RetryPolicy::isTerminalFailure($e)) {
+                if ($configurationVersion === $this->transportConfigurationVersion) {
+                    // Retain changes from callbacks operating on the same pool,
+                    // while a replacement configuration owns its own entries.
+                    $this->transports = $this->transports === $remaining ? $original : \array_merge($this->transports, $retired);
                 }
-                @\trigger_error(\sprintf(
-                    'Swiftmailer: LoadBalancedTransport error from %s: %s',
-                    \get_class($transport),
-                    $e->getMessage(),
-                ), \E_USER_WARNING);
+                throw $e;
             }
-            if ($configurationVersion === $this->transportConfigurationVersion) {
-                $this->deadTransports[] = $transport;
-            }
+            @\trigger_error(\sprintf(
+                'Swiftmailer: LoadBalancedTransport error from %s: %s',
+                \get_class($transport),
+                $e->getMessage(),
+            ), \E_USER_WARNING);
+        }
+        if ($configurationVersion === $this->transportConfigurationVersion) {
+            $this->deadTransports = \array_merge($this->deadTransports, $retired);
+            $this->failedSince->offsetSet($transport, $failedAt);
         }
     }
 }

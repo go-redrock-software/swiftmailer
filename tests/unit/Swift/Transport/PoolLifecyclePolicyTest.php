@@ -384,7 +384,8 @@ class Swift_Transport_PoolLifecyclePolicyTest extends TestCase
 
     private function pool(string $kind, array $transports): Swift_Transport_LoadBalancedTransport
     {
-        $pool = 'failover' === $kind ? new Swift_Transport_FailoverTransport() : new Swift_Transport_LoadBalancedTransport();
+        // These scenarios explicitly test immediate manual restoration.
+        $pool = 'failover' === $kind ? new Swift_Transport_FailoverTransport(0) : new Swift_Transport_LoadBalancedTransport(0);
         $pool->setTransports($transports);
 
         return $pool;

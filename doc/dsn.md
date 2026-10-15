@@ -227,6 +227,34 @@ Distributes sends across the transports (load balancing).
 $transport = $factory->fromDsnString('roundrobin(sendgrid://KEY@default postmark://KEY@default brevo://KEY@default)');
 ```
 
+### Pool retry period
+
+Both pool wrappers accept `retry_period` after the closing parenthesis:
+
+```php
+$transport = $factory->fromDsnString(
+    'roundrobin(sendgrid://KEY@default postmark://KEY@default)?retry_period=15'
+);
+$transport = $factory->fromDsnString(
+    'failover(sendgrid://KEY@default postmark://KEY@default)?retry_period=0'
+);
+```
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `retry_period` | `60` | Seconds before a failed backend can return to the pool. `0` permits recovery on the next operation. |
+
+The value must be a non-negative decimal integer within PHP's integer range.
+Unknown, duplicate, array, negative, fractional and overflowing wrapper options
+are rejected before inner transports are constructed. An empty wrapper query
+uses the default. Cooldown recovery occurs at entry to `send()`, `ping()` or
+`start()` and does not sleep. A healthy failover selection remains sticky.
+See [pool recovery](sending.md#restoring-and-checking-a-pool) for runtime controls
+and the changed manual-start behavior.
+
+This option controls backend availability. Per-transport `retries` and
+`retry_delay` continue to control message retry attempts and backoff.
+
 ### Retry
 
 Wraps a single inner transport with automatic retry using the `RetryTransport` **defaults** (3 retries, 1000 ms base delay). For custom counts/delays, use the `?retries=` / `?retry_delay=` query parameters instead.
@@ -240,13 +268,34 @@ $transport = $factory->fromDsnString('retry(sendgrid://KEY@default)');
 `retry(...)` is matched first, so it can wrap a failover/round-robin group, and each inner DSN of a group may itself carry retry query parameters:
 
 ```
-retry(failover(sendgrid://KEY@default postmark://KEY@default))
-failover(smtp+tls://u:p@a.example.com:587?retries=2 smtp+tls://u:p@b.example.com:587)
+retry(failover(sendgrid://KEY@default postmark://KEY@default)?retry_period=15)
+failover(smtp+tls://u:p@a.example.com:587?retries=2 smtp+tls://u:p@b.example.com:587)?retry_period=30
 ```
 
 > Limitation: inner DSNs of `failover(...)`/`roundrobin(...)` are split on whitespace, so you **cannot** nest one space-separated group inside another (e.g. `failover(failover(a b) c)`). Wrap with `retry(...)`, or use per-DSN `?retries=` parameters, to combine behaviours.
 
-**Syntax:** `wrapper(dsn1 dsn2 dsn3)` — space-separated DSNs inside the parentheses.
+**Syntax:** `wrapper(dsn1 dsn2 dsn3)?retry_period=N` for pools — space-separated DSNs inside the parentheses, followed by an optional pool query.
+
+### Reading wrapper metadata
+
+`Swift_Dsn_Configuration` exposes raw query metadata for its existing flat
+function configurations, separately from individual DSN parameters:
+
+```php
+$config = Swift_Dsn_Configuration::parse(
+    'failover(null://first?retries=2 null://second)?retry_period=15'
+);
+$config->getParameters(); // ['retry_period' => '15']
+$config->getParameter('retry_period'); // '15'
+$config->getParameter('missing', 60); // 60
+$config->getDsn(0)->getParameter('retries'); // '2'
+```
+
+This helper retains the underlying parser's metadata representation and flat
+configuration limit. Use `Swift_Transport_DsnTransportFactory::fromDsnString()`
+for transport construction and strict operational option validation, including
+supported outer `retry(...)` combinations. A plain DSN's query belongs to that
+DSN, rather than the wrapper metadata.
 
 ## Environment-Driven Configuration
 

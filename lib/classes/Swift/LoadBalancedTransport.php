@@ -18,11 +18,12 @@ class Swift_LoadBalancedTransport extends Swift_Transport_LoadBalancedTransport
     /**
      * Creates a new LoadBalancedTransport with $transports.
      *
-     * @param array $transports
+     * @param Swift_Transport[] $transports
+     * @param int               $retryPeriod Failed-backend cooldown in seconds; zero permits recovery on the next operation
      */
-    public function __construct($transports = [])
+    public function __construct(#[SensitiveParameter] $transports = [], int $retryPeriod = 60)
     {
-        parent::__construct();
+        parent::__construct($retryPeriod);
 
         $this->setTransports($transports);
     }

@@ -17,10 +17,12 @@ class Swift_Dsn_Configuration
 
     private string $function_name;
 
+    private array $parameters = [];
+
     /**
      * Swift_Dsn_Configuration constructor.
      */
-    public function __construct(string $dsnString)
+    public function __construct(#[SensitiveParameter] string $dsnString)
     {
         try {
             $dsn = DsnParser::parseFunc($dsnString);
@@ -40,6 +42,7 @@ class Swift_Dsn_Configuration
         }
 
         $this->function_name = $dsn->getName();
+        $this->parameters    = $dsn->getParameters();
     }
 
     /**
@@ -71,7 +74,18 @@ class Swift_Dsn_Configuration
         return $this->function_name;
     }
 
-    public static function parse(string $dsnString): Swift_Dsn_Configuration
+    /** Raw function metadata; transport construction validates operational options. */
+    public function getParameters(): array
+    {
+        return $this->parameters;
+    }
+
+    public function getParameter(string $key, mixed $default = null): mixed
+    {
+        return \array_key_exists($key, $this->parameters) ? $this->parameters[$key] : $default;
+    }
+
+    public static function parse(#[SensitiveParameter] string $dsnString): Swift_Dsn_Configuration
     {
         return new self($dsnString);
     }

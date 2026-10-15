@@ -51,17 +51,21 @@ class Swift_Transport_DsnTransportFactory
         'sweego+smtp'     => ['host' => 'smtp.sweego.io',                     'port' => 587, 'encryption' => 'tls'],
     ];
 
-    public function fromDsnString(string $dsnString): Swift_Transport
+    public function fromDsnString(#[SensitiveParameter] string $dsnString): Swift_Transport
     {
         // retry(...) wrapper -- decorate the inner transport (which may itself be a
         // failover/roundrobin wrapper or a plain DSN) with retry-on-failure.
-        if (\preg_match('/^retry\((.+)\)$/', $dsnString, $matches)) {
+        if (\preg_match('/\Aretry\((.+)\)\z/D', $dsnString, $matches)) {
             return new Swift_Transport_RetryTransport($this->fromDsnString(\trim($matches[1])));
         }
 
         // Check for meta-transport wrappers
-        if (\preg_match('/^(failover|roundrobin)\((.+)\)$/', $dsnString, $matches)) {
-            $wrapper   = $matches[1];
+        if (\preg_match('/\A(failover|roundrobin)\((.+?)\)(?:\?(.*))?\z/D', $dsnString, $matches)) {
+            $retryPeriod = $this->parsePoolRetryPeriod($matches[3] ?? '');
+            $wrapper     = $matches[1];
+            if (\substr_count($matches[2], ')') > \substr_count($matches[2], '(')) {
+                throw new InvalidArgumentException('Malformed pool DSN; configure retry_period after the closing parenthesis.');
+            }
             $innerDsns = \preg_split('/\s+/', \trim($matches[2]));
 
             $transports = [];
@@ -70,26 +74,54 @@ class Swift_Transport_DsnTransportFactory
             }
 
             if ('failover' === $wrapper) {
-                $transport = new Swift_Transport_FailoverTransport();
+                $transport = new Swift_Transport_FailoverTransport($retryPeriod);
             } else {
-                $transport = new Swift_Transport_LoadBalancedTransport();
+                $transport = new Swift_Transport_LoadBalancedTransport($retryPeriod);
             }
             $transport->setTransports($transports);
 
             return $transport;
         }
 
+        if (\preg_match('/\A(?:failover|roundrobin|retry)\(/D', $dsnString)) {
+            throw new InvalidArgumentException('Malformed transport wrapper DSN; retry_period belongs after a pool wrapper.');
+        }
         $transport = $this->createTransport($dsnString);
 
         // A positive ?retries= query parameter decorates the transport with retry.
         return $this->maybeWrapWithRetry($transport, $dsnString);
     }
 
+    /** Validate pool options before constructing any credential-bearing inner DSN. */
+    private function parsePoolRetryPeriod(#[SensitiveParameter] string $query): int
+    {
+        if ('' === $query) {
+            return 60;
+        }
+        $pairs = \explode('&', $query);
+        $pair  = \explode('=', $pairs[0], 2);
+        if (1 !== \count($pairs) || 2 !== \count($pair) || 'retry_period' !== \urldecode($pair[0])) {
+            throw new InvalidArgumentException('Pool options must contain only one retry_period value.');
+        }
+        $value = \urldecode($pair[1]);
+        if (!\preg_match('/\A[0-9]+\z/D', $value)) {
+            throw new InvalidArgumentException('retry_period must be a non-negative integer number of seconds.');
+        }
+        $value   = \ltrim($value, '0');
+        $value   = '' === $value ? '0' : $value;
+        $maximum = (string) \PHP_INT_MAX;
+        if (\strlen($value) > \strlen($maximum) || (\strlen($value) === \strlen($maximum) && \strcmp($value, $maximum) > 0)) {
+            throw new InvalidArgumentException('retry_period is outside the supported integer range.');
+        }
+
+        return (int) $value;
+    }
+
     /**
      * Wraps a transport in a RetryTransport when the DSN carries a positive
      * "retries" query parameter (with an optional "retry_delay" in milliseconds).
      */
-    private function maybeWrapWithRetry(Swift_Transport $transport, string $dsnString): Swift_Transport
+    private function maybeWrapWithRetry(Swift_Transport $transport, #[SensitiveParameter] string $dsnString): Swift_Transport
     {
         $dsn     = new Swift_Dsn(DsnParser::parseUrl($dsnString));
         $retries = (int) ($dsn->getParameter('retries') ?? 0);
@@ -103,7 +135,7 @@ class Swift_Transport_DsnTransportFactory
         return new Swift_Transport_RetryTransport($transport, $retries, $delay);
     }
 
-    private function createTransport(string $dsnString): Swift_Transport
+    private function createTransport(#[SensitiveParameter] string $dsnString): Swift_Transport
     {
         $nyholmDsn = DsnParser::parseUrl($dsnString);
         $dsn       = new Swift_Dsn($nyholmDsn);
