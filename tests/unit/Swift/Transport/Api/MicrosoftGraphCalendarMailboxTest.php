@@ -311,6 +311,26 @@ class Swift_Transport_Api_MicrosoftGraphCalendarMailboxTest extends TestCase
         }
     }
 
+    public function testNoDispatcherStillRecordsCalendarFailureAudience(): void
+    {
+        $transport          = $this->transport([], false);
+        $this->failMutation = true;
+        $failed             = [];
+        try {
+            $transport->send($this->policyInvite('REQUEST', ['kept@safe.test']), $failed);
+            $this->fail('Provider failure must propagate');
+        } catch (Swift_TransportException $e) {
+            $this->assertSame(['kept@safe.test'], $failed);
+        }
+    }
+
+    public function testNoDispatcherNoMatchCancelAddsNoFailedMailRecipients(): void
+    {
+        $failed = [];
+        $this->assertSame(0, @$this->transport([], false)->send($this->policyInvite('CANCEL', ['kept@safe.test']), $failed));
+        $this->assertSame([], $failed);
+    }
+
     private function policies(string $policy): array
     {
         $allow    = new Swift_Plugins_AllowlistPlugin(['*@safe.test']);
@@ -338,7 +358,7 @@ class Swift_Transport_Api_MicrosoftGraphCalendarMailboxTest extends TestCase
             ->attach(new Swift_Attachment(\implode("\r\n", $lines), 'invite.ics', 'text/calendar'));
     }
 
-    private function transport(array $plugins = []): Swift_Transport_Api_MicrosoftGraphTransport
+    private function transport(array $plugins = [], bool $withDispatcher = true): Swift_Transport_Api_MicrosoftGraphTransport
     {
         $adapter = new Microsoft\Graph\GraphRequestAdapter(
             new Microsoft\Kiota\Abstractions\Authentication\AnonymousAuthenticationProvider(),
@@ -351,7 +371,7 @@ class Swift_Transport_Api_MicrosoftGraphCalendarMailboxTest extends TestCase
         $transport = new Swift_Transport_Api_MicrosoftGraphTransport(
             Microsoft\Graph\GraphServiceClient::createWithRequestAdapter($adapter),
             null,
-            $this->dispatcher(),
+            $withDispatcher ? $this->dispatcher() : null,
         );
         $transport->enableCalendarEventConversion();
         foreach ($plugins as $plugin) {
