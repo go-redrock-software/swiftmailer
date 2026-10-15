@@ -110,6 +110,14 @@ Config is `infection.json5`: it mutates `lib/classes` (excluding
 `minMsi: 78` / `minCoveredMsi: 95`. Both `composer` scripts first generate coverage
 (`infection:coverage`, which needs Xdebug in coverage mode).
 
+Coverage generation and Infection's mutant runner both use the isolated
+`vendor/bin/simple-phpunit` executable. Keep these in sync. The project-installed
+`vendor/bin/phpunit` loads the project's Composer files before PHPUnit executes
+its configured bootstrap. Swift's eager namespace aliases then load source
+classes before Infection can install its include interceptor, causing tests to
+exercise the original classes and report escaping mutants. The isolated runner
+loads the project through the test bootstrap after interception is active.
+
 ## Adding a class → regenerate the class map
 
 Because classes are PSR-0 underscore-named, adding one may require regenerating the

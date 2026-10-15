@@ -150,7 +150,7 @@ mutation-testing:
   script:
     - pecl install xdebug > /dev/null 2>&1 && docker-php-ext-enable xdebug
     - mkdir -p .infection/infection
-    - SYMFONY_DEPRECATIONS_HELPER=disabled XDEBUG_MODE=coverage vendor/bin/phpunit
+    - SYMFONY_DEPRECATIONS_HELPER=disabled XDEBUG_MODE=coverage vendor/bin/simple-phpunit
         --testsuite='SwiftMailer unit tests'
         --coverage-xml=.infection/infection/coverage-xml
         --log-junit=.infection/infection/junit.xml
@@ -190,7 +190,7 @@ mutation-testing-mr:
         exit 0
       fi
     - mkdir -p .infection/infection
-    - SYMFONY_DEPRECATIONS_HELPER=disabled XDEBUG_MODE=coverage vendor/bin/phpunit
+    - SYMFONY_DEPRECATIONS_HELPER=disabled XDEBUG_MODE=coverage vendor/bin/simple-phpunit
         --testsuite='SwiftMailer unit tests'
         --coverage-xml=.infection/infection/coverage-xml
         --log-junit=.infection/infection/junit.xml
