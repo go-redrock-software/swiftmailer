@@ -413,8 +413,10 @@ Two classes turn connection strings into transports:
   concrete transport. SMTP schemes resolve provider host/port/encryption defaults from
   `SMTP_HOST_MAP`; a `?retries=` query parameter wraps the result in a
   `RetryTransport`. SMTP `timeout`, `auth_mode` and `local_domain` options are
-  validated before connection and applied through native setters. Scoped SMTP and
-  SendGrid options share canonical-name/scalar/occurrence validation using PHP's
+  validated before connection and applied through native setters. Plain HTTP providers use explicit constructor mappings for multi-part credentials,
+  custom HTTPS endpoints and Mailtrap sandbox/live mode. SDK-backed schemes reject
+  DSN construction before credentials reach an SDK client parameter. Scoped SMTP,
+  HTTP provider and SendGrid options share canonical-name/scalar/occurrence validation using PHP's
   configured query separators. A small adapter preserves literal-zero userinfo
   lost by the installed Nyholm 2.0.1 parser while retaining its validated URL/query representation.
   The sendmail path is constrained to an allowlist of binaries.

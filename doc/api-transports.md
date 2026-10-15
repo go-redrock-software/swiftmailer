@@ -201,17 +201,14 @@ $message->getHeaders()->addTextHeader('X-Mailer-Metadata-campaign', 'feb-2026');
 
 ## DSN-Based Instantiation
 
-Most simple-constructor transports can be instantiated via DSN strings using `Swift_Dsn`. The DSN scheme maps to a transport class, and the user/password/host/parameters carry credentials.
+The operational `Swift_Transport_DsnTransportFactory` builds all plain HTTP providers with their actual constructor contracts. `Swift_Dsn` is metadata; use the factory to obtain a transport. See [provider DSN configuration](dsn.md#http-provider-configuration) for required credential order, endpoint hosts, region and inbox options.
 
 ```php
-use Nyholm\Dsn\DsnParser;
-
-$dsn = new Swift_Dsn(DsnParser::parse('sendgrid://SG.your-api-key@default'));
-$transportClass = $dsn->getTransportClass();
-// Returns: Swift_Transport_Api_SendgridTransport
+$transport = (new Swift_Transport_DsnTransportFactory())
+    ->fromDsnString('mailjet://PUBLIC_KEY:PRIVATE_KEY@default');
 ```
 
-> **Note:** Transports that require SDK client objects (Amazon SES, Google, Microsoft Graph) are listed in the DSN map but cannot be fully constructed from a DSN string alone -- they need their SDK client injected manually.
+> **Note:** Transports that require SDK client objects (Amazon SES, Google, Microsoft Graph) are listed in the DSN map but reject DSN construction with a credential-safe `InvalidArgumentException`; inject an explicitly constructed SDK client into the native transport.
 
 ### Supported DSN Schemes
 

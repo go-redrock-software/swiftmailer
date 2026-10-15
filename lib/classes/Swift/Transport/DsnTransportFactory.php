@@ -37,6 +37,8 @@ class Swift_Transport_DsnTransportFactory
         'timeout',
         'auth_mode',
         'local_domain',
+        'region',
+        'inbox_id',
     ];
 
     private const array SENDGRID_TRACKING_PARAMETERS = ['click_tracking', 'click_tracking_text', 'open_tracking'];
@@ -171,8 +173,9 @@ class Swift_Transport_DsnTransportFactory
         $this->validateDsnParameters($dsn->getParameters());
         $trackingOptions = $this->parseSendgridTrackingOptions($dsnString, $dsn);
 
-        $class       = $dsn->getTransportClass();
-        $smtpOptions = $this->parseSmtpOptions($dsnString, $dsn, $class);
+        $class           = $dsn->getTransportClass();
+        $smtpOptions     = $this->parseSmtpOptions($dsnString, $dsn, $class);
+        $providerOptions = $this->parseHttpProviderOptions($dsnString, $dsn);
 
         // NullTransport needs an event dispatcher
         if (Swift_Transport_NullTransport::class === $class) {
@@ -209,20 +212,7 @@ class Swift_Transport_DsnTransportFactory
             return $this->createSmtpTransport($dsn, $smtpOptions);
         }
 
-        // Mailtrap sandbox mode
-        if ('mailtrap+sandbox' === $dsn->getScheme()) {
-            $apiKey     = $dsn->getUser() ?: $dsn->getPassword() ?: '';
-            $inboxId    = $dsn->getParameter('inbox_id') ?: $dsn->getHost();
-            $dispatcher = new Swift_Events_SimpleEventDispatcher();
-
-            return new Swift_Transport_Api_MailtrapTransport($apiKey, true, $inboxId, null, $dispatcher);
-        }
-
-        // HTTP API transports: all extend AbstractHttpApiTransport(apiKey, ?httpClient, ?eventDispatcher)
-        $apiKey     = $dsn->getUser() ?: $dsn->getPassword() ?: '';
-        $dispatcher = new Swift_Events_SimpleEventDispatcher();
-
-        $transport = new $class($apiKey, null, $dispatcher);
+        $transport = $this->createHttpTransport($dsnString, $dsn, $class, $providerOptions);
         if ($transport instanceof Swift_Transport_Api_SendgridTransport) {
             $transport->setClickTracking($trackingOptions['click_tracking'] ?? null)
                 ->setClickTrackingText($trackingOptions['click_tracking_text'] ?? null)
@@ -230,6 +220,125 @@ class Swift_Transport_DsnTransportFactory
         }
 
         return $transport;
+    }
+
+    /** @return array<string, string> */
+    private function parseHttpProviderOptions(#[SensitiveParameter] string $dsnString, #[SensitiveParameter] Swift_Dsn $dsn): array
+    {
+        $options = $this->canonicalOptions($dsnString, $dsn->getParameters(), ['region', 'inbox_id'], 'HTTP provider');
+        if (isset($options['region'])) {
+            $regions = match ($dsn->getScheme()) {
+                'mailgun'  => ['us', 'eu'],
+                'scaleway' => ['fr-par'],
+                default    => [],
+            };
+            if (!\in_array($options['region'], $regions, true)) {
+                throw new InvalidArgumentException('HTTP provider region is unsupported for this scheme.');
+            }
+            if ('mailgun' === $dsn->getScheme() && 'default' !== $dsn->getHost()) {
+                throw new InvalidArgumentException('Mailgun region requires the default endpoint host.');
+            }
+        }
+        if (isset($options['inbox_id']) && 'mailtrap+sandbox' !== $dsn->getScheme()) {
+            throw new InvalidArgumentException('inbox_id requires the mailtrap+sandbox scheme.');
+        }
+
+        return $options;
+    }
+
+    /** @param array<string, string> $options */
+    private function createHttpTransport(#[SensitiveParameter] string $dsnString, #[SensitiveParameter] Swift_Dsn $dsn, string $class, #[SensitiveParameter] array $options): Swift_Transport
+    {
+        $scheme = $dsn->getScheme();
+        if (\in_array($scheme, ['gmail+api', 'microsoft-graph', 'amazon+api', 'amazon+http'], true)) {
+            throw new InvalidArgumentException('This DSN scheme requires an explicitly constructed SDK client; construct its transport directly.');
+        }
+        $dispatcher = new Swift_Events_SimpleEventDispatcher();
+        $apiKey     = $dsn->getUser() ?? $dsn->getPassword() ?? '';
+        switch ($scheme) {
+            case 'mailgun':
+                $key         = $this->requiredHttpCredential($dsn->getUser());
+                $domain      = $this->requiredHttpCredential($dsn->getPassword());
+                $defaultHost = 'eu' === ($options['region'] ?? 'us') ? 'api.eu.mailgun.net' : 'api.mailgun.net';
+                $endpoint    = $this->httpEndpoint($dsnString, $dsn, $defaultHost);
+
+                return new Swift_Transport_Api_MailGunTransport($key, $domain, $endpoint, null, $dispatcher);
+            case 'mailjet':
+                $this->requireFixedHttpEndpoint($dsnString, $dsn);
+
+                return new Swift_Transport_Api_MailJetTransport($this->requiredHttpCredential($dsn->getUser()), $this->requiredHttpCredential($dsn->getPassword()), null, $dispatcher);
+            case 'scaleway':
+                $this->requireFixedHttpEndpoint($dsnString, $dsn);
+
+                return new Swift_Transport_Api_ScalewayTransport($this->requiredHttpCredential($dsn->getPassword()), $this->requiredHttpCredential($dsn->getUser()), $options['region'] ?? 'fr-par', null, $dispatcher);
+            case 'infobip':
+                return new Swift_Transport_Api_InfoBipTransport($this->requiredHttpCredential($apiKey), \substr($this->httpEndpoint($dsnString, $dsn), 8), null, $dispatcher);
+            case 'postal':
+                return new Swift_Transport_Api_PostalTransport($this->requiredHttpCredential($apiKey), \substr($this->httpEndpoint($dsnString, $dsn), 8), null, $dispatcher);
+            case 'mailtrap':
+                $this->requireFixedHttpEndpoint($dsnString, $dsn);
+
+                return new Swift_Transport_Api_MailtrapTransport($this->requiredHttpCredential($apiKey), false, null, null, $dispatcher);
+            case 'mailtrap+sandbox':
+                $this->requireFixedHttpEndpoint($dsnString, $dsn, true);
+                $hostId  = 'default' === $dsn->getHost() ? null : $this->mailtrapInboxId($dsn->getHost() ?? '');
+                $inboxId = isset($options['inbox_id']) ? $this->mailtrapInboxId($options['inbox_id']) : $hostId;
+                if (null === $inboxId || (null !== $hostId && $hostId !== $inboxId)) {
+                    throw new InvalidArgumentException('Mailtrap sandbox requires one unambiguous positive inbox ID.');
+                }
+
+                return new Swift_Transport_Api_MailtrapTransport($this->requiredHttpCredential($apiKey), true, $inboxId, null, $dispatcher);
+        }
+
+        // These remaining HTTP providers share the base constructor contract.
+        return new $class($apiKey, null, $dispatcher);
+    }
+
+    private function requiredHttpCredential(#[SensitiveParameter] ?string $value): string
+    {
+        if (null === $value || '' === $value) {
+            throw new InvalidArgumentException('HTTP provider DSN is missing a required credential or identifier.');
+        }
+
+        return $value;
+    }
+
+    private function mailtrapInboxId(#[SensitiveParameter] string $value): string
+    {
+        if (!\preg_match('/\A[0-9]+\z/D', $value) || '' === ($value = \ltrim($value, '0'))) {
+            throw new InvalidArgumentException('Mailtrap inbox_id must be a positive decimal identifier.');
+        }
+
+        return $value;
+    }
+
+    private function requireFixedHttpEndpoint(#[SensitiveParameter] string $dsnString, #[SensitiveParameter] Swift_Dsn $dsn, bool $sandbox = false): void
+    {
+        if ((!$sandbox && 'default' !== $dsn->getHost()) || null !== $dsn->getPort() || !\in_array($dsn->getPath(), [null, '', '/'], true) || null !== \parse_url($dsnString, \PHP_URL_FRAGMENT)) {
+            throw new InvalidArgumentException('This HTTP provider DSN requires its fixed endpoint without a port, base path or fragment.');
+        }
+    }
+
+    private function httpEndpoint(#[SensitiveParameter] string $dsnString, #[SensitiveParameter] Swift_Dsn $dsn, ?string $defaultHost = null): string
+    {
+        $host        = 'default' === $dsn->getHost() ? $defaultHost : $dsn->getHost();
+        $path        = $dsn->getPath() ?? '';
+        $decodedPath = \rawurldecode($path);
+        if (null === $host || '' === $host || null !== \parse_url($dsnString, \PHP_URL_FRAGMENT) || \preg_match('/[\x00-\x20\x7f?#\\\\]/', $decodedPath) || \preg_match('~(?:^|/)\.{1,2}(?:/|$)~', $decodedPath)) {
+            throw new InvalidArgumentException('HTTP provider DSN requires a valid public HTTPS endpoint and base path without a fragment.');
+        }
+        $normalizedHost = \trim($host, '[]');
+        if ((!\filter_var($normalizedHost, \FILTER_VALIDATE_IP) && !\filter_var($host, \FILTER_VALIDATE_DOMAIN, \FILTER_FLAG_HOSTNAME)) || (null !== $dsn->getPort() && $dsn->getPort() < 1)) {
+            throw new InvalidArgumentException('HTTP provider endpoint host or port is invalid.');
+        }
+        $endpoint = 'https://'.$host.(null !== $dsn->getPort() ? ':'.$dsn->getPort() : '').\rtrim($path, '/');
+        try {
+            Swift_Transport_UrlValidator::validate($endpoint);
+        } catch (InvalidArgumentException) {
+            throw new InvalidArgumentException('HTTP provider endpoint must be a public HTTPS address.');
+        }
+
+        return $endpoint;
     }
 
     /** @return array<string, bool> */

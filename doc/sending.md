@@ -48,7 +48,7 @@ deliver a message. Every transport implements the `Swift_Transport` interface
 | `Swift_SpoolTransport` | Queues messages in a `Swift_Spool` for deferred delivery. |
 | `Swift_NullTransport` | Pretends to send but discards the message (useful for testing). |
 
-You can also build any transport from a DSN connection string with
+You can also build supported transports from a DSN connection string with
 `Swift_Transport_DsnTransportFactory`. See [dsn.md](dsn.md) for syntax.
 
 ## The SMTP Transport

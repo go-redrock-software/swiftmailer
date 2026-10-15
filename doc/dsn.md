@@ -33,14 +33,14 @@ require explicit SDK/client construction.
 scheme://user:password@host:port?param1=value1&param2=value2
 ```
 
-For HTTP API transports the credential is taken from the DSN **user** (falling back to **password**), and used as the API key:
+For single-key HTTP API transports the credential is taken from the DSN **user** (falling back to **password**), and used as the API key:
 
 ```
 sendgrid://SG.xxxxxxxxxxxx@default
 postmark://pmk-xxxxxxxxxxxx@default
 ```
 
-`host` is usually `default` for API transports (it is ignored). For SMTP it is the mail server hostname.
+`host` is usually `default` for API transports. Infobip and Postal require their API host; Mailgun supports a custom API host. See provider contracts below. For SMTP it is the mail server hostname. Literal `0` credentials are preserved, including percent-encoded zero.
 
 ### URL-encoding credentials
 
@@ -93,7 +93,7 @@ When no port is given, `smtp+ssl` defaults to 465 and the others to 587.
 
 ### HTTP API
 
-These create the matching `Swift_Transport_Api_*` transport. The **DSN-constructible** column shows whether the factory can build the transport from a DSN alone — the factory instantiates API transports as `new Class($apiKey, null, $dispatcher)`, so transports whose constructor needs an SDK client object or an extra required argument (domain, project ID, base URL, private key, …) **cannot** be built from a DSN and must be instantiated directly in code.
+HTTP providers use their own constructor contracts. SDK-backed transports require explicit client construction and reject operational DSNs with a credential-safe `InvalidArgumentException`; registration in the metadata map does not imply construction support.
 
 | Scheme | Transport Class | DSN-constructible | Credential / notes |
 |-|-|-|-|
@@ -108,18 +108,53 @@ These create the matching `Swift_Transport_Api_*` transport. The **DSN-construct
 | `sendgrid` | `Swift_Transport_Api_SendgridTransport` | Yes | API key |
 | `ahasend` | `Swift_Transport_Api_AhaSendTransport` | Yes | API key |
 | `sweego` | `Swift_Transport_Api_SweegoTransport` | Yes | API key |
-| `postal` | `Swift_Transport_Api_PostalTransport` | No | Needs `host` (constructor arg) |
-| `infobip` | `Swift_Transport_Api_InfoBipTransport` | No | Needs `baseUrl` (constructor arg) |
-| `mailgun` | `Swift_Transport_Api_MailGunTransport` | No | Needs `domain` (constructor arg) |
-| `mailjet` | `Swift_Transport_Api_MailJetTransport` | No | Needs public **and** private key |
-| `scaleway` | `Swift_Transport_Api_ScalewayTransport` | No | Needs `projectId` (constructor arg) |
+| `postal` | `Swift_Transport_Api_PostalTransport` | Yes | API key as user (password fallback); host is the Postal API endpoint |
+| `infobip` | `Swift_Transport_Api_InfoBipTransport` | Yes | API key as user (password fallback); host is the account API endpoint |
+| `mailgun` | `Swift_Transport_Api_MailGunTransport` | Yes | User = API key; password = sending domain |
+| `mailjet` | `Swift_Transport_Api_MailJetTransport` | Yes | User = public key; password = private key |
+| `scaleway` | `Swift_Transport_Api_ScalewayTransport` | Yes | User = project ID; password = API key |
 | `gmail+api` | `Swift_Transport_Api_GoogleTransport` | No | Requires a Google `Client` object |
 | `microsoft-graph` | `Swift_Transport_Api_MicrosoftGraphTransport` | No | Requires a `GraphServiceClient` object |
 | `amazon+api` | `Swift_Transport_Api_AmazonSesApiTransport` | No | Requires an async-aws `SesClient` object |
 | `amazon+http` | `Swift_Transport_Api_AmazonSesHttpTransport` | No | Requires an SES client object |
-| `mailtrap` | `Swift_Transport_Api_MailtrapTransport` | No¹ | Use `mailtrap+smtp` or `mailtrap+sandbox` instead |
+| `mailtrap` | `Swift_Transport_Api_MailtrapTransport` | Yes | API token; live sending endpoint |
 
-¹ The `mailtrap` API scheme is registered, but its constructor's second argument is a `bool $sandbox` flag rather than an HTTP client, so the generic factory path cannot build it cleanly. Use `mailtrap+smtp` (live SMTP) or `mailtrap+sandbox` (see below).
+### HTTP provider configuration
+
+```text
+mailgun://API_KEY:DOMAIN@default
+mailgun://API_KEY:DOMAIN@default?region=eu
+mailjet://PUBLIC_KEY:PRIVATE_KEY@default
+scaleway://PROJECT_ID:API_KEY@default?region=fr-par
+infobip://API_KEY@account.api.infobip.com
+postal://API_KEY@postal.example.com:8443/base-path
+mailtrap://API_TOKEN@default
+```
+
+Mailgun defaults to the US API; `region` accepts exactly `us` or `eu`.
+Scaleway defaults to `fr-par`, the only region currently documented for its
+Transactional Email API. Its project ID is the DSN user and API key the password.
+Mailgun and Mailjet also require both user and password; a missing component
+rejects rather than borrowing the other field.
+
+Infobip and Postal require a real host in place of `default`. Mailgun accepts
+an explicit host instead of `default`, including an optional port and base path;
+`region` cannot accompany an explicit Mailgun host. These custom endpoints always
+use HTTPS and retain the public-address guard, which rejects local/private or
+reserved addresses. Base paths are appended before the native provider route;
+fragments, control characters, dot segments and ambiguous path delimiters reject.
+Use trusted endpoint hosts: the configured API credentials are sent to that host.
+
+Mailjet, Scaleway and live Mailtrap use fixed native endpoints and require
+`@default` without a port or base path (a single `/` is allowed). The previously
+working single-key providers retain their ignored-host behavior. `region` is
+exclusive to Mailgun and Scaleway; `inbox_id` is exclusive to Mailtrap sandbox.
+Both options require a canonical scalar spelling and exactly one occurrence,
+using PHP's configured query separators. Invalid options fail before HTTP I/O.
+
+Google, Microsoft Graph and both SES SDK-backed routes still require explicitly
+constructed client objects in code. DSNs do not yet configure their authentication
+or client lifecycle. Their rejection does not change direct SDK-backed transports.
 
 ### Provider `+smtp` convenience schemes
 
@@ -153,7 +188,7 @@ amazon+smtp://AKIA...:secret@email-smtp.eu-west-1.amazonaws.com:587
 
 ### Mailtrap sandbox
 
-`mailtrap+sandbox` targets Mailtrap's sandbox (email-testing) inbox rather than live delivery. The API key is the DSN user (or password); the inbox ID comes from `?inbox_id=` or, if absent, the DSN host:
+`mailtrap+sandbox` targets Mailtrap's sandbox (email-testing) inbox rather than live delivery. The API key is the DSN user (or password). Supply a positive decimal inbox ID as `?inbox_id=` with `@default`, or as the DSN host. Leading zeros are normalized. If both forms are given they must identify the same inbox; missing, zero, malformed or conflicting IDs reject:
 
 ```
 mailtrap+sandbox://APITOKEN@12345
