@@ -80,6 +80,30 @@ Normal successful refresh, token reuse, CAE callbacks and ordinary errors retain
 SDK behavior. Callback PHP errors remain the previous cause of the transport
 exception.
 
+When a CAE callback returns a different token context, the fallback grant uses
+that context's current client credentials, code, redirect URI, grant-specific
+parameters and PKCE verifier. SDK scopes, capability claims, registered grant
+validation and native token caching are retained. Certificate refresh uses the
+canonical `urn:ietf:params:oauth:client-assertion-type:jwt-bearer` assertion type;
+the existing signed assertion and refresh token are preserved.
+
+A returned tenant also updates the scoped token and authorization endpoints.
+This requires League `GenericProvider` endpoints ending in
+`/{old-tenant}/oauth2/v2.0/token` and `/{old-tenant}/oauth2/v2.0/authorize`.
+Configured origins, national clouds, path prefixes and queries are preserved.
+Tenant IDs must be single safe path segments. Opaque endpoints and custom
+providers that do not honor grant preparation or endpoint configuration fail
+before the fallback token request. Form, JSON, query-string and HTTP Basic
+serialization remain available when their current-context parameters can be
+verified. Unverifiable bodies, duplicate form/query parameters and conflicting
+context values fail permanently. Caller middleware is checked again immediately
+before dispatch.
+
+The caller's grant factory and registrations retain their identity. Context and
+endpoint changes are published together only while the source provider and
+endpoint values still match the state captured by that operation. A reentrant
+send or caller update takes precedence over older completion state.
+
 A refused token redirect remains non-retryable even if CAE replaces its exception
 or attempts another grant. No later token or resource request is sent through that
 failed scope. Compatibility is validated before traffic, including cache hits

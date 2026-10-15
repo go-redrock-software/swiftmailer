@@ -5,7 +5,6 @@ use Http\Promise\Promise;
 use Microsoft\Kiota\Abstractions\Authentication\AuthenticationProvider;
 use Microsoft\Kiota\Abstractions\Authentication\BaseBearerTokenAuthenticationProvider;
 use Microsoft\Kiota\Abstractions\RequestInformation;
-use Microsoft\Kiota\Authentication\Oauth\TokenRequestContext;
 use Microsoft\Kiota\Authentication\PhpLeagueAccessTokenProvider;
 use Microsoft\Kiota\Authentication\PhpLeagueAuthenticationProvider;
 
@@ -17,10 +16,9 @@ class Swift_Transport_Api_GraphOAuthPolicy implements AuthenticationProvider
         #[SensitiveParameter] private Swift_Transport_Api_NoRedirectClient $http,
         #[SensitiveParameter] private PhpLeagueAccessTokenProvider $sourceToken,
         #[SensitiveParameter] private PhpLeagueAccessTokenProvider $scopedToken,
-        private ReflectionProperty $contextField,
         private ReflectionProperty $scopesField,
-        #[SensitiveParameter] private TokenRequestContext $initialContext,
         private array $initialScopes,
+        #[SensitiveParameter] private Swift_Transport_Api_GraphOAuthGrantPolicy $grants,
     ) {
     }
 
@@ -40,14 +38,7 @@ class Swift_Transport_Api_GraphOAuthPolicy implements AuthenticationProvider
                 throw new Swift_Transport_NonRetryableException('Graph OAuth providers must support cloning for isolated token requests.');
             }
         }
-        $guard = self::httpPolicy($oauth->getHttpClient());
-        // Validate even on cache hits: a later CAE challenge may need this client.
-        $guard->getConfig();
-        $oauthCopy = clone $oauth;
-        $oauthCopy->setHttpClient($guard);
-        if ($oauthCopy->getHttpClient() !== $guard) {
-            throw new Swift_Transport_NonRetryableException('The Graph OAuth provider must honor its scoped HTTP client.');
-        }
+        $oauthCopy    = clone $oauth;
         $contextField = self::field(PhpLeagueAccessTokenProvider::class, 'tokenRequestContext', $token);
         $scopesField  = self::field(PhpLeagueAccessTokenProvider::class, 'scopes', $token);
         $context      = $token->getTokenRequestContext();
@@ -60,6 +51,13 @@ class Swift_Transport_Api_GraphOAuthPolicy implements AuthenticationProvider
         if ($tokenCopy->getOauthProvider() !== $oauthCopy || $tokenCopy->getAccessTokenCache() !== $token->getAccessTokenCache() || $tokenCopy->getTokenRequestContext() !== $context || $tokenCopy->getScopes() !== $scopes) {
             throw new Swift_Transport_NonRetryableException('The Graph token provider must retain its scoped OAuth provider and shared authentication state.');
         }
+        $grants = new Swift_Transport_Api_GraphOAuthGrantPolicy($token, $tokenCopy, $oauth, $oauthCopy, $contextField);
+        $guard  = self::httpPolicy($oauth->getHttpClient(), $grants->validateRequest(...));
+        $guard->getConfig();
+        $oauthCopy->setHttpClient($guard);
+        if ($oauthCopy->getHttpClient() !== $guard) {
+            throw new Swift_Transport_NonRetryableException('The Graph OAuth provider must honor its scoped HTTP client.');
+        }
         $copy = clone $provider;
         self::replace(self::field(BaseBearerTokenAuthenticationProvider::class, 'accessTokenProvider', $copy), $copy, $tokenCopy);
         // PhpLeague declares another field with the same name as its parent.
@@ -70,16 +68,19 @@ class Swift_Transport_Api_GraphOAuthPolicy implements AuthenticationProvider
             throw new Swift_Transport_NonRetryableException('The Graph authentication provider must honor its scoped token provider.');
         }
 
-        return new self($copy, $guard, $token, $tokenCopy, $contextField, $scopesField, $context, $scopes);
+        return new self($copy, $guard, $token, $tokenCopy, $scopesField, $scopes, $grants);
     }
 
     #[Override]
     public function authenticateRequest(RequestInformation $request, array $additionalAuthenticationContext = []): Promise
     {
         $this->http->assertNoRedirect();
+        $this->grants->assertValid();
         try {
+            $this->grants->begin($additionalAuthenticationContext);
             $promise = $this->provider->authenticateRequest($request, $additionalAuthenticationContext);
         } catch (Throwable $error) {
+            $this->grants->onFailure($error);
             $this->complete();
             throw $error;
         }
@@ -91,6 +92,7 @@ class Swift_Transport_Api_GraphOAuthPolicy implements AuthenticationProvider
                 return $result;
             },
             function (Throwable $error): never {
+                $this->grants->onFailure($error);
                 $this->complete();
                 throw $error;
             },
@@ -99,16 +101,12 @@ class Swift_Transport_Api_GraphOAuthPolicy implements AuthenticationProvider
 
     private function complete(): void
     {
-        // Retain normal SDK state changes (derived scopes and a context returned
-        // by a CAE callback). Do not overwrite a newer caller/reentrant update.
-        $context = $this->contextField->getValue($this->scopedToken);
-        $scopes  = $this->scopesField->getValue($this->scopedToken);
-        if (!$context instanceof TokenRequestContext || !\is_array($scopes)) {
-            throw new Swift_Transport_NonRetryableException('The Graph token provider returned unsupported authentication state.');
-        }
-        if ($this->contextField->getValue($this->sourceToken) === $this->initialContext) {
-            $this->contextField->setValue($this->sourceToken, $context);
-            $this->initialContext = $context;
+        $this->http->assertNoRedirect();
+        $this->grants->assertValid();
+        $this->grants->publish();
+        $scopes = $this->scopesField->getValue($this->scopedToken);
+        if (!\is_array($scopes)) {
+            throw new Swift_Transport_NonRetryableException('The Graph token provider returned unsupported scopes.');
         }
         if ($this->scopesField->getValue($this->sourceToken) === $this->initialScopes) {
             $this->scopesField->setValue($this->sourceToken, $scopes);
@@ -120,13 +118,13 @@ class Swift_Transport_Api_GraphOAuthPolicy implements AuthenticationProvider
     }
 
     /** Validate the result of the dependency's untyped HTTP-client getter. */
-    private static function httpPolicy(#[SensitiveParameter] mixed $client): Swift_Transport_Api_NoRedirectClient
+    private static function httpPolicy(#[SensitiveParameter] mixed $client, Closure $validator): Swift_Transport_Api_NoRedirectClient
     {
         if (!$client instanceof ClientInterface) {
             throw new Swift_Transport_NonRetryableException('Graph OAuth requires a Guzzle-compatible token HTTP client.');
         }
 
-        return new Swift_Transport_Api_NoRedirectClient($client);
+        return new Swift_Transport_Api_NoRedirectClient($client, $validator);
     }
 
     private static function field(string $class, string $name, #[SensitiveParameter] object $owner): ReflectionProperty

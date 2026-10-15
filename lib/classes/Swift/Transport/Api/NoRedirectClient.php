@@ -20,7 +20,7 @@ class Swift_Transport_Api_NoRedirectClient implements ClientInterface
 
     private ?Swift_Transport_NonRetryableException $failure = null;
 
-    public function __construct(#[SensitiveParameter] private ClientInterface $client)
+    public function __construct(#[SensitiveParameter] private ClientInterface $client, #[SensitiveParameter] private ?Closure $requestValidator = null)
     {
     }
 
@@ -79,13 +79,23 @@ class Swift_Transport_Api_NoRedirectClient implements ClientInterface
                 throw new Swift_Transport_NonRetryableException('The SDK HTTP client must expose a callable handler for scoped authentication.');
             }
             // SDK authentication may create another client with this configuration.
-            $stack->unshift(static function (callable $next): callable {
-                return static fn (RequestInterface $request, array $options): PromiseInterface => $next($request, self::options($options));
+            $stack->unshift(function (callable $next): callable {
+                return function (RequestInterface $request, array $options) use ($next): PromiseInterface {
+                    $this->assertUsable();
+                    if (null !== $this->requestValidator) {
+                        ($this->requestValidator)($request, $options);
+                    }
+
+                    return $next($request, self::options($options));
+                };
             }, 'swift_no_redirects');
             // Reject before existing retry middleware or the SDK sees a 3xx result.
             $stack->push(function (callable $next): callable {
                 return function (RequestInterface $request, array $options) use ($next): PromiseInterface {
                     $this->assertUsable();
+                    if (null !== $this->requestValidator) {
+                        ($this->requestValidator)($request, $options);
+                    }
 
                     return $next($request, $options)->then($this->validateResponse(...));
                 };
