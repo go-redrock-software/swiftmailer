@@ -54,8 +54,10 @@ class Swift_Transport_Api_AmazonSesHttpTransport extends Swift_Transport_Abstrac
             $request = $this->getRequest($message, $tags);
             if (null !== $envelope) {
                 $request['Destination']                    = ['ToAddresses' => \array_values(\array_unique($envelope->getRecipients()))];
-                $request['Content']                        = ['Raw' => ['Data' => $this->getRawMessageWithoutBcc($message)]];
                 $request['FeedbackForwardingEmailAddress'] = $envelope->getSender();
+            }
+            if (null !== $envelope && !isset($request['Content']['Raw'])) {
+                $request['Content'] = ['Raw' => ['Data' => $this->getRawMessageWithoutBcc($message)]];
             }
             $messageId = Swift_Transport_Api_SesRequestPolicy::run($this->sesClient, static fn (AsyncAws\Ses\SesClient $client) => $client->sendEmail($request)->getMessageId());
             if (!$messageId) {
@@ -98,11 +100,15 @@ class Swift_Transport_Api_AmazonSesHttpTransport extends Swift_Transport_Abstrac
             ],
         ];
 
-        $bodyPart = ['Data' => $message->getBody(), 'Charset' => 'UTF-8'];
-        if ('text/html' === $message->getBodyContentType()) {
-            $request['Content']['Simple']['Body']['Html'] = $bodyPart;
+        if ($message->getChildren()) {
+            $request['Content'] = ['Raw' => ['Data' => $this->getRawMessageWithoutBcc($message)]];
         } else {
-            $request['Content']['Simple']['Body']['Text'] = $bodyPart;
+            $bodyPart = ['Data' => $message->getBody(), 'Charset' => 'UTF-8'];
+            if ('text/html' === $message->getBodyContentType()) {
+                $request['Content']['Simple']['Body']['Html'] = $bodyPart;
+            } else {
+                $request['Content']['Simple']['Body']['Text'] = $bodyPart;
+            }
         }
 
         if ($replyTo = $message->getReplyTo()) {

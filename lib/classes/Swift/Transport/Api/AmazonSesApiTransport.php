@@ -63,8 +63,10 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
             $request = $this->getRequest($message, $tags);
             if (null !== $envelope) {
                 $request->setDestination(new AsyncAws\Ses\ValueObject\Destination(['ToAddresses' => \array_values(\array_unique($envelope->getRecipients()))]));
-                $request->setContent(new AsyncAws\Ses\ValueObject\EmailContent(['Raw' => ['Data' => $this->getRawMessageWithoutBcc($message)]]));
                 $request->setFeedbackForwardingEmailAddress($envelope->getSender());
+            }
+            if (null !== $envelope && null === $request->getContent()?->getRaw()) {
+                $request->setContent(new AsyncAws\Ses\ValueObject\EmailContent(['Raw' => ['Data' => $this->getRawMessageWithoutBcc($message)]]));
             }
 
             $messageId = Swift_Transport_Api_SesRequestPolicy::run($this->sesClient, static fn (SesClient $client) => $client->sendEmail($request)->getMessageId());
@@ -117,12 +119,16 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
             $request['Destination']['BccAddresses'] = $this->stringifyAddresses($bcc);
         }
 
-        // SES Simple bodies are mutually exclusive: HTML or Text, never both.
-        $bodyPart = ['Data' => $message->getBody(), 'Charset' => 'utf-8'];
-        if ('text/html' === $message->getBodyContentType()) {
-            $request['Content']['Simple']['Body']['Html'] = $bodyPart;
+        // Preserve complete child parts before AsyncAws constructs the content model.
+        if ($message->getChildren()) {
+            $request['Content'] = ['Raw' => ['Data' => $this->getRawMessageWithoutBcc($message)]];
         } else {
-            $request['Content']['Simple']['Body']['Text'] = $bodyPart;
+            $bodyPart = ['Data' => $message->getBody(), 'Charset' => 'utf-8'];
+            if ('text/html' === $message->getBodyContentType()) {
+                $request['Content']['Simple']['Body']['Html'] = $bodyPart;
+            } else {
+                $request['Content']['Simple']['Body']['Text'] = $bodyPart;
+            }
         }
 
         if ($replyTo = $message->getReplyTo()) {

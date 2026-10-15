@@ -340,7 +340,9 @@ $transport = new Swift_Transport_Api_BrevoTransport('your-api-key');
 | **Tags** | Yes -- `EmailTags` with `Name=tag` |
 | **Metadata** | No -- `X-Mailer-Metadata-*` headers are not extracted |
 
-Uses the SES v2 `SendEmail` API with the `Simple` content format. Supports SES-specific headers:
+Uses the SES v2 `SendEmail` API. Messages with neither child MIME parts nor an explicit envelope use `Simple`
+content. Attachments, inline parts and alternative bodies select complete raw
+MIME; explicit envelopes also select raw MIME. Supports SES-specific headers:
 
 - `X-SES-CONFIGURATION-SET` -- set a configuration set
 - `X-SES-SOURCE-ARN` -- specify source ARN for cross-account sending
@@ -372,13 +374,32 @@ $transport = new Swift_Transport_Api_AmazonSesApiTransport($ses);
 | **Tags** | Yes -- `EmailTags` with `Name=tag` |
 | **Metadata** | Not extracted |
 
-Uses the SES v2 `SendEmail` API (async-aws SDK) with the `Simple` content format -- the same request schema as the API variant, not the historical raw-HTTP path. Also supports `X-SES-CONFIGURATION-SET`, `X-SES-SOURCE-ARN`, and `X-SES-LIST-MANAGEMENT-OPTIONS` headers. Adds the `X-SES-Message-ID` response header to the message after sending.
+Uses the same SES v2 `Simple`/raw MIME selection as the API variant through the
+async-aws SDK. Also supports `X-SES-CONFIGURATION-SET`, `X-SES-SOURCE-ARN`, and `X-SES-LIST-MANAGEMENT-OPTIONS` headers. Adds the `X-SES-Message-ID` response header to the message after sending.
 
 ```php
 $transport = new Swift_Transport_Api_AmazonSesHttpTransport($ses);
 ```
 
 ---
+
+### SES MIME delivery
+
+Both variants serialize the complete message once when child parts are present,
+including attachments, inline images and text/HTML alternatives. Child-only
+messages with no root body use their MIME parts directly. A separate
+MIME copy removes Bcc and Resent-Bcc headers; `Destination` still routes blind
+recipients. From/To/Cc, reply-to, body encodings, filenames and Content-IDs remain
+in the MIME message. SES configuration, identity ARN, list management, tags and
+feedback forwarding remain request fields. An explicit envelope retains its own
+recipients and feedback forwarding sender without replacing visible MIME headers.
+
+Raw data is passed to AsyncAws as MIME bytes; the SDK base64-encodes the JSON
+`Content.Raw.Data` field. Each attachment's MIME transfer encoding is preserved
+inside that outer encoding. This path also works with SES 1.8. Messages without
+child parts and without an envelope retain the existing `Simple` payload. The
+HTTP variant continues adding `X-SES-Message-ID` after successful sends, and tag
+extraction continues removing `X-Mailer-Tag` from the original message.
 
 ### SES HTTP policy and supported clients
 
