@@ -321,7 +321,8 @@ The transport is event-aware and null-safe (it works with or without a dispatche
 `start()` separately fires `beforeTransportStarted` / `transportStarted`, and `stop()`
 fires `beforeTransportStopped` (inherited). See [events.md](events.md) and
 [plugins.md](plugins.md) for the listener model. `registerPlugin()` binds a listener to the
-dispatcher as usual.
+dispatcher as usual. If no dispatcher was injected, the first registration creates
+a simple dispatcher; subsequent listeners reuse it.
 
 ---
 
