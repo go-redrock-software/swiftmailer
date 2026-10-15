@@ -191,7 +191,9 @@ click tracking remains independent: set both click options to `1` when you want
 to request tracking for both content types.
 
 Empty, array, duplicate, normalized-alias (such as `click.tracking`) and other
-values throw `InvalidArgumentException`. Options must use their canonical names.
+values throw `InvalidArgumentException`. Options must use their canonical names. Duplicate checks use the same
+[`arg_separator.input`](https://www.php.net/manual/en/ini.core.php#ini.arg-separator.input) characters as PHP's underlying query parser, including
+semicolon separators when configured.
 These options also throw on other schemes, including `sendgrid+smtp`; their
 support is specific to the HTTP Mail Send payload.
 

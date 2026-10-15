@@ -224,8 +224,9 @@ class Swift_Transport_DsnTransportFactory
         if (!\is_string($query)) {
             throw new InvalidArgumentException('Invalid SendGrid tracking query.');
         }
-        $occurrences = [];
-        foreach (\explode('&', $query) as $pair) {
+        $occurrences      = [];
+        $separatorPattern = '/['.\preg_quote(\ini_get('arg_separator.input') ?: '&', '/').']/';
+        foreach (\preg_split($separatorPattern, $query) as $pair) {
             $name = \urldecode(\explode('=', $pair, 2)[0]);
             $base = \explode('[', \explode("\0", $name, 2)[0], 2)[0];
             $base = \str_replace([' ', '.'], '_', \ltrim($base));

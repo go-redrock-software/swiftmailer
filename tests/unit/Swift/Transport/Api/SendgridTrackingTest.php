@@ -160,9 +160,51 @@ class Swift_Transport_Api_SendgridTrackingTest extends TestCase
 
     public static function invalidQueries(): iterable
     {
-        foreach (['click_tracking=', 'click_tracking', 'click_tracking=2', 'click_tracking=yes', 'click_tracking=off', 'click_tracking=null', 'click_tracking=%20true', 'click_tracking=1.0', 'click_tracking[]=true', 'click_tracking[x]=false', 'click_tracking=0&click_tracking=1', 'open_tracking=0&open%5ftracking=1', 'click.tracking=0', 'click%20tracking=0', 'click_tracking%00=0', 'open_tracking=wat', 'click_tracking_text=wat'] as $query) {
+        foreach (['click_tracking=', 'click_tracking', 'click_tracking=2', 'click_tracking=yes', 'click_tracking=off', 'click_tracking=null', 'click_tracking=%20true', 'click_tracking=1.0', 'click_tracking[]=true', 'click_tracking[x]=false', 'click_tracking=0&click_tracking=1', 'open_tracking=0&open%5ftracking=1', 'click.tracking=0', 'click%20tracking=0', 'click_tracking%00=0', 'open_tracking=wat', 'click_tracking_text=wat', 'click_tracking=1;click_tracking=0', 'open_tracking=0;open_tracking=1', 'click_tracking_text=0;click_tracking_text=1'] as $query) {
             yield [$query];
         }
+    }
+
+    /** @dataProvider querySeparatorConfigurations */
+    public function testValidationUsesTheConfiguredPhpQuerySeparators(string $separators): void
+    {
+        // Load the reflected implementation before eager aliases, including Infection mutants.
+        $implementation = (new ReflectionClass(Swift_Transport_DsnTransportFactory::class))->getFileName();
+        $this->assertIsString($implementation);
+        $script = <<<'PHP'
+require $argv[1];
+require $argv[2];
+$factory = new Swift_Transport_DsnTransportFactory();
+try {
+    $transport = $factory->fromDsnString('sendgrid://fixture-key@default?click_tracking=0;click_tracking_text=1;open_tracking=true');
+    $valid = [$transport->getClickTracking(), $transport->getClickTrackingText(), $transport->getOpenTracking()];
+} catch (InvalidArgumentException $error) {
+    $valid = null;
+}
+$rejected = 0;
+foreach (['click_tracking', 'click_tracking_text', 'open_tracking'] as $name) {
+    try {
+        $factory->fromDsnString('sendgrid://fixture-key@default?'.$name.'=1;'.$name.'=0');
+    } catch (InvalidArgumentException $error) {
+        ++$rejected;
+    }
+}
+echo json_encode(['valid' => $valid, 'rejected' => $rejected], JSON_THROW_ON_ERROR);
+PHP;
+        $process = \proc_open([\PHP_BINARY, '-d', 'arg_separator.input='.$separators, '-r', $script, $implementation, \dirname(__DIR__, 5).'/vendor/autoload.php'], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        $this->assertIsResource($process);
+        $output = \stream_get_contents($pipes[1]);
+        $errors = \stream_get_contents($pipes[2]);
+        \fclose($pipes[1]);
+        \fclose($pipes[2]);
+        $this->assertSame(0, \proc_close($process), $errors);
+        $this->assertSame(['valid' => [false, true, true], 'rejected' => 3], \json_decode($output, true, 512, \JSON_THROW_ON_ERROR));
+    }
+
+    public static function querySeparatorConfigurations(): iterable
+    {
+        yield ['&;'];
+        yield [';'];
     }
 
     /** @dataProvider unsupportedSchemes */
