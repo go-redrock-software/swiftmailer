@@ -109,6 +109,16 @@ class Swift_Transport_FailoverTransport extends Swift_Transport_LoadBalancedTran
     {
         if (!isset($this->currentTransport)) {
             $this->currentTransport = parent::getNextTransport();
+        } elseif ($this->currentTransport !== \end($this->transports)) {
+            // Restoration can append backends after the cached selection.
+            // Keep the selected backend in the position the retirement hook owns.
+            $key = \array_search($this->currentTransport, $this->transports, true);
+            if (false === $key) {
+                $this->currentTransport = parent::getNextTransport();
+            } else {
+                unset($this->transports[$key]);
+                $this->transports[] = $this->currentTransport;
+            }
         }
 
         return $this->currentTransport;

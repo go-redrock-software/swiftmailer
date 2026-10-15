@@ -93,7 +93,8 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
     #[Override]
     public function start()
     {
-        $this->transports = \array_merge($this->transports, $this->deadTransports);
+        $this->transports     = \array_merge($this->transports, $this->deadTransports);
+        $this->deadTransports = [];
     }
 
     /**
@@ -110,8 +111,10 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
     #[Override]
     public function ping()
     {
-        foreach ($this->transports as $transport) {
-            if (!$transport->ping()) {
+        $maxTransports = \count($this->transports);
+        for ($i = 0; $i < $maxTransports && $transport = $this->getNextTransport(); ++$i) {
+            $configurationVersion = $this->transportConfigurationVersion;
+            if (!$transport->ping() && $configurationVersion === $this->transportConfigurationVersion) {
                 $this->killCurrentTransport();
             }
         }
@@ -173,7 +176,12 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
     #[Override]
     public function registerPlugin(Swift_Events_EventListener $plugin)
     {
-        foreach ($this->transports as $transport) {
+        $registered = new SplObjectStorage();
+        foreach (\array_merge($this->transports, $this->deadTransports) as $transport) {
+            if ($registered->offsetExists($transport)) {
+                continue;
+            }
+            $registered->offsetSet($transport, true);
             $transport->registerPlugin($plugin);
         }
     }
@@ -181,7 +189,7 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
     /**
      * Rotates the transport list around and returns the first instance.
      *
-     * @return Swift_Transport
+     * @return Swift_Transport|null
      */
     protected function getNextTransport()
     {
@@ -217,7 +225,9 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
                     $e->getMessage(),
                 ), \E_USER_WARNING);
             }
-            $this->deadTransports[] = $transport;
+            if ($configurationVersion === $this->transportConfigurationVersion) {
+                $this->deadTransports[] = $transport;
+            }
         }
     }
 }

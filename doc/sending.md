@@ -285,6 +285,25 @@ the run. Ordinary errors raised while stopping that backend are logged via
 (`Swiftmailer: LoadBalancedTransport error from <class>: <message>`). If all
 transports are exhausted, a `Swift_TransportException` is thrown.
 
+### Restoring and checking a pool
+
+Calling `start()` restores retired backends once. Repeated starts preserve the
+configured number of entries, including intentional duplicate references used
+for weighting. Failover keeps its current successful backend until that backend
+fails; restoring other backends does not change which backend a later failure
+retires.
+
+Plugins registered through a pool reach all currently configured backends,
+including retired backends that may later return. Each plugin is forwarded once
+per configured backend identity, so weighted duplicate references do not bind
+listeners repeatedly. Set the configured pool before registering its plugins;
+replacing a pool does not copy old listeners into newly supplied transports.
+
+Health checks retire the backend that failed its check and preserve the healthy
+backends' relative order. Callback-driven pool replacement takes precedence over
+a failure or completed cleanup from the old pool. Later restoration does not
+reintroduce a backend excluded by that replacement.
+
 ### Terminal failures and pool replacement
 
 A `Swift_Transport_NonRetryableException` or PHP `Error` anywhere in a failure's

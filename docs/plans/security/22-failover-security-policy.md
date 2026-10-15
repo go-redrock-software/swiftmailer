@@ -152,7 +152,10 @@ Issues #66/#67 address two demonstrated wrapper bugs: explicit terminal markers
 and PHP Error causes now stop retry/failover/load-balanced sends, and replacing
 a failover pool clears its cached backend. Terminal cleanup errors propagate
 before another sender is used; a newer callback-driven pool replacement is
-preserved. Custom classifiers continue to classify ordinary transport failures
+preserved. Issues #68–#70 additionally keep registered policies on retired
+backends, restore entries once, retire the backend actually probed/selected, and
+prevent completed old-pool cleanup from reintroducing an excluded backend.
+Custom classifiers continue to classify ordinary transport failures
 but cannot override hard terminal causes. See [sending behavior](../../../doc/sending.md#terminal-failures-and-pool-replacement)
 and the [implementation handoff](../../issues/66.md) for regression and validation evidence.
 

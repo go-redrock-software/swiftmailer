@@ -103,6 +103,12 @@ rewrote headers alone, allowing blocked envelope-only recipients to bypass
 dev/staging delivery restrictions. Envelope senders remain unchanged, and the
 plugins replace the event's envelope without mutating the caller's value object.
 
+Failover and load-balanced pools forward registered plugins to active and retired
+configured backends. A restored backend therefore retains policies registered
+while it was inactive. Weighted duplicate references receive each registration
+once per backend identity. Configure the pool before registering plugins; newly
+supplied backends do not inherit listeners from a replaced pool.
+
 Policies compose in registration order. An allowlist rejection stops delivery
 before a later redirect can run. A configured catch-all or redirect target is an
 explicit delivery exception; choose these targets as carefully as the allowlist.
