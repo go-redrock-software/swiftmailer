@@ -1,5 +1,7 @@
 <?php
 
+require_once \dirname(__DIR__, 2).'/SesSdkFixture.php';
+
 class Swift_Transport_Api_AmazonSesHttpTransportTest extends PHPUnit\Framework\TestCase
 {
     private $eventDispatcherMock;
@@ -36,22 +38,8 @@ class Swift_Transport_Api_AmazonSesHttpTransportTest extends PHPUnit\Framework\T
 
     public function testPingReturnsTrueOnSuccess(): void
     {
-        $client = new class {
-            public function listIdentities(): array
-            {
-                return ['test@example.com'];
-            }
-
-            public function sendEmail($request = null): object
-            {
-                return new class {
-                    public function getMessageId(): string
-                    {
-                        return 'id';
-                    }
-                };
-            }
-        };
+        $fixture = new SesSdkFixture();
+        $client  = $fixture->client;
 
         $transport = $this->createTransportWithClient($client);
         $this->assertTrue($transport->ping());
@@ -59,22 +47,9 @@ class Swift_Transport_Api_AmazonSesHttpTransportTest extends PHPUnit\Framework\T
 
     public function testPingReturnsFalseOnException(): void
     {
-        $client = new class {
-            public function listIdentities(): never
-            {
-                throw new RuntimeException('AWS error');
-            }
-
-            public function sendEmail($request = null): object
-            {
-                return new class {
-                    public function getMessageId(): string
-                    {
-                        return 'id';
-                    }
-                };
-            }
-        };
+        $fixture            = new SesSdkFixture();
+        $fixture->onRequest = static fn () => throw new RuntimeException('AWS error');
+        $client             = $fixture->client;
 
         $transport = $this->createTransportWithClient($client);
         $this->assertFalse($transport->ping());
@@ -143,17 +118,9 @@ class Swift_Transport_Api_AmazonSesHttpTransportTest extends PHPUnit\Framework\T
 
     public function testSendThrowsTransportExceptionOnFailure(): void
     {
-        $client = new class {
-            public function sendEmail($request = null): never
-            {
-                throw new RuntimeException('AWS SES error');
-            }
-
-            public function listIdentities(): array
-            {
-                return [];
-            }
-        };
+        $fixture            = new SesSdkFixture();
+        $fixture->onRequest = static fn () => throw new RuntimeException('AWS error');
+        $client             = $fixture->client;
 
         $transport = $this->createTransportWithClient($client);
 
@@ -171,17 +138,9 @@ class Swift_Transport_Api_AmazonSesHttpTransportTest extends PHPUnit\Framework\T
 
     public function testSendPopulatesFailedRecipientsOnError(): void
     {
-        $client = new class {
-            public function sendEmail($request = null): never
-            {
-                throw new RuntimeException('Error');
-            }
-
-            public function listIdentities(): array
-            {
-                return [];
-            }
-        };
+        $fixture            = new SesSdkFixture();
+        $fixture->onRequest = static fn () => throw new RuntimeException('AWS error');
+        $client             = $fixture->client;
 
         $transport = $this->createTransportWithClient($client);
 
@@ -346,31 +305,6 @@ class Swift_Transport_Api_AmazonSesHttpTransportTest extends PHPUnit\Framework\T
 
     private function createSuccessClient(string $messageId = 'test-msg-id'): object
     {
-        return new class($messageId) {
-            public function __construct(private readonly string $messageId)
-            {
-            }
-
-            public function sendEmail($request = null): object
-            {
-                $id = $this->messageId;
-
-                return new class($id) {
-                    public function __construct(private readonly string $id)
-                    {
-                    }
-
-                    public function getMessageId(): string
-                    {
-                        return $this->id;
-                    }
-                };
-            }
-
-            public function listIdentities(): array
-            {
-                return [];
-            }
-        };
+        return (new SesSdkFixture([new Symfony\Component\HttpClient\Response\MockResponse(\json_encode(['MessageId' => $messageId]), ['http_code' => 200])]))->client;
     }
 }

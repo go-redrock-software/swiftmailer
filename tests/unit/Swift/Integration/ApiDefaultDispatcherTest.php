@@ -1,5 +1,7 @@
 <?php
 
+require_once \dirname(__DIR__).'/SesSdkFixture.php';
+
 class Swift_Integration_ApiDefaultDispatcherTest extends PHPUnit\Framework\TestCase
 {
     /** @dataProvider provideProvidersAndEnvelopes */
@@ -154,29 +156,20 @@ class Swift_Integration_ApiDefaultDispatcherTest extends PHPUnit\Framework\TestC
     {
         $class = 'Swift_Transport_Api_'.$provider.'Transport';
         if (\str_starts_with($provider, 'AmazonSes')) {
-            $client = $this->createMock(AsyncAws\Ses\SesClient::class);
-            if (null === $inspect) {
-                $client->expects($this->never())->method('sendEmail');
-            } else {
-                $response = $this->getMockBuilder(AsyncAws\Ses\Result\SendEmailResponse::class)->disableOriginalConstructor()->onlyMethods(['getMessageId'])->getMock();
-                $response->method('getMessageId')->willReturn('ses-id');
-                $client->expects($this->once())->method('sendEmail')->willReturnCallback(static function ($request) use ($inspect, $fail, $response) {
-                    $destination = \is_array($request) ? $request['Destination'] : [
-                        'ToAddresses'  => $request->getDestination()->getToAddresses(),
-                        'CcAddresses'  => $request->getDestination()->getCcAddresses(),
-                        'BccAddresses' => $request->getDestination()->getBccAddresses(),
-                    ];
-                    $raw = \is_array($request) ? ($request['Content']['Raw']['Data'] ?? null) : $request->getContent()->getRaw()?->getData();
-                    $inspect(\json_encode(['Destination' => $destination, 'Raw' => $raw]));
-                    if ($fail) {
-                        throw new RuntimeException('Provider failure');
-                    }
+            $fixture            = new SesSdkFixture();
+            $fixture->onRequest = static function (array $request) use ($inspect, $fail): void {
+                if (null === $inspect) {
+                    throw new LogicException('SES must not send for this policy case.');
+                }
+                $payload = \json_decode($request['body'], true, 512, \JSON_THROW_ON_ERROR);
+                $raw     = isset($payload['Content']['Raw']['Data']) ? \base64_decode($payload['Content']['Raw']['Data'], true) : null;
+                $inspect(\json_encode(['Destination' => $payload['Destination'], 'Raw' => $raw]));
+                if ($fail) {
+                    throw new RuntimeException('Provider failure');
+                }
+            };
 
-                    return $response;
-                });
-            }
-
-            return new $class($client);
+            return new $class($fixture->client);
         }
         if (\in_array($provider, ['Google', 'MicrosoftGraph'], true)) {
             if (null === $inspect) {

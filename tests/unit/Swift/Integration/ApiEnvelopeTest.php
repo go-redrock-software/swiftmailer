@@ -1,5 +1,7 @@
 <?php
 
+require_once \dirname(__DIR__).'/SesSdkFixture.php';
+
 class Swift_Integration_ApiEnvelopeTest extends PHPUnit\Framework\TestCase
 {
     public function testMatchingGmailEnvelopeSubmitsUnchangedMime(): void
@@ -60,10 +62,11 @@ class Swift_Integration_ApiEnvelopeTest extends PHPUnit\Framework\TestCase
     /** @dataProvider provideSesTransports */
     public function testSesFailureAlwaysRestoresRecipientsAndReportsCompletion(string $kind): void
     {
-        $client = $this->createMock(AsyncAws\Ses\SesClient::class);
-        $client->expects($this->once())->method('sendEmail')->willThrowException(new RuntimeException('Provider unavailable'));
-        $class     = 'Swift_Transport_Api_AmazonSes'.$kind.'Transport';
-        $transport = new $class($client, new Swift_Events_SimpleEventDispatcher());
+        $fixture            = new SesSdkFixture();
+        $fixture->onRequest = static fn () => throw new RuntimeException('Provider unavailable');
+        $client             = $fixture->client;
+        $class              = 'Swift_Transport_Api_AmazonSes'.$kind.'Transport';
+        $transport          = new $class($client, new Swift_Events_SimpleEventDispatcher());
         $transport->registerPlugin(new Swift_Plugins_AllowlistPlugin(['*@safe.test']));
         $observer = new class implements Swift_Events_SendListener {
             public int $completed = 0;
@@ -103,13 +106,14 @@ class Swift_Integration_ApiEnvelopeTest extends PHPUnit\Framework\TestCase
     /** @dataProvider provideSesTransports */
     public function testSesFailureReportsOnlyTheExplicitDeliveryAudience(string $kind): void
     {
-        $client = $this->createMock(AsyncAws\Ses\SesClient::class);
-        $client->expects($this->once())->method('sendEmail')->willThrowException(new RuntimeException('Provider unavailable'));
-        $class     = 'Swift_Transport_Api_AmazonSes'.$kind.'Transport';
-        $transport = new $class($client, new Swift_Events_SimpleEventDispatcher());
-        $message   = $this->createMessage();
-        $failed    = [];
-        $envelope  = new Swift_Envelope('bounce@example.com', ['delivery@example.com', 'blind@example.com']);
+        $fixture            = new SesSdkFixture();
+        $fixture->onRequest = static fn () => throw new RuntimeException('Provider unavailable');
+        $client             = $fixture->client;
+        $class              = 'Swift_Transport_Api_AmazonSes'.$kind.'Transport';
+        $transport          = new $class($client, new Swift_Events_SimpleEventDispatcher());
+        $message            = $this->createMessage();
+        $failed             = [];
+        $envelope           = new Swift_Envelope('bounce@example.com', ['delivery@example.com', 'blind@example.com']);
 
         try {
             $transport->send($message, $failed, $envelope);
@@ -122,10 +126,8 @@ class Swift_Integration_ApiEnvelopeTest extends PHPUnit\Framework\TestCase
     /** @dataProvider provideSesTransports */
     public function testSesDoesNotReportSuccessWithoutAProviderMessageId(string $kind): void
     {
-        $response = $this->getMockBuilder(AsyncAws\Ses\Result\SendEmailResponse::class)->disableOriginalConstructor()->onlyMethods(['getMessageId'])->getMock();
-        $response->method('getMessageId')->willReturn(null);
-        $client = $this->createMock(AsyncAws\Ses\SesClient::class);
-        $client->method('sendEmail')->willReturn($response);
+        $fixture   = new SesSdkFixture([new Symfony\Component\HttpClient\Response\MockResponse('{}', ['http_code' => 200])]);
+        $client    = $fixture->client;
         $class     = 'Swift_Transport_Api_AmazonSes'.$kind.'Transport';
         $transport = new $class($client, new Swift_Events_SimpleEventDispatcher());
         $message   = $this->createMessage();
@@ -288,25 +290,16 @@ class Swift_Integration_ApiEnvelopeTest extends PHPUnit\Framework\TestCase
     /** @dataProvider provideSesTransports */
     public function testSesRawEnvelopeControlsDestinationAndBounceAddress(string $kind): void
     {
-        $message  = $this->createMessage();
-        $original = $message->toString();
-        $client   = $this->createMock(AsyncAws\Ses\SesClient::class);
-        $response = $this->getMockBuilder(AsyncAws\Ses\Result\SendEmailResponse::class)->disableOriginalConstructor()->onlyMethods(['getMessageId'])->getMock();
-        $response->method('getMessageId')->willReturn('ses-id');
-        $client->expects($this->once())->method('sendEmail')->willReturnCallback(function ($request) use ($message, $response) {
-            if (\is_array($request)) {
-                $this->assertSame(['delivery@example.com', 'blind@example.com'], $request['Destination']['ToAddresses']);
-                $this->assertSame('bounce@example.com', $request['FeedbackForwardingEmailAddress']);
-                $raw = $request['Content']['Raw']['Data'];
-            } else {
-                $this->assertSame(['delivery@example.com', 'blind@example.com'], $request->getDestination()->getToAddresses());
-                $this->assertSame('bounce@example.com', $request->getFeedbackForwardingEmailAddress());
-                $raw = $request->getContent()->getRaw()->getData();
-            }
-            $this->assertRawHeaders($raw, $message);
-
-            return $response;
-        });
+        $message            = $this->createMessage();
+        $original           = $message->toString();
+        $fixture            = new SesSdkFixture();
+        $fixture->onRequest = function (array $request) use ($message): void {
+            $payload = \json_decode($request['body'], true, 512, \JSON_THROW_ON_ERROR);
+            $this->assertSame(['delivery@example.com', 'blind@example.com'], $payload['Destination']['ToAddresses']);
+            $this->assertSame('bounce@example.com', $payload['FeedbackForwardingEmailAddress']);
+            $this->assertRawHeaders(\base64_decode($payload['Content']['Raw']['Data'], true), $message);
+        };
+        $client    = $fixture->client;
         $class     = 'Swift_Transport_Api_AmazonSes'.$kind.'Transport';
         $transport = new $class($client, new Swift_Events_SimpleEventDispatcher());
         $failed    = [];
