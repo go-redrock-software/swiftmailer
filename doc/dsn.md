@@ -1,6 +1,6 @@
 # DSN Transport Factory
 
-The DSN system lets you create any transport from a single connection string, making configuration portable and environment-driven. `Swift_Transport_DsnTransportFactory` parses a DSN, validates its query parameters, and returns a ready-to-use `Swift_Transport`.
+The DSN system lets you configure a transport from a single connection string, making configuration portable and environment-driven. `Swift_Transport_DsnTransportFactory` parses a DSN, validates its query parameters, and returns a ready-to-use `Swift_Transport`.
 
 See also: [API transports](api-transports.md) for provider-specific details, and the [`swiftmailer-test` CLI](cli.md) for exercising a DSN from the command line.
 
@@ -11,6 +11,21 @@ $factory   = new Swift_Transport_DsnTransportFactory();
 $transport = $factory->fromDsnString('sendgrid://YOUR_API_KEY@default');
 $mailer    = new Swift_Mailer($transport);
 ```
+
+The legacy convenience helper constructs the mailer directly:
+
+```php
+$mailer = Swift::createTransportFromDsn('sendgrid://YOUR_API_KEY@default');
+$transport = $mailer->getTransport();
+```
+
+Despite its name, `Swift::createTransportFromDsn()` returns a `Swift_Mailer`.
+It uses the same operational factory, supported schemes, decorators and option
+validation as the explicit construction above. Use
+`Swift_Transport_DsnTransportFactory::fromDsnString()` when you need a transport
+alone. `Swift_Dsn_Configuration` remains a metadata parser rather than a
+transport-construction API. See the scheme tables below for transports that
+require explicit SDK/client construction.
 
 ## DSN Format
 

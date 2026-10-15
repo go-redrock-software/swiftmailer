@@ -106,6 +106,16 @@ $transport = $factory->fromDsnString(getenv('MAILER_DSN'));
 
 See [doc/dsn.md](dsn.md) for DSN syntax.
 
+For a configured mailer, the repaired legacy helper is also available:
+
+```php
+$mailer = Swift::createTransportFromDsn(getenv('MAILER_DSN'));
+```
+
+This helper returns `Swift_Mailer`, matching its original intended behavior.
+Use the factory above when you want a transport object. The helper now shares
+its DSN validation and decorator support with that factory.
+
 ### Add Tags and Metadata
 
 ```php

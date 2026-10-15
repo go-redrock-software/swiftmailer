@@ -414,8 +414,12 @@ Two classes turn connection strings into transports:
   `SMTP_HOST_MAP`; a `?retries=` query parameter wraps the result in a
   `RetryTransport`. The sendmail path is constrained to an allowlist of binaries.
 
-> `Swift::createTransportFromDsn()` exists but is dead code (annotated as such); use
-> the factory. See [dsn.md](dsn.md) for the full scheme and parameter reference.
+- `Swift::createTransportFromDsn()` is a legacy mailer convenience helper. It
+  delegates transport construction to `DsnTransportFactory` and returns a
+  `Swift_Mailer`, retaining its original intended return kind despite the name.
+  Call the factory directly for a `Swift_Transport`. The metadata parser is not
+  used to construct transports. See [dsn.md](dsn.md) for the full scheme and
+  parameter reference.
 
 ## Webhook subsystem
 
