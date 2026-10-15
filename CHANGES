@@ -9,6 +9,13 @@ Symfony Mailer while preserving full backward compatibility.
 Unreleased
 ----------
 
+ Security:
+
+ * HTML delivery reports now escape recipient addresses in success and failure
+   output, preventing cross-site scripting when reports include untrusted
+   recipients. Valid UTF-8 is preserved and invalid sequences are replaced
+   instead of hiding the address (GitLab #33, CWE-79).
+
  Documentation:
 
  * Complete in-repo documentation overhaul so no external docs site is

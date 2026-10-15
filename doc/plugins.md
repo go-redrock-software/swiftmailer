@@ -597,12 +597,12 @@ backend:
 | `RESULT_FAIL` (`0x10`) | Recipient could not be accepted |
 | `notify(Swift_Mime_SimpleMessage $message, string $address, int $result)` | Called once per To/Cc/Bcc recipient |
 
-**Gotcha — `HtmlReporter` and untrusted input:** the HTML reporter echoes each
-recipient address **without escaping** it into the HTML output. It is a
-debugging/CLI-style aid; do not render its output in a context where recipient
-addresses could be attacker-controlled, or wrap/escape the output yourself.
-(`EchoLogger`, by contrast, does escape its entries — see
-[LoggerPlugin](#loggerplugin).)
+`HtmlReporter` escapes each recipient address as UTF-8 text, including quotes,
+ampersands and angle brackets. Invalid UTF-8 sequences are replaced with U+FFFD.
+Pass original addresses without pre-escaping them. Older releases emitted raw
+addresses and could allow JavaScript execution when reports containing
+attacker-controlled recipients were displayed in a browser; see
+[security hardening](security.md#plugin-output-escaping).
 
 ---
 
