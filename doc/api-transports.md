@@ -208,7 +208,9 @@ $transport = (new Swift_Transport_DsnTransportFactory())
     ->fromDsnString('mailjet://PUBLIC_KEY:PRIVATE_KEY@default');
 ```
 
-> **Note:** Transports that require SDK client objects (Amazon SES, Google, Microsoft Graph) are listed in the DSN map but reject DSN construction with a credential-safe `InvalidArgumentException`; inject an explicitly constructed SDK client into the native transport.
+> **Note:** Google and Microsoft Graph transports are listed in the DSN map but reject DSN construction with a credential-safe `InvalidArgumentException`; inject an explicitly constructed SDK client into the native transport.
+
+Both Amazon SES routes now support [SDK DSN construction](dsn.md#amazon-ses-sdk-dsns) with explicit credentials/region/session-token and optional caller-owned HTTP injection. Direct SDK injection remains available for advanced credential providers.
 
 ### Supported DSN Schemes
 
@@ -416,6 +418,25 @@ $transport = new Swift_Transport_Api_AmazonSesHttpTransport($ses);
 ```
 
 ---
+
+### SES failures and acceptance
+
+Both transports validate successful SendEmail response JSON before SDK coercion.
+An acceptance ID must be a nonempty string without whitespace/control characters;
+`"0"` is preserved. Missing, null, scalar/array, malformed JSON and interrupted
+2xx responses produce a permanent ambiguity, preventing retry/failover from
+resending a message that may already have been accepted. Health, credential and
+HTTP error responses use their normal SDK handling. A refusal is local to one
+operation; a later explicit send starts a fresh policy context.
+
+Returned SES send failures expose a static Swift diagnostic and safe numeric
+status, with a terminal marker for redirects, ambiguous acceptance or PHP Error
+causes. Original SDK messages and previous causes are intentionally unavailable:
+they retain credential-bearing client/response graphs. Normal HTTP 429/500/502/
+503/504 and connection failures retain transient classification. This changes
+code that previously inspected SDK-specific causes; inspect the Swift status and
+terminal classification instead. Generic Swift exception cause support is
+unchanged. Explicit application exception-event cancellation remains supported.
 
 ### SES MIME delivery
 

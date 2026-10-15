@@ -9,7 +9,7 @@ class Swift_Transport_Api_SesHttpResponse implements ResponseInterface
 
     private ?int $redirectStatus = null;
 
-    public function __construct(private ResponseInterface $response, private Swift_Transport_Api_SesRequestPolicy $policy)
+    public function __construct(private ResponseInterface $response, private Swift_Transport_Api_SesRequestPolicy $policy, private bool $send = false)
     {
     }
 
@@ -31,6 +31,10 @@ class Swift_Transport_Api_SesHttpResponse implements ResponseInterface
             $this->policy->refuseRedirect($status);
             $this->redirectStatus = $status;
             $this->response->cancel();
+        }
+
+        if ($this->send) {
+            $this->policy->observeSendStatus($status);
         }
 
         // Let AsyncAws record its normal 3xx resolve status, including debug logging
@@ -63,7 +67,13 @@ class Swift_Transport_Api_SesHttpResponse implements ResponseInterface
             return '';
         }
 
-        return $this->response->getContent($throw);
+        $content = $this->response->getContent($throw);
+        $status  = $this->getStatusCode();
+        if ($this->send && $status >= 200 && $status < 300) {
+            $this->acceptanceData($content, $status);
+        }
+
+        return $content;
     }
 
     public function toArray(bool $throw = true): array
@@ -77,7 +87,27 @@ class Swift_Transport_Api_SesHttpResponse implements ResponseInterface
             return [];
         }
 
+        $status = $this->getStatusCode();
+        if ($this->send && $status >= 200 && $status < 300) {
+            return $this->acceptanceData($this->response->getContent($throw), $status);
+        }
+
         return $this->response->toArray($throw);
+    }
+
+    /** Validate before AsyncAws can coerce arrays/scalars into a successful ID. */
+    private function acceptanceData(#[SensitiveParameter] string $content, int $status): array
+    {
+        try {
+            $data = \json_decode($content, false, 512, \JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            $this->policy->refuseAcceptance($status);
+        }
+        if (!$data instanceof stdClass || !isset($data->MessageId) || !\is_string($data->MessageId) || '' === $data->MessageId || \preg_match('/[\p{Cc}\p{Z}]/u', $data->MessageId)) {
+            $this->policy->refuseAcceptance($status);
+        }
+
+        return (array) $data;
     }
 
     public function cancel(): void

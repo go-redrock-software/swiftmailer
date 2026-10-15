@@ -158,11 +158,19 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
 
     // ── send: no MessageId ───────────────────────────────────
 
-    public function testSendReturnsZeroWhenNoMessageId(): void
+    public function testMissingMessageIdIsPermanent(): void
     {
-        $c = $this->clientReturning(null);
-        $t = $this->makeTransport($c);
-        $this->assertSame(0, $t->send($this->basicMsg()));
+        $c      = $this->clientReturning(null);
+        $t      = $this->makeTransport($c);
+        $failed = [];
+        try {
+            $t->send($this->basicMsg(), $failed);
+            $this->fail('A missing MessageId must not be an ordinary zero send.');
+        } catch (Swift_Transport_NonRetryableException $error) {
+            $this->assertSame(200, $error->getCode());
+            $this->assertNull($error->getPrevious());
+        }
+        $this->assertSame(\array_keys($this->basicMsg()->getTo()), $failed);
     }
 
     // ── send: error paths ───────────────────────────────────

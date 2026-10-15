@@ -86,7 +86,10 @@ class Swift_Transport_Api_SesHttpClient implements HttpClientInterface
         $this->policy->assertNoRedirect();
         $options['max_redirects'] = 0;
 
-        return new Swift_Transport_Api_SesHttpResponse($this->client->request($method, $url, $options), $this->policy);
+        $path = \parse_url($url, \PHP_URL_PATH);
+        $send = 'POST' === $method && \is_string($path) && \str_ends_with($path, '/v2/email/outbound-emails');
+
+        return new Swift_Transport_Api_SesHttpResponse($this->client->request($method, $url, $options), $this->policy, $send);
     }
 
     public function stream($responses, ?float $timeout = null): ResponseStreamInterface

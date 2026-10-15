@@ -82,6 +82,15 @@ environment variable. Use an environment-provided DSN to avoid argv process-list
 exposure as well. Direct Nyholm calls, caller-owned trace frames and arbitrary
 remote provider error messages are outside this boundary.
 
+**5. SES failure graphs.** SES transport failures use a static diagnostic and
+safe status without retaining the SDK cause. Sensitive callable/error parameters
+also protect local trace arguments that can refer to a credentialed SDK client.
+Isolated error tests inspect full printed exception objects as well as messages
+and string traces. This boundary covers returned SES send failures, including
+PHP Error causes; it does not sanitize arbitrary caller-owned argument frames.
+Malformed or incomplete successful SES responses are terminal acceptance
+ambiguities and cannot trigger automatic resend through retry/failover.
+
 ## Plugin output escaping
 
 Escaping in the debug/reporting plugins is **not uniform** -- know which output is safe to render in a browser:

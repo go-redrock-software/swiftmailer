@@ -173,7 +173,7 @@ abstract class Swift_Transport_AbstractApiTransport implements Swift_Transport
      *
      * @param callable(?Swift_Envelope): int $send
      */
-    protected function sendWithEvents(Swift_Mime_SimpleMessage $message, &$failedRecipients, ?Swift_Envelope $envelope, callable $send): int
+    protected function sendWithEvents(Swift_Mime_SimpleMessage $message, &$failedRecipients, ?Swift_Envelope $envelope, #[SensitiveParameter] callable $send): int
     {
         $failedRecipients ??= [];
         $evt = $this->eventDispatcher?->createSendEvent($this, $message);

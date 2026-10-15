@@ -60,14 +60,14 @@ class Swift_Transport_Api_AmazonSesHttpTransport extends Swift_Transport_Abstrac
                 $request['Content'] = ['Raw' => ['Data' => $this->getRawMessageWithoutBcc($message)]];
             }
             $messageId = Swift_Transport_Api_SesRequestPolicy::run($this->sesClient, static fn (AsyncAws\Ses\SesClient $client) => $client->sendEmail($request)->getMessageId());
-            if (!$messageId) {
+            if (null === $messageId || '' === $messageId) {
                 return 0;
             }
             $message->getHeaders()->addTextHeader('X-SES-Message-ID', $messageId);
 
             return null !== $envelope ? \count(\array_unique($envelope->getRecipients())) : $this->getRecipientCount($message);
-        } catch (Exception $e) {
-            throw new Swift_TransportException('Failed to send email', 0, $e);
+        } catch (Throwable $e) {
+            throw Swift_Transport_Api_SesRequestPolicy::detachedFailure($e, 'Failed to send email');
         }
     }
 

@@ -127,8 +127,8 @@ HTTP providers use their own constructor contracts. SDK-backed transports requir
 | `scaleway` | `Swift_Transport_Api_ScalewayTransport` | Yes | User = project ID; password = API key |
 | `gmail+api` | `Swift_Transport_Api_GoogleTransport` | No | Requires a Google `Client` object |
 | `microsoft-graph` | `Swift_Transport_Api_MicrosoftGraphTransport` | No | Requires a `GraphServiceClient` object |
-| `amazon+api` | `Swift_Transport_Api_AmazonSesApiTransport` | No | Requires an async-aws `SesClient` object |
-| `amazon+http` | `Swift_Transport_Api_AmazonSesHttpTransport` | No | Requires an SES client object |
+| `amazon+api` | `Swift_Transport_Api_AmazonSesApiTransport` | Yes | AWS access-key user and secret password; real AsyncAws SES v2 client |
+| `amazon+http` | `Swift_Transport_Api_AmazonSesHttpTransport` | Yes | Same SDK construction; preserves native response-ID behavior |
 | `mailtrap` | `Swift_Transport_Api_MailtrapTransport` | Yes | API token; live sending endpoint |
 
 ### HTTP provider configuration
@@ -160,13 +160,67 @@ Use trusted endpoint hosts: the configured API credentials are sent to that host
 Mailjet, Scaleway and live Mailtrap use fixed native endpoints and require
 `@default` without a port or base path (a single `/` is allowed). The previously
 working single-key providers retain their ignored-host behavior. `region` is
-exclusive to Mailgun and Scaleway; `inbox_id` is exclusive to Mailtrap sandbox.
+exclusive to Mailgun, Scaleway and the two SES API schemes; `inbox_id` is exclusive to Mailtrap sandbox.
 Both options require a canonical scalar spelling and exactly one occurrence,
 using PHP's configured query separators. Invalid options fail before HTTP I/O.
 
-Google, Microsoft Graph and both SES SDK-backed routes still require explicitly
+Google and Microsoft Graph SDK-backed routes still require explicitly
 constructed client objects in code. DSNs do not yet configure their authentication
 or client lifecycle. Their rejection does not change direct SDK-backed transports.
+
+### Amazon SES SDK DSNs
+
+```text
+amazon+api://ACCESS_KEY:SECRET@default?region=eu-west-1
+amazon+http://ACCESS_KEY:SECRET@default?region=us-east-1&session_token=TEMPORARY_TOKEN
+```
+
+Both routes construct a real AsyncAws SES v2 client. Both credential fields are
+required; missing credentials reject rather than starting an ambient credential
+chain. Keys and the optional `session_token` are nonempty visible ASCII strings;
+percent-encode reserved characters, including `+`, `/`, `=` and `;`. Decoded whitespace/control/non-ASCII characters reject. Literal `0`
+values are preserved. `session_token` is exclusive to these two SES schemes and
+uses the same canonical/scalar/occurrence checks as the other HTTP options.
+
+`region` defaults explicitly to `us-east-1` and accepts lower-case AWS region-code
+syntax. The normal endpoint is `https://email.REGION.amazonaws.com`; `cn-` uses
+`amazonaws.com.cn` and `eusc-` uses `amazonaws.eu`. Region syntax and synthetic
+endpoint tests do not imply SES availability in every region; consult the
+[AWS endpoint list](https://docs.aws.amazon.com/general/latest/gr/ses.html).
+GovCloud uses its normal region code. For FIPS/dual-stack or a trusted custom
+endpoint, supply its actual HTTPS host plus the ordinary signing region:
+
+```text
+amazon+api://ACCESS_KEY:SECRET@email-fips.us-east-1.amazonaws.com?region=us-east-1
+amazon+api://ACCESS_KEY:SECRET@public.example.com:8443/prefix?region=eu-west-1
+```
+
+Custom endpoints preserve port/base path and use the existing public-address
+URL guard. `@default` accepts no port/base path/fragment override. Credentials
+are signed for the configured region and sent to the configured trusted host.
+The DSN uses explicit credentials, endpoint, region and debug=false; AWS
+credential/profile/role/metadata chains and ambient endpoint/region/token
+variables do not choose or change these requests. For managed credentials,
+role refresh or other SDK customization, construct the SDK client explicitly
+and pass it to the native transport.
+
+A factory may receive a caller-owned Symfony HTTP client for its SES clients:
+
+```php
+$factory = new Swift_Transport_DsnTransportFactory(sesHttpClient: $httpClient);
+$transport = $factory->fromDsnString($dsn);
+```
+
+This constructor option applies only to the SES SDK routes. Omission retains
+AsyncAws's normal HTTP and retry construction; injected clients keep their
+configuration and lifetime. The existing SES operation policy protects API and
+credential requests, refuses redirects permanently and retains ordinary caller
+retries. Unsupported custom HTTP decorators remain subject to that native
+policy. Both SES DSNs preserve attachments/envelopes, recipient policies and
+events. SES send errors use static diagnostics/status and omit unsafe SDK causes;
+malformed successful responses are permanent acceptance ambiguities. See
+[SES failures and acceptance](api-transports.md#ses-failures-and-acceptance). SMTP aliases use their separate SMTP options and do not accept these
+SES API parameters.
 
 ### Provider `+smtp` convenience schemes
 

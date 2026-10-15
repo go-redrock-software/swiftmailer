@@ -91,11 +91,9 @@ class Swift_Integration_ApiEnvelopeTest extends PHPUnit\Framework\TestCase
             $transport->send($message, $failed);
             $this->fail('Provider exception must propagate');
         } catch (Swift_TransportException $e) {
-            $cause = $e;
-            while (null !== $cause->getPrevious()) {
-                $cause = $cause->getPrevious();
-            }
-            $this->assertSame('Provider unavailable', $cause->getMessage());
+            $this->assertNull($e->getPrevious());
+            $this->assertSame(0, $e->getCode());
+            $this->assertStringNotContainsString('Provider unavailable', $e->getMessage());
         }
         $this->assertSame($original, $message->getTo());
         $this->assertSame(['kept@safe.test'], $failed);
@@ -133,7 +131,12 @@ class Swift_Integration_ApiEnvelopeTest extends PHPUnit\Framework\TestCase
         $message   = $this->createMessage();
         $failed    = [];
 
-        $this->assertSame(0, $transport->send($message, $failed));
+        try {
+            $transport->send($message, $failed);
+            $this->fail('Missing acceptance ID must be a permanent ambiguity.');
+        } catch (Swift_Transport_NonRetryableException $error) {
+            $this->assertSame(200, $error->getCode());
+        }
         $this->assertSame(['visible@example.com', 'cc@example.com', 'hidden@example.com'], $failed);
         $this->assertFalse($message->getHeaders()->has('X-SES-Message-ID'));
     }

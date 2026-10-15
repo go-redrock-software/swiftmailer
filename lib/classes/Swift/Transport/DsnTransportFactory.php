@@ -7,9 +7,12 @@
  * file that was distributed with this source code.
  */
 
+use AsyncAws\Core\Credentials\Credentials;
+use AsyncAws\Ses\SesClient;
 use Nyholm\Dsn\Configuration\Url;
 use Nyholm\Dsn\DsnParser;
 use Nyholm\Dsn\Exception\InvalidDsnException;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
  * Factory that creates Swift_Transport instances from DSN strings.
@@ -40,6 +43,7 @@ class Swift_Transport_DsnTransportFactory
         'local_domain',
         'region',
         'inbox_id',
+        'session_token',
     ];
 
     private const array SENDGRID_TRACKING_PARAMETERS = ['click_tracking', 'click_tracking_text', 'open_tracking'];
@@ -64,6 +68,14 @@ class Swift_Transport_DsnTransportFactory
         'mailtrap+smtp'   => ['host' => 'live.smtp.mailtrap.io',              'port' => 587, 'encryption' => 'tls'],
         'sweego+smtp'     => ['host' => 'smtp.sweego.io',                     'port' => 587, 'encryption' => 'tls'],
     ];
+
+    private ?HttpClientInterface $sesHttpClient = null;
+
+    /** HTTP client for factory-created SES SDK clients; other providers use their native clients. */
+    public function __construct(#[SensitiveParameter] ?HttpClientInterface $sesHttpClient = null)
+    {
+        $this->sesHttpClient = $sesHttpClient;
+    }
 
     public function fromDsnString(#[SensitiveParameter] string $dsnString): Swift_Transport
     {
@@ -231,19 +243,29 @@ class Swift_Transport_DsnTransportFactory
     /** @return array<string, string> */
     private function parseHttpProviderOptions(#[SensitiveParameter] string $dsnString, #[SensitiveParameter] Swift_Dsn $dsn): array
     {
-        $options = $this->canonicalOptions($dsnString, $dsn->getParameters(), ['region', 'inbox_id'], 'HTTP provider');
+        $options = $this->canonicalOptions($dsnString, $dsn->getParameters(), ['region', 'inbox_id', 'session_token'], 'HTTP provider');
         if (isset($options['region'])) {
-            $regions = match ($dsn->getScheme()) {
-                'mailgun'  => ['us', 'eu'],
-                'scaleway' => ['fr-par'],
-                default    => [],
-            };
-            if (!\in_array($options['region'], $regions, true)) {
-                throw new InvalidArgumentException('HTTP provider region is unsupported for this scheme.');
+            if (\in_array($dsn->getScheme(), ['amazon+api', 'amazon+http'], true)) {
+                $this->sesRegion($options['region']);
+            } else {
+                $regions = match ($dsn->getScheme()) {
+                    'mailgun'  => ['us', 'eu'],
+                    'scaleway' => ['fr-par'],
+                    default    => [],
+                };
+                if (!\in_array($options['region'], $regions, true)) {
+                    throw new InvalidArgumentException('HTTP provider region is unsupported for this scheme.');
+                }
             }
             if ('mailgun' === $dsn->getScheme() && 'default' !== $dsn->getHost()) {
                 throw new InvalidArgumentException('Mailgun region requires the default endpoint host.');
             }
+        }
+        if (isset($options['session_token'])) {
+            if (!\in_array($dsn->getScheme(), ['amazon+api', 'amazon+http'], true)) {
+                throw new InvalidArgumentException('session_token requires an Amazon SES SDK scheme.');
+            }
+            $this->sesCredential($options['session_token']);
         }
         if (isset($options['inbox_id']) && 'mailtrap+sandbox' !== $dsn->getScheme()) {
             throw new InvalidArgumentException('inbox_id requires the mailtrap+sandbox scheme.');
@@ -256,7 +278,10 @@ class Swift_Transport_DsnTransportFactory
     private function createHttpTransport(#[SensitiveParameter] string $dsnString, #[SensitiveParameter] Swift_Dsn $dsn, string $class, #[SensitiveParameter] array $options): Swift_Transport
     {
         $scheme = $dsn->getScheme();
-        if (\in_array($scheme, ['gmail+api', 'microsoft-graph', 'amazon+api', 'amazon+http'], true)) {
+        if (\in_array($scheme, ['amazon+api', 'amazon+http'], true)) {
+            return $this->createSesTransport($dsnString, $dsn, $class, $options);
+        }
+        if (\in_array($scheme, ['gmail+api', 'microsoft-graph'], true)) {
             throw new InvalidArgumentException('This DSN scheme requires an explicitly constructed SDK client; construct its transport directly.');
         }
         $dispatcher = new Swift_Events_SimpleEventDispatcher();
@@ -298,6 +323,57 @@ class Swift_Transport_DsnTransportFactory
 
         // These remaining HTTP providers share the base constructor contract.
         return new $class($apiKey, null, $dispatcher);
+    }
+
+    /** @param array<string, string> $options */
+    private function createSesTransport(#[SensitiveParameter] string $dsnString, #[SensitiveParameter] Swift_Dsn $dsn, string $class, #[SensitiveParameter] array $options): Swift_Transport
+    {
+        $key    = $this->sesCredential($dsn->getUser());
+        $secret = $this->sesCredential($dsn->getPassword());
+        $token  = $options['session_token'] ?? null;
+        $region = $this->sesRegion($options['region'] ?? 'us-east-1');
+        if ('default' === $dsn->getHost()) {
+            $this->requireFixedHttpEndpoint($dsnString, $dsn);
+            $domain = match (true) {
+                \str_starts_with($region, 'cn-')   => 'amazonaws.com.cn',
+                \str_starts_with($region, 'eusc-') => 'amazonaws.eu',
+                default                            => 'amazonaws.com',
+            };
+            $endpoint = 'https://email.'.$region.'.'.$domain;
+        } else {
+            $endpoint = $this->httpEndpoint($dsnString, $dsn);
+        }
+        // Explicit configuration blocks ambient region/endpoint/session-token overrides.
+        // A concrete Credentials provider also excludes role, profile and metadata exchanges.
+        $client = new SesClient([
+            'region'          => $region,
+            'endpoint'        => $endpoint,
+            'accessKeyId'     => $key,
+            'accessKeySecret' => $secret,
+            'sessionToken'    => $token,
+            'debug'           => 'false',
+        ], new Credentials($key, $secret, $token), $this->sesHttpClient);
+
+        return new $class($client, new Swift_Events_SimpleEventDispatcher());
+    }
+
+    private function sesCredential(#[SensitiveParameter] ?string $value): string
+    {
+        $value = $this->requiredHttpCredential($value);
+        if (\preg_match('/[^\x21-\x7e]/', $value)) {
+            throw new InvalidArgumentException('SES credentials and session_token must contain only visible ASCII characters.');
+        }
+
+        return $value;
+    }
+
+    private function sesRegion(#[SensitiveParameter] string $value): string
+    {
+        if (\strlen($value) > 63 || !\preg_match('/\A(?:[a-z]{2}|eusc)(?:-[a-z]+){1,3}-[1-9][0-9]*\z/D', $value)) {
+            throw new InvalidArgumentException('SES region must use an AWS region-code spelling.');
+        }
+
+        return $value;
     }
 
     private function requiredHttpCredential(#[SensitiveParameter] ?string $value): string

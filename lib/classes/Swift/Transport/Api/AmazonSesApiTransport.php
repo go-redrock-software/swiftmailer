@@ -73,9 +73,9 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
 
             $recipients = null !== $envelope ? \array_unique($envelope->getRecipients()) : \array_merge(\array_keys($message->getTo() ?? []), \array_keys($message->getCc() ?? []), \array_keys($message->getBcc() ?? []));
 
-            return $messageId ? \count($recipients) : 0;
-        } catch (Exception $e) {
-            $this->throwException(new Swift_TransportException('Unable to send email: '.$e->getMessage(), 0, $e));
+            return null !== $messageId && '' !== $messageId ? \count($recipients) : 0;
+        } catch (Throwable $e) {
+            $this->throwException(Swift_Transport_Api_SesRequestPolicy::detachedFailure($e, 'Unable to send email'));
         }
 
         return 0;

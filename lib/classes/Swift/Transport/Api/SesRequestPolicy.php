@@ -21,6 +21,10 @@ class Swift_Transport_Api_SesRequestPolicy
 {
     private ?Swift_Transport_NonRetryableException $failure = null;
 
+    private ?int $sendStatus = null;
+
+    private ?Swift_Transport_NonRetryableException $acceptanceFailure = null;
+
     private SplObjectStorage $providers;
 
     private SplObjectStorage $originalProviders;
@@ -45,15 +49,50 @@ class Swift_Transport_Api_SesRequestPolicy
         try {
             $result = $operation($policy->scopeClient($client));
             $policy->assertNoRedirect();
+            $policy->assertAcceptance();
 
             return $result;
         } catch (Throwable $error) {
             $policy->assertNoRedirect();
+            if (null !== $policy->sendStatus) {
+                $policy->refuseAcceptance($policy->sendStatus);
+            }
+            $policy->assertAcceptance();
             throw $error;
         } finally {
             if (null === $policy->failure) {
                 $policy->publishState();
             }
+        }
+    }
+
+    /** Return a failure without retaining credential-bearing SDK/client graphs. */
+    public static function detachedFailure(#[SensitiveParameter] Throwable $error, string $message): Swift_TransportException
+    {
+        $class  = Swift_Transport_RetryPolicy::isTerminalFailure($error) ? Swift_Transport_NonRetryableException::class : Swift_TransportException::class;
+        $code   = $error->getCode();
+        $detail = 500 === $code ? '; internal server error' : '';
+
+        return new $class($message.' (SES status '.$code.$detail.').', $code);
+    }
+
+    public function observeSendStatus(int $status): void
+    {
+        if ($status >= 200 && $status < 300) {
+            $this->sendStatus = $status;
+        }
+    }
+
+    public function refuseAcceptance(int $status): never
+    {
+        $this->acceptanceFailure ??= new Swift_Transport_NonRetryableException('SES acceptance could not be confirmed.', $status);
+        throw $this->acceptanceFailure;
+    }
+
+    public function assertAcceptance(): void
+    {
+        if (null !== $this->acceptanceFailure) {
+            throw $this->acceptanceFailure;
         }
     }
 
