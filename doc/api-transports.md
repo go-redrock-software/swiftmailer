@@ -257,11 +257,48 @@ $transportClass = $dsn->getTransportClass();
 | **Auth method** | Bearer token (`Authorization: Bearer {apiKey}`) |
 | **Tags** | Yes -- `categories` (array, multiple tags) |
 | **Metadata** | Yes -- `custom_args` in personalizations |
+| **Tracking** | Optional click, plain-text click and open tracking overrides |
 
 ```php
 $transport = new Swift_Transport_Api_SendgridTransport('SG.your-api-key');
+$transport->setClickTracking(false)
+    ->setClickTrackingText(false)
+    ->setOpenTracking(false);
 $mailer = new Swift_Mailer($transport);
 ```
+
+The three nullable boolean settings map to SendGrid's optional
+[`tracking_settings`](https://www.twilio.com/docs/sendgrid/api-reference/mail-send/mail-send)
+fields:
+
+| Accessors | JSON field |
+| --- | --- |
+| `getClickTracking()` / `setClickTracking(?bool)` | `click_tracking.enable` |
+| `getClickTrackingText()` / `setClickTrackingText(?bool)` | `click_tracking.enable_text` |
+| `getOpenTracking()` / `setOpenTracking(?bool)` | `open_tracking.enable` |
+
+All default to `null`, which omits the corresponding field from the request and
+preserves the existing provider behavior. Explicit `false` is sent as a JSON
+boolean. A setter accepts `null` to remove that override on later sends.
+These settings apply to all messages sent through that transport; change them
+between sends or use separately configured transport instances for different
+policies. The message itself is not modified.
+
+Plain-text click tracking is a separate provider flag. To request click tracking
+for both HTML and plain-text content, set both click flags to `true`; configuring
+one flag does not implicitly set the other. Open tracking uses SendGrid's pixel
+behavior; the transport does not insert a pixel or rewrite links locally.
+
+The same controls are available through the SendGrid HTTP DSN:
+
+```php
+$transport = (new Swift_Transport_DsnTransportFactory())->fromDsnString(
+    'sendgrid://SG.your-api-key@default?click_tracking=0&click_tracking_text=0&open_tracking=0'
+);
+```
+
+See [tracking DSN options](dsn.md#sendgrid-tracking-parameters) for validation,
+provider scope and retry/pool combinations.
 
 ---
 

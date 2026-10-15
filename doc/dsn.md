@@ -151,7 +151,7 @@ mailtrap+sandbox://APITOKEN@default?inbox_id=12345
 
 Only a fixed whitelist of parameters is accepted (`Swift_Transport_DsnTransportFactory::ALLOWED_DSN_PARAMETERS`):
 
-`verify_peer`, `peer_fingerprint`, `source_ip`, `smtputf8`, `command`, `retries`, `retry_delay`
+`verify_peer`, `peer_fingerprint`, `source_ip`, `smtputf8`, `command`, `retries`, `retry_delay`, `click_tracking`, `click_tracking_text`, `open_tracking`
 
 Any parameter outside this list is **not** silently dropped and does **not** throw — it triggers an `E_USER_WARNING` (`unknown DSN parameter "x" will be ignored`) and is then ignored. This validation runs for every scheme.
 
@@ -173,6 +173,38 @@ smtp+tls://user:pass@mail.example.com:587?verify_peer=true&source_ip=10.0.0.1&sm
 ### `command` parameter
 
 Only meaningful for the `sendmail` scheme (see [Local / built-in](#local--built-in)). Ignored by `native`.
+
+### SendGrid tracking parameters
+
+These options are supported by the `sendgrid` HTTP API scheme:
+
+| Parameter | Values | Default | SendGrid JSON field |
+| --- | --- | --- | --- |
+| `click_tracking` | `true`, `false`, `1`, `0` | Omitted | `tracking_settings.click_tracking.enable` |
+| `click_tracking_text` | `true`, `false`, `1`, `0` | Omitted | `tracking_settings.click_tracking.enable_text` |
+| `open_tracking` | `true`, `false`, `1`, `0` | Omitted | `tracking_settings.open_tracking.enable` |
+
+Boolean words are case-insensitive; ordinary URL decoding applies. Omitting an
+option preserves the provider request's existing behavior, rather than forcing
+tracking on or off. Explicit `0`/`false` sends a JSON boolean false. Plain-text
+click tracking remains independent: set both click options to `1` when you want
+to request tracking for both content types.
+
+Empty, array, duplicate, normalized-alias (such as `click.tracking`) and other
+values throw `InvalidArgumentException`. Options must use their canonical names.
+These options also throw on other schemes, including `sendgrid+smtp`; their
+support is specific to the HTTP Mail Send payload.
+
+```text
+sendgrid://KEY@default?click_tracking=0&open_tracking=0
+sendgrid://KEY@default?click_tracking=1&click_tracking_text=1&retries=2&retry_delay=0
+retry(sendgrid://KEY@default?open_tracking=false)
+failover(sendgrid://KEY@default?click_tracking=0 postmark://OTHER@default)?retry_period=15
+```
+
+Options inside a pool belong to their individual leaf DSN. Pool-level queries
+continue to accept only `retry_period`. Runtime nullable getters/setters are
+available on [SendGrid transports](api-transports.md#sendgrid).
 
 ### Retry parameters (any scheme)
 

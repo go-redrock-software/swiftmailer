@@ -30,7 +30,12 @@ class Swift_Transport_DsnTransportFactory
         'command',
         'retries',
         'retry_delay',
+        'click_tracking',
+        'click_tracking_text',
+        'open_tracking',
     ];
+
+    private const array SENDGRID_TRACKING_PARAMETERS = ['click_tracking', 'click_tracking_text', 'open_tracking'];
 
     private const array SMTP_HOST_MAP = [
         'gmail+smtp'      => ['host' => 'smtp.gmail.com',                     'port' => 465, 'encryption' => 'ssl'],
@@ -140,6 +145,7 @@ class Swift_Transport_DsnTransportFactory
         $nyholmDsn = DsnParser::parseUrl($dsnString);
         $dsn       = new Swift_Dsn($nyholmDsn);
         $this->validateDsnParameters($dsn->getParameters());
+        $trackingOptions = $this->parseSendgridTrackingOptions($dsnString, $dsn);
 
         $class = $dsn->getTransportClass();
 
@@ -191,7 +197,56 @@ class Swift_Transport_DsnTransportFactory
         $apiKey     = $dsn->getUser() ?: $dsn->getPassword() ?: '';
         $dispatcher = new Swift_Events_SimpleEventDispatcher();
 
-        return new $class($apiKey, null, $dispatcher);
+        $transport = new $class($apiKey, null, $dispatcher);
+        if ($transport instanceof Swift_Transport_Api_SendgridTransport) {
+            $transport->setClickTracking($trackingOptions['click_tracking'] ?? null)
+                ->setClickTrackingText($trackingOptions['click_tracking_text'] ?? null)
+                ->setOpenTracking($trackingOptions['open_tracking'] ?? null);
+        }
+
+        return $transport;
+    }
+
+    /** @return array<string, bool> */
+    private function parseSendgridTrackingOptions(#[SensitiveParameter] string $dsnString, #[SensitiveParameter] Swift_Dsn $dsn): array
+    {
+        $parameters = \array_intersect_key($dsn->getParameters(), \array_flip(self::SENDGRID_TRACKING_PARAMETERS));
+        if (!$parameters) {
+            return [];
+        }
+        if ('sendgrid' !== $dsn->getScheme()) {
+            throw new InvalidArgumentException('SendGrid tracking options require the sendgrid HTTP API scheme.');
+        }
+
+        // The underlying query parser normalizes names and keeps the last duplicate.
+        // Require an unambiguous spelling and one occurrence of each tracking option.
+        $query = \parse_url($dsnString, \PHP_URL_QUERY);
+        if (!\is_string($query)) {
+            throw new InvalidArgumentException('Invalid SendGrid tracking query.');
+        }
+        $occurrences = [];
+        foreach (\explode('&', $query) as $pair) {
+            $name = \urldecode(\explode('=', $pair, 2)[0]);
+            $base = \explode('[', \explode("\0", $name, 2)[0], 2)[0];
+            $base = \str_replace([' ', '.'], '_', \ltrim($base));
+            if (!\in_array($base, self::SENDGRID_TRACKING_PARAMETERS, true)) {
+                continue;
+            }
+            if ($name !== $base) {
+                throw new InvalidArgumentException('SendGrid tracking option names must use their canonical scalar spelling.');
+            }
+            $occurrences[$base] = ($occurrences[$base] ?? 0) + 1;
+        }
+
+        $options = [];
+        foreach ($parameters as $name => $value) {
+            if (1 !== ($occurrences[$name] ?? 0) || !\is_string($value) || !\in_array(\strtolower($value), ['true', 'false', '1', '0'], true)) {
+                throw new InvalidArgumentException('Each SendGrid tracking option must occur once and be true, false, 1 or 0.');
+            }
+            $options[$name] = \in_array(\strtolower($value), ['true', '1'], true);
+        }
+
+        return $options;
     }
 
     private function createSmtpTransport(Swift_Dsn $dsn): Swift_Transport
