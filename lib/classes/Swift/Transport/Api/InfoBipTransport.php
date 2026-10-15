@@ -60,14 +60,20 @@ class Swift_Transport_Api_InfoBipTransport extends Swift_Transport_AbstractHttpA
         $result = $this->parseResponse($response);
 
         $statusCode = $response->getStatusCode();
+        if ('PENDING' === ($result['messages'][0]['status']['groupName'] ?? null) && ($statusCode < 200 || $statusCode >= 300)) {
+            throw $this->invalidResponse($response, 'Infobip acceptance conflicts with HTTP status', ambiguous: true);
+        }
         if ($statusCode < 200 || $statusCode >= 300) {
-            $errorMsg = $result['requestError']['serviceException']['text'] ?? 'Unknown Infobip error';
+            $errorMsg = $this->responseText($result['requestError']['serviceException']['text'] ?? null, 'Unknown Infobip error');
             throw new Swift_TransportException('Infobip API error: '.$errorMsg);
         }
 
         $groupName = $result['messages'][0]['status']['groupName'] ?? null;
+        if (!\is_string($groupName)) {
+            throw $this->invalidResponse($response, 'Invalid Infobip acceptance status');
+        }
         if ('PENDING' !== $groupName) {
-            $description = $result['messages'][0]['status']['description'] ?? 'Unknown error';
+            $description = $this->responseText($result['messages'][0]['status']['description'] ?? null, 'Unknown error');
             throw new Swift_TransportException('Infobip API error: '.$description);
         }
 
@@ -94,7 +100,7 @@ class Swift_Transport_Api_InfoBipTransport extends Swift_Transport_AbstractHttpA
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        return \json_decode($this->getResponseBody($response), true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]

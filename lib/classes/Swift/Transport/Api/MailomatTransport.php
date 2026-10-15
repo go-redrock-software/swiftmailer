@@ -35,7 +35,7 @@ class Swift_Transport_Api_MailomatTransport extends Swift_Transport_AbstractHttp
         $parsed     = $this->parseResponse($response);
 
         if ($statusCode < 200 || $statusCode >= 300) {
-            $errorMessage = $parsed['message'] ?? $parsed['error'] ?? 'Unknown error';
+            $errorMessage = $this->responseText($parsed['message'] ?? $parsed['error'] ?? null, 'Unknown error');
             throw new Swift_TransportException(\sprintf('Mailomat API error (%d): %s', $statusCode, $errorMessage));
         }
 
@@ -62,9 +62,7 @@ class Swift_Transport_Api_MailomatTransport extends Swift_Transport_AbstractHttp
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        $body = $this->getResponseBody($response);
-
-        return \json_decode($body, true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]

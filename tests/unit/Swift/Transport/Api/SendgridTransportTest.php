@@ -264,6 +264,7 @@ class Swift_Transport_Api_SendgridTransportTest extends TestCase
 
         $response = $this->createMock(\Psr\Http\Message\ResponseInterface::class);
         $response->method('getBody')->willReturn($stream);
+        $response->method('getStatusCode')->willReturn(200);
 
         $result = $reflection->invoke($this->transport, $response);
         $this->assertSame(['key' => 'value'], $result);

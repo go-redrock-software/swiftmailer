@@ -28,7 +28,7 @@ class Swift_Transport_Api_ResendTransport extends Swift_Transport_AbstractHttpAp
         $statusCode = $response->getStatusCode();
 
         if ($statusCode < 200 || $statusCode >= 300) {
-            $errorMessage = $parsed['message'] ?? 'Unknown error';
+            $errorMessage = $this->responseText($parsed['message'] ?? null, 'Unknown error');
             throw new Swift_TransportException(\sprintf('Resend API error (%d): %s', $statusCode, $errorMessage));
         }
 
@@ -55,9 +55,7 @@ class Swift_Transport_Api_ResendTransport extends Swift_Transport_AbstractHttpAp
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        $body = $this->getResponseBody($response);
-
-        return \json_decode($body, true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]

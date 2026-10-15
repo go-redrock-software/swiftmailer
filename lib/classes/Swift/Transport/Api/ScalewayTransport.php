@@ -46,12 +46,15 @@ class Swift_Transport_Api_ScalewayTransport extends Swift_Transport_AbstractHttp
 
         if ($statusCode < 200 || $statusCode >= 300) {
             $parsed       = $this->parseResponse($response);
-            $errorMessage = $parsed['message'] ?? 'Unknown error';
+            $errorMessage = $this->responseText($parsed['message'] ?? null, 'Unknown error');
 
             throw new Swift_TransportException(\sprintf('Scaleway API error (%d): %s', $statusCode, $errorMessage));
         }
 
-        $parsed    = $this->parseResponse($response);
+        $parsed = $this->parseResponse($response);
+        if (isset($parsed['emails']) && (!\is_array($parsed['emails']) || !\array_is_list($parsed['emails']) || (isset($parsed['emails'][0]) && !\is_array($parsed['emails'][0])))) {
+            throw $this->invalidResponse($response, 'Invalid Scaleway message results');
+        }
         $messageId = $parsed['emails'][0]['message_id'] ?? null;
 
         return [
@@ -80,9 +83,7 @@ class Swift_Transport_Api_ScalewayTransport extends Swift_Transport_AbstractHttp
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        $body = $this->getResponseBody($response);
-
-        return \json_decode($body, true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]

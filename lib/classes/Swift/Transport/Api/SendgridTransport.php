@@ -28,8 +28,8 @@ class Swift_Transport_Api_SendgridTransport extends Swift_Transport_AbstractHttp
 
         $statusCode = $response->getStatusCode();
         if ($statusCode < 200 || $statusCode >= 300) {
-            $body     = \json_decode($this->getResponseBody($response), true);
-            $errorMsg = $body['errors'][0]['message'] ?? 'Unknown SendGrid error';
+            $body     = $this->parseResponse($response);
+            $errorMsg = $this->responseText($body['errors'][0]['message'] ?? null, 'Unknown SendGrid error');
             throw new Swift_TransportException('SendGrid API error: '.$errorMsg);
         }
 
@@ -51,7 +51,7 @@ class Swift_Transport_Api_SendgridTransport extends Swift_Transport_AbstractHttp
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        return \json_decode($this->getResponseBody($response), true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]

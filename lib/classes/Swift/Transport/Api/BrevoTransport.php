@@ -29,8 +29,8 @@ class Swift_Transport_Api_BrevoTransport extends Swift_Transport_AbstractHttpApi
 
         if ($statusCode < 200 || $statusCode >= 300) {
             $parsed       = $this->parseResponse($response);
-            $errorMessage = $parsed['message'] ?? 'Unknown error';
-            $errorCode    = $parsed['code']    ?? $statusCode;
+            $errorMessage = $this->responseText($parsed['message'] ?? null, 'Unknown error');
+            $errorCode    = $this->responseText($parsed['code'] ?? null, (string) $statusCode);
 
             throw new Swift_TransportException(\sprintf('Brevo API error (%s): %s', $errorCode, $errorMessage));
         }
@@ -58,7 +58,7 @@ class Swift_Transport_Api_BrevoTransport extends Swift_Transport_AbstractHttpApi
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        return \json_decode($this->getResponseBody($response), true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]

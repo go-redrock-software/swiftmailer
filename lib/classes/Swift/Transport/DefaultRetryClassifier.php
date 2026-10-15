@@ -71,6 +71,11 @@ class Swift_Transport_DefaultRetryClassifier implements Swift_Transport_RetryCla
     #[Override]
     public function isRetryable(Swift_TransportException $e): bool
     {
+        for ($cause = $e; null !== $cause; $cause = $cause->getPrevious()) {
+            if ($cause instanceof Swift_Transport_NonRetryableException) {
+                return false;
+            }
+        }
         $code    = $e->getCode();
         $message = \strtolower($e->getMessage());
 

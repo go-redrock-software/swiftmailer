@@ -49,8 +49,15 @@ class Swift_Transport_Api_MailJetTransport extends Swift_Transport_AbstractHttpA
 
         $result = $this->parseResponse($response);
 
-        if (!isset($result['Messages'][0]['Status']) || 'success' !== $result['Messages'][0]['Status']) {
-            $errorMessage = $result['Messages'][0]['Errors'][0]['ErrorMessage'] ?? 'Unknown error';
+        $status = $response->getStatusCode();
+        if ($status >= 200 && $status < 300 && !\is_string($result['Messages'][0]['Status'] ?? null)) {
+            throw $this->invalidResponse($response, 'Invalid Mailjet acceptance status');
+        }
+        if ('success' === ($result['Messages'][0]['Status'] ?? null) && ($status < 200 || $status >= 300)) {
+            throw $this->invalidResponse($response, 'Mailjet acceptance conflicts with HTTP status', ambiguous: true);
+        }
+        if ($status < 200 || $status >= 300 || 'success' !== ($result['Messages'][0]['Status'] ?? null)) {
+            $errorMessage = $this->responseText($result['Messages'][0]['Errors'][0]['ErrorMessage'] ?? null, 'Unknown error');
 
             throw new Swift_TransportException(\sprintf('Mailjet API error: %s', $errorMessage));
         }
@@ -77,7 +84,7 @@ class Swift_Transport_Api_MailJetTransport extends Swift_Transport_AbstractHttpA
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        return \json_decode($this->getResponseBody($response), true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]

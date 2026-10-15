@@ -36,8 +36,15 @@ class Swift_Transport_Api_PostMarkTransport extends Swift_Transport_AbstractHttp
 
         $result = $this->parseResponse($response);
 
-        if (!isset($result['ErrorCode']) || 0 !== $result['ErrorCode']) {
-            throw new Swift_TransportException(\sprintf('Postmark API error %d: %s', $result['ErrorCode'] ?? -1, $result['Message'] ?? 'Unknown error'));
+        $status = $response->getStatusCode();
+        if ($status >= 200 && $status < 300 && !\is_int($result['ErrorCode'] ?? null)) {
+            throw $this->invalidResponse($response, 'Invalid Postmark acceptance status');
+        }
+        if (0 === ($result['ErrorCode'] ?? null) && ($status < 200 || $status >= 300)) {
+            throw $this->invalidResponse($response, 'Postmark acceptance conflicts with HTTP status', ambiguous: true);
+        }
+        if ($status < 200 || $status >= 300 || !isset($result['ErrorCode']) || 0 !== $result['ErrorCode']) {
+            throw new Swift_TransportException(\sprintf('Postmark API error %s: %s', $this->responseText($result['ErrorCode'] ?? null, '-1'), $this->responseText($result['Message'] ?? null, 'Unknown error')));
         }
 
         return [
@@ -63,7 +70,7 @@ class Swift_Transport_Api_PostMarkTransport extends Swift_Transport_AbstractHttp
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        return \json_decode($this->getResponseBody($response), true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]

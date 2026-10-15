@@ -308,16 +308,19 @@ Constructor: `__construct(Swift_Transport $inner, int $maxRetries = 3, int $base
 **Classification.** The default `Swift_Transport_DefaultRetryClassifier`
 decides retryability in this order:
 
-1. Permanent message patterns (e.g. `authentication failed`, `invalid api
+1. A `Swift_Transport_NonRetryableException` anywhere in the exception chain
+   -- never retried. HTTP transports use this marker when a response leaves
+   acceptance uncertain, to avoid submitting the message again.
+2. Permanent message patterns (e.g. `authentication failed`, `invalid api
    key`, `mailbox not found`, `relay access denied`) -- never retried.
-2. Retryable message patterns (e.g. `connection reset`, `rate limit`,
+3. Retryable message patterns (e.g. `connection reset`, `rate limit`,
    `service unavailable`, `internal server error`) -- retried.
-3. Permanent codes (SMTP `500`, `501`, `530`, `535`, `550`-`554`; HTTP `401`,
+4. Permanent codes (SMTP `500`, `501`, `530`, `535`, `550`-`554`; HTTP `401`,
    `403`) -- not retried.
-4. Retryable codes (SMTP `421`, `450`, `451`, `452`; HTTP `429`, `502`, `503`,
+5. Retryable codes (SMTP `421`, `450`, `451`, `452`; HTTP `429`, `502`, `503`,
    `504`) -- retried.
-5. Code `0` (connection-level failure with no SMTP/HTTP code) -- retried.
-6. Any other `4xx` code -- retried; everything else is treated as permanent.
+6. Code `0` (connection-level failure with no SMTP/HTTP code) -- retried.
+7. Any other `4xx` code -- retried; everything else is treated as permanent.
 
 Implement `Swift_Transport_RetryClassifier` to customize this. You can also
 configure retry through a DSN (`retry(...)` wrapper or `retries`/`retry_delay`

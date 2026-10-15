@@ -38,7 +38,7 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
 
         if ($statusCode < 200 || $statusCode >= 300) {
             $parsed       = $this->parseResponse($response);
-            $errorMessage = $parsed['message'] ?? $parsed['error'] ?? 'Unknown error';
+            $errorMessage = $this->responseText($parsed['message'] ?? $parsed['error'] ?? null, 'Unknown error');
 
             throw new Swift_TransportException(\sprintf('Sweego API error (%d): %s', $statusCode, $errorMessage));
         }
@@ -68,7 +68,7 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        return \json_decode($this->getResponseBody($response), true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]

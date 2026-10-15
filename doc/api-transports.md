@@ -770,6 +770,28 @@ try {
 
 The event system fires a `failedMessage` event before throwing, allowing plugins to react to failures. Failed recipient addresses are collected into the `$failedRecipients` array.
 
+The HTTP provider parsers share a bounded JSON decoder. A nonempty response
+must decode to an object or array; malformed JSON, scalar JSON (including
+`null`) and invalid fields used for identifiers or counts become transport
+exceptions. Provider errors retain printable error details. Generic decoding
+errors include the HTTP status without copying the raw response body into the
+exception message. Programming errors such as an unrelated `TypeError` still
+propagate.
+
+Empty responses retain each provider's existing acknowledgement rules.
+MailerSend's HTTP 202 and SendGrid's successful status/header acknowledgements
+do not require a JSON body. This validation does not require every provider
+to return a message identifier; valid scalar identifiers are normalized to
+strings for `Swift_SentMessage`.
+
+A malformed or unreadable response after HTTP success can leave delivery
+uncertain. These failures, invalid message identifiers and recognized
+acceptance results that conflict with an HTTP error carry
+`Swift_Transport_NonRetryableException` in their exception chain. The default
+retry classifier does not replay them, even if an outer exception message
+contains a transient-error phrase. A custom retry classifier controls its own
+policy. See [Retry](sending.md#retry).
+
 For transports extending `AbstractHttpApiTransport`, the `send()` method:
 
 1. Fires `beforeSendPerformed` event (cancellable)

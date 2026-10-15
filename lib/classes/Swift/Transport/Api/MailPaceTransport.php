@@ -51,7 +51,7 @@ class Swift_Transport_Api_MailPaceTransport extends Swift_Transport_AbstractHttp
 
         if ($statusCode < 200 || $statusCode >= 300) {
             $parsed       = $this->parseResponse($response);
-            $errorMessage = $parsed['error'] ?? 'Unknown error';
+            $errorMessage = $this->responseText($parsed['error'] ?? null, 'Unknown error');
 
             throw new Swift_TransportException(\sprintf('MailPace API error (%d): %s', $statusCode, $errorMessage));
         }
@@ -81,7 +81,7 @@ class Swift_Transport_Api_MailPaceTransport extends Swift_Transport_AbstractHttp
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        return \json_decode($this->getResponseBody($response), true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]

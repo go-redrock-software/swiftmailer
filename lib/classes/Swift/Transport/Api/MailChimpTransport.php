@@ -42,7 +42,7 @@ class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHtt
         $result = $this->parseResponse($response);
 
         if (isset($result['status']) && 'error' === $result['status']) {
-            throw new Swift_TransportException(\sprintf('Mandrill API error: %s', $result['message'] ?? 'Unknown error'));
+            throw new Swift_TransportException(\sprintf('Mandrill API error: %s', $this->responseText($result['message'] ?? null, 'Unknown error')));
         }
 
         // Result is an array of per-recipient statuses
@@ -50,6 +50,22 @@ class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHtt
         foreach ($result as $recipientResult) {
             if (isset($recipientResult['status']) && \in_array($recipientResult['status'], ['sent', 'queued'], true)) {
                 ++$successCount;
+            }
+        }
+        $status = $response->getStatusCode();
+        if ($status < 200 || $status >= 300) {
+            if ($successCount > 0) {
+                throw $this->invalidResponse($response, 'Mandrill acceptance conflicts with HTTP status', ambiguous: true);
+            }
+
+            throw new Swift_TransportException(\sprintf('Mandrill API error (HTTP %d): %s', $status, $this->responseText($result['message'] ?? null, 'Unknown error')), $status);
+        }
+        if (!\array_is_list($result)) {
+            throw $this->invalidResponse($response, 'Invalid Mandrill recipient result list');
+        }
+        foreach ($result as $recipientResult) {
+            if (!\is_array($recipientResult) || !\is_string($recipientResult['status'] ?? null)) {
+                throw $this->invalidResponse($response, 'Invalid Mandrill recipient result');
             }
         }
 
@@ -97,7 +113,7 @@ class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHtt
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        return \json_decode($this->getResponseBody($response), true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]

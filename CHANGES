@@ -47,6 +47,12 @@ Unreleased
 
  Bug Fixes:
 
+ * HTTP API transports now handle scalar/malformed JSON, invalid response
+   fields and conflicting HTTP acceptance statuses through normal transport
+   failure reporting. Ambiguous responses disable automatic retry with the
+   default classifier to avoid duplicate delivery. Existing empty-body and
+   status/header-only acknowledgements are preserved (GitLab #50).
+
  * Sweego attachments and inline images are now base64-encoded for the API
    instead of sent as raw bytes. Empty file content and filename "0" retain
    their required fields; absent optional metadata is omitted (GitLab #49).

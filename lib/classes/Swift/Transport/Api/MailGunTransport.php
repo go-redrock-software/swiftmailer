@@ -51,7 +51,7 @@ class Swift_Transport_Api_MailGunTransport extends Swift_Transport_AbstractHttpA
 
         $statusCode = $response->getStatusCode();
         if ($statusCode < 200 || $statusCode >= 300) {
-            $errorMsg = $result['message'] ?? 'Unknown Mailgun error';
+            $errorMsg = $this->responseText($result['message'] ?? null, 'Unknown Mailgun error');
             throw new Swift_TransportException('Mailgun API error: '.$errorMsg);
         }
 
@@ -78,7 +78,7 @@ class Swift_Transport_Api_MailGunTransport extends Swift_Transport_AbstractHttpA
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        return \json_decode($this->getResponseBody($response), true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]

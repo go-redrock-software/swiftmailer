@@ -36,11 +36,14 @@ class Swift_Transport_Api_AhaSendTransport extends Swift_Transport_AbstractHttpA
 
         $result = $this->parseResponse($response);
 
-        if ($response->getStatusCode() >= 400) {
+        if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
             $error = $result['error'] ?? [];
-            throw new Swift_TransportException(\sprintf('AhaSend API error [%s]: %s', $error['type'] ?? 'unknown', $error['message'] ?? 'Unknown error'));
+            throw new Swift_TransportException(\sprintf('AhaSend API error [%s]: %s', $this->responseText($error['type'] ?? null, 'unknown'), $this->responseText($error['message'] ?? null, 'Unknown error')));
         }
 
+        if (isset($result['data']) && (!\is_array($result['data']) || !\array_is_list($result['data']) || (isset($result['data'][0]) && !\is_array($result['data'][0])))) {
+            throw $this->invalidResponse($response, 'Invalid AhaSend message results');
+        }
         $messageId = null;
         if (isset($result['data'][0]['id'])) {
             $messageId = $result['data'][0]['id'];
@@ -69,7 +72,7 @@ class Swift_Transport_Api_AhaSendTransport extends Swift_Transport_AbstractHttpA
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        return \json_decode($this->getResponseBody($response), true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]

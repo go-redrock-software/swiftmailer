@@ -195,6 +195,7 @@
 \class_alias('Swift_Transport_FailoverTransport', 'Swift\Transport\FailoverTransport');
 \class_alias('Swift_Transport_IoBuffer', 'Swift\Transport\IoBuffer');
 \class_alias('Swift_Transport_LoadBalancedTransport', 'Swift\Transport\LoadBalancedTransport');
+\class_alias('Swift_Transport_NonRetryableException', 'Swift\Transport\NonRetryableException');
 \class_alias('Swift_Transport_NullTransport', 'Swift\Transport\NullTransport');
 \class_alias('Swift_Transport_RetryClassifier', 'Swift\Transport\RetryClassifier');
 \class_alias('Swift_Transport_RetryTransport', 'Swift\Transport\RetryTransport');

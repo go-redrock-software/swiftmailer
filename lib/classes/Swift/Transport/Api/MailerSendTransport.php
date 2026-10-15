@@ -39,16 +39,20 @@ class Swift_Transport_Api_MailerSendTransport extends Swift_Transport_AbstractHt
         $statusCode = $response->getStatusCode();
         if (202 !== $statusCode) {
             $result   = $this->parseResponse($response);
-            $errorMsg = $result['message'] ?? 'Unknown MailerSend error';
+            $errorMsg = $this->responseText($result['message'] ?? null, 'Unknown MailerSend error');
 
-            if (!empty($result['errors'])) {
+            if (!empty($result['errors']) && \is_array($result['errors'])) {
                 $details = [];
                 foreach ($result['errors'] as $field => $messages) {
-                    foreach ((array) $messages as $msg) {
+                    foreach ($this->responseErrors($messages) as $msg) {
                         $details[] = \sprintf('%s: %s', $field, $msg);
                     }
                 }
                 $errorMsg .= ' ('.\implode('; ', $details).')';
+            }
+
+            if ($statusCode >= 200 && $statusCode < 300) {
+                throw $this->invalidResponse($response, 'MailerSend expected HTTP 202: '.$errorMsg);
             }
 
             throw new Swift_TransportException('MailerSend API error: '.$errorMsg);
@@ -79,7 +83,7 @@ class Swift_Transport_Api_MailerSendTransport extends Swift_Transport_AbstractHt
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        return \json_decode($this->getResponseBody($response), true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]

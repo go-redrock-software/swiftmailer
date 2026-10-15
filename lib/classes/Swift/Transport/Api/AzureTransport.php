@@ -84,9 +84,9 @@ class Swift_Transport_Api_AzureTransport extends Swift_Transport_AbstractHttpApi
 
         $result = $this->parseResponse($response);
 
-        if ($response->getStatusCode() >= 400) {
-            $errorCode    = $result['error']['code']    ?? 'Unknown';
-            $errorMessage = $result['error']['message'] ?? 'Unknown error';
+        if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
+            $errorCode    = $this->responseText($result['error']['code'] ?? null, 'Unknown');
+            $errorMessage = $this->responseText($result['error']['message'] ?? null, 'Unknown error');
 
             throw new Swift_TransportException(\sprintf('Azure Communication Services API error %s: %s', $errorCode, $errorMessage));
         }
@@ -113,7 +113,7 @@ class Swift_Transport_Api_AzureTransport extends Swift_Transport_AbstractHttpApi
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        return \json_decode($this->getResponseBody($response), true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]
