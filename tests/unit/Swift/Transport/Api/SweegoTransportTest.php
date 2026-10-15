@@ -47,7 +47,7 @@ class SweegoTransportTest extends TestCase
                     $payload = $options['json'];
 
                     $this->assertSame(['email' => 'sender@example.com', 'name' => 'Sender Name'], $payload['from']);
-                    $this->assertSame([['email' => 'recipient@example.com']], $payload['recipients']);
+                    $this->assertSame([['email' => 'recipient@example.com', 'name' => 'Recipient Name']], $payload['recipients']);
                     $this->assertSame('Test Subject', $payload['subject']);
                     $this->assertSame('Plain text body', $payload['message-txt']);
                     $this->assertArrayNotHasKey('message-html', $payload);
@@ -116,14 +116,9 @@ class SweegoTransportTest extends TestCase
                 $this->callback(function (array $options): bool {
                     $payload = $options['json'];
 
-                    // CC recipients should be merged into the recipients array
-                    $this->assertCount(2, $payload['recipients']);
-                    $this->assertSame(['email' => 'to@example.com'], $payload['recipients'][0]);
-                    $this->assertSame(['email' => 'cc@example.com'], $payload['recipients'][1]);
-
-                    // CC should appear in headers object
-                    $this->assertArrayHasKey('headers', $payload);
-                    $this->assertSame('CC User <cc@example.com>', $payload['headers']['Cc']);
+                    $this->assertSame([['email' => 'to@example.com', 'name' => 'To User']], $payload['recipients']);
+                    $this->assertSame([['email' => 'cc@example.com', 'name' => 'CC User']], $payload['cc']);
+                    $this->assertArrayNotHasKey('headers', $payload);
 
                     return true;
                 }),
@@ -156,12 +151,8 @@ class SweegoTransportTest extends TestCase
                 $this->callback(function (array $options): bool {
                     $payload = $options['json'];
 
-                    // BCC recipients should be merged into the recipients array
-                    $this->assertCount(2, $payload['recipients']);
-                    $this->assertSame(['email' => 'to@example.com'], $payload['recipients'][0]);
-                    $this->assertSame(['email' => 'bcc@example.com'], $payload['recipients'][1]);
-
-                    // BCC should NOT appear in headers
+                    $this->assertSame([['email' => 'to@example.com', 'name' => 'To User']], $payload['recipients']);
+                    $this->assertSame([['email' => 'bcc@example.com', 'name' => 'BCC User']], $payload['bcc']);
                     $this->assertArrayNotHasKey('headers', $payload);
 
                     return true;
@@ -196,15 +187,10 @@ class SweegoTransportTest extends TestCase
                 $this->callback(function (array $options): bool {
                     $payload = $options['json'];
 
-                    // All recipients merged into recipients
-                    $this->assertCount(3, $payload['recipients']);
-                    $this->assertSame(['email' => 'to@example.com'], $payload['recipients'][0]);
-                    $this->assertSame(['email' => 'cc@example.com'], $payload['recipients'][1]);
-                    $this->assertSame(['email' => 'bcc@example.com'], $payload['recipients'][2]);
-
-                    // Only CC header, no BCC header
-                    $this->assertArrayHasKey('Cc', $payload['headers']);
-                    $this->assertArrayNotHasKey('Bcc', $payload['headers']);
+                    $this->assertSame([['email' => 'to@example.com', 'name' => 'To User']], $payload['recipients']);
+                    $this->assertSame([['email' => 'cc@example.com', 'name' => 'CC User']], $payload['cc']);
+                    $this->assertSame([['email' => 'bcc@example.com', 'name' => 'BCC User']], $payload['bcc']);
+                    $this->assertArrayNotHasKey('headers', $payload);
 
                     return true;
                 }),
@@ -493,10 +479,9 @@ class SweegoTransportTest extends TestCase
                 $this->callback(function (array $options): bool {
                     $payload = $options['json'];
 
-                    // Each To recipient becomes its own entry; the display name is omitted
                     $this->assertCount(2, $payload['recipients']);
-                    $this->assertSame(['email' => 'first@example.com'], $payload['recipients'][0]);
-                    $this->assertSame(['email' => 'second@example.com'], $payload['recipients'][1]);
+                    $this->assertSame(['email' => 'first@example.com', 'name' => 'First User'], $payload['recipients'][0]);
+                    $this->assertSame(['email' => 'second@example.com', 'name' => 'Second User'], $payload['recipients'][1]);
 
                     return true;
                 }),

@@ -11,6 +11,11 @@ Unreleased
 
  Security:
 
+ * Sweego now sends Cc and Bcc through their native API fields. Previously,
+   blind recipients were included in the public To list. Display names and
+   delivery counts are preserved. Messages with no To recipient are rejected
+   before HTTP because Sweego requires a public recipient (GitLab #48).
+
  * API transports now create a dispatcher when the first plugin is registered.
    Previously, omitting the optional dispatcher silently discarded listeners,
    including allowlist and redirect policies. Injected dispatchers are preserved

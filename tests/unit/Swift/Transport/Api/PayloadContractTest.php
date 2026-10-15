@@ -128,8 +128,8 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
     private const array MAILOMAT_ATTACHMENT = ['filename', 'contentBase64', 'contentType', 'contentId'];
 
     // Sweego -- POST /send
-    // Source: https://www.sweego.io/channel/email/integrate-sweegos-api-to-send-transactional-emails (fetched 2026-06-16)
-    private const array SWEEGO_TOP = ['channel', 'provider', 'campaign-type', 'recipients', 'from', 'subject', 'message-txt', 'message-html', 'attachments', 'headers'];
+    // Source: https://learn.sweego.io/docs/sweego/send-send-post (fetched 2026-10-15)
+    private const array SWEEGO_TOP = ['channel', 'provider', 'campaign-type', 'recipients', 'cc', 'bcc', 'from', 'subject', 'message-txt', 'message-html', 'attachments', 'headers'];
 
     private const array SWEEGO_ATTACHMENT = ['content', 'filename', 'disposition', 'content_id'];
 
@@ -366,8 +366,11 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
         foreach ($payload['attachments'] ?? [] as $attachment) {
             $this->assertOnlyAllowedKeys($attachment, self::SWEEGO_ATTACHMENT, 'Sweego attachment');
         }
-        foreach ($payload['recipients'] as $recipient) {
-            $this->assertOnlyAllowedKeys($recipient, ['email', 'name'], 'Sweego recipient');
+        $this->assertNotEmpty($payload['recipients'], 'Sweego requires at least one public To recipient');
+        foreach (['recipients', 'cc', 'bcc'] as $field) {
+            foreach ($payload[$field] ?? [] as $recipient) {
+                $this->assertOnlyAllowedKeys($recipient, ['email', 'name'], 'Sweego '.$field);
+            }
         }
     }
 

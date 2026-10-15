@@ -86,34 +86,12 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
         $fromEmail = \array_key_first($from);
         $fromName  = $from[$fromEmail] ?? null;
 
-        $recipients = [];
-        foreach ($message->getTo() ?? [] as $email => $name) {
-            $recipients[] = ['email' => $email];
+        $recipients = $this->formatRecipientList($message->getTo() ?? []);
+        if (!$recipients) {
+            throw new Swift_TransportException('Sweego requires at least one To recipient; Cc/Bcc-only messages are not supported.');
         }
 
         $headers = [];
-
-        // CC recipients are merged into recipients, with a Cc header added
-        $cc = $message->getCc();
-        if (!empty($cc)) {
-            foreach ($cc as $email => $name) {
-                $recipients[] = ['email' => $email];
-            }
-
-            $ccParts = [];
-            foreach ($cc as $email => $name) {
-                $ccParts[] = $this->formatAddress($email, $name);
-            }
-            $headers['Cc'] = \implode(', ', $ccParts);
-        }
-
-        // BCC recipients are merged into recipients — no header
-        $bcc = $message->getBcc();
-        if (!empty($bcc)) {
-            foreach ($bcc as $email => $name) {
-                $recipients[] = ['email' => $email];
-            }
-        }
 
         // Reply-To goes in the headers object
         $replyTo = $message->getReplyTo();
@@ -138,6 +116,12 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
             'recipients' => $recipients,
             'subject'    => $message->getSubject(),
         ];
+        // Sweego exposes every `recipients` address in To. Copy roles have native fields.
+        foreach (['cc' => $message->getCc(), 'bcc' => $message->getBcc()] as $field => $addresses) {
+            if ($addresses) {
+                $payload[$field] = $this->formatRecipientList($addresses);
+            }
+        }
 
         $body = $this->getMessageBody($message);
         if (null !== $body['text']) {
@@ -164,5 +148,19 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
         }
 
         return $payload;
+    }
+
+    private function formatRecipientList(array $addresses): array
+    {
+        $recipients = [];
+        foreach ($addresses as $email => $name) {
+            $recipient = ['email' => $email];
+            if (null !== $name && '' !== $name) {
+                $recipient['name'] = $name;
+            }
+            $recipients[] = $recipient;
+        }
+
+        return $recipients;
     }
 }
