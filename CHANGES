@@ -29,6 +29,11 @@ Unreleased
 
  Bug Fixes:
 
+ * The class-map generator now also regenerates runtime namespace aliases from
+   the same sorted source map. Eight missing aliases are restored, including
+   the send/report result enums. Repeated generation is deterministic; invalid
+   source stops generation before either output is written (GitLab #51).
+
  * ESMTP greeting: when EHLO fails and the HELO fallback fails too, the
    exception keeps the EHLO reply (and its code). A server that closes the
    connection after EHLO, such as smtp-relay.gmail.com answering
