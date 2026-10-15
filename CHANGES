@@ -17,6 +17,11 @@ Unreleased
    audiences are rejected before mutation. Preflight reads are not atomic with
    concurrent Graph edits (GitLab #42).
 
+ * API transports now create a dispatcher when the first plugin is registered.
+   Previously, omitting the optional dispatcher silently discarded listeners,
+   including allowlist and redirect policies. Injected dispatchers are preserved
+   and subsequent registrations reuse the same dispatcher (GitLab #44).
+
  * AllowlistPlugin and RedirectingPlugin now enforce recipient policy on
    explicit SMTP envelopes, preventing envelope-only recipients from bypassing
    dev/staging delivery restrictions. The explicit sender is preserved, and

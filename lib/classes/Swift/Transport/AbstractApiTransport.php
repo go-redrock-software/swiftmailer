@@ -60,7 +60,8 @@ abstract class Swift_Transport_AbstractApiTransport implements Swift_Transport
     #[Override]
     public function registerPlugin(Swift_Events_EventListener $plugin): void
     {
-        $this->eventDispatcher?->bindEventListener($plugin);
+        $this->eventDispatcher ??= new Swift_Events_SimpleEventDispatcher();
+        $this->eventDispatcher->bindEventListener($plugin);
     }
 
     /**

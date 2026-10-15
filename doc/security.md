@@ -86,6 +86,14 @@ Escaping in the debug/reporting plugins is **not uniform** -- know which output 
 
 ## Transport hardening
 
+### API listener registration
+
+Registering a plugin on an API transport initializes a dispatcher if none was
+supplied. A registered allowlist or redirect policy is therefore enforced with
+default constructor options. A caller-supplied dispatcher is preserved, and the
+lazy dispatcher is reused. No policy is enabled until you register one. See
+[API plugin registration](api-transports.md#registering-plugins) for details.
+
 ### Recipient safety policies and explicit envelopes
 
 `AllowlistPlugin` and `RedirectingPlugin` enforce their configured policies on

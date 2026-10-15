@@ -52,6 +52,25 @@ All API transports implement the `Swift_Transport` interface:
 | `send($message, &$failedRecipients, $envelope)` | Sends the message; returns recipient count |
 | `registerPlugin($plugin)` | Binds an event listener plugin |
 
+## Registering plugins
+
+All 21 concrete API transports accept an optional event dispatcher. When it is
+omitted, the first `registerPlugin()` call creates a `Swift_Events_SimpleEventDispatcher`
+and binds the listener. Later registrations reuse it, and an explicitly injected
+dispatcher is retained. The simple dispatcher deduplicates repeated registration
+of the same listener object. Without registered plugins or an injected dispatcher,
+the transport continues to send without public event dispatch.
+
+```php
+$transport = new Swift_Transport_Api_SendgridTransport($apiKey);
+$transport->registerPlugin(new Swift_Plugins_AllowlistPlugin(['*@safe.example']));
+$mailer = new Swift_Mailer($transport);
+```
+
+The DSN factory already creates a dispatcher for API transports. Direct
+construction now enforces registered policies too. API envelope limitations
+still apply, and calendar conversion requires its own audience-policy handling.
+
 ## Explicit envelopes
 
 The optional `Swift_Envelope` is checked after recipient-policy plugins run.
@@ -741,7 +760,7 @@ For transports extending `AbstractHttpApiTransport`, the `send()` method:
 4. On failure: fires `failedMessage` event, throws `Swift_TransportException`
 5. Always fires `sendPerformed` event in `finally` block
 
-> **Note:** The event dispatcher is optional across all API transports. Every dispatch site is null-safe (`$this->eventDispatcher?->...`), so a transport constructed without an `EventDispatcher` sends normally and simply skips event firing.
+> **Note:** The event dispatcher is optional. Without plugins, omitted dispatchers do not fire public events. Registering a plugin lazily creates a dispatcher and enables its listener; an injected dispatcher is preserved.
 
 ---
 
