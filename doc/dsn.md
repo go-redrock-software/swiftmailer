@@ -166,7 +166,7 @@ mailtrap+sandbox://APITOKEN@default?inbox_id=12345
 
 Only a fixed whitelist of parameters is accepted (`Swift_Transport_DsnTransportFactory::ALLOWED_DSN_PARAMETERS`):
 
-`verify_peer`, `peer_fingerprint`, `source_ip`, `smtputf8`, `command`, `retries`, `retry_delay`, `click_tracking`, `click_tracking_text`, `open_tracking`
+`verify_peer`, `peer_fingerprint`, `source_ip`, `smtputf8`, `command`, `retries`, `retry_delay`, `click_tracking`, `click_tracking_text`, `open_tracking`, `timeout`, `auth_mode`, `local_domain`
 
 Any parameter outside this list is **not** silently dropped and does **not** throw — it triggers an `E_USER_WARNING` (`unknown DSN parameter "x" will be ignored`) and is then ignored. This validation runs for every scheme.
 
@@ -180,10 +180,40 @@ These apply to the SMTP schemes (`smtp`, `smtp+tls`, `smtp+ssl`, and the provide
 | `peer_fingerprint` | string | Expected TLS peer certificate fingerprint (pinning). |
 | `source_ip` | string | Local IP address to bind the outgoing connection to. |
 | `smtputf8` | bool | Set `false` to disable SMTPUTF8 and fall back to IDN address encoding. Omitted/`true` keeps the default auto encoder. |
+| `timeout` | positive integer seconds | Sets the native connection/read timeout; omitted keeps 30 seconds. Zero, fractions, signs and overflow are rejected. |
+| `auth_mode` | authenticator keyword | Selects an installed authenticator, case-insensitively. Defaults include `PLAIN`, `LOGIN`, `CRAM-MD5`, `NTLM` and `XOAUTH2`; custom registered authenticators are supported. Omitted keeps automatic selection. |
+| `local_domain` | ASCII hostname or IP | Sets the EHLO/HELO identity. IPv4 and IPv6 addresses are formatted as SMTP address literals. Omitted keeps the native local domain. |
 
 ```
 smtp+tls://user:pass@mail.example.com:587?verify_peer=true&source_ip=10.0.0.1&smtputf8=false
 ```
+
+The three connection options `timeout`, `auth_mode` and `local_domain` are
+specific to SMTP. They reject other schemes, duplicate/array values and
+normalized aliases such as `auth.mode`. Occurrence checks follow PHP's
+`arg_separator.input`, including semicolon separators when configured. Invalid
+values raise `InvalidArgumentException` before a connection is opened.
+
+```text
+smtp+tls://user:password@mail.example.com:587?timeout=5&auth_mode=login&local_domain=mailer.example.com
+gmail+smtp://user:ACCESS_TOKEN@default?timeout=10&auth_mode=xoauth2&local_domain=2001%3Adb8%3A%3A1
+retry(failover(smtp://user:password@primary.example.com?timeout=5 smtp://user:password@backup.example.com?timeout=8)?retry_period=15)
+```
+
+`local_domain` accepts ordinary hostnames (including `localhost` and a trailing
+DNS dot), raw IP addresses, `[IPv4]` and `[IPv6:address]` literals. Use an ASCII
+name, such as its punycode representation, for an internationalized hostname.
+Whitespace, control characters and malformed domain/address values are rejected.
+This setting changes the SMTP greeting identity; it does not change the message
+sender or recipients.
+
+Literal and percent-encoded `0` SMTP usernames/passwords are preserved by the
+operational factory, including through the public mailer helper and decorators.
+A non-empty username `0` performs AUTH; omitted or empty usernames retain their
+existing unauthenticated behavior. The factory compensates for Nyholm 2.0.1's
+raw-zero userinfo parsing without changing vendor files or its query parser.
+This compatibility step applies to transport construction; the raw metadata
+helper continues to use the underlying parser's representation.
 
 ### `command` parameter
 

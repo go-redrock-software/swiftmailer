@@ -7,6 +7,7 @@
  * file that was distributed with this source code.
  */
 
+use Nyholm\Dsn\Configuration\Url;
 use Nyholm\Dsn\DsnParser;
 
 /**
@@ -33,9 +34,14 @@ class Swift_Transport_DsnTransportFactory
         'click_tracking',
         'click_tracking_text',
         'open_tracking',
+        'timeout',
+        'auth_mode',
+        'local_domain',
     ];
 
     private const array SENDGRID_TRACKING_PARAMETERS = ['click_tracking', 'click_tracking_text', 'open_tracking'];
+
+    private const array SMTP_CONNECTION_PARAMETERS = ['timeout', 'auth_mode', 'local_domain'];
 
     private const array SMTP_HOST_MAP = [
         'gmail+smtp'      => ['host' => 'smtp.gmail.com',                     'port' => 465, 'encryption' => 'ssl'],
@@ -122,13 +128,31 @@ class Swift_Transport_DsnTransportFactory
         return (int) $value;
     }
 
+    private function parseDsnUrl(#[SensitiveParameter] string $dsnString): Url
+    {
+        $parsed = DsnParser::parseUrl($dsnString);
+        // Nyholm 2.0.1 uses empty() on raw userinfo and loses the literal string '0'.
+        // Restore only that value, retaining the validated parser result and query data.
+        if (\preg_match('#\A[a-zA-Z0-9+.-]+:(?://)?([^/?\#@]*)@#D', $dsnString, $matches)) {
+            $authentication = \explode(':', $matches[1], 2);
+            if ('0' === $authentication[0]) {
+                $parsed = $parsed->withUser('0');
+            }
+            if ('0' === ($authentication[1] ?? null)) {
+                $parsed = $parsed->withPassword('0');
+            }
+        }
+
+        return $parsed;
+    }
+
     /**
      * Wraps a transport in a RetryTransport when the DSN carries a positive
      * "retries" query parameter (with an optional "retry_delay" in milliseconds).
      */
     private function maybeWrapWithRetry(Swift_Transport $transport, #[SensitiveParameter] string $dsnString): Swift_Transport
     {
-        $dsn     = new Swift_Dsn(DsnParser::parseUrl($dsnString));
+        $dsn     = new Swift_Dsn($this->parseDsnUrl($dsnString));
         $retries = (int) ($dsn->getParameter('retries') ?? 0);
 
         if ($retries <= 0) {
@@ -142,12 +166,13 @@ class Swift_Transport_DsnTransportFactory
 
     private function createTransport(#[SensitiveParameter] string $dsnString): Swift_Transport
     {
-        $nyholmDsn = DsnParser::parseUrl($dsnString);
+        $nyholmDsn = $this->parseDsnUrl($dsnString);
         $dsn       = new Swift_Dsn($nyholmDsn);
         $this->validateDsnParameters($dsn->getParameters());
         $trackingOptions = $this->parseSendgridTrackingOptions($dsnString, $dsn);
 
-        $class = $dsn->getTransportClass();
+        $class       = $dsn->getTransportClass();
+        $smtpOptions = $this->parseSmtpOptions($dsnString, $dsn, $class);
 
         // NullTransport needs an event dispatcher
         if (Swift_Transport_NullTransport::class === $class) {
@@ -181,7 +206,7 @@ class Swift_Transport_DsnTransportFactory
 
         // SMTP transports
         if (Swift_Transport_EsmtpTransport::class === $class) {
-            return $this->createSmtpTransport($dsn);
+            return $this->createSmtpTransport($dsn, $smtpOptions);
         }
 
         // Mailtrap sandbox mode
@@ -210,39 +235,17 @@ class Swift_Transport_DsnTransportFactory
     /** @return array<string, bool> */
     private function parseSendgridTrackingOptions(#[SensitiveParameter] string $dsnString, #[SensitiveParameter] Swift_Dsn $dsn): array
     {
-        $parameters = \array_intersect_key($dsn->getParameters(), \array_flip(self::SENDGRID_TRACKING_PARAMETERS));
+        $parameters = $this->canonicalOptions($dsnString, $dsn->getParameters(), self::SENDGRID_TRACKING_PARAMETERS, 'SendGrid tracking');
         if (!$parameters) {
             return [];
         }
         if ('sendgrid' !== $dsn->getScheme()) {
             throw new InvalidArgumentException('SendGrid tracking options require the sendgrid HTTP API scheme.');
         }
-
-        // The underlying query parser normalizes names and keeps the last duplicate.
-        // Require an unambiguous spelling and one occurrence of each tracking option.
-        $query = \parse_url($dsnString, \PHP_URL_QUERY);
-        if (!\is_string($query)) {
-            throw new InvalidArgumentException('Invalid SendGrid tracking query.');
-        }
-        $occurrences      = [];
-        $separatorPattern = '/['.\preg_quote(\ini_get('arg_separator.input') ?: '&', '/').']/';
-        foreach (\preg_split($separatorPattern, $query) as $pair) {
-            $name = \urldecode(\explode('=', $pair, 2)[0]);
-            $base = \explode('[', \explode("\0", $name, 2)[0], 2)[0];
-            $base = \str_replace([' ', '.'], '_', \ltrim($base));
-            if (!\in_array($base, self::SENDGRID_TRACKING_PARAMETERS, true)) {
-                continue;
-            }
-            if ($name !== $base) {
-                throw new InvalidArgumentException('SendGrid tracking option names must use their canonical scalar spelling.');
-            }
-            $occurrences[$base] = ($occurrences[$base] ?? 0) + 1;
-        }
-
         $options = [];
         foreach ($parameters as $name => $value) {
-            if (1 !== ($occurrences[$name] ?? 0) || !\is_string($value) || !\in_array(\strtolower($value), ['true', 'false', '1', '0'], true)) {
-                throw new InvalidArgumentException('Each SendGrid tracking option must occur once and be true, false, 1 or 0.');
+            if (!\in_array(\strtolower($value), ['true', 'false', '1', '0'], true)) {
+                throw new InvalidArgumentException('Each SendGrid tracking option must be true, false, 1 or 0.');
             }
             $options[$name] = \in_array(\strtolower($value), ['true', '1'], true);
         }
@@ -250,7 +253,101 @@ class Swift_Transport_DsnTransportFactory
         return $options;
     }
 
-    private function createSmtpTransport(Swift_Dsn $dsn): Swift_Transport
+    /** @return array{timeout?: int, auth_mode?: string, local_domain?: string} */
+    private function parseSmtpOptions(#[SensitiveParameter] string $dsnString, #[SensitiveParameter] Swift_Dsn $dsn, string $class): array
+    {
+        $parameters = $this->canonicalOptions($dsnString, $dsn->getParameters(), self::SMTP_CONNECTION_PARAMETERS, 'SMTP connection');
+        if (!$parameters) {
+            return [];
+        }
+        if (Swift_Transport_EsmtpTransport::class !== $class) {
+            throw new InvalidArgumentException('SMTP connection options require an SMTP scheme.');
+        }
+        $options = [];
+        if (isset($parameters['timeout'])) {
+            $value = $parameters['timeout'];
+            if (!\preg_match('/\A[0-9]+\z/D', $value)) {
+                throw new InvalidArgumentException('SMTP timeout must be a positive whole number of seconds.');
+            }
+            $value   = \ltrim($value, '0');
+            $maximum = (string) \PHP_INT_MAX;
+            if ('' === $value || \strlen($value) > \strlen($maximum) || (\strlen($value) === \strlen($maximum) && \strcmp($value, $maximum) > 0)) {
+                throw new InvalidArgumentException('SMTP timeout must be positive and within the supported integer range.');
+            }
+            $options['timeout'] = (int) $value;
+        }
+        if (isset($parameters['auth_mode'])) {
+            if (!\preg_match('/\A[A-Za-z0-9_-]+\z/D', $parameters['auth_mode'])) {
+                throw new InvalidArgumentException('SMTP auth_mode must name a configured authenticator.');
+            }
+            $options['auth_mode'] = \strtoupper($parameters['auth_mode']);
+        }
+        if (isset($parameters['local_domain'])) {
+            $options['local_domain'] = $this->smtpLocalDomain($parameters['local_domain']);
+        }
+
+        return $options;
+    }
+
+    private function smtpLocalDomain(#[SensitiveParameter] string $value): string
+    {
+        if (\preg_match('/\A\[IPv6:(.+)\]\z/iD', $value, $matches)) {
+            if (false !== \filter_var($matches[1], \FILTER_VALIDATE_IP, \FILTER_FLAG_IPV6)) {
+                return $matches[1];
+            }
+        } elseif (\preg_match('/\A\[(.+)\]\z/D', $value, $matches)) {
+            if (false !== \filter_var($matches[1], \FILTER_VALIDATE_IP, \FILTER_FLAG_IPV4)) {
+                return $matches[1];
+            }
+        } elseif (false !== \filter_var($value, \FILTER_VALIDATE_IP) || false !== \filter_var($value, \FILTER_VALIDATE_DOMAIN, \FILTER_FLAG_HOSTNAME)) {
+            return $value;
+        }
+
+        throw new InvalidArgumentException('SMTP local_domain must be an ASCII hostname or a valid IPv4/IPv6 address.');
+    }
+
+    /**
+     * @param list<string> $names
+     *
+     * @return array<string, string>
+     */
+    private function canonicalOptions(#[SensitiveParameter] string $dsnString, #[SensitiveParameter] array $parameters, array $names, string $label): array
+    {
+        $selected = \array_intersect_key($parameters, \array_flip($names));
+        if (!$selected) {
+            return [];
+        }
+        $query = \parse_url($dsnString, \PHP_URL_QUERY);
+        if (!\is_string($query)) {
+            throw new InvalidArgumentException($label.' query is invalid.');
+        }
+        $occurrences      = [];
+        $separatorPattern = '/['.\preg_quote(\ini_get('arg_separator.input') ?: '&', '/').']/';
+        foreach (\preg_split($separatorPattern, $query) as $pair) {
+            $name = \urldecode(\explode('=', $pair, 2)[0]);
+            $base = \explode('[', \explode("\0", $name, 2)[0], 2)[0];
+            $base = \str_replace([' ', '.'], '_', \ltrim($base));
+            if (!\in_array($base, $names, true)) {
+                continue;
+            }
+            if ($name !== $base) {
+                throw new InvalidArgumentException($label.' option names must use their canonical scalar spelling.');
+            }
+            $occurrences[$base] = ($occurrences[$base] ?? 0) + 1;
+        }
+        $validated = [];
+        foreach ($selected as $name => $value) {
+            if (1 !== ($occurrences[$name] ?? 0) || !\is_string($value)) {
+                throw new InvalidArgumentException($label.' options must be scalar values and occur exactly once.');
+            }
+            $validated[$name] = $value;
+        }
+
+        return $validated;
+    }
+
+    /** @param array{timeout?: int, auth_mode?: string, local_domain?: string} $options */
+    private function createSmtpTransport(#[SensitiveParameter] Swift_Dsn $dsn, #[SensitiveParameter] array $options = []): Swift_Transport
     {
         $providerDefaults = self::SMTP_HOST_MAP[$dsn->getScheme()] ?? null;
 
@@ -269,11 +366,35 @@ class Swift_Transport_DsnTransportFactory
         // Use Swift_SmtpTransport convenience class
         $transport = new Swift_SmtpTransport($host, $port, $encryption);
 
-        if ($user = $dsn->getUser()) {
+        if (null !== ($user = $dsn->getUser())) {
             $transport->setUsername($user);
         }
-        if ($password = $dsn->getPassword()) {
+        if (null !== ($password = $dsn->getPassword())) {
             $transport->setPassword($password);
+        }
+
+        if (isset($options['timeout'])) {
+            $transport->setTimeout($options['timeout']);
+        }
+        if (isset($options['local_domain'])) {
+            $transport->setLocalDomain($options['local_domain']);
+        }
+        if (isset($options['auth_mode'])) {
+            $knownMode = false;
+            foreach ($transport->getExtensionHandlers() as $handler) {
+                if ($handler instanceof Swift_Transport_Esmtp_AuthHandler) {
+                    foreach ($handler->getAuthenticators() as $authenticator) {
+                        if (0 === \strcasecmp($options['auth_mode'], $authenticator->getAuthKeyword())) {
+                            $knownMode = true;
+                            break 2;
+                        }
+                    }
+                }
+            }
+            if (!$knownMode) {
+                throw new InvalidArgumentException('SMTP auth_mode must name a configured authenticator.');
+            }
+            $transport->setAuthMode($options['auth_mode']);
         }
 
         // TLS DSN parameters

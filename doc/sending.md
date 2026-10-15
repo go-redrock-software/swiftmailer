@@ -117,6 +117,27 @@ re-issues `EHLO` over the upgraded connection before sending mail.
 > `CONNECTION_ENCRYPTION_MODE_*` constants above (or their string values
 > `'tls'` / `'ssl'`).
 
+### SMTP connection settings
+
+The DSN factory accepts the same native settings used in code:
+
+```php
+$transport = (new Swift_Transport_DsnTransportFactory())->fromDsnString(
+    'smtp+tls://user:password@mail.example.com:587?timeout=5&auth_mode=login&local_domain=mailer.example.com'
+);
+
+// Equivalent native controls:
+$transport->setTimeout(5)->setAuthMode('LOGIN')->setLocalDomain('mailer.example.com');
+```
+
+The DSN timeout is a positive whole number of seconds and applies to connection
+and read operations, rather than a deadline for the entire message. Authentication
+mode selects an installed mechanism; omitting it keeps the normal priority order.
+The local domain controls EHLO/HELO and accepts a validated ASCII hostname or IP
+address. These options remain attached to their SMTP leaf inside retry/pool
+wrappers. See [SMTP DSN parameters](dsn.md#smtp-parameters) for validation and
+address formatting.
+
 ### Authentication
 
 Many servers require a username and password before relaying mail:
@@ -156,6 +177,11 @@ An invalid mode throws `Swift_TransportException` (`Auth mode <x> is invalid`).
 > MD5 algorithm. Prefer `XOAUTH2`, or `PLAIN`/`LOGIN` over a TLS connection.
 > `XOAUTH2` uses the username as the account/email and the password as the
 > OAuth2 access token.
+
+A non-empty username string `0` is authenticated, and a password string `0` is
+sent unchanged. Empty or omitted usernames continue to skip AUTH. Explicit
+mechanism selection also treats a non-empty string as a selection, including a
+custom registered keyword `0`.
 
 ### Other SMTP options
 

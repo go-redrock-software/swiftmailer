@@ -151,7 +151,7 @@ class Swift_Transport_Api_SendgridTrackingTest extends TestCase
             } catch (InvalidArgumentException $error) {
                 $this->assertStringContainsString('tracking', $error->getMessage());
                 $this->assertStringNotContainsString('PRIVATE-TRACKING-KEY', $error->getMessage());
-                $this->assertStringNotContainsString('PRIVATE-TRACKING-KEY', \print_r(\array_slice($error->getTrace(), 0, 3), true));
+                $this->assertStringNotContainsString('PRIVATE-TRACKING-KEY', \print_r(\array_filter($error->getTrace(), static fn (array $frame): bool => Swift_Transport_DsnTransportFactory::class === ($frame['class'] ?? null)), true));
             }
         } finally {
             \ini_set('zend.exception_ignore_args', $previous);

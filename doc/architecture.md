@@ -412,7 +412,12 @@ Two classes turn connection strings into transports:
   `ALLOWED_DSN_PARAMETERS` (unknown ones emit an `E_USER_WARNING`), and builds the
   concrete transport. SMTP schemes resolve provider host/port/encryption defaults from
   `SMTP_HOST_MAP`; a `?retries=` query parameter wraps the result in a
-  `RetryTransport`. The sendmail path is constrained to an allowlist of binaries.
+  `RetryTransport`. SMTP `timeout`, `auth_mode` and `local_domain` options are
+  validated before connection and applied through native setters. Scoped SMTP and
+  SendGrid options share canonical-name/scalar/occurrence validation using PHP's
+  configured query separators. A small adapter preserves literal-zero userinfo
+  lost by the installed Nyholm 2.0.1 parser while retaining its validated URL/query representation.
+  The sendmail path is constrained to an allowlist of binaries.
 
 - `Swift::createTransportFromDsn()` is a legacy mailer convenience helper. It
   delegates transport construction to `DsnTransportFactory` and returns a
