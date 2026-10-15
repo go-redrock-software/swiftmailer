@@ -86,7 +86,7 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
         $fromEmail = \array_key_first($from);
         $fromName  = $from[$fromEmail] ?? null;
 
-        $recipients = $this->formatRecipientList($message->getTo() ?? []);
+        $recipients = $this->formatAddressList($message->getTo() ?? []);
         if (!$recipients) {
             throw new Swift_TransportException('Sweego requires at least one To recipient; Cc/Bcc-only messages are not supported.');
         }
@@ -109,17 +109,14 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
             // Sweego's documented value is 'transac' (see the send API reference and the
             // Symfony sweego-mailer bridge), NOT 'transactional'.
             'campaign-type' => 'transac',
-            'from'          => \array_filter([
-                'email' => $fromEmail,
-                'name'  => $fromName,
-            ]),
-            'recipients' => $recipients,
-            'subject'    => $message->getSubject(),
+            'from'          => $this->formatAddressList([$fromEmail => $fromName])[0],
+            'recipients'    => $recipients,
+            'subject'       => $message->getSubject(),
         ];
         // Sweego exposes every `recipients` address in To. Copy roles have native fields.
         foreach (['cc' => $message->getCc(), 'bcc' => $message->getBcc()] as $field => $addresses) {
             if ($addresses) {
-                $payload[$field] = $this->formatRecipientList($addresses);
+                $payload[$field] = $this->formatAddressList($addresses);
             }
         }
 
@@ -154,7 +151,8 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
         return $payload;
     }
 
-    private function formatRecipientList(array $addresses): array
+    /** Omit absent names while preserving strings such as "0" for every address role. */
+    private function formatAddressList(array $addresses): array
     {
         $recipients = [];
         foreach ($addresses as $email => $name) {

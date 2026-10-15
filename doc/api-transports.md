@@ -701,8 +701,9 @@ $transport = new Swift_Transport_Api_PostalTransport('your-api-key', 'postal.exa
 > **Note:** Sweego payloads include fixed fields `channel: email`, `provider: sweego`, and `campaign-type: transac`.
 
 To addresses use Sweego's public `recipients` list; Cc and Bcc use the separate
-`cc` and `bcc` lists, with optional display names preserved. Blind recipients
-are excluded from the public recipient list and custom headers. Sweego requires
+`cc` and `bcc` lists, with optional display names preserved. Sender and recipient
+names are omitted only when absent or empty; the string `"0"` is retained. Blind
+recipients are excluded from the public recipient list and custom headers. Sweego requires
 at least one To recipient, so Cc/Bcc-only messages throw a
 `Swift_TransportException` before an HTTP request. This check runs after
 recipient policies: a redirect can supply a safe To address, while an allowlist

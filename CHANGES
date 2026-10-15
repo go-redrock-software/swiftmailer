@@ -47,6 +47,10 @@ Unreleased
 
  Bug Fixes:
 
+ * Sweego now preserves sender display names such as "0", using the same
+   name omission rules as recipient addresses. Null and empty names
+   remain omitted (GitLab #52).
+
  * HTTP API transports now handle scalar/malformed JSON, invalid response
    fields and conflicting HTTP acceptance statuses through normal transport
    failure reporting. Ambiguous responses disable automatic retry with the
