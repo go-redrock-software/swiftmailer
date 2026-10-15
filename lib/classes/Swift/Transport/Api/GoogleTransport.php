@@ -49,6 +49,8 @@ class Swift_Transport_Api_GoogleTransport extends Swift_Transport_AbstractApiTra
 
         $totalRecipients = $toRecipients + $ccRecipients + $bccRecipients;
 
+        $policy = new Swift_Transport_Api_GmailRequestPolicy();
+        $http   = null;
         try {
             $client = $this->getApiConnection();
             if (!(new ReflectionObject($client))->isCloneable()) {
@@ -58,7 +60,7 @@ class Swift_Transport_Api_GoogleTransport extends Swift_Transport_AbstractApiTra
             // so refresh credentials and token callbacks retain their normal behavior.
             $client->getCache();
             $scoped = clone $client;
-            $http   = new Swift_Transport_Api_NoRedirectClient($client->getHttpClient());
+            $http   = new Swift_Transport_Api_NoRedirectClient($client->getHttpClient(), $policy->assertUsable(...), $policy->validateResponse(...));
             $scoped->setHttpClient($http);
             $scoped->setDefer(false);
             if ($scoped->getHttpClient() !== $http || $scoped->shouldDefer()) {
@@ -75,11 +77,22 @@ class Swift_Transport_Api_GoogleTransport extends Swift_Transport_AbstractApiTra
             if ($result instanceof Psr\Http\Message\RequestInterface) {
                 throw new Swift_Transport_NonRetryableException('Gmail returned a deferred request instead of a send result.');
             }
+            $http->assertNoRedirect();
+            $policy->assertAccepted($result);
 
             return $totalRecipients;
-        } catch (Swift_Transport_NonRetryableException $e) {
-            throw $e;
-        } catch (Exception $e) {
+        } catch (Throwable $error) {
+            try {
+                $http?->assertNoRedirect();
+                $policy->assertAfterFailure();
+            } catch (Throwable $refusal) {
+                $error = $refusal;
+            }
+            if (Swift_Transport_RetryPolicy::isTerminalFailure($error)) {
+                // SDK traces can retain OAuth clients, requests and token bodies.
+                throw new Swift_Transport_NonRetryableException('Gmail send failed permanently; automatic retry is disabled.', $error->getCode());
+            }
+
             return 0;
         }
     }

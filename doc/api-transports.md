@@ -369,7 +369,7 @@ $transport = new Swift_Transport_Api_BrevoTransport('your-api-key');
 |-|-|
 | **Class** | `Swift_Transport_Api_AmazonSesApiTransport` |
 | **DSN** | `amazon+api://...` (not fully DSN-constructible -- requires SesClient) |
-| **Base class** | `AbstractApiTransport` (directly, no Guzzle) |
+| **Base class** | `AbstractApiTransport` (HTTP through the Google SDK and Guzzle) |
 | **Constructor** | `(SesClient $sesClient, ?EventDispatcher $eventDispatcher)` |
 | **Dependency** | `async-aws/ses` |
 | **Auth method** | AWS SDK credentials (IAM access key / secret) |
@@ -563,6 +563,21 @@ HTTP-client/defer setters; unsupported customizations fail before reporting succ
 Injected HTTP clients must expose a Guzzle-compatible configuration with a callable
 handler. The isolated client uses those options and middleware; custom overrides
 of an injected HTTP client's send/request methods are not copied.
+
+A successful send must return a JSON Message with a nonempty string `id` without
+whitespace or control characters. String `"0"` is valid. The transport validates
+the HTTP response before Google model hydration and caller retry middleware,
+then checks the decoded SDK result. Missing, malformed or interrupted successful
+responses raise a permanent acceptance ambiguity; retry, failover and round-robin
+wrappers cannot automatically resend. Each explicit send has its own scope.
+OAuth token responses retain their own schema and ordinary SDK error handling.
+
+Terminal Gmail failures use a static Swift diagnostic and safe numeric status,
+without SDK messages or previous causes that can retain OAuth credentials.
+This intentionally changes SDK-specific terminal diagnostics. PHP Error causes
+are terminal; ordinary Google SDK exceptions before successful send acceptance
+continue returning zero. Custom SDK implementations must execute the guarded
+HTTP request and return a valid Message instead of inventing acceptance.
 
 ```php
 $client = new Google\Client();

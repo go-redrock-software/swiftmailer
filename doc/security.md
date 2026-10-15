@@ -91,6 +91,17 @@ PHP Error causes; it does not sanitize arbitrary caller-owned argument frames.
 Malformed or incomplete successful SES responses are terminal acceptance
 ambiguities and cannot trigger automatic resend through retry/failover.
 
+**6. Gmail failure graphs and acceptance.** Returned terminal Gmail send errors
+use static diagnostics and safe numeric status without retaining SDK messages,
+causes or their OAuth-bearing trace graphs. This includes message/token redirects,
+PHP Error causes and malformed or interrupted successful send responses.
+Isolated tests inspect messages, string traces and printed exception objects with
+argument recording enabled and disabled. Caller-owned argument frames and event
+callbacks remain caller-controlled. Ordinary SDK errors retain zero-return
+behavior. Successful sends require an observed valid Message JSON and decoded
+message ID; ambiguous acceptance cannot trigger automatic resend through retry
+or pool wrappers. Token exchange bodies are validated by the Google SDK.
+
 ## Plugin output escaping
 
 Escaping in the debug/reporting plugins is **not uniform** -- know which output is safe to render in a browser:

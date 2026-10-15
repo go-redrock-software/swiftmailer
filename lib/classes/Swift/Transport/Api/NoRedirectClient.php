@@ -20,7 +20,7 @@ class Swift_Transport_Api_NoRedirectClient implements ClientInterface
 
     private ?Swift_Transport_NonRetryableException $failure = null;
 
-    public function __construct(#[SensitiveParameter] private ClientInterface $client, #[SensitiveParameter] private ?Closure $requestValidator = null)
+    public function __construct(#[SensitiveParameter] private ClientInterface $client, #[SensitiveParameter] private ?Closure $requestValidator = null, #[SensitiveParameter] private ?Closure $responseValidator = null)
     {
     }
 
@@ -97,7 +97,7 @@ class Swift_Transport_Api_NoRedirectClient implements ClientInterface
                         ($this->requestValidator)($request, $options);
                     }
 
-                    return $next($request, $options)->then($this->validateResponse(...));
+                    return $next($request, $options)->then(fn (ResponseInterface $response): ResponseInterface => $this->validateResponse($response, $request));
                 };
             }, 'swift_redirect_response');
             $configuration['handler']         = $stack;
@@ -135,7 +135,7 @@ class Swift_Transport_Api_NoRedirectClient implements ClientInterface
         }
     }
 
-    private function validateResponse(ResponseInterface $response): ResponseInterface
+    private function validateResponse(#[SensitiveParameter] ResponseInterface $response, #[SensitiveParameter] ?RequestInterface $request = null): ResponseInterface
     {
         $status = $response->getStatusCode();
         if ($status >= 300 && $status < 400) {
@@ -143,6 +143,6 @@ class Swift_Transport_Api_NoRedirectClient implements ClientInterface
             throw $this->failure;
         }
 
-        return $response;
+        return null !== $request && null !== $this->responseValidator ? ($this->responseValidator)($request, $response) : $response;
     }
 }
