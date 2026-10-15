@@ -147,6 +147,8 @@ smoke-tests:
 mutation-testing:
   extends: .test-job
   stage: mutation
+  variables:
+    SYMFONY_DEPRECATIONS_HELPER: "max[direct]=0&baselineFile=./tests/deprecation-baseline.json"
   script:
     - pecl install xdebug > /dev/null 2>&1 && docker-php-ext-enable xdebug
     - mkdir -p .infection/infection
