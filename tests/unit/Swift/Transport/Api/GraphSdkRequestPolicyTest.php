@@ -353,6 +353,120 @@ class Swift_Transport_Api_GraphSdkRequestPolicyTest extends TestCase
         }
     }
 
+    public function testSendRetainsCallerRegisteredSerializationFactories(): void
+    {
+        $wire            = [];
+        [$client]        = $this->sdk([new Response(202)], $wire);
+        $writers         = Microsoft\Kiota\Abstractions\Serialization\SerializationWriterFactoryRegistry::getDefaultInstance();
+        $parsers         = Microsoft\Kiota\Abstractions\Serialization\ParseNodeFactoryRegistry::getDefaultInstance();
+        $originalWriters = $writers->contentTypeAssociatedFactories;
+        $originalParsers = $parsers->contentTypeAssociatedFactories;
+        $spy             = new class($originalWriters['application/json']) implements Microsoft\Kiota\Abstractions\Serialization\SerializationWriterFactory {
+            public int $calls = 0;
+
+            public function __construct(private Microsoft\Kiota\Abstractions\Serialization\SerializationWriterFactory $delegate)
+            {
+            }
+
+            public function getValidContentType(): string
+            {
+                return 'application/json';
+            }
+
+            public function getSerializationWriter(string $contentType): Microsoft\Kiota\Abstractions\Serialization\SerializationWriter
+            {
+                ++$this->calls;
+
+                return $this->delegate->getSerializationWriter($contentType);
+            }
+        };
+        $writers->contentTypeAssociatedFactories['application/json'] = $spy;
+        try {
+            [$message] = $this->scenario('sendMail');
+            $this->assertSame(4, (new Swift_Transport_Api_MicrosoftGraphTransport($client))->send($message));
+            $this->assertGreaterThan(0, $spy->calls, 'The caller registered writer must serialize the outgoing request.');
+            $this->assertSame($spy, $writers->contentTypeAssociatedFactories['application/json']);
+            $this->assertSame($originalParsers, $parsers->contentTypeAssociatedFactories);
+        } finally {
+            $writers->contentTypeAssociatedFactories = $originalWriters;
+            $parsers->contentTypeAssociatedFactories = $originalParsers;
+        }
+    }
+
+    /** @dataProvider unsupportedClients */
+    public function testNonCooperatingGraphClientsFailBeforeWire(string $kind): void
+    {
+        $wire        = [];
+        [, $adapter] = $this->sdk([new Response(202)], $wire);
+        $arguments   = [new Microsoft\Kiota\Authentication\Oauth\ClientCredentialContext('fixture-tenant', 'fixture-client', 'fixture-secret'), [], Microsoft\Graph\Core\NationalCloud::GLOBAL, $adapter];
+        $client      = match ($kind) {
+            'non-cloneable' => new class(...$arguments) extends GraphServiceClient {
+                private function __clone()
+                {
+                }
+            },
+            'fixed adapter getter' => $this->getMockBuilder(GraphServiceClient::class)->setConstructorArgs($arguments)->onlyMethods(['getRequestAdapter'])->getMock(),
+            'unscoped builder'     => new class(...$arguments) extends GraphServiceClient {
+                public ?Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder $unscoped = null;
+
+                public function me(): Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder
+                {
+                    return $this->unscoped ?? parent::me();
+                }
+            },
+        };
+        if ('fixed adapter getter' === $kind) {
+            $client->method('getRequestAdapter')->willReturn($adapter);
+        }
+        if ('unscoped builder' === $kind) {
+            $client->unscoped = $client->me();
+        }
+        $transport = new Swift_Transport_Api_MicrosoftGraphTransport($client);
+        [$message] = $this->scenario('sendMail');
+        $failed    = [];
+        try {
+            $transport->send($message, $failed);
+            $this->fail('The client must honor scoped adapters and builders.');
+        } catch (Swift_TransportException $error) {
+            $this->assertFalse((new Swift_Transport_DefaultRetryClassifier())->isRetryable($error));
+            $this->assertInstanceOf(Swift_Transport_NonRetryableException::class, $error->getPrevious());
+            $this->assertCount(4, $failed);
+        }
+        $this->assertSame([], $wire);
+        $this->assertSame($adapter, $client->getRequestAdapter());
+    }
+
+    public static function unsupportedClients(): iterable
+    {
+        yield ['non-cloneable'];
+        yield ['fixed adapter getter'];
+        yield ['unscoped builder'];
+    }
+
+    public function testCooperatingClientOverrideUsesTheScopedAdapter(): void
+    {
+        $wire        = [];
+        [, $adapter] = $this->sdk([new Response(202)], $wire);
+        $client      = new class(new Microsoft\Kiota\Authentication\Oauth\ClientCredentialContext('fixture-tenant', 'fixture-client', 'fixture-secret'), [], Microsoft\Graph\Core\NationalCloud::GLOBAL, $adapter) extends GraphServiceClient {
+            public object $calls;
+
+            public function me(): Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder
+            {
+                ++$this->calls->count;
+
+                return parent::me();
+            }
+        };
+        $client->calls = (object) ['count' => 0];
+        [$message]     = $this->scenario('sendMail');
+        $transport     = new Swift_Transport_Api_MicrosoftGraphTransport($client);
+        $this->assertSame(4, $transport->send($message));
+        $this->assertSame(1, $client->calls->count);
+        $this->assertSame($adapter, $client->getRequestAdapter());
+        $this->assertCount(1, $wire);
+        $this->assertFalse($wire[0]['options']['allow_redirects']);
+    }
+
     private function scenario(string $stage): array
     {
         $message   = (new Swift_Message('PRIVATE-GRAPH-SUBJECT'))->setFrom('sender@safe.test')->setTo(['allowed@safe.test', 'blocked@outside.test'])->setCc('copy@safe.test')->setBcc('blind@outside.test')->setBody('PRIVATE-GRAPH-BODY');

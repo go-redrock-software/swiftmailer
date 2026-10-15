@@ -561,8 +561,8 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
      */
     private function resolveUserRequestBuilder(Swift_Mime_SimpleMessage $message): Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder
     {
-        $adapter = Swift_Transport_Api_GraphRequestPolicy::scope($this->client->getRequestAdapter());
-        $client  = GraphServiceClient::createWithRequestAdapter($adapter);
+        $client  = Swift_Transport_Api_GraphRequestPolicy::scopeClient($this->client);
+        $adapter = $client->getRequestAdapter();
         if ($this->shouldUseFromAddress) {
             $from = $message->getFrom();
             if (!$from) {
@@ -574,6 +574,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         } else {
             $builder = $client->users()->byUserId($this->sendingAccountUserId);
         }
+        Swift_Transport_Api_GraphRequestPolicy::assertAdapter($builder, $adapter);
         $this->scopedAdapters ??= new WeakMap();
         $this->scopedAdapters[$builder] = $adapter;
 

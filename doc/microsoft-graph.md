@@ -48,11 +48,13 @@ The caller's `GraphServiceClient`, adapter, base URL, HTTP options and handler
 stack remain intact. Authentication providers/cache objects, serializer factories,
 SDK retry handling, tracing and CAE reauthentication retain their behavior. A
 subsequent request made directly through the original SDK client still uses its
-original HTTP policy. Swift uses standard generated builders for the isolated
-adapter; custom overrides of the client's `me()` or `users()` methods are not
-reproduced. Existing protected Swift draft/upload helper signatures are preserved.
+original HTTP policy. The service client is cloned without rerunning its
+constructor, preserving caller-registered serialization factories and global
+registries. Client subclasses and builder overrides must use the copied adapter;
+fixed adapter getters and returned builders tied to an unscoped adapter fail
+before sending. Existing protected Swift draft/upload signatures are preserved.
 
-The adapter must support cloning and expose the Kiota Guzzle HTTP configuration
+The client and adapter must support cloning and expose the Kiota Guzzle HTTP configuration
 expected by this integration. Compatibility is checked before sending; unsupported
 custom adapters or SDK layouts fail with a clear non-retryable error. Injected
 HTTP clients must expose a Guzzle-compatible configuration and callable handler.
