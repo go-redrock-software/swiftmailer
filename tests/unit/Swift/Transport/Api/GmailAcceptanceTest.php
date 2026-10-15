@@ -153,6 +153,40 @@ class Swift_Transport_Api_GmailAcceptanceTest extends TestCase
         $this->assertCount(1, $wire);
     }
 
+    /** @dataProvider rejectedTransfers */
+    public function testRejectedTransfersWithSuccessfulHeadersArePermanent(string $body, bool $async): void
+    {
+        $wire         = [];
+        $responseBody = 'interrupted' === $body ? new PumpStream(static function () {
+            throw new RuntimeException('fixture incomplete body');
+        }) : $body;
+        [$sdk] = $this->sdk([static function (RequestInterface $request) use ($responseBody, $async) {
+            $error = new GuzzleHttp\Exception\RequestException('fixture incomplete transfer', $request, new Response(200, [], $responseBody));
+            if ($async) {
+                return GuzzleHttp\Promise\Create::rejectionFor($error);
+            }
+            throw $error;
+        }], $wire);
+        try {
+            (new Swift_Transport_RetryTransport(new Swift_Transport_Api_GoogleTransport($sdk), 2, 0))->send($this->message(), $failed);
+            $this->fail('Known-success headers on an incomplete transfer are ambiguous.');
+        } catch (Swift_Transport_NonRetryableException $error) {
+            $this->assertSame(200, $error->getCode());
+            $this->assertNull($error->getPrevious());
+        }
+        $this->assertCount(1, $wire);
+        $this->assertCount(3, $failed);
+    }
+
+    public static function rejectedTransfers(): iterable
+    {
+        foreach (['{}', '{"id":"received-before-transfer-error"}', 'interrupted'] as $body) {
+            foreach ([false, true] as $async) {
+                yield [$body, $async];
+            }
+        }
+    }
+
     public function testMalformedRefusalCannotBeSwallowedByCallerMiddleware(): void
     {
         $wire            = [];
@@ -265,7 +299,7 @@ class Swift_Transport_Api_GmailAcceptanceTest extends TestCase
             $queue[] = static function (RequestInterface $request, array $options) use (&$wire, $response) {
                 $wire[] = ['request' => $request, 'body' => (string) $request->getBody(), 'options' => $options];
 
-                return $response;
+                return $response instanceof Closure ? $response($request) : $response;
             };
         }
         $stack = HandlerStack::create(new MockHandler($queue));

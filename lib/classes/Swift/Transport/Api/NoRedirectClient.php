@@ -1,6 +1,7 @@
 <?php
 
 use GuzzleHttp\ClientInterface;
+use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Promise\PromiseInterface;
 use Psr\Http\Message\RequestInterface;
@@ -97,7 +98,19 @@ class Swift_Transport_Api_NoRedirectClient implements ClientInterface
                         ($this->requestValidator)($request, $options);
                     }
 
-                    return $next($request, $options)->then(fn (ResponseInterface $response): ResponseInterface => $this->validateResponse($response, $request));
+                    try {
+                        $promise = $next($request, $options);
+                    } catch (Throwable $error) {
+                        if (null !== $this->responseValidator) {
+                            $this->validateFailure($error, $request);
+                        }
+                        throw $error;
+                    }
+
+                    return $promise->then(
+                        fn (ResponseInterface $response): ResponseInterface => $this->validateResponse($response, $request),
+                        null === $this->responseValidator ? null : fn (Throwable $error) => $this->validateFailure($error, $request),
+                    );
                 };
             }, 'swift_redirect_response');
             $configuration['handler']         = $stack;
@@ -135,7 +148,15 @@ class Swift_Transport_Api_NoRedirectClient implements ClientInterface
         }
     }
 
-    private function validateResponse(#[SensitiveParameter] ResponseInterface $response, #[SensitiveParameter] ?RequestInterface $request = null): ResponseInterface
+    private function validateFailure(#[SensitiveParameter] Throwable $error, #[SensitiveParameter] RequestInterface $request): never
+    {
+        if ($error instanceof RequestException && null !== ($response = $error->getResponse())) {
+            $this->validateResponse($response, $request, $error);
+        }
+        throw $error;
+    }
+
+    private function validateResponse(#[SensitiveParameter] ResponseInterface $response, #[SensitiveParameter] ?RequestInterface $request = null, #[SensitiveParameter] ?Throwable $error = null): ResponseInterface
     {
         $status = $response->getStatusCode();
         if ($status >= 300 && $status < 400) {
@@ -143,6 +164,6 @@ class Swift_Transport_Api_NoRedirectClient implements ClientInterface
             throw $this->failure;
         }
 
-        return null !== $request && null !== $this->responseValidator ? ($this->responseValidator)($request, $response) : $response;
+        return null !== $request && null !== $this->responseValidator ? ($this->responseValidator)($request, $response, $error) : $response;
     }
 }

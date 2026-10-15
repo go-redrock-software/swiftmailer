@@ -12,6 +12,12 @@ $input    = \json_decode(\stream_get_contents(STDIN), true, flags: JSON_THROW_ON
 $requests = 0;
 $handler  = new GuzzleHttp\Handler\MockHandler([static function ($request) use ($input, &$requests) {
     ++$requests;
+    if (\str_starts_with($input['scenario'], 'rejected-')) {
+        $status = match ($input['scenario']) {
+            'rejected-success' => 200, 'rejected-denied' => 403, 'rejected-server' => 503
+        };
+        throw new GuzzleHttp\Exception\RequestException('TRACE-INCOMPLETE-TRANSFER', $request, new GuzzleHttp\Psr7\Response($status, [], '{}'));
+    }
     if (\str_contains($input['scenario'], 'type-error')) {
         throw new TypeError('TRACE-PHP-DIAGNOSTIC');
     }

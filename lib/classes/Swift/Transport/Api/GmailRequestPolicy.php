@@ -21,7 +21,7 @@ class Swift_Transport_Api_GmailRequestPolicy
         }
     }
 
-    public function validateResponse(#[SensitiveParameter] RequestInterface $request, #[SensitiveParameter] ResponseInterface $response): ResponseInterface
+    public function validateResponse(#[SensitiveParameter] RequestInterface $request, #[SensitiveParameter] ResponseInterface $response, #[SensitiveParameter] ?Throwable $error = null): ResponseInterface
     {
         $this->assertUsable();
         if ('POST' !== $request->getMethod() || !\str_ends_with($request->getUri()->getPath(), '/users/me/messages/send')) {
@@ -32,6 +32,9 @@ class Swift_Transport_Api_GmailRequestPolicy
             return $response;
         }
         $this->sendStatus = $status;
+        if (null !== $error) {
+            $this->refuseAcceptance();
+        }
         try {
             $body = (string) $response->getBody();
             $data = \json_decode($body, flags: JSON_THROW_ON_ERROR);

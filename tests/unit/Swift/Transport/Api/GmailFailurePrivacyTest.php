@@ -42,7 +42,7 @@ class Swift_Transport_Api_GmailFailurePrivacyTest extends TestCase
 
     public static function failures(): iterable
     {
-        foreach (['redirect301' => 301, 'redirect302' => 302, 'redirect303' => 303, 'redirect307' => 307, 'redirect308' => 308, 'malformed' => 200, 'type-error' => 0, 'wrapped-error' => 0, 'token-redirect' => 307, 'token-type-error' => 0, 'denied' => null, 'server' => null] as $scenario => $code) {
+        foreach (['redirect301' => 301, 'redirect302' => 302, 'redirect303' => 303, 'redirect307' => 307, 'redirect308' => 308, 'malformed' => 200, 'rejected-success' => 200, 'rejected-denied' => null, 'rejected-server' => null, 'type-error' => 0, 'wrapped-error' => 0, 'token-redirect' => 307, 'token-type-error' => 0, 'denied' => null, 'server' => null] as $scenario => $code) {
             foreach (['0', '1'] as $ignoreArgs) {
                 yield [$scenario, $ignoreArgs, $code];
             }
