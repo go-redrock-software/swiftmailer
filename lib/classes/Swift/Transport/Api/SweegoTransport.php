@@ -124,8 +124,8 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
         }
 
         $payload = [
-            'channel'       => 'email',
-            'provider'      => 'sweego',
+            'channel'  => 'email',
+            'provider' => 'sweego',
             // Sweego's documented value is 'transac' (see the send API reference and the
             // Symfony sweego-mailer bridge), NOT 'transactional'.
             'campaign-type' => 'transac',

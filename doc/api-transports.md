@@ -414,6 +414,13 @@ $transport = new Swift_Transport_Api_ResendTransport('re_xxxxxxxxxxxx');
 $transport = new Swift_Transport_Api_ScalewayTransport('scw-key', 'project-id-xxx', 'fr-par');
 ```
 
+Recipients use Scaleway's dedicated `to`, `cc` and `bcc` arrays. Blind recipients
+are never added to `to` or visible custom headers. Cc-only and Bcc-only messages
+retain their address fields and recipient counts. The payload follows the
+[Scaleway email request contract](https://www.scaleway.com/en/developers/api/transactional-email/emails),
+checked on 2026-10-15. Delivery and account permissions still depend on Scaleway.
+
+
 ---
 
 ### InfoBip

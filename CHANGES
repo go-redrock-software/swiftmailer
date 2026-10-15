@@ -9,6 +9,12 @@ Symfony Mailer while preserving full backward compatibility.
 Unreleased
 ----------
 
+ Security:
+
+ * Scaleway now submits To, Cc and Bcc in their separate API fields, keeping
+   blind recipients out of the public To list. Names, recipient counts and
+   Reply-To behavior are preserved (GitLab #43).
+
  Documentation:
 
  * Complete in-repo documentation overhaul so no external docs site is
