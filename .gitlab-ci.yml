@@ -180,15 +180,16 @@ mutation-testing:
 mutation-testing-mr:
   extends: .test-job
   stage: mutation
+  variables:
+    GIT_DEPTH: "0"
   script:
-    - pecl install xdebug > /dev/null 2>&1 && docker-php-ext-enable xdebug
-    - CHANGED=$(git diff --name-only origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}...HEAD
-        -- 'lib/classes/**.php' | paste -sd, -)
+    - CHANGED=$(php bin/ci/mutation-diff.php "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME")
     - |
       if [ -z "$CHANGED" ]; then
         echo "No source files changed, skipping mutation testing."
         exit 0
       fi
+    - pecl install xdebug > /dev/null 2>&1 && docker-php-ext-enable xdebug
     - mkdir -p .infection/infection
     - SYMFONY_DEPRECATIONS_HELPER=disabled XDEBUG_MODE=coverage vendor/bin/simple-phpunit
         --testsuite='SwiftMailer unit tests'

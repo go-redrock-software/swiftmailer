@@ -118,6 +118,23 @@ classes before Infection can install its include interceptor, causing tests to
 exercise the original classes and report escaping mutants. The isolated runner
 loads the project through the test bootstrap after interception is active.
 
+The merge request job obtains its file filter with
+`php bin/ci/mutation-diff.php "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"`. It fetches
+the exact target branch into an explicit tracking ref before comparing immutable
+commit IDs. `GIT_DEPTH: "0"` requests full history; the helper also recovers both
+source and target ancestry when invoked in a shallow checkout. Its stderr
+diagnostic records the fetched target commit and source-file count.
+
+Only a successful comparison with no changed PHP source files skips mutation
+testing. A missing target, unavailable merge base or failed fetch fails the job.
+Git arguments are passed without a shell and filenames are read with NUL
+separators. Spaces and Unicode are supported; commas and line breaks fail
+explicitly because Infection's comma-separated filter cannot represent them.
+The helper requires a target-project checkout: fork-project pipelines must run
+in the parent project rather than compare against a same-named branch in the
+fork. See Git's [fetch refspecs](https://git-scm.com/docs/git-fetch) and GitLab's
+[merge request variables](https://docs.gitlab.com/ci/variables/predefined_variables/).
+
 ## Adding a class → regenerate the class map
 
 Because classes are PSR-0 underscore-named, adding one may require regenerating the
