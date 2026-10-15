@@ -181,6 +181,10 @@
 \class_alias('Swift_Transport_Api_ResendTransport', 'Swift\Transport\Api\ResendTransport');
 \class_alias('Swift_Transport_Api_ScalewayTransport', 'Swift\Transport\Api\ScalewayTransport');
 \class_alias('Swift_Transport_Api_SendgridTransport', 'Swift\Transport\Api\SendgridTransport');
+\class_alias('Swift_Transport_Api_SesCredentialProvider', 'Swift\Transport\Api\SesCredentialProvider');
+\class_alias('Swift_Transport_Api_SesHttpClient', 'Swift\Transport\Api\SesHttpClient');
+\class_alias('Swift_Transport_Api_SesHttpResponse', 'Swift\Transport\Api\SesHttpResponse');
+\class_alias('Swift_Transport_Api_SesRequestPolicy', 'Swift\Transport\Api\SesRequestPolicy');
 \class_alias('Swift_Transport_Api_SweegoTransport', 'Swift\Transport\Api\SweegoTransport');
 \class_alias('Swift_Transport_DefaultRetryClassifier', 'Swift\Transport\DefaultRetryClassifier');
 \class_alias('Swift_Transport_DsnTransportFactory', 'Swift\Transport\DsnTransportFactory');

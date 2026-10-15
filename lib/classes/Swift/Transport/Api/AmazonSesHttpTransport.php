@@ -25,10 +25,17 @@ class Swift_Transport_Api_AmazonSesHttpTransport extends Swift_Transport_Abstrac
 
     public function ping(): bool
     {
-        try {
-            // Perform a lightweight request to check if the connection is working
-            $this->sesClient->listIdentities();
+        // Older supported SES packages expose only sendEmail, with no safe health operation.
+        if (!$this->sesClient instanceof AsyncAws\Ses\SesClient || !(new ReflectionObject($this->sesClient))->hasMethod('getSuppressedDestination')) {
+            return false;
+        }
 
+        try {
+            // Resolve the real SES v2 operation; listIdentities belongs to SES v1.
+            Swift_Transport_Api_SesRequestPolicy::run($this->sesClient, static fn (AsyncAws\Ses\SesClient $client) => $client->getSuppressedDestination(['EmailAddress' => 'ping@swiftmailer.invalid'])->resolve());
+
+            return true;
+        } catch (AsyncAws\Ses\Exception\NotFoundException $e) {
             return true;
         } catch (Exception $e) {
             return false;
@@ -50,7 +57,7 @@ class Swift_Transport_Api_AmazonSesHttpTransport extends Swift_Transport_Abstrac
                 $request['Content']                        = ['Raw' => ['Data' => $this->getRawMessageWithoutBcc($message)]];
                 $request['FeedbackForwardingEmailAddress'] = $envelope->getSender();
             }
-            $messageId = $this->sesClient->sendEmail($request)->getMessageId();
+            $messageId = Swift_Transport_Api_SesRequestPolicy::run($this->sesClient, static fn (AsyncAws\Ses\SesClient $client) => $client->sendEmail($request)->getMessageId());
             if (!$messageId) {
                 return 0;
             }

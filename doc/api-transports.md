@@ -380,6 +380,59 @@ $transport = new Swift_Transport_Api_AmazonSesHttpTransport($ses);
 
 ---
 
+### SES HTTP policy and supported clients
+
+Both SES transports require a configured `AsyncAws\Ses\SesClient`. The HTTP
+variant retains its untyped constructor for compatibility; an opaque SDK object,
+custom SES subclass, or uninitialized client fails with a permanent transport
+exception when used. Its `ping()` returns false for unsupported clients.
+
+Each send and health probe uses an operation-local SDK copy. Redirects are
+refused for resource requests and the supported AsyncAws credential-provider
+chain. A 3xx cannot forward the message, enter a caller retry strategy, or be
+replayed by `RetryTransport`. Existing exception-listener cancellation still
+returns zero accepted recipients. Swift send events expose the original client.
+AWS signing, normal SDK retries and serializers remain in use. The scoped HTTP
+adapter preserves lazy responses and streaming identity, validating headers
+before AsyncAws consumes a response.
+
+Supported Symfony HTTP clients are `CurlHttpClient`, `NativeHttpClient`,
+`AmpHttpClient` and `MockHttpClient`, optionally wrapped in the standard
+`RetryableHttpClient`, `TraceableHttpClient` and `ScopingHttpClient` decorators.
+The policy clones decorator ownership and guards every retry strategy while
+retaining normal non-3xx decisions, delays, progress callbacks and trace records.
+It sets `max_redirects=0` per request. Custom subclasses and other decorators
+(including `CachingHttpClient`) require an isolation contract and currently fail
+before a request. These restrictions apply even when credentials are cached.
+The original client retains its options and redirect/retry behavior.
+
+Supported AsyncAws providers are `Credentials`, `ConfigurationProvider`,
+`NullProvider`, `CacheProvider`, `PsrCacheProvider`, array-backed `ChainProvider`,
+`ContainerProvider`, `InstanceProvider`, `WebIdentityProvider` and
+`IniFileProvider`. Credential HTTP ownership is isolated, including STS requests
+and the INI provider's SSO requests when its optional AsyncAws packages are
+installed. Lazy providers with no explicit HTTP client receive scoped AsyncAws
+defaults. Custom providers and one-shot iterable chains fail before use.
+
+Normal credential cache and selected-provider updates are published to caller
+objects when the operation finishes, without overwriting newer caller entries.
+Persistent cache pools retain their native keys and successful refreshes.
+Credential-provider objects installed in the caller remain unchanged; scoped
+HTTP clients are never installed there. Cache publication occurs at operation
+completion, so callbacks should not depend on identical internal cache timing.
+A refused redirect cannot save successful fallback credentials. Optional SSO
+package flows are protected through their HTTP boundary but are not covered by
+the core-only regression suite.
+
+Both health checks resolve `getSuppressedDestination()` for the fixed
+`ping@swiftmailer.invalid` probe. Success and SES `NotFoundException` prove the
+API answered; redirects and other API/transport failures are unhealthy. This
+probe requires access to the suppression endpoint and does not send mail. Older
+SES packages that expose only `sendEmail()` remain supported for sends and return
+false from `ping()` because they provide no safe health operation.
+
+---
+
 ### Azure Communication Services
 
 | | |
@@ -758,8 +811,8 @@ $transport = new Swift_Transport_Api_SweegoTransport('your-api-key');
 | Postmark | -- | Server token header | JSON | Yes (single) | Yes | No |
 | Mailgun | `$domain`, `$host` | HTTP Basic | multipart/form-data | Yes (multi) | Yes | No |
 | Brevo | -- | `api-key` header | JSON | Yes (multi) | Yes | No |
-| Amazon SES (API) | `SesClient` | AWS SDK | SDK call | Yes (multi) | No | Yes |
-| Amazon SES (HTTP) | `$sesClient` | AWS SDK | SDK call | Yes (multi) | No | Yes |
+| Amazon SES (API) | `AsyncAws\Ses\SesClient` | AWS SDK | SDK call | Yes (multi) | No | Yes |
+| Amazon SES (HTTP) | `AsyncAws\Ses\SesClient` | AWS SDK | SDK call | Yes (multi) | No | Yes |
 | Azure | `$connectionString` | HMAC-SHA256 | JSON | No | No | No |
 | Google | `Google\Client` | OAuth2 | RFC 2822 raw | No | No | Yes |
 | Microsoft Graph | `GraphServiceClient`, `$userId` | Graph SDK | Graph objects | No | No | Yes |

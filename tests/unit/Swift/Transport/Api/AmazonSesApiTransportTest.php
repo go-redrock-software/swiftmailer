@@ -2,94 +2,9 @@
 
 use AsyncAws\Ses\Exception\NotFoundException;
 use AsyncAws\Ses\Input\SendEmailRequest;
-use AsyncAws\Ses\Result\GetSuppressedDestinationResponse;
-use AsyncAws\Ses\Result\SendEmailResponse;
-use AsyncAws\Ses\SesClient;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Fake SES client backed by the REAL async-aws SesClient for type compatibility.
- *
- * The constructor is overridden to a no-op so the real client (which needs AWS
- * configuration/credentials) is never instantiated. sendEmail() captures the
- * real SendEmailRequest the transport builds so assertions run against the
- * genuine async-aws getters, and ping behaviour is driven through
- * getSuppressedDestination().
- */
-class FakeSesApiClient extends SesClient
-{
-    public ?SendEmailRequest $capturedInput = null;
-
-    private ?SendEmailResponse $sendResponse = null;
-
-    private ?Throwable $sendException = null;
-
-    private ?Throwable $pingException = null;
-
-    public function __construct()
-    {
-        // Intentionally empty: skip the real SesClient constructor.
-    }
-
-    public function setSendResponse(SendEmailResponse $response): void
-    {
-        $this->sendResponse = $response;
-    }
-
-    public function setSendException(Throwable $e): void
-    {
-        $this->sendException = $e;
-    }
-
-    public function setPingException(Throwable $e): void
-    {
-        $this->pingException = $e;
-    }
-
-    public function sendEmail($input): SendEmailResponse
-    {
-        $this->capturedInput = $input;
-
-        if ($this->sendException) {
-            throw $this->sendException;
-        }
-
-        return $this->sendResponse;
-    }
-
-    public function getSuppressedDestination($input): GetSuppressedDestinationResponse
-    {
-        // ping() only ever inspects the thrown exception; it never reads a result.
-        throw $this->pingException ?? self::makeNotFound();
-    }
-
-    public static function makeNotFound(): NotFoundException
-    {
-        return (new ReflectionClass(NotFoundException::class))->newInstanceWithoutConstructor();
-    }
-}
-
-/**
- * Fake SendEmailResponse created without the real constructor (which needs an
- * HTTP Response). getMessageId() returns a preset id, bypassing initialize().
- */
-class FakeSesApiResponse extends SendEmailResponse
-{
-    public ?string $messageId = null;
-
-    public static function withId(?string $id): self
-    {
-        $r            = (new ReflectionClass(self::class))->newInstanceWithoutConstructor();
-        $r->messageId = $id;
-
-        return $r;
-    }
-
-    public function getMessageId(): ?string
-    {
-        return $this->messageId;
-    }
-}
+require_once \dirname(__DIR__, 2).'/SesSdkFixture.php';
 
 class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
 {
@@ -136,8 +51,8 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
 
     public function testPingReturnsFalseOnTransportError(): void
     {
-        $c = new FakeSesApiClient();
-        $c->setPingException(new RuntimeException('network down'));
+        $c            = new SesSdkFixture();
+        $c->onRequest = static fn () => throw new RuntimeException('network down');
         $this->assertFalse($this->makeTransport($c)->ping());
     }
 
@@ -145,10 +60,10 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
 
     public function testGetApiConnectionReturnsSesClient(): void
     {
-        $c   = new FakeSesApiClient();
+        $c   = new SesSdkFixture();
         $t   = $this->makeTransport($c);
         $ref = new ReflectionMethod($t, 'getApiConnection');
-        $this->assertSame($c, $ref->invoke($t));
+        $this->assertSame($c->client, $ref->invoke($t));
     }
 
     // ── send: basic ────────────────────────────────────────
@@ -166,7 +81,7 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
 
         $this->assertSame(1, $t->send($m));
 
-        $req = $c->capturedInput;
+        $req = $c->input();
         $this->assertInstanceOf(SendEmailRequest::class, $req);
         $this->assertSame('Sender <from@example.com>', $req->getFromEmailAddress());
         $this->assertSame(['Recip <to@example.com>'], $req->getDestination()->getToAddresses());
@@ -196,7 +111,7 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
         $m->setCc(['cc@example.com' => 'CC']);
         $this->assertSame(2, $t->send($m));
 
-        $this->assertSame(['CC <cc@example.com>'], $c->capturedInput->getDestination()->getCcAddresses());
+        $this->assertSame(['CC <cc@example.com>'], $c->input()->getDestination()->getCcAddresses());
     }
 
     public function testSendWithBcc(): void
@@ -208,7 +123,7 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
         $m->setBcc(['bcc@example.com' => 'BCC']);
         $this->assertSame(2, $t->send($m));
 
-        $this->assertSame(['BCC <bcc@example.com>'], $c->capturedInput->getDestination()->getBccAddresses());
+        $this->assertSame(['BCC <bcc@example.com>'], $c->input()->getDestination()->getBccAddresses());
     }
 
     // ── send: reply-to ─────────────────────────────────────
@@ -222,7 +137,7 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
         $m->setReplyTo(['reply@example.com' => 'Reply']);
         $this->assertSame(1, $t->send($m));
 
-        $this->assertSame(['Reply <reply@example.com>'], $c->capturedInput->getReplyToAddresses());
+        $this->assertSame(['Reply <reply@example.com>'], $c->input()->getReplyToAddresses());
     }
 
     // ── send: HTML body ────────────────────────────────────
@@ -236,7 +151,7 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
         $m->setBody('<p>HTML</p>', 'text/html');
         $this->assertSame(1, $t->send($m));
 
-        $body = $c->capturedInput->getContent()->getSimple()->getBody();
+        $body = $c->input()->getContent()->getSimple()->getBody();
         $this->assertSame('<p>HTML</p>', $body->getHtml()->getData());
         $this->assertNull($body->getText());
     }
@@ -254,9 +169,9 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
 
     public function testSendThrowsTransportExceptionOnFailure(): void
     {
-        $c = new FakeSesApiClient();
-        $c->setSendException(new RuntimeException('AWS fail'));
-        $t = $this->makeTransport($c);
+        $c            = new SesSdkFixture();
+        $c->onRequest = static fn () => throw new RuntimeException('AWS fail');
+        $t            = $this->makeTransport($c);
 
         $exEvt = $this->createMock(Swift_Events_TransportExceptionEvent::class);
         $this->eventDispatcherMock->method('createTransportExceptionEvent')->willReturn($exEvt);
@@ -268,8 +183,8 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
 
     public function testSendReturnsZeroWhenExceptionBubbleCancelled(): void
     {
-        $c = new FakeSesApiClient();
-        $c->setSendException(new RuntimeException('AWS fail'));
+        $c            = new SesSdkFixture();
+        $c->onRequest = static fn () => throw new RuntimeException('AWS fail');
 
         $exEvt = $this->createMock(Swift_Events_TransportExceptionEvent::class);
         $exEvt->method('bubbleCancelled')->willReturn(true);
@@ -290,7 +205,7 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
         $m->getHeaders()->addTextHeader('X-SES-CONFIGURATION-SET', 'my-config-set');
         $this->assertSame(1, $t->send($m));
 
-        $this->assertSame('my-config-set', $c->capturedInput->getConfigurationSetName());
+        $this->assertSame('my-config-set', $c->input()->getConfigurationSetName());
     }
 
     public function testSendMapsSourceArnHeaderToIdentityArn(): void
@@ -303,7 +218,7 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
         $m->getHeaders()->addTextHeader('X-SES-SOURCE-ARN', $arn);
         $this->assertSame(1, $t->send($m));
 
-        $this->assertSame($arn, $c->capturedInput->getFromEmailAddressIdentityArn());
+        $this->assertSame($arn, $c->input()->getFromEmailAddressIdentityArn());
     }
 
     public function testSendMapsListManagementOptionsHeader(): void
@@ -315,7 +230,7 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
         $m->getHeaders()->addTextHeader('X-SES-LIST-MANAGEMENT-OPTIONS', 'contactListName=MyList; topicName=MyTopic');
         $this->assertSame(1, $t->send($m));
 
-        $lmo = $c->capturedInput->getListManagementOptions();
+        $lmo = $c->input()->getListManagementOptions();
         $this->assertNotNull($lmo);
         $this->assertSame('MyList', $lmo->getContactListName());
         $this->assertSame('MyTopic', $lmo->getTopicName());
@@ -330,7 +245,7 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
         $m->setReturnPath('bounce@example.com');
         $this->assertSame(1, $t->send($m));
 
-        $this->assertSame('bounce@example.com', $c->capturedInput->getFeedbackForwardingEmailAddress());
+        $this->assertSame('bounce@example.com', $c->input()->getFeedbackForwardingEmailAddress());
     }
 
     // ── send: X-Mailer-Tag headers → EmailTags ────────────────────────
@@ -344,7 +259,7 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
         $m->getHeaders()->addTextHeader('X-Mailer-Tag', 'campaign-1');
         $this->assertSame(1, $t->send($m));
 
-        $tags = $c->capturedInput->getEmailTags();
+        $tags = $c->input()->getEmailTags();
         $this->assertCount(1, $tags);
         $this->assertSame('tag', $tags[0]->getName());
         $this->assertSame('campaign-1', $tags[0]->getValue());
@@ -361,7 +276,7 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
         $m->getHeaders()->addTextHeader('X-Mailer-Tag', 't2');
         $this->assertSame(1, $t->send($m));
 
-        $tags = $c->capturedInput->getEmailTags();
+        $tags = $c->input()->getEmailTags();
         $this->assertCount(2, $tags);
         $this->assertSame(['t1', 't2'], [$tags[0]->getValue(), $tags[1]->getValue()]);
         $this->assertEmpty($m->getHeaders()->getAll('X-Mailer-Tag'));
@@ -383,7 +298,7 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
 
         $this->assertSame(
             ['A <a@example.com>', 'B <b@example.com>'],
-            $c->capturedInput->getDestination()->getToAddresses(),
+            $c->input()->getDestination()->getToAddresses(),
         );
     }
 
@@ -401,7 +316,7 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
         $this->assertSame(1, $t->send($m));
 
         $expected = \sprintf('=?UTF-8?B?%s?= <from@example.com>', \base64_encode($name));
-        $this->assertSame($expected, $c->capturedInput->getFromEmailAddress());
+        $this->assertSame($expected, $c->input()->getFromEmailAddress());
     }
 
     public function testSendWithoutDisplayNamesUsesBareEmails(): void
@@ -416,8 +331,8 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
         $m->setBody('B');
         $this->assertSame(1, $t->send($m));
 
-        $this->assertSame('from@example.com', $c->capturedInput->getFromEmailAddress());
-        $this->assertSame(['to@example.com'], $c->capturedInput->getDestination()->getToAddresses());
+        $this->assertSame('from@example.com', $c->input()->getFromEmailAddress());
+        $this->assertSame(['to@example.com'], $c->input()->getDestination()->getToAddresses());
     }
 
     // ── Helpers ──────────────────────────────────────────
@@ -438,18 +353,15 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
         return $m;
     }
 
-    private function clientReturning(?string $messageId): FakeSesApiClient
+    private function clientReturning(?string $messageId): SesSdkFixture
     {
-        $c = new FakeSesApiClient();
-        $c->setSendResponse(FakeSesApiResponse::withId($messageId));
-
-        return $c;
+        return new SesSdkFixture([new Symfony\Component\HttpClient\Response\MockResponse(\json_encode(['MessageId' => $messageId]), ['http_code' => 200])]);
     }
 
-    private function makeTransport(?FakeSesApiClient $client = null): Swift_Transport_Api_AmazonSesApiTransport
+    private function makeTransport(?SesSdkFixture $client = null): Swift_Transport_Api_AmazonSesApiTransport
     {
         return new Swift_Transport_Api_AmazonSesApiTransport(
-            $client ?? new FakeSesApiClient(),
+            ($client ?? new SesSdkFixture())->client,
             $this->eventDispatcherMock,
         );
     }

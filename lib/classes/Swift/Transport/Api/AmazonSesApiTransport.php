@@ -27,12 +27,17 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
 
     public function ping(): bool
     {
+        // Older supported SES packages expose only sendEmail, with no safe health operation.
+        if (!$this->sesClient instanceof SesClient || !(new ReflectionObject($this->sesClient))->hasMethod('getSuppressedDestination')) {
+            return false;
+        }
+
         // async-aws's SesClient has no getAccountSendingEnabled(). Probe the
         // SESv2 suppression endpoint instead: a reachable account returns either
         // the suppressed-destination record or a NotFoundException -- both prove
-        // the API answered. Only a transport/credential failure is unhealthy.
+        // the API answered. Other API, transport and credential failures are unhealthy.
         try {
-            $this->sesClient->getSuppressedDestination(['EmailAddress' => 'ping@swiftmailer.invalid'])->resolve();
+            Swift_Transport_Api_SesRequestPolicy::run($this->sesClient, static fn (SesClient $client) => $client->getSuppressedDestination(['EmailAddress' => 'ping@swiftmailer.invalid'])->resolve());
 
             return true;
         } catch (AsyncAws\Ses\Exception\NotFoundException $e) {
@@ -62,11 +67,11 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
                 $request->setFeedbackForwardingEmailAddress($envelope->getSender());
             }
 
-            $result = $this->sesClient->sendEmail($request);
+            $messageId = Swift_Transport_Api_SesRequestPolicy::run($this->sesClient, static fn (SesClient $client) => $client->sendEmail($request)->getMessageId());
 
             $recipients = null !== $envelope ? \array_unique($envelope->getRecipients()) : \array_merge(\array_keys($message->getTo() ?? []), \array_keys($message->getCc() ?? []), \array_keys($message->getBcc() ?? []));
 
-            return $result->getMessageId() ? \count($recipients) : 0;
+            return $messageId ? \count($recipients) : 0;
         } catch (Exception $e) {
             $this->throwException(new Swift_TransportException('Unable to send email: '.$e->getMessage(), 0, $e));
         }

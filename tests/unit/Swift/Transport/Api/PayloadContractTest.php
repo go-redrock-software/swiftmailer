@@ -1,5 +1,7 @@
 <?php
 
+require_once \dirname(__DIR__, 2).'/SesSdkFixture.php';
+
 /*
  * Copyright (c) 2024. Redrock Software Corporation
  *
@@ -406,32 +408,10 @@ class Swift_Transport_Api_PayloadContractTest extends TestCase
      */
     public function testAmazonSesHttpRequestConformsToAsyncAwsSesV2(): void
     {
-        $client = new class {
-            public mixed $request = null;
-
-            public function sendEmail($request): object
-            {
-                $this->request = $request;
-
-                return new class {
-                    public function getMessageId(): string
-                    {
-                        return 'ses-id';
-                    }
-                };
-            }
-
-            public function listIdentities(): array
-            {
-                return [];
-            }
-        };
-
-        (new Swift_Transport_Api_AmazonSesHttpTransport($client))->send($this->richMessage());
-
-        $this->assertIsArray($client->request, 'SES http produced no request');
-
-        $request = AsyncAws\Ses\Input\SendEmailRequest::create($client->request);
+        $fixture = new SesSdkFixture();
+        (new Swift_Transport_Api_AmazonSesHttpTransport($fixture->client))->send($this->richMessage());
+        $this->assertCount(1, $fixture->requests);
+        $request = $fixture->input();
 
         $this->assertSame('from@example.com', $request->getFromEmailAddress(), 'SES FromEmailAddress (not v1 Source) must be populated');
         $this->assertNotNull($request->getContent(), 'SES Content (required, not v1 Message) must be populated');
