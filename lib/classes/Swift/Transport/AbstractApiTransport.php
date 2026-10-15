@@ -108,6 +108,116 @@ abstract class Swift_Transport_AbstractApiTransport implements Swift_Transport
     abstract protected function getApiConnection(): mixed;
 
     /**
+     * Reject envelope fields a header-based provider cannot submit independently.
+     */
+    protected function validateEnvelope(
+        Swift_Mime_SimpleMessage $message,
+        ?Swift_Envelope $envelope,
+        bool $supportsSenderOverride = false,
+        bool $supportsRecipientOverride = false,
+    ): void {
+        if (null === $envelope) {
+            return;
+        }
+
+        $from = \array_key_first($message->getFrom() ?? []);
+        if (!$supportsSenderOverride && $this->normalizeEnvelopeAddress($envelope->getSender()) !== $this->normalizeEnvelopeAddress((string) $from)) {
+            throw new Swift_TransportException(static::class.' does not support an envelope sender different from the message From address.');
+        }
+
+        if (!$supportsRecipientOverride) {
+            $headers = [];
+            foreach (['getTo', 'getCc', 'getBcc'] as $method) {
+                $headers = \array_merge($headers, \array_keys($message->$method() ?? []));
+            }
+            $headers    = \array_map($this->normalizeEnvelopeAddress(...), $headers);
+            $recipients = \array_map($this->normalizeEnvelopeAddress(...), $envelope->getRecipients());
+            \sort($headers);
+            \sort($recipients);
+            if ($headers !== $recipients) {
+                throw new Swift_TransportException(static::class.' does not support envelope recipients different from the message To/Cc/Bcc addresses.');
+            }
+        }
+    }
+
+    private function normalizeEnvelopeAddress(string $address): string
+    {
+        $separator = \strrpos($address, '@');
+
+        return false === $separator ? $address : \substr($address, 0, $separator + 1).\strtolower(\substr($address, $separator + 1));
+    }
+
+    /** Render a separate MIME copy without disclosing blind recipients. */
+    protected function getRawMessageWithoutBcc(Swift_Mime_SimpleMessage $message, array $additionalHeaders = []): string
+    {
+        $copy = clone $message;
+        $copy->getHeaders()->removeAll('Bcc');
+        $copy->getHeaders()->removeAll('Resent-Bcc');
+        foreach ($copy->getHeaders()->getAll() as $header) {
+            $name = \strtolower($header->getFieldName());
+            if ('x-mailer-tag' === $name || \str_starts_with($name, 'x-mailer-metadata-')) {
+                $copy->getHeaders()->removeAll($name);
+            }
+        }
+        foreach ($additionalHeaders as $name => $value) {
+            $copy->getHeaders()->removeAll($name);
+            $copy->getHeaders()->addTextHeader($name, $value);
+        }
+
+        return $copy->toString();
+    }
+
+    /**
+     * Run an SDK send with the same envelope-aware policy lifecycle as HTTP sends.
+     *
+     * @param callable(?Swift_Envelope): int $send
+     */
+    protected function sendWithEvents(Swift_Mime_SimpleMessage $message, &$failedRecipients, ?Swift_Envelope $envelope, callable $send): int
+    {
+        $failedRecipients ??= [];
+        $evt = $this->eventDispatcher?->createSendEvent($this, $message);
+
+        try {
+            if ($evt) {
+                $evt->setEnvelope($envelope);
+                $this->eventDispatcher->dispatchEvent($evt, 'beforeSendPerformed');
+                if ($evt->bubbleCancelled()) {
+                    $evt->setResult(Swift_Events_SendEvent::RESULT_FAILED);
+
+                    return 0;
+                }
+                $envelope = $evt->getEnvelope();
+            }
+
+            $sent = $send($envelope);
+            if (0 === $sent) {
+                $recipients       = null !== $envelope ? $envelope->getRecipients() : \array_keys(\array_merge($message->getTo() ?? [], $message->getCc() ?? [], $message->getBcc() ?? []));
+                $failedRecipients = \array_values(\array_unique(\array_merge($failedRecipients, $recipients)));
+            }
+            if ($evt) {
+                $evt->setResult($sent > 0 ? Swift_Events_SendEvent::RESULT_SUCCESS : Swift_Events_SendEvent::RESULT_FAILED);
+                $evt->setFailedRecipients($failedRecipients);
+            }
+
+            return $sent;
+        } catch (Throwable $e) {
+            $recipients       = null !== $envelope ? $envelope->getRecipients() : \array_keys(\array_merge($message->getTo() ?? [], $message->getCc() ?? [], $message->getBcc() ?? []));
+            $failedRecipients = \array_values(\array_unique(\array_merge($failedRecipients, $recipients)));
+            if ($evt) {
+                $evt->setResult(Swift_Events_SendEvent::RESULT_FAILED);
+                $evt->setFailedRecipients($failedRecipients);
+            }
+
+            throw $e;
+        } finally {
+            if ($evt) {
+                $evt->cancelBubble(false);
+                $this->eventDispatcher->dispatchEvent($evt, 'sendPerformed');
+            }
+        }
+    }
+
+    /**
      * Throw a TransportException, first sending it to any listeners.
      *
      * @throws Swift_TransportException

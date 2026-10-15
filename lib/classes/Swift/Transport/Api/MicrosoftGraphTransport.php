@@ -210,30 +210,23 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
      */
     public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null): int
     {
+        return $this->sendWithEvents($message, $failedRecipients, $envelope, function (?Swift_Envelope $effective) use ($message, &$failedRecipients): int {
+            return $this->sendMessage($message, $failedRecipients, $effective);
+        });
+    }
+
+    private function sendMessage(Swift_Mime_SimpleMessage $message, &$failedRecipients, ?Swift_Envelope $envelope): int
+    {
         if (null === $failedRecipients) {
             $failedRecipients = [];
         }
 
-        if ($evt = $this->eventDispatcher?->createSendEvent($this, $message)) {
-            $this->eventDispatcher->dispatchEvent($evt, 'beforeSendPerformed');
-            if ($evt->bubbleCancelled()) {
-                $evt->setResult(Swift_Events_SendEvent::RESULT_FAILED);
-                $evt->cancelBubble(false);
-                $this->eventDispatcher->dispatchEvent($evt, 'sendPerformed');
+        $this->validateEnvelope($message, $envelope);
 
-                return 0;
-            }
-        }
         // create and dispatch event before transport start
         if ($event = $this->eventDispatcher?->createTransportChangeEvent($this)) {
             $this->eventDispatcher->dispatchEvent($event, 'beforeTransportStarted');
             if ($event->bubbleCancelled()) {
-                if ($evt) {
-                    $evt->setResult(Swift_Events_SendEvent::RESULT_FAILED);
-                    $evt->cancelBubble(false);
-                    $this->eventDispatcher->dispatchEvent($evt, 'sendPerformed');
-                }
-
                 return 0;
             }
         }
@@ -249,6 +242,9 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
 
         $graphMessage = new Message();
         $graphMessage->setSubject($message->getSubject());
+        if (null !== $envelope) {
+            $graphMessage->setFrom($this->convertSwiftEmailAddressToGraphRecipient($message->getFrom()));
+        }
 
         $body = new ItemBody();
         $body->setContent($message->getBody());
@@ -295,7 +291,10 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         // strips METHOD:REQUEST from .ics parts sent via sendMail, so the recipient
         // never sees an actionable invite. Creating the event via the Calendar API
         // makes Exchange deliver a proper meeting request instead.
-        $calendarInvites   = $this->convertCalendarToEvents ? $this->extractCalendarInvites($message) : [];
+        $calendarInvites = $this->convertCalendarToEvents ? $this->extractCalendarInvites($message) : [];
+        if (null !== $envelope && $calendarInvites) {
+            throw new Swift_TransportException('Microsoft Graph does not support explicit SMTP envelopes when converting mail into calendar invitations.');
+        }
         $inviteAttachments = \array_column($calendarInvites, 'attachment');
 
         $attachmentsToSend = [];
@@ -345,7 +344,6 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
             $emailAddress->setAddress($replyTo);
             $recipient->setEmailAddress($emailAddress);
             $graphMessage->setReplyTo([$recipient]);
-            ++$recipient_count;
         }
 
         $sendMailBody = new SendMailPostRequestBody();
@@ -371,22 +369,11 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
                 }
             }
 
-            if ($evt) {
-                $evt->setResult(Swift_Events_SendEvent::RESULT_SUCCESS);
-            }
             $failedRecipients = [];
         } catch (Throwable $e) {
-            $exception = new Swift_TransportException("Failed to send email: {$e->getMessage()}", $e->getCode(), $e);
-            if ($evt) {
-                $evt->setResult(Swift_Events_SendEvent::RESULT_FAILED);
-                $evt->setFailedRecipients($failedRecipients);
-            }
+            $exception       = new Swift_TransportException("Failed to send email: {$e->getMessage()}", $e->getCode(), $e);
             $recipient_count = 0;
             $failure         = true;
-        } finally {
-            if ($evt) {
-                $this->eventDispatcher->dispatchEvent($evt, 'sendPerformed');
-            }
         }
 
         if (($failure ?? false) && isset($exception)) {

@@ -44,6 +44,11 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
 
     public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null): int
     {
+        return $this->sendWithEvents($message, $failedRecipients, $envelope, fn (?Swift_Envelope $effective): int => $this->sendMessage($message, $effective));
+    }
+
+    private function sendMessage(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope): int
+    {
         if (!$this->isStarted()) {
             $this->start();
         }
@@ -51,10 +56,17 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
         try {
             $tags    = $this->extractSesTagsFromMessage($message);
             $request = $this->getRequest($message, $tags);
+            if (null !== $envelope) {
+                $request->setDestination(new AsyncAws\Ses\ValueObject\Destination(['ToAddresses' => \array_values(\array_unique($envelope->getRecipients()))]));
+                $request->setContent(new AsyncAws\Ses\ValueObject\EmailContent(['Raw' => ['Data' => $this->getRawMessageWithoutBcc($message)]]));
+                $request->setFeedbackForwardingEmailAddress($envelope->getSender());
+            }
 
             $result = $this->sesClient->sendEmail($request);
 
-            return $result->getMessageId() ? 1 : 0;
+            $recipients = null !== $envelope ? \array_unique($envelope->getRecipients()) : \array_merge(\array_keys($message->getTo() ?? []), \array_keys($message->getCc() ?? []), \array_keys($message->getBcc() ?? []));
+
+            return $result->getMessageId() ? \count($recipients) : 0;
         } catch (Exception $e) {
             $this->throwException(new Swift_TransportException('Unable to send email: '.$e->getMessage(), 0, $e));
         }

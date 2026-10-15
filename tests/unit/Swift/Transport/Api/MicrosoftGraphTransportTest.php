@@ -425,7 +425,7 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $m->setBody('Hello');
 
         $result = $transport->send($m);
-        $this->assertSame(2, $result); // 1 To + replyTo
+        $this->assertSame(1, $result); // Reply-To does not receive this message.
     }
 
     // -- send: with attachments ---

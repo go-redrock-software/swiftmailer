@@ -470,6 +470,13 @@ explicit envelope is supplied, the SMTP transport uses it verbatim -- it does
 replace the envelope via `setEnvelope()`; the transport re-reads it after the
 event fires.
 
+API transport support depends on the provider endpoint. Postal and Mandrill
+support independent recipients and sender fields; Mailgun and Infobip support
+independent recipients with the message From address. SES maps the sender to
+bounce/complaint forwarding, with AWS managing SMTP MAIL FROM. Other API paths
+accept matching envelopes and reject unsupported overrides before submission.
+See the [API envelope capability table](api-transports.md#explicit-envelopes).
+
 ### Finding Rejected Addresses
 
 As the transport attempts each recipient, any it rejects is appended to the

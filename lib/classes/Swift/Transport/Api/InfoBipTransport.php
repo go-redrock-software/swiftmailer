@@ -35,11 +35,27 @@ class Swift_Transport_Api_InfoBipTransport extends Swift_Transport_AbstractHttpA
     #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
-        $response = $this->httpClient->request('POST', $this->getEndpoint(), [
+        $this->validateEnvelope($message, $envelope, supportsRecipientOverride: true);
+
+        $endpoint = $this->getEndpoint();
+        $options  = [
             'headers'     => $this->getAuthHeaders(),
-            'multipart'   => $this->getFormData($message),
             'http_errors' => false,
-        ]);
+        ];
+        if (null === $envelope) {
+            $options['multipart'] = $this->getFormData($message);
+        } else {
+            $endpoint = \preg_replace('~/email/3/send$~', '/email/4/mime', $endpoint, 1, $replacements);
+            if (!$replacements) {
+                throw new Swift_TransportException('Infobip does not support raw envelope delivery through this custom endpoint.');
+            }
+            $options['json'] = [
+                'destinations' => \array_values(\array_unique($envelope->getRecipients())),
+                'mimeMessage'  => \base64_encode($this->getRawMessageWithoutBcc($message)),
+            ];
+        }
+
+        $response = $this->httpClient->request('POST', $endpoint, $options);
 
         $result = $this->parseResponse($response);
 
@@ -57,7 +73,7 @@ class Swift_Transport_Api_InfoBipTransport extends Swift_Transport_AbstractHttpA
 
         return [
             'message_id' => $result['messages'][0]['messageId'] ?? null,
-            'recipients' => $this->countRecipients($message),
+            'recipients' => null === $envelope ? $this->countRecipients($message) : \count($options['json']['destinations']),
         ];
     }
 

@@ -21,6 +21,8 @@ class Swift_Transport_Api_AhaSendTransport extends Swift_Transport_AbstractHttpA
     #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
+        $this->validateEnvelope($message, $envelope);
+
         $payload = $this->getPayload($message);
 
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [

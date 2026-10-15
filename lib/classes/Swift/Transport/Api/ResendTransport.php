@@ -12,6 +12,8 @@ class Swift_Transport_Api_ResendTransport extends Swift_Transport_AbstractHttpAp
     #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
+        $this->validateEnvelope($message, $envelope);
+
         $payload = $this->getPayload($message);
 
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [

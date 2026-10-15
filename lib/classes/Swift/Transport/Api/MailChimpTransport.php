@@ -21,9 +21,16 @@ class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHtt
     #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
-        $payload = $this->getPayload($message);
+        $payload  = null === $envelope ? $this->getPayload($message) : $this->getRawPayload($message, $envelope);
+        $endpoint = $this->getEndpoint();
+        if (null !== $envelope) {
+            $endpoint = \preg_replace('~/send(?:\.json)?$~', '/send-raw.json', $endpoint, 1, $replacements);
+            if (!$replacements) {
+                throw new Swift_TransportException('Mandrill does not support raw envelope delivery through this custom endpoint.');
+            }
+        }
 
-        $response = $this->httpClient->request('POST', $this->getEndpoint(), [
+        $response = $this->httpClient->request('POST', $endpoint, [
             'headers' => [
                 'Content-Type' => 'application/json',
                 'Accept'       => 'application/json',
@@ -97,6 +104,31 @@ class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHtt
     protected function getPingEndpoint(): string
     {
         return 'https://mandrillapp.com/api/1.0/users/ping';
+    }
+
+    private function getRawPayload(Swift_Mime_SimpleMessage $message, Swift_Envelope $envelope): array
+    {
+        $tags     = $this->extractTags($message);
+        $metadata = $this->extractMetadata($message);
+        $headers  = [];
+        if ($tags) {
+            foreach ($tags as $tag) {
+                if (\str_contains($tag, ',')) {
+                    throw new Swift_TransportException('Mandrill raw delivery does not support commas in tag names.');
+                }
+            }
+            $headers['X-MC-Tags'] = \implode(',', $tags);
+        }
+        if ($metadata) {
+            $headers['X-MC-Metadata'] = \json_encode($metadata, JSON_THROW_ON_ERROR);
+        }
+
+        return [
+            'key'         => $this->apiKey,
+            'raw_message' => $this->getRawMessageWithoutBcc($message, $headers),
+            'from_email'  => $envelope->getSender(),
+            'to'          => \array_values(\array_unique($envelope->getRecipients())),
+        ];
     }
 
     private function getPayload(Swift_Mime_SimpleMessage $message): array

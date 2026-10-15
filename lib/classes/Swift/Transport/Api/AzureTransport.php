@@ -67,6 +67,8 @@ class Swift_Transport_Api_AzureTransport extends Swift_Transport_AbstractHttpApi
     #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
+        $this->validateEnvelope($message, $envelope);
+
         $payload = $this->buildPayload($message);
         $url     = $this->getEndpoint();
         $body    = \json_encode($payload, JSON_THROW_ON_ERROR);

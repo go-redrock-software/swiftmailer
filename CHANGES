@@ -37,6 +37,16 @@ Unreleased
 
  Bug Fixes:
 
+ * Explicit API envelopes now control raw delivery payloads for Postal,
+   Mandrill, Mailgun, Infobip and both SES variants. Other API paths reject
+   unsupported overrides before submission. Raw MIME copies omit blind-recipient
+   headers and preserve visible headers and attachments. Provider-specific
+   sender limits are documented (GitLab #39).
+ * SES, Gmail and Graph SDK sends now expose the effective envelope to recipient
+   policy plugins and always dispatch completion for cleanup. SES no longer
+   bypasses allowlist/redirect policies. SES counts all submitted recipients;
+   Graph excludes Reply-To from its delivery count (GitLab #39).
+
  * AllowlistPlugin catch-all mode now preserves allowed To/Cc/Bcc recipients
    and redirects blocked recipients from every field, including Cc-only and
    Bcc-only messages. Recipient fields are restored after sending, and an

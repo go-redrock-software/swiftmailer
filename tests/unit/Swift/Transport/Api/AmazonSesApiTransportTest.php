@@ -194,7 +194,7 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
 
         $m = $this->basicMsg();
         $m->setCc(['cc@example.com' => 'CC']);
-        $this->assertSame(1, $t->send($m));
+        $this->assertSame(2, $t->send($m));
 
         $this->assertSame(['CC <cc@example.com>'], $c->capturedInput->getDestination()->getCcAddresses());
     }
@@ -206,7 +206,7 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
 
         $m = $this->basicMsg();
         $m->setBcc(['bcc@example.com' => 'BCC']);
-        $this->assertSame(1, $t->send($m));
+        $this->assertSame(2, $t->send($m));
 
         $this->assertSame(['BCC <bcc@example.com>'], $c->capturedInput->getDestination()->getBccAddresses());
     }
@@ -379,7 +379,7 @@ class Swift_Transport_Api_AmazonSesApiTransportTest extends TestCase
         $m->setTo(['a@example.com' => 'A', 'b@example.com' => 'B']);
         $m->setSubject('T');
         $m->setBody('B');
-        $this->assertSame(1, $t->send($m));
+        $this->assertSame(2, $t->send($m));
 
         $this->assertSame(
             ['A <a@example.com>', 'B <b@example.com>'],

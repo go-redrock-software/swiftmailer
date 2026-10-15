@@ -36,16 +36,12 @@ class Swift_Transport_Api_GoogleTransport extends Swift_Transport_AbstractApiTra
             $this->start();
         }
 
-        if ($evt = $this->eventDispatcher?->createSendEvent($this, $message)) {
-            $this->eventDispatcher->dispatchEvent($evt, 'beforeSendPerformed');
-            if ($evt->bubbleCancelled()) {
-                $evt->setResult(Swift_Events_SendEvent::RESULT_FAILED);
-                $evt->cancelBubble(false);
-                $this->eventDispatcher->dispatchEvent($evt, 'sendPerformed');
+        return $this->sendWithEvents($message, $failedRecipients, $envelope, fn (?Swift_Envelope $effective): int => $this->sendMessage($message, $effective));
+    }
 
-                return 0;
-            }
-        }
+    private function sendMessage(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope): int
+    {
+        $this->validateEnvelope($message, $envelope);
 
         // Get the Gmail Service from the Google Client
         $service = new Google\Service\Gmail($this->getApiConnection());
@@ -64,21 +60,9 @@ class Swift_Transport_Api_GoogleTransport extends Swift_Transport_AbstractApiTra
             /** @noinspection CallableParameterUseCaseInTypeContextInspection */
             $message = $service->users_messages->send('me', $msg);
 
-            if ($evt) {
-                $evt->setResult(Swift_Events_SendEvent::RESULT_SUCCESS);
-            }
-
             return $totalRecipients;
         } catch (Exception $e) {
-            if ($evt) {
-                $evt->setResult(Swift_Events_SendEvent::RESULT_FAILED);
-            }
-
             return 0;
-        } finally {
-            if ($evt) {
-                $this->eventDispatcher->dispatchEvent($evt, 'sendPerformed');
-            }
         }
     }
 

@@ -23,6 +23,8 @@ class Swift_Transport_Api_MailerSendTransport extends Swift_Transport_AbstractHt
     #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
+        $this->validateEnvelope($message, $envelope);
+
         $payload = $this->getPayload($message);
 
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [

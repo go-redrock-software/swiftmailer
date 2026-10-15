@@ -12,6 +12,8 @@ class Swift_Transport_Api_BrevoTransport extends Swift_Transport_AbstractHttpApi
     #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
+        $this->validateEnvelope($message, $envelope);
+
         $payload = $this->getPayload($message);
 
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [

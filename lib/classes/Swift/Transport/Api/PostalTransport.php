@@ -35,9 +35,15 @@ class Swift_Transport_Api_PostalTransport extends Swift_Transport_AbstractHttpAp
     #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
-        $payload = $this->getPayload($message);
+        $recipients = null !== $envelope ? \array_values(\array_unique($envelope->getRecipients())) : null;
+        $payload    = null === $envelope ? $this->getPayload($message) : [
+            'mail_from' => $envelope->getSender(),
+            'rcpt_to'   => $recipients,
+            'data'      => \base64_encode($this->getRawMessageWithoutBcc($message)),
+        ];
 
-        $response = $this->httpClient->request('POST', $this->getEndpoint(), [
+        $endpoint = null === $envelope ? $this->getEndpoint() : 'https://'.$this->host.'/api/v1/send/raw';
+        $response = $this->httpClient->request('POST', $endpoint, [
             'headers' => \array_merge($this->getAuthHeaders(), [
                 'Content-Type' => 'application/json',
             ]),
@@ -55,7 +61,7 @@ class Swift_Transport_Api_PostalTransport extends Swift_Transport_AbstractHttpAp
 
         return [
             'message_id' => $result['data']['message_id'] ?? null,
-            'recipients' => $this->countRecipients($message),
+            'recipients' => null === $recipients ? $this->countRecipients($message) : \count($result['data']['messages'] ?? $recipients),
         ];
     }
 

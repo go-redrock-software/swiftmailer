@@ -52,6 +52,68 @@ All API transports implement the `Swift_Transport` interface:
 | `send($message, &$failedRecipients, $envelope)` | Sends the message; returns recipient count |
 | `registerPlugin($plugin)` | Binds an event listener plugin |
 
+## Explicit envelopes
+
+The optional `Swift_Envelope` is checked after recipient-policy plugins run.
+An API transport never silently substitutes header recipients for a different
+explicit delivery list. Unsupported overrides throw `Swift_TransportException`
+before a provider delivery request. With no explicit envelope, existing provider
+payload formats remain in use.
+
+The following table describes this implementation, checked against the linked
+provider contracts on 2026-10-15. A matching envelope uses the message From address
+and the To/Cc/Bcc address multiset; recipient order and ASCII domain case do not
+matter. Local-part case remains significant. “Matching only” describes the
+implemented endpoint, rather than every feature a provider might offer.
+
+| Transport / provider contract | Recipient override | Sender behavior with an explicit envelope |
+|---|---|---|
+| [Postal](https://postalserver.github.io/postal-api/controllers/send/raw) | Raw MIME plus `rcpt_to` | Separate `mail_from` |
+| [Mandrill / MailChimp](https://mailchimp.com/developer/transactional/api/messages/send-raw/) | Raw MIME plus `to` | Separate `from_email` |
+| [Mailgun](https://documentation.mailgun.com/_spec/docs/mailgun/api-reference/send/mailgun.json) | MIME upload plus `to` | Must match message From |
+| [Infobip](https://api.infobip.com/platform/1/openapi) | Base64 MIME plus `destinations` at `/email/4/mime` | Must match message From; MIME From retained |
+| [Amazon SES API and HTTP variants](https://docs.aws.amazon.com/ses/latest/APIReference-V2/API_SendEmail.html) | Raw content plus `Destination.ToAddresses` | Maps to `FeedbackForwardingEmailAddress` for bounce/complaint forwarding; AWS controls wire MAIL FROM |
+| [Gmail](https://developers.google.com/workspace/gmail/api/guides/sending) | Matching only | Must match message From |
+| [Microsoft Graph](https://learn.microsoft.com/en-us/graph/api/user-sendmail) | Matching only | Must match message From; send-as permissions still apply |
+| [SendGrid](https://github.com/sendgrid/sendgrid-php/blob/main/USAGE.md#mail-send) | Matching only | Must match message From |
+| [Postmark](https://postmarkapp.com/developer/api/email-api) | Matching only | Must match message From |
+| [Brevo](https://developers.brevo.com/reference/send-transac-email) | Matching only | Must match message From |
+| [AhaSend](https://ahasend.com/docs/send-api/send-email) | Matching only (v1 transport) | Must match message From |
+| [MailerSend](https://developers.mailersend.com/api/v1/email.html) | Matching only | Must match message From |
+| [Mailjet](https://dev.mailjet.com/email/guides/send-api-v31/) | Matching only | Must match message From |
+| [MailPace](https://docs.mailpace.com/reference/send/) | Matching only | Must match message From |
+| [Mailomat](https://api.mailomat.swiss/docs#tag/Message) | Matching only | Must match message From |
+| [Mailtrap](https://docs.mailtrap.io/developers/email-sending) | Matching only | Must match message From |
+| [Scaleway](https://www.scaleway.com/en/developers/api/transactional-email/) | Matching only | Must match message From |
+| [Sweego](https://learn.sweego.io/docs/sweego/send-send-post) | Matching only | Must match message From |
+| [Azure Communication Services](https://learn.microsoft.com/en-us/rest/api/communication/email/email/send) | Matching only | Must match message From |
+| [Resend](https://resend.com/docs/api-reference/emails/send-email) | Matching only | Must match message From |
+
+Raw delivery paths preserve visible From/To/Cc, MIME parts and attachments on a
+separate message copy, removing Bcc and Resent-Bcc headers before submission.
+They submit each distinct envelope recipient once. Gmail instead needs Bcc in
+its MIME input to deliver those recipients, and relies on Gmail's delivery
+handling; the original message is unchanged. Graph uses its separate Bcc field.
+A provider's acceptance count is not a final delivery receipt.
+
+SES requires the feedback forwarding address to satisfy AWS identity and
+permission rules. It does **not** offer arbitrary SMTP MAIL FROM through this
+request field. Use SMTP when that distinction is required. The raw SES path
+retains the visible message From, configuration and tag options.
+
+Mandrill raw sends carry tags and metadata through documented `X-MC-Tags` and
+`X-MC-Metadata` SMTP controls. Tag names containing commas cannot be represented
+faithfully in the raw tag list and are rejected. Infobip and Mailgun reject an
+independent sender rather than replacing the visible From header.
+
+All four SDK transports now put the effective envelope on the send event and
+fire `sendPerformed` in `finally`, including provider failures and policy
+rejection. SES therefore honors AllowlistPlugin and RedirectingPlugin. Graph
+calendar conversion rejects an explicit envelope because event invitation
+attendees are a separate delivery mechanism. Disable conversion to use matching
+mail envelopes. Calendar conversion without an envelope still needs a separate
+recipient-policy audit.
+
 ## Helper Methods (AbstractHttpApiTransport)
 
 These protected methods are available to all HTTP API transports and are useful when creating custom transports:

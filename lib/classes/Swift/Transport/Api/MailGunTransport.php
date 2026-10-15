@@ -38,9 +38,12 @@ class Swift_Transport_Api_MailGunTransport extends Swift_Transport_AbstractHttpA
     #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
-        $response = $this->httpClient->request('POST', $this->getEndpoint(), [
+        $this->validateEnvelope($message, $envelope, supportsRecipientOverride: true);
+        $recipients = null !== $envelope ? \array_values(\array_unique($envelope->getRecipients())) : null;
+        $endpoint   = $this->getEndpoint().(null !== $envelope ? '.mime' : '');
+        $response   = $this->httpClient->request('POST', $endpoint, [
             'headers'     => $this->getAuthHeaders(),
-            'multipart'   => $this->getFormData($message),
+            'multipart'   => null === $envelope ? $this->getFormData($message) : $this->getRawFormData($message, $recipients),
             'http_errors' => false,
         ]);
 
@@ -54,7 +57,7 @@ class Swift_Transport_Api_MailGunTransport extends Swift_Transport_AbstractHttpA
 
         return [
             'message_id' => $result['id'] ?? null,
-            'recipients' => $this->countRecipients($message),
+            'recipients' => null === $recipients ? $this->countRecipients($message) : \count($recipients),
         ];
     }
 
@@ -91,8 +94,7 @@ class Swift_Transport_Api_MailGunTransport extends Swift_Transport_AbstractHttpA
      */
     private function getFormData(Swift_Mime_SimpleMessage $message): array
     {
-        $tags     = $this->extractTags($message);
-        $metadata = $this->extractMetadata($message);
+        $options = $this->getMessageOptions($message);
 
         $from      = $message->getFrom();
         $fromEmail = \array_key_first($from);
@@ -135,6 +137,26 @@ class Swift_Transport_Api_MailGunTransport extends Swift_Transport_AbstractHttpA
                 'headers'  => ['Content-Type' => $attachment['contentType']],
             ];
         }
+
+        return \array_merge($fields, $options);
+    }
+
+    private function getRawFormData(Swift_Mime_SimpleMessage $message, array $recipients): array
+    {
+        // Extract control headers before rendering MIME so they do not leak to recipients.
+        $options = $this->getMessageOptions($message);
+
+        return \array_merge([
+            ['name' => 'to', 'contents' => \implode(', ', $recipients)],
+            ['name' => 'message', 'contents' => $this->getRawMessageWithoutBcc($message), 'filename' => 'message.eml', 'headers' => ['Content-Type' => 'message/rfc822']],
+        ], $options);
+    }
+
+    private function getMessageOptions(Swift_Mime_SimpleMessage $message): array
+    {
+        $tags     = $this->extractTags($message);
+        $metadata = $this->extractMetadata($message);
+        $fields   = [];
 
         // Tags → o:tag (multiple values)
         foreach ($tags as $tag) {

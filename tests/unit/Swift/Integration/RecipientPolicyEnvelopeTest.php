@@ -19,7 +19,7 @@ class Swift_Integration_RecipientPolicyEnvelopeTest extends PHPUnit\Framework\Te
         $transport->registerPlugin($reject ? new Swift_Plugins_AllowlistPlugin(['*@safe.test']) : new Swift_Plugins_RedirectingPlugin('dev@safe.test'));
         $message  = (new Swift_Message('Provider policy regression'))->setFrom('author@safe.test')->setTo($reject ? 'visible@safe.test' : 'blocked@outside.test')->setBody('Offline');
         $original = $message->getTo();
-        $envelope = new Swift_Envelope('bounce@safe.test', ['blocked@outside.test']);
+        $envelope = new Swift_Envelope('author@safe.test', ['blocked@outside.test']);
         $failed   = [];
 
         $this->assertSame($reject ? 0 : 1, $transport->send($message, $failed, $envelope));
