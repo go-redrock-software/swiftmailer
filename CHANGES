@@ -47,6 +47,10 @@ Unreleased
 
  Bug Fixes:
 
+ * Sweego attachments and inline images are now base64-encoded for the API
+   instead of sent as raw bytes. Empty file content and filename "0" retain
+   their required fields; absent optional metadata is omitted (GitLab #49).
+
  * Explicit API envelopes now control raw delivery payloads for Postal,
    Mandrill, Mailgun, Infobip and both SES variants. Other API paths reject
    unsupported overrides before submission. Raw MIME copies omit blind-recipient

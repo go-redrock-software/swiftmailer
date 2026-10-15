@@ -134,12 +134,16 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
         $attachments = $this->getMessageAttachments($message);
         if (!empty($attachments)) {
             $payload['attachments'] = \array_map(static function (array $attachment): array {
-                return \array_filter([
-                    'content'     => $attachment['content'],
-                    'filename'    => $attachment['filename'],
-                    'disposition' => $attachment['disposition'],
-                    'content_id'  => $attachment['contentId'],
-                ]);
+                return \array_merge(
+                    [
+                        'content'  => \base64_encode($attachment['content'] ?? ''),
+                        'filename' => $attachment['filename'],
+                    ],
+                    \array_filter([
+                        'disposition' => $attachment['disposition'],
+                        'content_id'  => $attachment['contentId'],
+                    ], static fn (?string $value): bool => null !== $value && '' !== $value),
+                );
             }, $attachments);
         }
 

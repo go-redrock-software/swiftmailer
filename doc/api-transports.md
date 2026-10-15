@@ -712,6 +712,13 @@ fields are restored after policy processing, including on failure.
 See Sweego's [recipient visibility guide](https://learn.sweego.io/docs/sending/how_to_send_email_by_api)
 and [send schema](https://learn.sweego.io/docs/sweego/send-send-post).
 
+Attachment and inline-image bodies are base64-encoded from their original bytes
+for Sweego's JSON API, including stream-backed files. Pass raw content to
+`Swift_Attachment` / `Swift_Image`; pre-encoded-looking strings are treated as
+raw bytes too. Empty files retain their required content field, and required
+filenames such as `"0"` are preserved. Inline content IDs and dispositions are
+retained; absent optional metadata is omitted.
+
 ```php
 $transport = new Swift_Transport_Api_SweegoTransport('your-api-key');
 ```

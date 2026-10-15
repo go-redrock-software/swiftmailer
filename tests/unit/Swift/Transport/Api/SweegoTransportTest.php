@@ -257,7 +257,7 @@ class SweegoTransportTest extends TestCase
 
                     $this->assertArrayHasKey('attachments', $payload);
                     $this->assertCount(1, $payload['attachments']);
-                    $this->assertSame('file contents', $payload['attachments'][0]['content']);
+                    $this->assertSame('ZmlsZSBjb250ZW50cw==', $payload['attachments'][0]['content']);
                     $this->assertSame('document.txt', $payload['attachments'][0]['filename']);
                     $this->assertSame('attachment', $payload['attachments'][0]['disposition']);
 
@@ -405,7 +405,7 @@ class SweegoTransportTest extends TestCase
                     // Embedded images are emitted as inline attachments carrying a content_id
                     $this->assertArrayHasKey('attachments', $payload);
                     $this->assertCount(1, $payload['attachments']);
-                    $this->assertSame('image data', $payload['attachments'][0]['content']);
+                    $this->assertSame('aW1hZ2UgZGF0YQ==', $payload['attachments'][0]['content']);
                     $this->assertSame('logo.png', $payload['attachments'][0]['filename']);
                     $this->assertSame('inline', $payload['attachments'][0]['disposition']);
                     $this->assertArrayHasKey('content_id', $payload['attachments'][0]);
