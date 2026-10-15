@@ -32,8 +32,9 @@ class Swift_Transport_Api_MailerSendTransport extends Swift_Transport_AbstractHt
                 'Content-Type' => 'application/json',
                 'Accept'       => 'application/json',
             ]),
-            'json'        => $payload,
-            'http_errors' => false,
+            'json'            => $payload,
+            'http_errors'     => false,
+            'allow_redirects' => false,
         ]);
 
         $statusCode = $response->getStatusCode();

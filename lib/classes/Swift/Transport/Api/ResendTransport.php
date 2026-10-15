@@ -20,8 +20,9 @@ class Swift_Transport_Api_ResendTransport extends Swift_Transport_AbstractHttpAp
             'headers' => \array_merge($this->getAuthHeaders(), [
                 'Content-Type' => 'application/json',
             ]),
-            'json'        => $payload,
-            'http_errors' => false,
+            'json'            => $payload,
+            'http_errors'     => false,
+            'allow_redirects' => false,
         ]);
 
         $parsed     = $this->parseResponse($response);

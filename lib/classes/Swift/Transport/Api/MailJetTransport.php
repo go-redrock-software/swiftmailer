@@ -43,8 +43,9 @@ class Swift_Transport_Api_MailJetTransport extends Swift_Transport_AbstractHttpA
                 'Content-Type' => 'application/json',
                 'Accept'       => 'application/json',
             ]),
-            'json'        => $payload,
-            'http_errors' => false,
+            'json'            => $payload,
+            'http_errors'     => false,
+            'allow_redirects' => false,
         ]);
 
         $result = $this->parseResponse($response);

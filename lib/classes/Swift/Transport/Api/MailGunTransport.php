@@ -42,9 +42,10 @@ class Swift_Transport_Api_MailGunTransport extends Swift_Transport_AbstractHttpA
         $recipients = null !== $envelope ? \array_values(\array_unique($envelope->getRecipients())) : null;
         $endpoint   = $this->getEndpoint().(null !== $envelope ? '.mime' : '');
         $response   = $this->httpClient->request('POST', $endpoint, [
-            'headers'     => $this->getAuthHeaders(),
-            'multipart'   => null === $envelope ? $this->getFormData($message) : $this->getRawFormData($message, $recipients),
-            'http_errors' => false,
+            'headers'         => $this->getAuthHeaders(),
+            'multipart'       => null === $envelope ? $this->getFormData($message) : $this->getRawFormData($message, $recipients),
+            'http_errors'     => false,
+            'allow_redirects' => false,
         ]);
 
         $result = $this->parseResponse($response);

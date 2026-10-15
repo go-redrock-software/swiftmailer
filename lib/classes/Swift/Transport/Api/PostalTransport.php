@@ -47,8 +47,9 @@ class Swift_Transport_Api_PostalTransport extends Swift_Transport_AbstractHttpAp
             'headers' => \array_merge($this->getAuthHeaders(), [
                 'Content-Type' => 'application/json',
             ]),
-            'json'        => $payload,
-            'http_errors' => false,
+            'json'            => $payload,
+            'http_errors'     => false,
+            'allow_redirects' => false,
         ]);
 
         $result = $this->parseResponse($response);

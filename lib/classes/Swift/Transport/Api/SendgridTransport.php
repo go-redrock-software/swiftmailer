@@ -22,8 +22,9 @@ class Swift_Transport_Api_SendgridTransport extends Swift_Transport_AbstractHttp
             'headers' => \array_merge($this->getAuthHeaders(), [
                 'Content-Type' => 'application/json',
             ]),
-            'body'        => \json_encode($payload),
-            'http_errors' => false,
+            'body'            => \json_encode($payload),
+            'http_errors'     => false,
+            'allow_redirects' => false,
         ]);
 
         $statusCode = $response->getStatusCode();

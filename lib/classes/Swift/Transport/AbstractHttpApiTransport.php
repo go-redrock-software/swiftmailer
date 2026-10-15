@@ -64,8 +64,9 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
 
         try {
             $response = $this->httpClient->request('GET', $this->getPingEndpoint(), [
-                'headers'     => $this->getAuthHeaders(),
-                'http_errors' => false,
+                'headers'         => $this->getAuthHeaders(),
+                'http_errors'     => false,
+                'allow_redirects' => false,
             ]);
 
             return $response->getStatusCode() >= 200 && $response->getStatusCode() < 300;

@@ -39,8 +39,9 @@ class Swift_Transport_Api_InfoBipTransport extends Swift_Transport_AbstractHttpA
 
         $endpoint = $this->getEndpoint();
         $options  = [
-            'headers'     => $this->getAuthHeaders(),
-            'http_errors' => false,
+            'headers'         => $this->getAuthHeaders(),
+            'http_errors'     => false,
+            'allow_redirects' => false,
         ];
         if (null === $envelope) {
             $options['multipart'] = $this->getFormData($message);

@@ -11,6 +11,11 @@ Unreleased
 
  Security:
 
+ * Built-in HTTP API sends and network health checks now refuse redirects
+   per request, including when an injected client enables them. Requests stay
+   at the configured endpoint instead of automatically resubmitting credentials
+   or message data to a Location target (GitLab #53).
+
  * Sweego now sends Cc and Bcc through their native API fields. Previously,
    blind recipients were included in the public To list. Display names and
    delivery counts are preserved. Messages with no To recipient are rejected
@@ -46,6 +51,10 @@ Unreleased
    autoloading, and behavior are unchanged.
 
  Bug Fixes:
+
+ * Azure's health check now accepts successful 2xx responses and its expected
+   authenticated 404 acknowledgement. Redirects and other client/server errors
+   are reported as unhealthy (GitLab #54).
 
  * Sweego now preserves sender display names such as "0", using the same
    name omission rules as recipient addresses. Null and empty names

@@ -43,8 +43,9 @@ class Swift_Transport_Api_MailPaceTransport extends Swift_Transport_AbstractHttp
                 'Content-Type' => 'application/json',
                 'Accept'       => 'application/json',
             ]),
-            'json'        => $payload,
-            'http_errors' => false,
+            'json'            => $payload,
+            'http_errors'     => false,
+            'allow_redirects' => false,
         ]);
 
         $statusCode = $response->getStatusCode();

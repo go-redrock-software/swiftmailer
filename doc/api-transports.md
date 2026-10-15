@@ -395,6 +395,10 @@ $transport = new Swift_Transport_Api_AmazonSesHttpTransport($ses);
 
 The connection string format is: `endpoint=https://your-resource.communication.azure.com/;accesskey=BASE64KEY`
 
+`ping()` signs a GET for a fixed nonexistent operation. Successful 2xx responses
+and the expected authenticated 404 count as healthy; redirects and other 4xx/5xx
+responses count as unhealthy.
+
 ```php
 $connectionString = 'endpoint=https://your-resource.communication.azure.com/;accesskey=BASE64KEY';
 $transport = new Swift_Transport_Api_AzureTransport($connectionString);
@@ -807,9 +811,24 @@ For transports extending `AbstractHttpApiTransport`, the `send()` method:
 
 ## Security
 
-Two safeguards apply across the HTTP API transports:
+The built-in HTTP API transports enforce the following request/response safeguards:
 
 **Response size limit.** `AbstractHttpApiTransport::getResponseBody()` caps each provider response at `MAX_RESPONSE_SIZE` (1 MB, i.e. `1048576` bytes). A declared `Content-Length` over the cap -- or a streamed body that grows past it while reading -- throws `Swift_TransportException`, guarding against memory exhaustion from a hostile or malfunctioning endpoint.
+
+**Redirect refusal.** Sends and network health checks set
+`allow_redirects: false` on each request, including requests through an injected
+HTTP client. A 3xx send response becomes a transport failure carrying the
+non-retryable marker described above; network health checks return false.
+Same-origin redirects are refused too: configure the intended endpoint explicitly.
+The supplied client's defaults are preserved. MailPace's `ping()` only starts the
+transport locally and makes no HTTP request.
+
+This policy covers the 17 built-in providers that extend
+`AbstractHttpApiTransport`. SES, Gmail and Graph use injected SDK clients with
+separate HTTP policies; these per-request settings do not configure those SDKs.
+Custom HTTP transports should set both `http_errors: false` and
+`allow_redirects: false` when issuing requests, and supplied clients must honor
+Guzzle's request options.
 
 **Endpoint URL validation.** Transports that accept a caller-supplied host -- `InfoBipTransport` (`$baseUrl`) and `PostalTransport` (`$host`) -- pass it through `Swift_Transport_UrlValidator::validate()` in the constructor. The validator enforces HTTPS, rejects `localhost`/loopback hosts (`127.0.0.1`, `0.0.0.0`, `localhost`, `::1`), and rejects hosts that resolve to private or reserved IP ranges -- an SSRF guard for configurable endpoints. An invalid host throws `InvalidArgumentException` before any request is made.
 

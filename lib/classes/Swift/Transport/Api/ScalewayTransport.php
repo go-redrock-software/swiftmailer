@@ -38,8 +38,9 @@ class Swift_Transport_Api_ScalewayTransport extends Swift_Transport_AbstractHttp
             'headers' => \array_merge($this->getAuthHeaders(), [
                 'Content-Type' => 'application/json',
             ]),
-            'json'        => $payload,
-            'http_errors' => false,
+            'json'            => $payload,
+            'http_errors'     => false,
+            'allow_redirects' => false,
         ]);
 
         $statusCode = $response->getStatusCode();
