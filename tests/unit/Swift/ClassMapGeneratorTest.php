@@ -34,6 +34,16 @@ class Swift_ClassMapGeneratorTest extends TestCase
         }
     }
 
+    public function testCommittedOutputsMatchFreshGenerationByteForByte(): void
+    {
+        $this->loadGenerator();
+        $root   = \dirname(__DIR__, 3);
+        $output = $this->fixture();
+        \writeGeneratedClassMaps($output, $root.'/lib');
+        $this->assertSame(\file_get_contents($root.'/class_map.php'), \file_get_contents($output.'/class_map.php'));
+        $this->assertSame(\file_get_contents($root.'/lib/class_aliases.php'), \file_get_contents($output.'/lib/class_aliases.php'));
+    }
+
     public function testAliasedEnumCasesPreserveIdentityAndValues(): void
     {
         $this->assertSame(Swift_SendResult::SUCCESS, Swift\SendResult::SUCCESS);
