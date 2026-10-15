@@ -244,9 +244,11 @@ converted; everything else rides along untouched.
 
 | `.ics` `METHOD` + state | Action | Graph call |
 |-|-|-|
-| `REQUEST`, matching invite key found | Update in place (Exchange sends an "updated" notice) | `PATCH /{user}/events/{id}` |
+| `REQUEST`, match found, no recipient policy | Update in place | `PATCH /{user}/events/{id}` |
+| `REQUEST`, match found, recipient policy active | Reject: conditional update contract not verified | No write |
 | `REQUEST`, no matching invite key | Create the event | `POST /{user}/events` |
-| `CANCEL`, matching event found | Cancel (sends a cancellation notice) | `POST /{user}/events/{id}/cancel` |
+| `CANCEL`, match found, no recipient policy | Cancel with notification | `POST /{user}/events/{id}/cancel` |
+| `CANCEL`, match found, recipient policy active | Verify organizer/audience/version; cancel only that version | `DELETE /{user}/events/{id}` with `If-Match` |
 | `CANCEL`, no matching event | No-op; emits an `E_USER_NOTICE`, nobody notified | — |
 | `PUBLISH`, `REPLY`, other | Left as an ordinary attachment | — |
 | Malformed / unparseable `.ics` | Left as an ordinary attachment (parse failure never aborts the send) | — |
@@ -272,25 +274,41 @@ converted; everything else rides along untouched.
   order. Retained attendees keep names and required/optional/resource roles; added
   targets are required attendees. If all attendees are filtered out, the transport
   skips that calendar operation and does not send the removed ICS as fallback mail.
-- **Stored audiences are checked before mutation.** All lookups and audience reads
-  finish before the first create/update/cancel request. An existing event is read
-  again for its attendees. With recipient policy active, unknown audiences,
-  non-single-instance events and any stored audience the policy would change are
-  rejected. Removing an unsafe attendee by PATCH is not a safe repair: Graph may
-  notify removed attendees, and cancellation targets the stored audience. A
-  redirected invite key never deliberately looks up the original production audience.
-- **Provider concurrency limit.** These checks inspect the current stored audience;
-  they are not a transaction with Graph. The documented update/cancel contracts do
-  not establish an atomic If-Match guarantee here. Concurrent external changes to
-  attendee lists remain outside that preflight snapshot. Review shared-mailbox
-  workflows accordingly; no atomic enforcement or live-tenant validation is claimed.
+- **Stored audiences are checked before mutation.** All lookups and required
+  audience reads finish before the first calendar write. Under recipient policy,
+  cancellation requires a single-instance event, an explicitly confirmed organizer,
+  known attendees unchanged by policy and a valid exact `@odata.etag`. Missing,
+  wildcard, malformed or multiple version tags are rejected. Removing an unsafe
+  attendee by PATCH is not a safe repair because Graph may notify them.
+- **Cancellation is version-checked under recipient policy.** Organizer-side event
+  deletion sends cancellation notices, and `If-Match` binds deletion to the inspected
+  version. A stale version (HTTP 412) fails without an unconditional fallback or
+  re-fetch-and-replay. The original ETag, including a `W/` prefix if supplied, is
+  sent unchanged. Failure metadata and caller recipients are restored normally.
+- **Existing-event updates are rejected under recipient policy.** This transport has
+  no verified conditional PATCH contract, so it cannot safely protect an update
+  from concurrent attendee changes. A matching REQUEST therefore throws before
+  any write when an additional-audience policy is registered. Create and conditional
+  cancel remain supported. Updates without such a policy retain their existing
+  behavior. Explicit SMTP envelopes with calendar conversion remain unsupported.
+- **Retry wrappers honor explicit permanent failures.** Policy and version conflicts
+  use `Swift_Transport_NonRetryableException`. The default classifier recognizes
+  this type anywhere in the exception chain, even when the code is 0/412 or a
+  wrapper's message resembles a transient error. A custom classifier controls its
+  own decisions. No public events are enabled merely to retain internal metadata.
+- **Ordinary mail needs an allowed audience.** Send-alongside or real attachments
+  do not create an empty `sendMail` request after policy removed all To/Cc/Bcc
+  recipients. The permitted calendar operation can still proceed on its own.
 - **Times are passed as wall-clock + time-zone name**, with no UTC conversion math, which
   avoids DST off-by-one bugs.
 
-The audience checks follow Microsoft's [event update](https://learn.microsoft.com/en-us/graph/api/event-update?view=graph-rest-1.0)
-and [event cancellation](https://learn.microsoft.com/en-us/graph/api/event-cancel?view=graph-rest-1.0)
-contracts, checked on 2026-10-15. Calendar read/write permission is required for
-lookup, stored-audience inspection and mutation.
+The implementation follows the current [delete-event behavior](https://learn.microsoft.com/en-us/graph/api/event-delete?view=graph-rest-1.0)
+(organizer-side deletion sends cancellation notices), the [`If-Match` event-delete parameter](https://learn.microsoft.com/en-us/javascript/api/teams-sdk-typescript/@microsoft/teams.graph-endpoints/users.events?view=msteams-sdk-ts-latest),
+and [event GET metadata](https://learn.microsoft.com/en-us/graph/api/event-get?view=graph-rest-1.0).
+Microsoft's [update-event contract](https://learn.microsoft.com/en-us/graph/api/event-update?view=graph-rest-1.0)
+describes notification side effects without establishing conditional PATCH here.
+Contracts were checked on 2026-10-15. Full SDK serialization and stale-version
+handling are mock-tested; no live tenant or delivery guarantee is claimed.
 
 ### Parser scope
 

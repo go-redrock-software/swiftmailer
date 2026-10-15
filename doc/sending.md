@@ -306,7 +306,9 @@ Constructor: `__construct(Swift_Transport $inner, int $maxRetries = 3, int $base
   it dropped its connection.
 
 **Classification.** The default `Swift_Transport_DefaultRetryClassifier`
-decides retryability in this order:
+first rejects `Swift_Transport_NonRetryableException`, including when it appears
+in a wrapped exception's cause chain. This type marks policy/version conflicts
+that replay cannot safely resolve. For other exceptions it decides in this order:
 
 1. Permanent message patterns (e.g. `authentication failed`, `invalid api
    key`, `mailbox not found`, `relay access denied`) -- never retried.

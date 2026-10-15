@@ -12,10 +12,11 @@ Unreleased
  Security:
 
  * Graph calendar conversion now applies allowlist/catch-all/redirect policies to
-   ICS attendees. Invite lookups use the adjusted audience; existing-event
-   attendees are read before update/cancel, and unknown or policy-changing
-   audiences are rejected before mutation. Preflight reads are not atomic with
-   concurrent Graph edits (GitLab #42).
+   ICS attendees and uses the adjusted audience for lookups. Policy-controlled
+   cancellations require a known organizer, safe stored audience and exact ETag;
+   conditional deletion prevents cancelling a changed audience. Existing-event
+   updates with recipient policy are rejected because this transport has no
+   verified conditional PATCH contract (GitLab #42).
 
  * API transports now create a dispatcher when the first plugin is registered.
    Previously, omitting the optional dispatcher silently discarded listeners,
@@ -48,9 +49,13 @@ Unreleased
 
  Bug Fixes:
 
- * Graph calendar-only sends no longer count unsent mail headers. Update/cancel
-   counts use stored notification audiences; zero-delivery operations add no
-   spurious failed mail recipients. Policy cleanup remains event-scoped (#42).
+ * Graph calendar-only sends no longer count unsent mail headers. Notification
+   counts use submitted/current audiences; zero-delivery operations add no
+   spurious failed mail recipients or empty sendMail requests. Policy cleanup
+   remains event-scoped (#42).
+ * Swift_Transport_NonRetryableException marks policy/version conflicts that
+   the default retry classifier must not replay, including wrapped failures.
+   Graph stale-version cancellations retain HTTP 412 without blind retry (#42).
 
  * Explicit API envelopes now control raw delivery payloads for Postal,
    Mandrill, Mailgun, Infobip and both SES variants. Other API paths reject

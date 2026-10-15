@@ -9,6 +9,23 @@ class Swift_Transport_DefaultRetryClassifierTest extends PHPUnit\Framework\TestC
         $this->classifier = new Swift_Transport_DefaultRetryClassifier();
     }
 
+    /** @dataProvider nonRetryableFailuresProvider */
+    public function testExplicitNonRetryableFailureOverridesCodeAndMessage(int $code, bool $wrapped): void
+    {
+        $failure   = new Swift_Transport_NonRetryableException('Service temporarily unavailable', $code);
+        $exception = $wrapped ? new Swift_TransportException('Connection timed out', 0, $failure) : $failure;
+
+        $this->assertFalse($this->classifier->isRetryable($exception));
+    }
+
+    public static function nonRetryableFailuresProvider(): iterable
+    {
+        foreach ([0, 412, 503] as $code) {
+            yield $code.' direct' => [$code, false];
+            yield $code.' wrapped' => [$code, true];
+        }
+    }
+
     /**
      * @dataProvider retryableExceptionsProvider
      */

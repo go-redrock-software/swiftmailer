@@ -131,7 +131,8 @@ rejection. SES therefore honors AllowlistPlugin and RedirectingPlugin. Graph
 calendar conversion rejects an explicit envelope because event invitation
 attendees are a separate delivery mechanism. Disable conversion to use matching
 mail envelopes. Calendar conversion without an envelope applies recipient policies
-to ICS attendees and verifies stored audiences before updates/cancellations. See
+to ICS attendees and version-checks organizer cancellations. Existing-event updates
+under recipient policy are rejected without a verified conditional PATCH contract. See
 [Graph calendar behavior and limits](microsoft-graph.md#behavior-details).
 
 ## Helper Methods (AbstractHttpApiTransport)

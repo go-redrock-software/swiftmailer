@@ -21,10 +21,12 @@ use Microsoft\Graph\Generated\Models\UploadSession;
 use Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilderGetQueryParameters;
 use Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilderGetRequestConfiguration;
 use Microsoft\Graph\Generated\Users\Item\Events\Item\Cancel\CancelPostRequestBody;
+use Microsoft\Graph\Generated\Users\Item\Events\Item\EventItemRequestBuilderDeleteRequestConfiguration;
 use Microsoft\Graph\Generated\Users\Item\Events\Item\EventItemRequestBuilderGetRequestConfiguration;
 use Microsoft\Graph\Generated\Users\Item\Messages\Item\Attachments\CreateUploadSession\CreateUploadSessionPostRequestBody;
 use Microsoft\Graph\Generated\Users\Item\SendMail\SendMailPostRequestBody;
 use Microsoft\Graph\GraphServiceClient;
+use Microsoft\Kiota\Abstractions\ApiException;
 
 /**
  * Microsoft Graph API transport.
@@ -350,7 +352,8 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         // When we act on the calendar entry, Exchange emails the invitation/cancellation
         // itself, so by default we skip the duplicate raw email — UNLESS the message also
         // carries real (non-.ics) attachments, which would otherwise be silently dropped.
-        $shouldSendEmail = empty($calendarInvites) || $this->sendEmailAlongsideEvent || [] !== $attachmentsToSend;
+        $hasMailRecipients = $message->getTo() || $message->getCc() || $message->getBcc();
+        $shouldSendEmail   = $hasMailRecipients && (empty($calendarInvites) || $this->sendEmailAlongsideEvent || [] !== $attachmentsToSend);
 
         $groups = [];
         foreach ($calendarInvites as $index => $invite) {
@@ -823,7 +826,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         return $parsed->withAttendees($attendees);
     }
 
-    /** @return array{event: Swift_Transport_Api_Calendar_ParsedEvent, id: string|null, recipients: array<string, string|null>} */
+    /** @return array{event: Swift_Transport_Api_Calendar_ParsedEvent, id: string|null, recipients: array<string, string|null>, version: string|null} */
     private function prepareCalendarOperation(
         Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder $userRequestBuilder,
         Swift_Transport_Api_Calendar_ParsedEvent $parsed,
@@ -834,22 +837,26 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
             ? $this->findEventIdByInviteKey($userRequestBuilder, $inviteKey)
             : null;
         $recipients = $this->calendarRecipients($parsed);
+        $version    = null;
 
         if (null !== $eventId) {
+            if ($evt?->hasRecipientFilters() && $parsed->isRequest()) {
+                throw new Swift_Transport_NonRetryableException('Microsoft Graph transport cannot verify conditional calendar updates while recipient policies are active.');
+            }
             // Removing an attendee can send them an update, and cancellation notifies
             // the stored audience. Never try to repair an unsafe audience by PATCHing it.
             $existing = $this->getCalendarEvent($userRequestBuilder, $eventId);
             if (null === $existing || null === $existing->getAttendees()) {
-                throw new Swift_TransportException('Cannot verify the stored calendar notification audience.');
+                throw new Swift_Transport_NonRetryableException('Cannot verify the stored calendar notification audience.');
             }
             if ($evt?->hasRecipientFilters() && 'singleInstance' !== $existing->getType()?->value()) {
-                throw new Swift_TransportException('Cannot verify the complete calendar notification audience of this event type under recipient policies.');
+                throw new Swift_Transport_NonRetryableException('Cannot verify the complete calendar notification audience of this event type under recipient policies.');
             }
             $stored = [];
             foreach ($existing->getAttendees() as $attendee) {
                 $email = $attendee->getEmailAddress()?->getAddress();
                 if (null === $email || '' === $email) {
-                    throw new Swift_TransportException('Cannot verify a stored calendar attendee.');
+                    throw new Swift_Transport_NonRetryableException('Cannot verify a stored calendar attendee.');
                 }
                 $stored[$email] = $attendee->getEmailAddress()->getName();
             }
@@ -858,7 +865,14 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
             \sort($allowed);
             \sort($current);
             if ($allowed !== $current) {
-                throw new Swift_TransportException('Recipient policies would change the stored calendar notification audience; update or cancellation was rejected.');
+                throw new Swift_Transport_NonRetryableException('Recipient policies would change the stored calendar notification audience; update or cancellation was rejected.');
+            }
+            if ($evt?->hasRecipientFilters()) {
+                $tag = $existing->getAdditionalData()['@odata.etag'] ?? null;
+                if (true !== $existing->getIsOrganizer() || !\is_string($tag) || !\preg_match('~^(?:W/)?"[\x21\x23-\x7e]+"$~D', $tag)) {
+                    throw new Swift_Transport_NonRetryableException('Cannot verify the calendar organizer and exact event version for conditional cancellation.');
+                }
+                $version = $tag;
             }
             $recipients = $parsed->isCancel() ? $stored : \array_merge($stored, $recipients);
         }
@@ -868,13 +882,13 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
             $recipients = [];
         }
 
-        return ['event' => $parsed, 'id' => $eventId, 'recipients' => $recipients];
+        return ['event' => $parsed, 'id' => $eventId, 'recipients' => $recipients, 'version' => $version];
     }
 
     /**
      * Execute an operation only after every planned calendar audience passed preflight.
      *
-     * @param array{event: Swift_Transport_Api_Calendar_ParsedEvent, id: string|null, recipients: array<string, string|null>} $plan
+     * @param array{event: Swift_Transport_Api_Calendar_ParsedEvent, id: string|null, recipients: array<string, string|null>, version: string|null} $plan
      */
     private function dispatchCalendarOperation(
         Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder $userRequestBuilder,
@@ -887,7 +901,22 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
             if (null === $eventId) {
                 return 0;
             }
-            $this->cancelGraphEvent($userRequestBuilder, $eventId);
+            if (null !== $plan['version']) {
+                // Organizer-side deletion sends cancellation notices. If-Match binds
+                // the mutation to the exact audience inspected during preflight.
+                $config = new EventItemRequestBuilderDeleteRequestConfiguration(headers: ['If-Match' => $plan['version']]);
+                try {
+                    $userRequestBuilder->events()->byEventId($eventId)->delete($config)->wait();
+                } catch (ApiException $e) {
+                    if (412 === $e->getResponseStatusCode()) {
+                        throw new Swift_Transport_NonRetryableException('Calendar event version changed; cancellation was rejected without retry.', 412, $e);
+                    }
+
+                    throw $e;
+                }
+            } else {
+                $this->cancelGraphEvent($userRequestBuilder, $eventId);
+            }
 
             return \count($plan['recipients']);
         }
@@ -952,7 +981,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         string $eventId,
     ): ?Event {
         $config                  = new EventItemRequestBuilderGetRequestConfiguration();
-        $config->queryParameters = EventItemRequestBuilderGetRequestConfiguration::createQueryParameters(select: ['attendees', 'type']);
+        $config->queryParameters = EventItemRequestBuilderGetRequestConfiguration::createQueryParameters(select: ['attendees', 'type', 'isOrganizer']);
 
         return $userRequestBuilder->events()->byEventId($eventId)->get($config)->wait();
     }

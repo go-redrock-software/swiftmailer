@@ -47,6 +47,10 @@ class Swift_Transport_Api_MicrosoftGraphCalendarMailboxTest extends TestCase
 
     private bool $failMutation = false;
 
+    private bool $changeAfterRead = false;
+
+    private array $conditionalVersions = [];
+
     public function testStudentAndStaffInvitesForOneAppointmentBothBecomeEvents(): void
     {
         $transport = $this->transport();
@@ -130,10 +134,10 @@ class Swift_Transport_Api_MicrosoftGraphCalendarMailboxTest extends TestCase
     }
 
     /** @dataProvider provideLifecyclePolicies */
-    public function testSafePolicyAudienceSupportsCreateUpdateAndCancel(string $policy, array $expected): void
+    public function testSafePolicyAudienceSupportsCreateAndConditionalCancel(string $policy, array $expected): void
     {
         $transport = $this->transport($this->policies($policy));
-        foreach (['REQUEST', 'REQUEST', 'CANCEL'] as $method) {
+        foreach (['REQUEST', 'CANCEL'] as $method) {
             $message  = $this->policyInvite($method, ['kept@safe.test', 'blocked@outside.test']);
             $original = $message->toString();
             $this->assertSame(\count($expected), $transport->send($message));
@@ -141,7 +145,7 @@ class Swift_Transport_Api_MicrosoftGraphCalendarMailboxTest extends TestCase
         }
         $this->assertCount(1, $this->events);
         $this->assertTrue($this->events['evt-1']['cancelled']);
-        $this->assertSame([$expected, $expected, $expected], $this->notifications);
+        $this->assertSame([$expected, $expected], $this->notifications);
         $this->assertStringNotContainsString('blocked@outside.test', $this->events['evt-1']['key']);
     }
 
@@ -152,6 +156,138 @@ class Swift_Transport_Api_MicrosoftGraphCalendarMailboxTest extends TestCase
         yield 'redirect' => ['redirect', ['kept@safe.test', 'sink@safe.test']];
         yield 'allowlist then redirect' => ['allowlist-redirect', ['kept@safe.test', 'catch@safe.test', 'sink@safe.test']];
         yield 'redirect then allowlist' => ['redirect-allowlist', ['kept@safe.test', 'sink@safe.test']];
+    }
+
+    /** @dataProvider provideLifecyclePolicies */
+    public function testDefaultDispatcherAlsoControlsCalendarAudience(string $policy, array $expected): void
+    {
+        $message  = $this->policyInvite('REQUEST', ['kept@safe.test', 'blocked@outside.test']);
+        $original = $message->toString();
+
+        $this->assertSame(\count($expected), $this->transport($this->policies($policy), false)->send($message));
+        $this->assertSame([$expected], $this->notifications);
+        $this->assertSame($original, $message->toString());
+    }
+
+    /** @dataProvider provideLifecyclePolicies */
+    public function testPolicyRejectsExistingEventUpdatesWithoutAConditionalContract(string $policy, array $expected): void
+    {
+        $transport = $this->transport($this->policies($policy));
+        $transport->send($this->policyInvite('REQUEST', ['kept@safe.test', 'blocked@outside.test']));
+        $this->requests = $this->notifications = [];
+        try {
+            $transport->send($this->policyInvite('REQUEST', ['kept@safe.test', 'blocked@outside.test']));
+            $this->fail('Policy-controlled updates must fail safely without supported conditional PATCH');
+        } catch (Swift_TransportException $e) {
+            $this->assertStringContainsString('conditional', $e->getMessage());
+        }
+        $this->assertSame([], $this->notifications);
+        $this->assertSame(['GET /v1.0/me/events'], $this->requests);
+    }
+
+    /** @dataProvider provideLifecyclePolicies */
+    public function testConcurrentAttendeeChangeRejectsCancellationWithoutRetryOrFallback(string $policy, array $expected): void
+    {
+        $transport = $this->transport($this->policies($policy));
+        $transport->send($this->policyInvite('REQUEST', ['kept@safe.test', 'blocked@outside.test']));
+        $this->requests        = $this->notifications = [];
+        $this->changeAfterRead = true;
+        $message               = $this->policyInvite('CANCEL', ['kept@safe.test', 'blocked@outside.test']);
+        $original              = $message->toString();
+        try {
+            $transport->send($message);
+            $this->fail('The stale event version must reject cancellation');
+        } catch (Swift_TransportException $e) {
+            $this->assertStringContainsString('version', $e->getMessage());
+        }
+        $this->assertSame([], $this->notifications);
+        $this->assertFalse($this->events['evt-1']['cancelled']);
+        $this->assertSame(['W/"1"'], $this->conditionalVersions);
+        $this->assertSame(['GET /v1.0/me/events', 'GET /v1.0/me/events/evt-1', 'DELETE /v1.0/me/events/evt-1'], $this->requests);
+        $this->assertSame($original, $message->toString());
+    }
+
+    /** @dataProvider provideInvalidCancellationVersions */
+    public function testConditionalCancelRejectsUnknownVersionOrOrganizer(mixed $version, ?bool $organizer): void
+    {
+        $transport = $this->transport($this->policies('allowlist'));
+        $transport->send($this->policyInvite('REQUEST', ['kept@safe.test']));
+        $this->events['evt-1']['etag']        = $version;
+        $this->events['evt-1']['isOrganizer'] = $organizer;
+        $this->requests                       = $this->notifications = [];
+        try {
+            $transport->send($this->policyInvite('CANCEL', ['kept@safe.test']));
+            $this->fail('Unknown versions/organizers cannot enforce safe conditional cancellation');
+        } catch (Swift_TransportException $e) {
+            $this->assertStringContainsString('calendar', $e->getMessage());
+        }
+        $this->assertSame([], $this->notifications);
+        $this->assertSame([], $this->conditionalVersions);
+        foreach ($this->requests as $request) {
+            $this->assertStringStartsWith('GET ', $request);
+        }
+    }
+
+    public static function provideInvalidCancellationVersions(): iterable
+    {
+        foreach ([null, '', '*', 'W/"one", W/"two"', "\"bad\r\nheader\"", ['bad'], 'unquoted'] as $index => $version) {
+            yield 'invalid version '.$index => [$version, true];
+        }
+        yield 'not organizer' => ['W/"1"', false];
+        yield 'unknown organizer' => ['W/"1"', null];
+    }
+
+    /** @dataProvider provideValidCancellationVersions */
+    public function testConditionalCancelUsesTheExactStoredVersion(string $version): void
+    {
+        $transport = $this->transport($this->policies('allowlist'));
+        $transport->send($this->policyInvite('REQUEST', ['kept@safe.test']));
+        $this->events['evt-1']['etag'] = $version;
+        $this->requests                = $this->notifications = [];
+
+        $this->assertSame(1, $transport->send($this->policyInvite('CANCEL', ['kept@safe.test'])));
+        $this->assertSame([$version], $this->conditionalVersions);
+        $this->assertSame([['kept@safe.test']], $this->notifications);
+        $this->assertTrue($this->events['evt-1']['cancelled']);
+    }
+
+    public static function provideValidCancellationVersions(): iterable
+    {
+        yield 'weak event ETag from Graph examples' => ['W/"version-1"'];
+        yield 'strong version' => ['"version-1"'];
+    }
+
+    public function testRetryWrapperDoesNotReplayAStaleCancellation(): void
+    {
+        $transport = $this->transport($this->policies('allowlist'));
+        $transport->send($this->policyInvite('REQUEST', ['kept@safe.test']));
+        $this->requests        = $this->notifications = [];
+        $this->changeAfterRead = true;
+        $retry                 = new Swift_Transport_RetryTransport($transport, 3, 0);
+        try {
+            $retry->send($this->policyInvite('CANCEL', ['kept@safe.test']));
+            $this->fail('A stale cancellation must propagate without replay');
+        } catch (Swift_TransportException $e) {
+            $this->assertSame(412, $e->getCode());
+        }
+        $this->assertSame(['W/"1"'], $this->conditionalVersions);
+        $this->assertSame(['GET /v1.0/me/events', 'GET /v1.0/me/events/evt-1', 'DELETE /v1.0/me/events/evt-1'], $this->requests);
+        $this->assertSame([], $this->notifications);
+    }
+
+    public function testRetryWrapperDoesNotReplayAnUnsupportedPolicyUpdate(): void
+    {
+        $transport = $this->transport($this->policies('allowlist'));
+        $transport->send($this->policyInvite('REQUEST', ['kept@safe.test']));
+        $this->requests = $this->notifications = [];
+        try {
+            (new Swift_Transport_RetryTransport($transport, 3, 0))->send($this->policyInvite('REQUEST', ['kept@safe.test']));
+            $this->fail('Unsupported policy updates must not be retried');
+        } catch (Swift_TransportException $e) {
+            $this->assertStringContainsString('conditional', $e->getMessage());
+        }
+        $this->assertSame(['GET /v1.0/me/events'], $this->requests);
+        $this->assertSame([], $this->notifications);
     }
 
     /** @dataProvider provideUnsafeStoredAudiences */
@@ -225,6 +361,23 @@ class Swift_Transport_Api_MicrosoftGraphCalendarMailboxTest extends TestCase
         yield 'attachment requires ordinary mail' => [true];
     }
 
+    /** @dataProvider provideMailAlongside */
+    public function testFilteredMailAudienceDoesNotProduceAnEmptySendMailRequest(bool $attachment): void
+    {
+        $transport = $this->transport($this->policies('allowlist'));
+        $transport->setSendEmailAlongsideEvent(!$attachment);
+        $message = $this->policyInvite('REQUEST', ['kept@safe.test'], 'blocked@outside.test');
+        if ($attachment) {
+            $message->attach(new Swift_Attachment('Report', 'report.txt', 'text/plain'));
+        }
+        $original = $message->toString();
+
+        $this->assertSame(1, $transport->send($message));
+        $this->assertSame([['kept@safe.test']], $this->notifications);
+        $this->assertNotContains('POST /v1.0/me/sendMail', $this->requests);
+        $this->assertSame($original, $message->toString());
+    }
+
     /** @dataProvider provideStoredAudienceCounts */
     public function testExistingAudienceContributesToNotificationCounts(string $method, bool $policy): void
     {
@@ -240,7 +393,9 @@ class Swift_Transport_Api_MicrosoftGraphCalendarMailboxTest extends TestCase
     public static function provideStoredAudienceCounts(): iterable
     {
         foreach (['REQUEST', 'CANCEL'] as $method) {
-            yield $method.' with policy' => [$method, true];
+            if ('CANCEL' === $method) {
+                yield $method.' with policy' => [$method, true];
+            }
             yield $method.' without policy' => [$method, false];
         }
     }
@@ -432,6 +587,8 @@ class Swift_Transport_Api_MicrosoftGraphCalendarMailboxTest extends TestCase
                 'type'            => 'singleInstance',
                 'start'           => $body['start'] ?? null,
                 'cancelled'       => false,
+                'isOrganizer'     => true,
+                'etag'            => 'W/"1"',
             ];
             $this->notifications[] = $this->events[$id]['attendees'];
 
@@ -441,12 +598,27 @@ class Swift_Transport_Api_MicrosoftGraphCalendarMailboxTest extends TestCase
         if (\preg_match('#^/v1\.0/me/events/(evt-\d+)(/cancel)?$#', $path, $match) && isset($this->events[$match[1]])) {
             if ('GET' === $request->getMethod() && !isset($match[2])) {
                 $event    = $this->events[$match[1]];
-                $response = ['id' => $event['id'], 'type' => $event['type']];
+                $response = ['id' => $event['id'], 'type' => $event['type'], 'isOrganizer' => $event['isOrganizer'], '@odata.etag' => $event['etag']];
                 if (!$this->omitAudience) {
                     $response['attendees'] = \array_map(static fn (string $address): array => ['emailAddress' => ['address' => $address], 'type' => 'required'], $event['attendees']);
                 }
+                if ($this->changeAfterRead) {
+                    $this->events[$match[1]]['attendees'][] = 'late@outside.test';
+                    $this->events[$match[1]]['etag']        = 'W/"2"';
+                }
 
                 return $this->json(200, $response);
+            }
+            if ('DELETE' === $request->getMethod() && !isset($match[2])) {
+                $version                     = $request->getHeaderLine('If-Match');
+                $this->conditionalVersions[] = $version;
+                if ($version !== $this->events[$match[1]]['etag']) {
+                    return $this->json(412, ['error' => ['code' => 'ErrorPreconditionFailed', 'message' => 'Event version changed']]);
+                }
+                $this->notifications[]                = $this->events[$match[1]]['attendees'];
+                $this->events[$match[1]]['cancelled'] = true;
+
+                return new Response(204);
             }
             if ('PATCH' === $request->getMethod() && !isset($match[2])) {
                 $addresses                            = \array_map(static fn (array $a): string => $a['emailAddress']['address'], $body['attendees'] ?? []);
