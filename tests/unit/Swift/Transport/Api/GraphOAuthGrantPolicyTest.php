@@ -446,6 +446,8 @@ class Swift_Transport_Api_GraphOAuthGrantPolicyTest extends TestCase
                 'duplicate encoded key'    => $request->withBody(GuzzleHttp\Psr7\Utils::streamFor('%63ode=old-code&'.$body)),
                 'duplicate query'          => $request->withUri($request->getUri()->withQuery('code=old-code&code=new-code')),
                 'conflicting query'        => $request->withUri($request->getUri()->withQuery('code=old-code')),
+                'lowercase stale basic'    => $request->withHeader('Authorization', 'basic '.\base64_encode('old-client:old-secret')),
+                'mixed case stale basic'   => $request->withHeader('Authorization', "bAsIc\t".\base64_encode('old-client:old-secret')),
                 'malformed basic'          => $request->withHeader('Authorization', 'Basic invalid!!'),
                 'nonseekable'              => $request->withBody(new GuzzleHttp\Psr7\NoSeekStream(GuzzleHttp\Psr7\Utils::streamFor($body))),
             };
@@ -463,7 +465,7 @@ class Swift_Transport_Api_GraphOAuthGrantPolicyTest extends TestCase
 
     public static function ambiguousRequests(): iterable
     {
-        foreach (['duplicate body', 'duplicate encoded key', 'duplicate bracket key', 'duplicate normalized key', 'duplicate query', 'conflicting query', 'malformed basic', 'nonseekable'] as $kind) {
+        foreach (['duplicate body', 'duplicate encoded key', 'duplicate bracket key', 'duplicate normalized key', 'duplicate query', 'conflicting query', 'malformed basic', 'lowercase stale basic', 'mixed case stale basic', 'nonseekable'] as $kind) {
             yield [$kind];
         }
     }
@@ -559,6 +561,20 @@ class Swift_Transport_Api_GraphOAuthGrantPolicyTest extends TestCase
                 yield [$policy, $explicit];
             }
         }
+    }
+
+    public function testCaseInsensitiveBasicSchemeKeepsCurrentCredentials(): void
+    {
+        $old = $this->codeContext('old');
+        $new = $this->codeContext('new');
+        $old->setCAERedirectCallback(static fn () => new FulfilledPromise($new));
+        $fixture = $this->sdk($old, [new Response(400, ['Content-Type' => 'application/json'], '{"error":"invalid_grant"}'), $this->token()], [$this->challenge(), new Response(202)], true, true);
+        $fixture->oauth->getHttpClient()->getConfig('handler')->push(GuzzleHttp\Middleware::mapRequest(static function ($request) {
+            return $request->withHeader('Authorization', 'basic '.\substr($request->getHeaderLine('Authorization'), 6));
+        }));
+        $this->assertSame(3, (new Swift_Transport_Api_MicrosoftGraphTransport($fixture->client))->send($this->message()));
+        $this->assertSame('basic '.\base64_encode('new-client:new-secret'), $fixture->tokens[1]['request']->getHeaderLine('Authorization'));
+        $this->assertSame($new, $fixture->provider->getTokenRequestContext());
     }
 
     private function codeContext(string $version, string $tenant = 'fixture-tenant'): AuthorizationCodeContext

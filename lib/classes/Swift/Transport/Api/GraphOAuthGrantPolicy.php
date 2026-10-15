@@ -228,8 +228,8 @@ class Swift_Transport_Api_GraphOAuthGrantPolicy
                 $this->reject('The Graph OAuth provider bypassed its current-context grant preparation.');
             }
             $basic = [];
-            if (\str_starts_with($request->getHeaderLine('Authorization'), 'Basic ')) {
-                $credentials = \base64_decode(\substr($request->getHeaderLine('Authorization'), 6), true);
+            if (\preg_match('/\ABasic[ \t]+(.*)\z/iD', $request->getHeaderLine('Authorization'), $authorization)) {
+                $credentials = \base64_decode($authorization[1], true);
                 if (false === $credentials || !\str_contains($credentials, ':')) {
                     $this->reject('Graph OAuth returned malformed HTTP Basic credentials.');
                 }
