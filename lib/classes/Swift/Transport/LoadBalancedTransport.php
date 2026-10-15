@@ -29,6 +29,9 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
      */
     protected $transports = [];
 
+    /** Distinguish a caller's pool replacement even when its entries compare equal. */
+    protected int $transportConfigurationVersion = 0;
+
     /**
      * The Transport used in the last successful send operation.
      *
@@ -50,6 +53,7 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
     {
         $this->transports     = $transports;
         $this->deadTransports = [];
+        ++$this->transportConfigurationVersion;
     }
 
     /**
@@ -136,6 +140,7 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
             $i        = 0; $i < $maxTransports
         && $transport = $this->getNextTransport(); ++$i
         ) {
+            $configurationVersion = $this->transportConfigurationVersion;
             try {
                 if (!$transport->isStarted()) {
                     $transport->start();
@@ -145,6 +150,12 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
                     break;
                 }
             } catch (Swift_TransportException $e) {
+                if (Swift_Transport_RetryPolicy::isTerminalFailure($e)) {
+                    throw $e;
+                }
+                if ($configurationVersion !== $this->transportConfigurationVersion) {
+                    continue;
+                }
                 $this->killCurrentTransport();
             }
         }
@@ -187,9 +198,19 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
     protected function killCurrentTransport()
     {
         if ($transport = \array_pop($this->transports)) {
+            $remaining            = $this->transports;
+            $configurationVersion = $this->transportConfigurationVersion;
             try {
                 $transport->stop();
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
+                if (Swift_Transport_RetryPolicy::isTerminalFailure($e)) {
+                    // Keep this backend available without undoing a caller's
+                    // reentrant replacement of the transport pool.
+                    if ($configurationVersion === $this->transportConfigurationVersion && $this->transports === $remaining) {
+                        $this->transports[] = $transport;
+                    }
+                    throw $e;
+                }
                 @\trigger_error(\sprintf(
                     'Swiftmailer: LoadBalancedTransport error from %s: %s',
                     \get_class($transport),

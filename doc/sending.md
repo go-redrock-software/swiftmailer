@@ -260,7 +260,8 @@ $transport = new Swift_FailoverTransport([
 ]);
 ```
 
-When a transport throws, the failover is logged via `trigger_error()` at
+When a transport throws an ordinary backend failure, the failover is logged via
+`trigger_error()` at
 `E_USER_WARNING` level (`Swiftmailer: Failover from <class>: <message>`), then
 the next transport is tried. If every transport fails or none are configured, a
 `Swift_TransportException` is thrown.
@@ -278,10 +279,33 @@ $transport = new Swift_LoadBalancedTransport([
 ]);
 ```
 
-A transport that throws is retired for the rest of the run; retiring it is
-logged via `trigger_error()` at `E_USER_WARNING`
+A transport that throws an ordinary backend failure is retired for the rest of
+the run. Ordinary errors raised while stopping that backend are logged via
+`trigger_error()` at `E_USER_WARNING`
 (`Swiftmailer: LoadBalancedTransport error from <class>: <message>`). If all
 transports are exhausted, a `Swift_TransportException` is thrown.
+
+### Terminal failures and pool replacement
+
+A `Swift_Transport_NonRetryableException` or PHP `Error` anywhere in a failure's
+cause chain ends the current send across failover, load balancing and retry
+wrappers, including nested wrappers. The original exception propagates without
+trying another backend or marking the message's backend dead. This also applies
+to startup, retry-restart and terminal cleanup failures. It prevents replay after
+an API response leaves acceptance uncertain or a request policy refuses delivery.
+An ordinary exception raised during cleanup retains the existing fallback behavior.
+
+These hard terminal failures take precedence over custom retry classifiers.
+Custom classifiers still decide how to handle ordinary transport failures,
+including authentication failures. Failover may try another configured backend
+for an ordinary backend-specific authentication failure.
+
+Calling `setTransports()` replaces a pool and clears any cached failover
+selection. The next send or health check uses the replacement pool. The last
+successful transport remains available through `getLastUsedTransport()` until a
+new send starts; a failed send clears it. A message-specific terminal failure
+leaves the configured backend available for a later explicit send. Reentrant
+pool replacement during a callback is preserved.
 
 ### Retry
 
@@ -323,7 +347,8 @@ decides retryability in this order:
 6. Code `0` (connection-level failure with no SMTP/HTTP code) -- retried.
 7. Any other `4xx` code -- retried; everything else is treated as permanent.
 
-Implement `Swift_Transport_RetryClassifier` to customize this. You can also
+Implement `Swift_Transport_RetryClassifier` to customize ordinary failure
+classification; explicit terminal causes above always stop delivery. You can also
 configure retry through a DSN (`retry(...)` wrapper or `retries`/`retry_delay`
 query params) -- see [dsn.md](dsn.md).
 

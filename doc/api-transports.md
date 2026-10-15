@@ -812,10 +812,11 @@ strings for `Swift_SentMessage`.
 A malformed or unreadable response after HTTP success can leave delivery
 uncertain. These failures, invalid message identifiers and recognized
 acceptance results that conflict with an HTTP error carry
-`Swift_Transport_NonRetryableException` in their exception chain. The default
-retry classifier does not replay them, even if an outer exception message
-contains a transient-error phrase. A custom retry classifier controls its own
-policy. See [Retry](sending.md#retry).
+`Swift_Transport_NonRetryableException` in their exception chain. Retry, failover
+and load-balanced wrappers do not replay them, even if an
+outer exception message contains a transient-error phrase. Custom retry
+classifiers cannot override these hard terminal failures; they classify ordinary
+transport failures. See [Retry](sending.md#retry).
 
 For transports extending `AbstractHttpApiTransport`, the `send()` method:
 

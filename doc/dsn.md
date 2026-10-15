@@ -205,6 +205,12 @@ Retry parameters also work on the inner DSNs of a `failover(...)`/`roundrobin(..
 
 Wrap multiple DSNs (or one) for redundancy, load balancing, or retry logic. Inner DSNs are separated by spaces inside the parentheses.
 
+Explicit non-retryable markers and PHP Error causes stop the current send across
+all wrappers, including nested wrappers and permissive custom retry classifiers.
+They preserve the original exception and prevent another backend from replaying
+an uncertain delivery. Ordinary backend failures retain their fallback/retry
+behavior. See [terminal failures](sending.md#terminal-failures-and-pool-replacement).
+
 ### Failover
 
 Tries each transport in order; on failure, falls through to the next.

@@ -149,7 +149,8 @@ and network health-check requests. Per-request enforcement preserves the rule
 when a supplied client enables redirects by default. Both same-origin and
 cross-origin redirects are refused, keeping credentials and message data at the
 configured endpoint. Redirect send failures use the non-retryable marker so the
-default retry wrapper does not replay them; network health checks return false.
+retry, failover and load-balanced wrappers do not replay them, including with
+permissive custom retry classifiers; network health checks return false.
 
 Gmail additionally refuses redirects for message requests and SDK token
 exchanges through an isolated Google Client copy and HTTP handler configuration.

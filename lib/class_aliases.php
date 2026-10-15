@@ -204,6 +204,7 @@
 \class_alias('Swift_Transport_NonRetryableException', 'Swift\Transport\NonRetryableException');
 \class_alias('Swift_Transport_NullTransport', 'Swift\Transport\NullTransport');
 \class_alias('Swift_Transport_RetryClassifier', 'Swift\Transport\RetryClassifier');
+\class_alias('Swift_Transport_RetryPolicy', 'Swift\Transport\RetryPolicy');
 \class_alias('Swift_Transport_RetryTransport', 'Swift\Transport\RetryTransport');
 \class_alias('Swift_Transport_SendmailTransport', 'Swift\Transport\SendmailTransport');
 \class_alias('Swift_Transport_SmtpAgent', 'Swift\Transport\SmtpAgent');

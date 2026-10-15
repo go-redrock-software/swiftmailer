@@ -141,6 +141,21 @@ $lb->start();
 // $deadTransport should still be in dead pool
 ```
 
+## Verified maintenance update (2026-10-15)
+
+The table below is a historical assessment. Current code already logs ordinary
+failover and cleanup failures and enforces retry parameter caps. The broader
+minimum-security policy and new event type proposed above remain separate work;
+this change does not impose randomized selection on round-robin transports.
+
+Issues #66/#67 address two demonstrated wrapper bugs: explicit terminal markers
+and PHP Error causes now stop retry/failover/load-balanced sends, and replacing
+a failover pool clears its cached backend. Terminal cleanup errors propagate
+before another sender is used; a newer callback-driven pool replacement is
+preserved. Custom classifiers continue to classify ordinary transport failures
+but cannot override hard terminal causes. See [sending behavior](../../../doc/sending.md#terminal-failures-and-pool-replacement)
+and the [implementation handoff](../../issues/66.md) for regression and validation evidence.
+
 ## Implementation Status (2026-03-02)
 
 | Mitigation | Status | Evidence |

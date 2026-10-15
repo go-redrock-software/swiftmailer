@@ -17,15 +17,20 @@ class Swift_Transport_FailoverTransport extends Swift_Transport_LoadBalancedTran
 {
     /**
      * Registered transport currently used.
-     *
-     * @var Swift_Transport
      */
-    private $currentTransport;
+    private ?Swift_Transport $currentTransport = null;
 
     // needed as __construct is called from elsewhere explicitly
     public function __construct()
     {
         parent::__construct();
+    }
+
+    #[Override]
+    public function setTransports(array $transports)
+    {
+        parent::setTransports($transports);
+        $this->currentTransport = null;
     }
 
     #[Override]
@@ -66,6 +71,7 @@ class Swift_Transport_FailoverTransport extends Swift_Transport_LoadBalancedTran
             $i        = 0; $i < $maxTransports
         && $transport = $this->getNextTransport(); ++$i
         ) {
+            $configurationVersion = $this->transportConfigurationVersion;
             try {
                 if (!$transport->isStarted()) {
                     $transport->start();
@@ -77,6 +83,12 @@ class Swift_Transport_FailoverTransport extends Swift_Transport_LoadBalancedTran
                     return $sent;
                 }
             } catch (Swift_TransportException $e) {
+                if (Swift_Transport_RetryPolicy::isTerminalFailure($e)) {
+                    throw $e;
+                }
+                if ($configurationVersion !== $this->transportConfigurationVersion) {
+                    continue;
+                }
                 @\trigger_error(\sprintf(
                     'Swiftmailer: Failover from %s: %s',
                     \get_class($transport),

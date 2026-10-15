@@ -205,6 +205,7 @@ return [
     'Swift_Transport_NonRetryableException'                     => 'Swift\\Transport\\NonRetryableException',
     'Swift_Transport_NullTransport'                             => 'Swift\\Transport\\NullTransport',
     'Swift_Transport_RetryClassifier'                           => 'Swift\\Transport\\RetryClassifier',
+    'Swift_Transport_RetryPolicy'                               => 'Swift\\Transport\\RetryPolicy',
     'Swift_Transport_RetryTransport'                            => 'Swift\\Transport\\RetryTransport',
     'Swift_Transport_SendmailTransport'                         => 'Swift\\Transport\\SendmailTransport',
     'Swift_Transport_SmtpAgent'                                 => 'Swift\\Transport\\SmtpAgent',
