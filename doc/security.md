@@ -12,7 +12,7 @@ This fork of SwiftMailer ships a set of defensive features aimed at the ways a m
 | `#[\SensitiveParameter]` on keys/passwords | On, automatic | -- |
 | Guzzle request/response error leakage | On, automatic (`http_errors => false`) | -- |
 | API response body size cap (1 MiB) | On, automatic | -- |
-| HTTP API redirect refusal | On for built-in direct HTTP providers | Applied per request, including injected clients |
+| HTTP API redirect refusal | On for direct HTTP providers and Gmail | Applied per request; Gmail uses scoped SDK/HTTP configuration |
 | Sendmail metacharacter rejection | On, automatic | `setCommand()` |
 | Sendmail binary allowlist (DSN) | On when using DSN factory | -- |
 | DSN parameter validation | On, automatic | -- |
@@ -151,9 +151,15 @@ cross-origin redirects are refused, keeping credentials and message data at the
 configured endpoint. Redirect send failures use the non-retryable marker so the
 default retry wrapper does not replay them; network health checks return false.
 
-This safeguard belongs to the direct HTTP transport implementations. The
-SDK-backed SES, Gmail and Graph transports use their SDK clients' HTTP policies.
-It does not alter caller-owned SDK configuration. See
+Gmail additionally refuses redirects for message requests and SDK token
+exchanges through an isolated Google Client copy and HTTP handler configuration.
+A redirect raises the same non-retryable failure. The caller's HTTP client,
+handler stack, options and deferred mode remain intact; normal authentication
+callbacks and shared token-cache updates still occur. Custom Google Client
+subclasses must support cloning and honor HTTP/defer setters.
+
+SES and Graph still use their SDK clients' redirect policies and require
+separate safeguards. Their injected clients should refuse redirects. See
 [API request safeguards](api-transports.md#security) for the scope and custom
 HTTP transport requirements.
 

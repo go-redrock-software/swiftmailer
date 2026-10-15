@@ -11,6 +11,10 @@ Unreleased
 
  Security:
 
+ * Gmail SDK sends now refuse redirects for message requests and token
+   exchanges using scoped HTTP configuration. Caller-owned SDK/client defaults
+   and normal authentication callbacks/cache behavior are preserved (GitLab #55).
+
  * Built-in HTTP API sends and network health checks now refuse redirects
    per request, including when an injected client enables them. Requests stay
    at the configured endpoint instead of automatically resubmitting credentials
@@ -51,6 +55,14 @@ Unreleased
    autoloading, and behavior are unchanged.
 
  Bug Fixes:
+
+ * Gmail sends now execute immediately even when the supplied Google Client
+   has deferred operations enabled; the caller's deferred mode is preserved.
+   Deferred request objects are no longer counted as accepted mail (GitLab #56).
+
+ * Gmail raw MIME export no longer appends attachments a second time after the
+   final MIME boundary. Binary, stream and inline attachments remain part of
+   the complete base64url-encoded message (GitLab #57).
 
  * Azure's health check now accepts successful 2xx responses and its expected
    authenticated 404 acknowledgement. Redirects and other client/server errors

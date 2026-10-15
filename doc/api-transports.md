@@ -419,7 +419,18 @@ $transport = new Swift_Transport_Api_AzureTransport($connectionString);
 | **Tags** | No |
 | **Metadata** | No |
 
-Sends the entire message as a base64url-encoded RFC 2822 string via the Gmail API `users.messages.send` method.
+Sends the complete MIME message once as a base64url-encoded RFC 2822 string via
+`users.messages.send`, including attachments and Bcc. Each send executes immediately
+on a scoped copy of the Google Client, even when the supplied client uses deferred
+operations. Its original deferred mode and HTTP client configuration are preserved.
+
+The scoped HTTP policy refuses redirects for both Gmail and SDK token exchanges.
+A 3xx response raises `Swift_Transport_NonRetryableException`, preventing default
+Swift retries from replaying the operation. Ordinary Google SDK exceptions retain
+the existing zero-return behavior. Authentication callbacks and the shared token
+cache retain normal SDK behavior, including token updates by Google's default
+callback. Custom Google Client subclasses must support cloning and honor the
+HTTP-client/defer setters; unsupported customizations fail before reporting success.
 
 ```php
 $client = new Google\Client();
@@ -824,8 +835,10 @@ The supplied client's defaults are preserved. MailPace's `ping()` only starts th
 transport locally and makes no HTTP request.
 
 This policy covers the 17 built-in providers that extend
-`AbstractHttpApiTransport`. SES, Gmail and Graph use injected SDK clients with
-separate HTTP policies; these per-request settings do not configure those SDKs.
+`AbstractHttpApiTransport`. Gmail separately enforces redirect refusal through
+scoped Google SDK/HTTP configuration, including authentication token exchanges.
+SES and Graph use injected SDK clients with separate HTTP policies; the direct
+HTTP and Gmail safeguards do not configure those clients.
 Custom HTTP transports should set both `http_errors: false` and
 `allow_redirects: false` when issuing requests, and supplied clients must honor
 Guzzle's request options.

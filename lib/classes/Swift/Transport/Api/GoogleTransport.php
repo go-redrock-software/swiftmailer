@@ -43,9 +43,6 @@ class Swift_Transport_Api_GoogleTransport extends Swift_Transport_AbstractApiTra
     {
         $this->validateEnvelope($message, $envelope);
 
-        // Get the Gmail Service from the Google Client
-        $service = new Google\Service\Gmail($this->getApiConnection());
-
         $toRecipients  = \count($message->getTo() ?? []);
         $ccRecipients  = \count($message->getCc() ?? []);
         $bccRecipients = \count($message->getBcc() ?? []);
@@ -53,14 +50,35 @@ class Swift_Transport_Api_GoogleTransport extends Swift_Transport_AbstractApiTra
         $totalRecipients = $toRecipients + $ccRecipients + $bccRecipients;
 
         try {
+            $client = $this->getApiConnection();
+            if (!(new ReflectionObject($client))->isCloneable()) {
+                throw new Swift_Transport_NonRetryableException('The Google client must support cloning for isolated HTTP requests.');
+            }
+            // Authentication normally initializes this cache. Share it across copies
+            // so refresh credentials and token callbacks retain their normal behavior.
+            $client->getCache();
+            $scoped = clone $client;
+            $http   = new Swift_Transport_Api_NoRedirectClient($client->getHttpClient());
+            $scoped->setHttpClient($http);
+            $scoped->setDefer(false);
+            if ($scoped->getHttpClient() !== $http || $scoped->shouldDefer()) {
+                throw new Swift_Transport_NonRetryableException('The Google client must honor scoped HTTP configuration and immediate execution.');
+            }
+            $service = new Google\Service\Gmail($scoped);
+
             // Create base64url encoded RFC 2822 formatted message and add to the Gmail service
             $msg = new Google\Service\Gmail\Message();
             $msg->setRaw(getRawMessage($message));
             // Send the email
             /** @noinspection CallableParameterUseCaseInTypeContextInspection */
-            $message = $service->users_messages->send('me', $msg);
+            $result = $service->users_messages->send('me', $msg);
+            if ($result instanceof Psr\Http\Message\RequestInterface) {
+                throw new Swift_Transport_NonRetryableException('Gmail returned a deferred request instead of a send result.');
+            }
 
             return $totalRecipients;
+        } catch (Swift_Transport_NonRetryableException $e) {
+            throw $e;
         } catch (Exception $e) {
             return 0;
         }

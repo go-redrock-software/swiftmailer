@@ -174,6 +174,7 @@ return [
     'Swift_Transport_Api_MailomatTransport'                     => 'Swift\\Transport\\Api\\MailomatTransport',
     'Swift_Transport_Api_MailtrapTransport'                     => 'Swift\\Transport\\Api\\MailtrapTransport',
     'Swift_Transport_Api_MicrosoftGraphTransport'               => 'Swift\\Transport\\Api\\MicrosoftGraphTransport',
+    'Swift_Transport_Api_NoRedirectClient'                      => 'Swift\\Transport\\Api\\NoRedirectClient',
     'Swift_Transport_Api_PostMarkTransport'                     => 'Swift\\Transport\\Api\\PostMarkTransport',
     'Swift_Transport_Api_PostalTransport'                       => 'Swift\\Transport\\Api\\PostalTransport',
     'Swift_Transport_Api_ResendTransport'                       => 'Swift\\Transport\\Api\\ResendTransport',

@@ -173,6 +173,7 @@
 \class_alias('Swift_Transport_Api_MailomatTransport', 'Swift\Transport\Api\MailomatTransport');
 \class_alias('Swift_Transport_Api_MailtrapTransport', 'Swift\Transport\Api\MailtrapTransport');
 \class_alias('Swift_Transport_Api_MicrosoftGraphTransport', 'Swift\Transport\Api\MicrosoftGraphTransport');
+\class_alias('Swift_Transport_Api_NoRedirectClient', 'Swift\Transport\Api\NoRedirectClient');
 \class_alias('Swift_Transport_Api_PostMarkTransport', 'Swift\Transport\Api\PostMarkTransport');
 \class_alias('Swift_Transport_Api_PostalTransport', 'Swift\Transport\Api\PostalTransport');
 \class_alias('Swift_Transport_Api_ResendTransport', 'Swift\Transport\Api\ResendTransport');
