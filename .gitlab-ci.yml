@@ -127,6 +127,7 @@ smoke-tests:
     MAILPIT_SMTP_HOST: mailpit
     MAILPIT_SMTP_PORT: "1025"
     MAILPIT_API_URL: "http://mailpit:8025"
+    SYMFONY_DEPRECATIONS_HELPER: "max[direct]=0&baselineFile=./tests/deprecation-baseline.json"
   before_script:
     - apt-get update -qq && apt-get install -y -qq git unzip libicu-dev libzip-dev libxml2-dev libcurl4-openssl-dev > /dev/null
     - docker-php-ext-install intl iconv mbstring zip dom curl > /dev/null 2>&1 || true

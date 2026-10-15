@@ -175,6 +175,9 @@ defaults it to `1.0.0`, which trips roave/security-advisories' `swiftmailer/swif
 
 The `tests` jobs set `SYMFONY_DEPRECATIONS_HELPER=max[direct]=0&max[self]=0` directly,
 rather than the baseline-file form the local `composer test` uses.
+The Mailpit smoke job exports the same baseline-file policy as `composer test`
+before starting PHPUnit, so known dependency deprecations do not turn passing
+delivery assertions into a failed job. New direct deprecations still fail.
 
 ### GitHub Actions — `.github/workflows/ci.yml` (mirror)
 

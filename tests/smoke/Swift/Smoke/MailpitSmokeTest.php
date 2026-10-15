@@ -91,7 +91,6 @@ class Swift_Smoke_MailpitSmokeTest extends PHPUnit\Framework\TestCase
         ]);
         $result = \curl_exec($ch);
         $code   = \curl_getinfo($ch, \CURLINFO_HTTP_CODE);
-        \curl_close($ch);
 
         return false !== $result && 200 === $code;
     }
@@ -105,7 +104,6 @@ class Swift_Smoke_MailpitSmokeTest extends PHPUnit\Framework\TestCase
             \CURLOPT_TIMEOUT        => 5,
         ]);
         \curl_exec($ch);
-        \curl_close($ch);
     }
 
     private function getMailpitMessages(): array
@@ -119,7 +117,6 @@ class Swift_Smoke_MailpitSmokeTest extends PHPUnit\Framework\TestCase
             \CURLOPT_TIMEOUT        => 5,
         ]);
         $response = \curl_exec($ch);
-        \curl_close($ch);
 
         $data = \json_decode($response, true);
 
