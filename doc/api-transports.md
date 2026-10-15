@@ -450,7 +450,7 @@ $transport = new Swift_Transport_Api_GoogleTransport($client);
 |-|-|
 | **Class** | `Swift_Transport_Api_MicrosoftGraphTransport` |
 | **DSN** | `microsoft-graph://...` (not DSN-constructible -- requires GraphServiceClient) |
-| **Base class** | `AbstractApiTransport` (directly, no Guzzle) |
+| **Base class** | `AbstractApiTransport` (HTTP through Kiota SDK) |
 | **Constructor** | `(GraphServiceClient $client, ?string $sendingAccountUserId = null, ?EventDispatcher $eventDispatcher = null)` |
 | **Dependency** | `microsoft/microsoft-graph` |
 | **Auth method** | Microsoft Graph SDK (OAuth2 / app credentials) |
@@ -474,6 +474,10 @@ $transport->setSendingAccountUserId('other-user@company.com');
 ```
 
 The Graph transport has grown well beyond simple sends: large attachments (>= 3 MB, `LARGE_ATTACHMENT_THRESHOLD`) are routed through the draft + upload-session flow and rejected above Graph's 150 MB per-attachment cap (`MAX_ATTACHMENT_SIZE`), and `text/calendar` parts (`METHOD:REQUEST` / `CANCEL`) can be converted into real Calendar events via `enableCalendarEventConversion()`. Those flows are covered in the dedicated [Microsoft Graph guide](microsoft-graph.md); this page documents only the constructor and transport basics.
+
+Graph resource requests refuse redirects through a scoped Kiota adapter without
+changing the supplied client. OAuth token HTTP policy remains separate. See
+[SDK compatibility and request destinations](microsoft-graph.md#request-destinations-and-sdk-compatibility).
 
 ---
 
@@ -840,8 +844,10 @@ transport locally and makes no HTTP request.
 This policy covers the 17 built-in providers that extend
 `AbstractHttpApiTransport`. Gmail separately enforces redirect refusal through
 scoped Google SDK/HTTP configuration, including authentication token exchanges.
-SES and Graph use injected SDK clients with separate HTTP policies; the direct
-HTTP and Gmail safeguards do not configure those clients.
+Graph resource requests separately use a scoped Kiota adapter/HTTP policy for
+mail, draft/upload and calendar operations. Graph OAuth token exchanges and SES
+use separate HTTP clients whose policies are retained; the direct HTTP, Gmail
+and Graph resource safeguards do not configure those clients.
 Custom HTTP transports should set both `http_errors: false` and
 `allow_redirects: false` when issuing requests, and supplied clients must honor
 Guzzle's request options.

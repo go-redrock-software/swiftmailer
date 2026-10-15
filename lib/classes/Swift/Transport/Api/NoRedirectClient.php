@@ -68,7 +68,7 @@ class Swift_Transport_Api_NoRedirectClient implements ClientInterface
         if (null === $this->configuration) {
             $configuration = $this->client->getConfig();
             if (!\is_array($configuration)) {
-                throw new Swift_Transport_NonRetryableException('The Google HTTP client must expose a Guzzle-compatible configuration.');
+                throw new Swift_Transport_NonRetryableException('The SDK HTTP client must expose a Guzzle-compatible configuration.');
             }
             $handler = $configuration['handler'] ?? null;
             if ($handler instanceof HandlerStack) {
@@ -76,7 +76,7 @@ class Swift_Transport_Api_NoRedirectClient implements ClientInterface
             } elseif (\is_callable($handler)) {
                 $stack = HandlerStack::create($handler);
             } else {
-                throw new Swift_Transport_NonRetryableException('The Google HTTP client must expose a callable handler for scoped authentication.');
+                throw new Swift_Transport_NonRetryableException('The SDK HTTP client must expose a callable handler for scoped authentication.');
             }
             // SDK authentication may create another client with this configuration.
             $stack->unshift(static function (callable $next): callable {

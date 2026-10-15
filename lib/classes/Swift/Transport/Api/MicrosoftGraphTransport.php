@@ -39,6 +39,12 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
 {
     private GraphServiceClient $client;
 
+    /** @var WeakMap<Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder, Microsoft\Kiota\Abstractions\RequestAdapter>|null */
+    private ?WeakMap $scopedAdapters = null;
+
+    /** @var WeakMap<UploadSession, Microsoft\Kiota\Abstractions\RequestAdapter>|null */
+    private ?WeakMap $uploadAdapters = null;
+
     private ?string $sendingAccountUserId;
 
     private bool $shouldUseFromAddress = false;
@@ -514,7 +520,20 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
                 return;
             }
 
-            $this->uploadLargeAttachment($uploadSession, $contents);
+            $previous = $this->uploadAdapters[$uploadSession] ?? null;
+            if (isset($this->scopedAdapters[$userRequestBuilder])) {
+                $this->uploadAdapters ??= new WeakMap();
+                $this->uploadAdapters[$uploadSession] = $this->scopedAdapters[$userRequestBuilder];
+            }
+            try {
+                $this->uploadLargeAttachment($uploadSession, $contents);
+            } finally {
+                if (null !== $previous) {
+                    $this->uploadAdapters[$uploadSession] = $previous;
+                } elseif (null !== $this->uploadAdapters) {
+                    unset($this->uploadAdapters[$uploadSession]);
+                }
+            }
         }
 
         // POST /messages/{id}/send takes no body and moves the draft to Sent Items.
@@ -531,7 +550,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
     {
         $task = new LargeFileUploadTask(
             $uploadSession,
-            $this->client->getRequestAdapter(),
+            $this->uploadAdapters[$uploadSession] ?? Swift_Transport_Api_GraphRequestPolicy::scope($this->client->getRequestAdapter()),
             Utils::streamFor($contents),
         );
         $task->upload()->wait();
@@ -542,20 +561,23 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
      */
     private function resolveUserRequestBuilder(Swift_Mime_SimpleMessage $message): Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder
     {
+        $adapter = Swift_Transport_Api_GraphRequestPolicy::scope($this->client->getRequestAdapter());
+        $client  = GraphServiceClient::createWithRequestAdapter($adapter);
         if ($this->shouldUseFromAddress) {
             $from = $message->getFrom();
             if (!$from) {
                 $this->throwException(new Swift_TransportException('Cannot use from-address mode: message has no From address'));
             }
-
-            return $this->client->users()->byUserId(\array_key_first($from));
+            $builder = $client->users()->byUserId(\array_key_first($from));
+        } elseif (null === $this->sendingAccountUserId) {
+            $builder = $client->me();
+        } else {
+            $builder = $client->users()->byUserId($this->sendingAccountUserId);
         }
+        $this->scopedAdapters ??= new WeakMap();
+        $this->scopedAdapters[$builder] = $adapter;
 
-        if (null === $this->sendingAccountUserId) {
-            return $this->client->me();
-        }
-
-        return $this->client->users()->byUserId($this->sendingAccountUserId);
+        return $builder;
     }
 
     /**

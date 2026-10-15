@@ -24,25 +24,8 @@ class Swift_Integration_ApiEnvelopeTest extends PHPUnit\Framework\TestCase
 
     public function testMatchingGraphEnvelopeSetsFromAndCountsOnlyDeliveryRecipients(): void
     {
-        $promise = $this->createMock(Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-        $sendBuilder = $this->createMock(Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendBuilder->expects($this->once())->method('post')->willReturnCallback(function ($body) use ($promise) {
-            $payload = $body->getMessage();
-            $this->assertSame('author@example.com', $payload->getFrom()->getEmailAddress()->getAddress());
-            $this->assertSame('visible@example.com', $payload->getToRecipients()[0]->getEmailAddress()->getAddress());
-            $this->assertSame('cc@example.com', $payload->getCcRecipients()[0]->getEmailAddress()->getAddress());
-            $this->assertSame('hidden@example.com', $payload->getBccRecipients()[0]->getEmailAddress()->getAddress());
-            $this->assertSame('reply@example.com', $payload->getReplyTo()[0]->getEmailAddress()->getAddress());
-
-            return $promise;
-        });
-        $user = $this->createMock(Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $user->method('sendMail')->willReturn($sendBuilder);
-        $users = $this->createMock(Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
-        $users->method('byUserId')->with('user-id')->willReturn($user);
-        $client = $this->createMock(Microsoft\Graph\GraphServiceClient::class);
-        $client->method('users')->willReturn($users);
+        $fixture   = new Swift_GraphSdkFixture();
+        $client    = $fixture->client;
         $transport = new Swift_Transport_Api_MicrosoftGraphTransport($client, 'user-id', new Swift_Events_SimpleEventDispatcher());
         $message   = $this->createMessage()->setReplyTo('reply@example.com');
         $original  = $message->toString();
@@ -51,6 +34,13 @@ class Swift_Integration_ApiEnvelopeTest extends PHPUnit\Framework\TestCase
         $this->assertSame(3, $transport->send($message, $failed, Swift_Envelope::fromMessage($message)));
         $this->assertSame($original, $message->toString());
         $this->assertSame([], $failed);
+        $payload = $fixture->payload()['Message'];
+        $this->assertSame('author@example.com', $payload['from']['emailAddress']['address']);
+        $this->assertSame('visible@example.com', $payload['toRecipients'][0]['emailAddress']['address']);
+        $this->assertSame('cc@example.com', $payload['ccRecipients'][0]['emailAddress']['address']);
+        $this->assertSame('hidden@example.com', $payload['bccRecipients'][0]['emailAddress']['address']);
+        $this->assertSame('reply@example.com', $payload['replyTo'][0]['emailAddress']['address']);
+        $this->assertSame(['POST /v1.0/users/user-id/sendMail'], $fixture->paths());
     }
 
     public function testGraphEnvelopeCannotBeSilentlyUsedForCalendarConversion(): void

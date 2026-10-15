@@ -15,7 +15,7 @@ event model see [events.md](events.md).
 | | |
 |-|-|
 | **Class** | `Swift_Transport_Api_MicrosoftGraphTransport` |
-| **Base class** | `Swift_Transport_AbstractApiTransport` (directly — no Guzzle HTTP layer) |
+| **Base class** | `Swift_Transport_AbstractApiTransport` (SDK-backed; HTTP policy through Kiota) |
 | **Dependency** | `microsoft/microsoft-graph` (`^2.10`) |
 | **Constructor** | `(GraphServiceClient $client, ?string $sendingAccountUserId = null, ?Swift_Events_EventDispatcher $dispatcher = null)` |
 | **DSN scheme** | `microsoft-graph` (mapped, but **not** DSN-constructible — the SDK client must be injected) |
@@ -31,6 +31,38 @@ event model see [events.md](events.md).
   hard dependencies in this fork's `composer.json`, so a normal `composer install` pulls
   them in.
 - A Microsoft 365 / Entra ID (Azure AD) tenant with an app registration (below).
+
+---
+
+## Request destinations and SDK compatibility
+
+Each Swift send uses an isolated copy of a standard Kiota `GuzzleRequestAdapter`.
+All Graph resource requests refuse HTTP redirects: `sendMail`, draft creation,
+small attachments, upload sessions and chunks, draft send, and calendar
+lookup/create/update/cancel. A 3xx response becomes a transport failure carrying
+`Swift_Transport_NonRetryableException` in its cause chain, so the default Swift
+retry wrapper does not replay it. Later steps in that send are not attempted.
+`ping()` remains local-only.
+
+The caller's `GraphServiceClient`, adapter, base URL, HTTP options and handler
+stack remain intact. Authentication providers/cache objects, serializer factories,
+SDK retry handling, tracing and CAE reauthentication retain their behavior. A
+subsequent request made directly through the original SDK client still uses its
+original HTTP policy. Swift uses standard generated builders for the isolated
+adapter; custom overrides of the client's `me()` or `users()` methods are not
+reproduced. Existing protected Swift draft/upload helper signatures are preserved.
+
+The adapter must support cloning and expose the Kiota Guzzle HTTP configuration
+expected by this integration. Compatibility is checked before sending; unsupported
+custom adapters or SDK layouts fail with a clear non-retryable error. Injected
+HTTP clients must expose a Guzzle-compatible configuration and callable handler.
+Their options and middleware are retained; custom HTTP-client `send`/`request`
+method overrides are not copied. Adapter subclasses must honor the inherited
+HTTP configuration contract.
+
+Graph's OAuth provider owns a separate token HTTP client. The resource-request
+policy leaves that client unchanged and does not secure token exchanges. Its
+redirect behavior needs a separate safeguard. SES also has a separate SDK policy.
 
 ---
 

@@ -11,6 +11,12 @@ Unreleased
 
  Security:
 
+ * Microsoft Graph resource requests now refuse HTTP redirects during mail,
+   draft/upload-session and calendar operations. The transport uses a scoped
+   Kiota adapter copy, preserving caller configuration and ordinary SDK
+   authentication/retry behavior. Redirect failures disable default Swift
+   retries. Graph OAuth token HTTP policy remains separate (GitLab #58).
+
  * Gmail SDK sends now refuse redirects for message requests and token
    exchanges using scoped HTTP configuration. Caller-owned SDK/client defaults
    and normal authentication callbacks/cache behavior are preserved (GitLab #55).

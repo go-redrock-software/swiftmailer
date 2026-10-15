@@ -12,7 +12,7 @@ This fork of SwiftMailer ships a set of defensive features aimed at the ways a m
 | `#[\SensitiveParameter]` on keys/passwords | On, automatic | -- |
 | Guzzle request/response error leakage | On, automatic (`http_errors => false`) | -- |
 | API response body size cap (1 MiB) | On, automatic | -- |
-| HTTP API redirect refusal | On for direct HTTP providers and Gmail | Applied per request; Gmail uses scoped SDK/HTTP configuration |
+| HTTP API redirect refusal | Direct HTTP providers, Gmail and Graph resource requests | Applied through per-request options or scoped SDK/HTTP configuration |
 | Sendmail metacharacter rejection | On, automatic | `setCommand()` |
 | Sendmail binary allowlist (DSN) | On when using DSN factory | -- |
 | DSN parameter validation | On, automatic | -- |
@@ -158,8 +158,15 @@ handler stack, options and deferred mode remain intact; normal authentication
 callbacks and shared token-cache updates still occur. Custom Google Client
 subclasses must support cloning and honor HTTP/defer setters.
 
-SES and Graph still use their SDK clients' redirect policies and require
-separate safeguards. Their injected clients should refuse redirects. See
+Graph resource requests also refuse redirects through a scoped Kiota adapter
+and HTTP configuration. This includes mail, draft attachments, upload chunks and
+calendar operations. Its local-only ping makes no network request. The original
+Graph client and adapter remain intact. The supported adapter boundary is
+described in [the Graph guide](microsoft-graph.md#request-destinations-and-sdk-compatibility).
+
+Graph OAuth token exchanges use a separate HTTP client and retain its policy.
+SES also retains its SDK HTTP policy. Those clients require separate redirect
+safeguards; the resource-request policy does not configure them. See
 [API request safeguards](api-transports.md#security) for the scope and custom
 HTTP transport requirements.
 

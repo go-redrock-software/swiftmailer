@@ -165,6 +165,7 @@ return [
     'Swift_Transport_Api_Calendar_IcsParser'                    => 'Swift\\Transport\\Api\\Calendar\\IcsParser',
     'Swift_Transport_Api_Calendar_ParsedEvent'                  => 'Swift\\Transport\\Api\\Calendar\\ParsedEvent',
     'Swift_Transport_Api_GoogleTransport'                       => 'Swift\\Transport\\Api\\GoogleTransport',
+    'Swift_Transport_Api_GraphRequestPolicy'                    => 'Swift\\Transport\\Api\\GraphRequestPolicy',
     'Swift_Transport_Api_InfoBipTransport'                      => 'Swift\\Transport\\Api\\InfoBipTransport',
     'Swift_Transport_Api_MailChimpTransport'                    => 'Swift\\Transport\\Api\\MailChimpTransport',
     'Swift_Transport_Api_MailGunTransport'                      => 'Swift\\Transport\\Api\\MailGunTransport',
