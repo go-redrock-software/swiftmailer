@@ -182,6 +182,7 @@ mutation-testing-mr:
   stage: mutation
   variables:
     GIT_DEPTH: "0"
+    SYMFONY_DEPRECATIONS_HELPER: "max[direct]=0&baselineFile=./tests/deprecation-baseline.json"
   script:
     - CHANGED=$(php bin/ci/mutation-diff.php "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME")
     - |

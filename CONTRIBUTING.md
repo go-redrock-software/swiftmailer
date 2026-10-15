@@ -125,6 +125,11 @@ commit IDs. `GIT_DEPTH: "0"` requests full history; the helper also recovers bot
 source and target ancestry when invoked in a shallow checkout. Its stderr
 diagnostic records the fetched target commit and source-file count.
 
+The MR mutation job exports the normal test deprecation policy to Infection and
+its child processes, including the PHPUnit version probe. Coverage generation
+keeps its existing command-local override. Neither the baseline nor mutation
+thresholds change.
+
 Only a successful comparison with no changed PHP source files skips mutation
 testing. A missing target, unavailable merge base or failed fetch fails the job.
 Git arguments are passed without a shell and filenames are read with NUL
