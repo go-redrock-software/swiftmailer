@@ -1283,7 +1283,7 @@ abstract class Swift_Transport_AbstractSmtpTest extends SwiftMailerTestCase
         $this->assertEquals(1, $count);
     }
 
-    public function testSendDoesNotStripBccWhenEnvelopeProvided()
+    public function testSendStripsAndRestoresBccWhenEnvelopeProvided()
     {
         $buf     = $this->getBuffer();
         $smtp    = $this->getTransport($buf);
@@ -1299,14 +1299,77 @@ abstract class Swift_Transport_AbstractSmtpTest extends SwiftMailerTestCase
             ->zeroOrMoreTimes()
             ->andReturn(['secret@example.com' => null]);
 
-        // When envelope is provided, setBcc([]) must NOT be called
-        $message->shouldNotReceive('setBcc');
+        $message->shouldReceive('setBcc')->once()->with([])->ordered();
+        $message->shouldReceive('toByteStream')->once()->ordered();
+        $message->shouldReceive('setBcc')->once()->with(['secret@example.com' => null])->ordered();
 
         $envelope = new Swift_Envelope('me@domain.com', ['to@example.com', 'secret@example.com']);
 
         $this->finishBuffer($buf);
         $smtp->start();
         $smtp->send($message, $failures, $envelope);
+    }
+
+    public function testSendRestoresBccAfterEnvelopeStreamingFailure()
+    {
+        $buf     = $this->getBuffer();
+        $smtp    = $this->getTransport($buf);
+        $message = $this->createMessage();
+        $bcc     = ['secret@example.com' => 'Private recipient'];
+
+        $message->shouldReceive('getBcc')->andReturn($bcc);
+        $message->shouldReceive('setBcc')->once()->with([])->ordered();
+        $message->shouldReceive('toByteStream')->once()->ordered()->andThrow(new RuntimeException('Streaming failed'));
+        $message->shouldReceive('setBcc')->once()->with($bcc)->ordered();
+
+        $this->finishBuffer($buf);
+        $smtp->start();
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Streaming failed');
+        $smtp->send($message, $failures, new Swift_Envelope('sender@example.com', ['recipient@example.com']));
+    }
+
+    public function testSendWithEnvelopeLeavesAbsentBccUntouched()
+    {
+        $buf     = $this->getBuffer();
+        $smtp    = $this->getTransport($buf);
+        $message = $this->createMessage();
+
+        $message->shouldReceive('getBcc')->andReturn(null);
+        $message->shouldNotReceive('setBcc');
+
+        $this->finishBuffer($buf);
+        $smtp->start();
+
+        $this->assertSame(1, $smtp->send($message, $failures, new Swift_Envelope('sender@example.com', ['recipient@example.com'])));
+    }
+
+    public function testRealMessageHidesBccWhileSerializingForExplicitEnvelope()
+    {
+        $buf     = $this->getBuffer();
+        $smtp    = $this->getTransport($buf);
+        $message = new class('Envelope privacy') extends Swift_Message {
+            public string $serialized = '';
+
+            public function toByteStream(Swift_InputByteStream $stream)
+            {
+                $this->serialized = $this->toString();
+                parent::toByteStream($stream);
+            }
+        };
+        $message->setFrom('sender@example.com')->setTo('visible@example.com')->setBcc(['secret@example.com' => 'Private']);
+        $envelope = new Swift_Envelope('bounce@example.com', ['visible@example.com', 'secret@example.com']);
+
+        $this->finishBuffer($buf);
+        $smtp->start();
+        $this->assertSame(2, $smtp->send($message, $failures, $envelope));
+
+        $this->assertStringContainsString('To: visible@example.com', $message->serialized);
+        $this->assertStringNotContainsString('Bcc:', $message->serialized);
+        $this->assertStringNotContainsString('secret@example.com', $message->serialized);
+        $this->assertSame(['secret@example.com' => 'Private'], $message->getBcc());
+        $this->assertSame(['visible@example.com', 'secret@example.com'], $envelope->getRecipients());
     }
 
     public function testSendFallsBackToMessageWhenNoEnvelope()

@@ -567,8 +567,10 @@ $numSent = $mailer->send($message, $failures, $envelope);
 string and there must be at least one string recipient, otherwise the
 constructor throws `InvalidArgumentException`. `Swift_Envelope::fromMessage()`
 builds one using the same header-derivation logic the transports use. When an
-explicit envelope is supplied, the SMTP transport uses it verbatim -- it does
-**not** strip `Bcc` or inspect headers. A `beforeSendPerformed` listener may
+explicit envelope is supplied, the SMTP transport uses its sender and recipients
+instead of deriving delivery addresses from headers. It still suppresses the
+`Bcc` header during transmission and restores the original field afterward,
+including on failure. An absent `Bcc` field remains absent. A `beforeSendPerformed` listener may
 replace the envelope via `setEnvelope()`; the transport re-reads it after the
 event fires.
 
