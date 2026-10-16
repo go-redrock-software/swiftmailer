@@ -167,6 +167,7 @@ return [
     'Swift_Transport_Api_GmailRefreshCredentials'               => 'Swift\\Transport\\Api\\GmailRefreshCredentials',
     'Swift_Transport_Api_GmailRequestPolicy'                    => 'Swift\\Transport\\Api\\GmailRequestPolicy',
     'Swift_Transport_Api_GoogleTransport'                       => 'Swift\\Transport\\Api\\GoogleTransport',
+    'Swift_Transport_Api_GraphAcceptancePolicy'                 => 'Swift\\Transport\\Api\\GraphAcceptancePolicy',
     'Swift_Transport_Api_GraphOAuthGrant'                       => 'Swift\\Transport\\Api\\GraphOAuthGrant',
     'Swift_Transport_Api_GraphOAuthGrantFactory'                => 'Swift\\Transport\\Api\\GraphOAuthGrantFactory',
     'Swift_Transport_Api_GraphOAuthGrantPolicy'                 => 'Swift\\Transport\\Api\\GraphOAuthGrantPolicy',

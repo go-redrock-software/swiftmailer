@@ -116,8 +116,18 @@ OAuth token error codes receive a static authentication-failure diagnostic; raw
 provider descriptions are never copied. HTTP 500
 retains a static transient classification. Redirects, rejected 3xx responses and
 PHP Error causes retain hard-failure markers. Caller-owned frames, SDK logging
-and callbacks remain caller-controlled. Successful-response ambiguity is a
-separate open Graph audit (#86).
+and callbacks remain caller-controlled.
+
+**8. Graph operation acceptance.** Successful raw Graph responses must satisfy
+operation-specific status, typed ID/collection/session or sequential upload
+completion evidence before SDK coercion. Malformed, interrupted or unresolved
+success is a permanent safe failure. Confirmed notification followed by a later
+failure also prevents whole-send replay. Lookup pagination stays in the original
+collection; bad collections cannot imply no match and create a duplicate event.
+Documented empty-body final uploads use their Location acknowledgement. See
+[operation acceptance](microsoft-graph.md#operation-acceptance) for contracts and
+compatibility. Ordinary non-success and pre-notification transient errors retain
+their existing retry classification.
 
 ## Plugin output escaping
 

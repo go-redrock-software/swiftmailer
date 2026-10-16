@@ -45,6 +45,9 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
     /** @var WeakMap<UploadSession, Microsoft\Kiota\Abstractions\RequestAdapter>|null */
     private ?WeakMap $uploadAdapters = null;
 
+    /** @var WeakMap<Microsoft\Kiota\Abstractions\RequestAdapter, Swift_Transport_Api_GraphAcceptancePolicy>|null */
+    private ?WeakMap $acceptancePolicies = null;
+
     private ?string $sendingAccountUserId;
 
     private bool $shouldUseFromAddress = false;
@@ -360,8 +363,9 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         // carries real (non-.ics) attachments, which would otherwise be silently dropped.
         $shouldSendEmail = empty($calendarInvites) || $this->sendEmailAlongsideEvent || [] !== $attachmentsToSend;
 
+        $acceptance = new Swift_Transport_Api_GraphAcceptancePolicy();
         try {
-            $userRequestBuilder = $this->resolveUserRequestBuilder($message);
+            $userRequestBuilder = $this->resolveUserRequestBuilder($message, $acceptance);
 
             foreach ($calendarInvites as $invite) {
                 $recipient_count += $this->dispatchCalendarOperation($userRequestBuilder, $invite['event']);
@@ -371,12 +375,18 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
                 if ($useDraftFlow) {
                     $this->sendViaDraft($userRequestBuilder, $graphMessage, $smallAttachments, $largeAttachments);
                 } else {
-                    $userRequestBuilder->sendMail()->post($sendMailBody)->wait();
+                    $this->operation($userRequestBuilder, 'sendMail', fn () => $userRequestBuilder->sendMail()->post($sendMailBody)->wait());
                 }
+                $acceptance->assertMailAccepted();
             }
 
             $failedRecipients = [];
         } catch (Throwable $e) {
+            try {
+                $acceptance->assertAfterFailure($e);
+            } catch (Throwable $refusal) {
+                $e = $refusal;
+            }
             $exception       = Swift_Transport_Api_GraphRequestPolicy::detachedFailure($e);
             $recipient_count = 0;
             $failure         = true;
@@ -479,7 +489,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
             }
         }
 
-        $draft = $userRequestBuilder->messages()->post($graphMessage)->wait();
+        $draft = $this->operation($userRequestBuilder, 'draft', fn () => $userRequestBuilder->messages()->post($graphMessage)->wait());
         if (null === $draft || null === $draft->getId()) {
             $this->throwException(new Swift_TransportException('Graph did not return a draft message id; cannot attach large files.'));
 
@@ -491,7 +501,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
 
         // Files under the threshold are cheap to inline directly on the draft.
         foreach ($smallAttachments as $attachment) {
-            $messageBuilder->attachments()->post($this->convertSwiftAttachmentToGraphAttachment($attachment))->wait();
+            $this->operation($userRequestBuilder, 'small attachment', fn () => $messageBuilder->attachments()->post($this->convertSwiftAttachmentToGraphAttachment($attachment))->wait());
         }
 
         foreach ($largeAttachments as $attachment) {
@@ -512,7 +522,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
             $uploadBody = new CreateUploadSessionPostRequestBody();
             $uploadBody->setAttachmentItem($attachmentItem);
 
-            $uploadSession = $messageBuilder->attachments()->createUploadSession()->post($uploadBody)->wait();
+            $uploadSession = $this->operation($userRequestBuilder, 'upload session', fn () => $messageBuilder->attachments()->createUploadSession()->post($uploadBody)->wait());
             if (null === $uploadSession) {
                 $this->throwException(new Swift_TransportException("Graph returned no upload session for attachment '{$attachment->getFilename()}'."));
 
@@ -526,7 +536,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
                 $this->uploadAdapters[$uploadSession] = $this->scopedAdapters[$userRequestBuilder];
             }
             try {
-                $this->uploadLargeAttachment($uploadSession, $contents);
+                $this->operation($userRequestBuilder, 'upload chunk', fn () => $this->uploadLargeAttachment($uploadSession, $contents), \strlen($contents));
             } finally {
                 if (null !== $previous) {
                     $this->uploadAdapters[$uploadSession] = $previous;
@@ -537,7 +547,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         }
 
         // POST /messages/{id}/send takes no body and moves the draft to Sent Items.
-        $messageBuilder->send()->post()->wait();
+        $this->operation($userRequestBuilder, 'draft send', fn () => $messageBuilder->send()->post()->wait());
     }
 
     /**
@@ -559,9 +569,9 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
     /**
      * Resolves the Graph user endpoint: /me (delegated) or /users/{id} (application).
      */
-    private function resolveUserRequestBuilder(Swift_Mime_SimpleMessage $message): Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder
+    private function resolveUserRequestBuilder(Swift_Mime_SimpleMessage $message, Swift_Transport_Api_GraphAcceptancePolicy $acceptance): Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder
     {
-        $client  = Swift_Transport_Api_GraphRequestPolicy::scopeClient($this->client);
+        $client  = Swift_Transport_Api_GraphRequestPolicy::scopeClient($this->client, $acceptance);
         $adapter = $client->getRequestAdapter();
         if ($this->shouldUseFromAddress) {
             $from = $message->getFrom();
@@ -577,8 +587,25 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         Swift_Transport_Api_GraphRequestPolicy::assertAdapter($builder, $adapter);
         $this->scopedAdapters ??= new WeakMap();
         $this->scopedAdapters[$builder] = $adapter;
+        $this->acceptancePolicies ??= new WeakMap();
+        $this->acceptancePolicies[$adapter] = $acceptance;
 
         return $builder;
+    }
+
+    private function operation(
+        Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder $builder,
+        string $operation,
+        #[SensitiveParameter] Closure $send,
+        ?int $uploadSize = null,
+    ): mixed {
+        $adapter = $this->scopedAdapters[$builder] ?? null;
+        $policy  = null !== $adapter ? ($this->acceptancePolicies[$adapter] ?? null) : null;
+        if (null === $policy) {
+            throw new Swift_Transport_NonRetryableException('Graph requires scoped operation acceptance evidence.');
+        }
+
+        return $policy->run($operation, $send, $uploadSize);
     }
 
     /**
@@ -835,7 +862,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
 
         // POST /users/{id}/events (or /me/events) — Exchange sends a proper, actionable
         // invitation to each attendee.
-        $userRequestBuilder->events()->post($graphEvent)->wait();
+        $this->operation($userRequestBuilder, 'event create', fn () => $userRequestBuilder->events()->post($graphEvent)->wait());
 
         return \count($parsed->attendees);
     }
@@ -856,12 +883,24 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
             .self::INVITE_KEY_PROPERTY_ID."' and ep/value eq '{$escaped}')";
         $config->queryParameters->select = ['id'];
 
-        $response = $userRequestBuilder->events()->get($config)->wait();
-        foreach ($response?->getValue() ?? [] as $event) {
-            if (null !== $event->getId()) {
+        $builder = $userRequestBuilder->events();
+        $seen    = [];
+        do {
+            $response = $this->operation($userRequestBuilder, 'event lookup', fn () => $builder->get($config)->wait());
+            foreach ($response->getValue() as $event) {
                 return $event->getId();
             }
-        }
+            $next = $response->getOdataNextLink();
+            if (null !== $next) {
+                if (isset($seen[$next])) {
+                    throw new Swift_Transport_NonRetryableException('Graph event lookup did not complete; automatic retry is disabled.', 200);
+                }
+                $seen[$next] = true;
+                $builder     = $builder->withUrl($next);
+                // The service's opaque URL already includes its paging query.
+                $config = null;
+            }
+        } while (null !== $next);
 
         return null;
     }
@@ -874,7 +913,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder $userRequestBuilder,
         string $eventId,
     ): void {
-        $userRequestBuilder->events()->byEventId($eventId)->cancel()->post(new CancelPostRequestBody())->wait();
+        $this->operation($userRequestBuilder, 'event cancel', fn () => $userRequestBuilder->events()->byEventId($eventId)->cancel()->post(new CancelPostRequestBody())->wait());
     }
 
     /**
@@ -886,7 +925,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         string $eventId,
         Event $event,
     ): void {
-        $userRequestBuilder->events()->byEventId($eventId)->patch($event)->wait();
+        $this->operation($userRequestBuilder, 'event update', fn () => $userRequestBuilder->events()->byEventId($eventId)->patch($event)->wait());
     }
 
     protected function getApiConnection(): GraphServiceClient

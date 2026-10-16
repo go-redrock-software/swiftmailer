@@ -1056,3 +1056,13 @@ class Swift_Transport_Api_MyProviderTransport extends Swift_Transport_AbstractHt
     }
 }
 ```
+
+### Graph operation acceptance
+
+Graph validates raw success responses before SDK model hydration: documented
+202 no-content acknowledgements, typed model IDs, complete event lookup results,
+upload-session metadata and sequential chunk completion. Malformed or interrupted
+success is terminal and cannot be replayed by retry/pool transports. A later
+failure after an accepted calendar notification is also terminal. Valid Outlook
+empty-body final uploads are confirmed through their 201 Location response.
+See [the operation contracts](microsoft-graph.md#operation-acceptance).

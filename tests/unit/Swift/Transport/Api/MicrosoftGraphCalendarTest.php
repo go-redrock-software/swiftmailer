@@ -27,14 +27,6 @@ class MicrosoftGraphCalendarTest extends TestCase
         ]);
     }
 
-    private function promise(): \Http\Promise\Promise
-    {
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-
-        return $promise;
-    }
-
     private function dispatcher(): \Swift_Events_EventDispatcher
     {
         $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
@@ -444,91 +436,45 @@ class MicrosoftGraphCalendarTest extends TestCase
 
     public function testFindEventIdReturnsFirstMatch(): void
     {
-        $event = new \Microsoft\Graph\Generated\Models\Event();
-        $event->setId('evt-graph-1');
-        $response = new \Microsoft\Graph\Generated\Models\EventCollectionResponse();
-        $response->setValue([$event]);
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn($response);
-
-        $capturedConfig = null;
-        $eventsBuilder  = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
-        $eventsBuilder->method('get')->willReturnCallback(function ($config) use (&$capturedConfig, $promise) {
-            $capturedConfig = $config;
-
-            return $promise;
-        });
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('events')->willReturn($eventsBuilder);
-
-        $t      = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
-        $method = new \ReflectionMethod($t, 'findEventIdByInviteKey');
-        $id     = $method->invoke($t, $userItemBuilder, "o'brien-uid");
-
-        $this->assertSame('evt-graph-1', $id);
-        $this->assertSame(
-            "singleValueExtendedProperties/Any(ep: ep/id eq '".\Swift_Transport_Api_MicrosoftGraphTransport::INVITE_KEY_PROPERTY_ID."' and ep/value eq 'o''brien-uid')",
-            $capturedConfig->queryParameters->filter,
-        );
+        $fixture = new \Swift_GraphSdkFixture(static fn ($request) => 'GET' === $request->getMethod()
+            ? \Swift_GraphSdkFixture::json(200, ['value' => [['id' => 'evt-graph-1'], ['id' => 'evt-graph-2']]])
+            : \Swift_GraphSdkFixture::json(200, ['id' => 'evt-graph-1']));
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client);
+        $transport->enableCalendarEventConversion();
+        $transport->send($this->message(\str_replace('cal-1@example.com', "o'brien-uid", $this->requestInviteIcs())));
+        $this->assertSame(['GET /v1.0/me/events', 'PATCH /v1.0/me/events/evt-graph-1'], $fixture->paths());
+        \parse_str($fixture->requests[0]['request']->getUri()->getQuery(), $query);
+        $this->assertSame("singleValueExtendedProperties/Any(ep: ep/id eq '".\Swift_Transport_Api_MicrosoftGraphTransport::INVITE_KEY_PROPERTY_ID."' and ep/value eq 'o''brien-uid|bob@example.com')", $query['$filter']);
+        $this->assertSame('id', $query['$select']);
     }
 
     public function testFindEventIdReturnsNullWhenNoMatch(): void
     {
-        $response = new \Microsoft\Graph\Generated\Models\EventCollectionResponse();
-        $response->setValue([]);
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn($response);
-
-        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
-        $eventsBuilder->method('get')->willReturn($promise);
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('events')->willReturn($eventsBuilder);
-
-        $t      = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
-        $method = new \ReflectionMethod($t, 'findEventIdByInviteKey');
-        $this->assertNull($method->invoke($t, $userItemBuilder, 'missing-uid'));
+        $fixture   = new \Swift_GraphSdkFixture();
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client);
+        $transport->enableCalendarEventConversion();
+        $transport->send($this->message($this->requestInviteIcs()));
+        $this->assertSame(['GET /v1.0/me/events', 'POST /v1.0/me/events'], $fixture->paths());
     }
 
     public function testCancelGraphEventPostsCancel(): void
     {
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-
-        $cancelBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\Item\Cancel\CancelRequestBuilder::class);
-        $cancelBuilder->expects($this->once())->method('post')->willReturn($promise);
-
-        $eventItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\Item\EventItemRequestBuilder::class);
-        $eventItemBuilder->method('cancel')->willReturn($cancelBuilder);
-
-        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
-        $eventsBuilder->method('byEventId')->with('evt-graph-1')->willReturn($eventItemBuilder);
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('events')->willReturn($eventsBuilder);
-
-        $t      = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
-        $method = new \ReflectionMethod($t, 'cancelGraphEvent');
-        $method->invoke($t, $userItemBuilder, 'evt-graph-1');
+        $fixture = new \Swift_GraphSdkFixture(static fn ($request) => 'GET' === $request->getMethod()
+            ? \Swift_GraphSdkFixture::json(200, ['value' => [['id' => 'evt-graph-1']]]) : new \GuzzleHttp\Psr7\Response(202));
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client);
+        $transport->enableCalendarEventConversion();
+        $transport->send($this->message(\str_replace('METHOD:REQUEST', 'METHOD:CANCEL', $this->requestInviteIcs())));
+        $this->assertSame(['GET /v1.0/me/events', 'POST /v1.0/me/events/evt-graph-1/cancel'], $fixture->paths());
     }
 
     public function testUpdateGraphEventPatches(): void
     {
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-
-        $eventItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\Item\EventItemRequestBuilder::class);
-        $eventItemBuilder->expects($this->once())->method('patch')->willReturn($promise);
-
-        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
-        $eventsBuilder->method('byEventId')->with('evt-graph-1')->willReturn($eventItemBuilder);
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('events')->willReturn($eventsBuilder);
-
-        $t      = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
-        $method = new \ReflectionMethod($t, 'updateGraphEvent');
-        $method->invoke($t, $userItemBuilder, 'evt-graph-1', new \Microsoft\Graph\Generated\Models\Event());
+        $fixture = new \Swift_GraphSdkFixture(static fn ($request) => 'GET' === $request->getMethod()
+            ? \Swift_GraphSdkFixture::json(200, ['value' => [['id' => 'evt-graph-1']]]) : \Swift_GraphSdkFixture::json(200, ['id' => 'evt-graph-1']));
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client);
+        $transport->enableCalendarEventConversion();
+        $transport->send($this->message($this->requestInviteIcs()));
+        $this->assertSame(['GET /v1.0/me/events', 'PATCH /v1.0/me/events/evt-graph-1'], $fixture->paths());
     }
 
     // -- send() routes each parsed entry to CREATE / UPDATE / CANCEL ---
@@ -642,7 +588,7 @@ class MicrosoftGraphCalendarTest extends TestCase
     {
         $fixture = new \Swift_GraphSdkFixture(static fn ($request) => 'GET' === $request->getMethod()
             ? \Swift_GraphSdkFixture::json(200, ['value' => [['id' => 'evt-graph-1']]])
-            : new \GuzzleHttp\Psr7\Response(202));
+            : \Swift_GraphSdkFixture::json(200, ['id' => 'evt-graph-1']));
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client, null, $this->dispatcher());
         $transport->enableCalendarEventConversion();
 

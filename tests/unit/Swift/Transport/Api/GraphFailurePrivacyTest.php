@@ -8,7 +8,7 @@ class Swift_Transport_Api_GraphFailurePrivacyTest extends TestCase
     public function testReturnedFailuresHaveSafeDiagnosticsAndAuthoritativeStatus(array $input, string $ignoreArgs, int $code, bool $terminal, bool $retryable): void
     {
         $files = [];
-        foreach ([Swift_Transport::class, Swift_Transport_AbstractApiTransport::class, Swift_Transport_Api_MicrosoftGraphTransport::class, Swift_Transport_Api_GraphRequestPolicy::class] as $class) {
+        foreach ([Swift_Transport::class, Swift_Transport_AbstractApiTransport::class, Swift_Transport_Api_MicrosoftGraphTransport::class, Swift_Transport_Api_GraphRequestPolicy::class, Swift_Transport_Api_GraphAcceptancePolicy::class] as $class) {
             $files[$class] = (new ReflectionClass($class))->getFileName();
         }
         $process = \proc_open([PHP_BINARY, '-d', 'zend.exception_ignore_args='.$ignoreArgs, '-d', 'zend.exception_string_param_max_len=100000', __DIR__.'/../../../../fixtures/graph-error-report.php', \json_encode($files, JSON_THROW_ON_ERROR), __DIR__.'/../../../../../vendor/autoload.php'], [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']], $pipes);
@@ -70,6 +70,13 @@ class Swift_Transport_Api_GraphFailurePrivacyTest extends TestCase
             foreach ([false, true] as $httpErrors) {
                 foreach (['0', '1'] as $ignore) {
                     yield $stage.' advanced / errors '.(int) $httpErrors.' / args '.$ignore => [['auth' => 'client', 'phase' => 'resource', 'kind' => 'http', 'code' => 403, 'stage' => $stage, 'http_errors' => $httpErrors, 'retry' => false], $ignore, 403, false, false];
+                }
+            }
+        }
+        foreach (['sendMail' => 202, 'draft' => 201, 'small attachment' => 201, 'upload session' => 201, 'upload chunk' => 201, 'draft send' => 202, 'event lookup' => 200, 'event create' => 201, 'event update' => 200, 'event cancel' => 202] as $stage => $status) {
+            foreach ([false, true] as $httpErrors) {
+                foreach (['0', '1'] as $ignore) {
+                    yield $stage.' ambiguous acceptance / errors '.(int) $httpErrors.' / args '.$ignore => [['auth' => 'client', 'phase' => 'resource', 'kind' => 'http', 'code' => $status, 'stage' => $stage, 'http_errors' => $httpErrors, 'retry' => false], $ignore, $status, true, false];
                 }
             }
         }

@@ -84,8 +84,8 @@ class Swift_Transport_Api_GraphSdkRequestPolicyTest extends TestCase
         [$client, $adapter, $http, $stack] = $this->sdk([
             $this->json(201, ['id' => 'draft-id']),
             $this->json(201, ['uploadUrl' => 'https://uploads.safe.test/session?token=fixture', 'expirationDateTime' => '2099-01-01T00:00:00Z', 'nextExpectedRanges' => ['0-']]),
-            $this->json(202, ['nextExpectedRanges' => ['4194304-']]),
-            $this->json(201, ['nextExpectedRanges' => []]),
+            $this->json(200, ['nextExpectedRanges' => ['4194304-']]),
+            new Response(201, ['Location' => 'https://outlook.office.com/attachments/fixture-id']),
             new Response(202),
         ], $wire);
         $snapshot  = [$http->getConfig(), (string) $stack];
@@ -190,7 +190,7 @@ class Swift_Transport_Api_GraphSdkRequestPolicyTest extends TestCase
             $this->json(201, ['id' => 'small-id']),
             $this->json(201, ['uploadUrl' => 'https://uploads.safe.test/session?token=fixture', 'expirationDateTime' => '2099-01-01T00:00:00Z', 'nextExpectedRanges' => ['0-']]),
             new Response(307, ['Location' => 'https://other.safe.test/nested']),
-            $this->json(201, ['nextExpectedRanges' => []]),
+            new Response(201, ['Location' => 'https://outlook.office.com/attachments/fixture-id']),
             new Response(202),
         ], $wire);
         $transport = new Swift_Transport_Api_MicrosoftGraphTransport($client);
@@ -495,7 +495,7 @@ class Swift_Transport_Api_GraphSdkRequestPolicyTest extends TestCase
                 $responses[] = $this->json(201, ['uploadUrl' => 'https://uploads.safe.test/session?token=fixture', 'expirationDateTime' => '2099-01-01T00:00:00Z', 'nextExpectedRanges' => ['0-']]);
             }
             if ('draft send' === $stage) {
-                $responses[] = $this->json(201, ['id' => 'large-attachment-id', 'nextExpectedRanges' => []]);
+                $responses[] = new Response(201, ['Location' => 'https://outlook.office.com/attachments/fixture-id']);
             }
         }
 

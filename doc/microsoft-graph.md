@@ -296,11 +296,9 @@ How it works:
 $transport->setLargeAttachmentThreshold(1 * 1024 * 1024);
 ```
 
-> **Not yet validated against a live tenant.** The draft + upload-session path is covered
-> by unit tests with a mocked Graph client (`uploadLargeAttachment()` is deliberately
-> isolated so the chunked transfer can be stubbed), but it has not been exercised against a
-> real M365 mailbox. Run a staging smoke test with a genuinely large attachment
-> (> 3 MB and, ideally, one near the 150 MB ceiling) before relying on it in production.
+> **Live-tenant coverage:** automated tests use real Graph/Kiota clients and SDK
+> upload tasks against synthetic Guzzle handlers, including sequential multi-chunk
+> progress and empty-body completion. No live M365 mailbox is used in these tests.
 
 ---
 
@@ -344,12 +342,16 @@ converted; everything else rides along untouched.
   genuine non-`.ics` attachment next to the invite, the email *is* sent (so the attachment
   reaches the recipient) even though the invite was converted — only the `.ics` part is
   dropped from the outgoing mail.
-- **No duplicate on retry.** The originating iCalendar `UID` is reused as the Graph
-  `transactionId` (first 256 chars), so a retried send is de-duplicated by Graph rather than
-  creating a second calendar entry.
-- **Matching updates/cancels.** The event id is located by filtering
-  `iCalUId eq '{UID}'`, the property Graph stores the originating `.ics` UID in. If no id
-  matches, an update falls back to create and a cancel becomes a no-op.
+- **Invite correlation.** The originating `.ics` UID plus normalized attendees are
+  stored in the `SwiftInviteKey` single-value extended property. The transport does
+  not set Graph `transactionId` or use Graph-generated `iCalUId` for this lookup.
+- **Matching updates/cancels.** The extended-property filter locates an existing
+  event, following valid same-collection pages before concluding there is no match.
+  A complete empty result permits creation for REQUEST; CANCEL becomes a no-op.
+  Malformed or unresolved lookup results cannot silently create another event.
+- **Partial notification failures.** Once an event notification is accepted, a later
+  failure in the same Swift send is terminal, preventing an automatic replay of
+  the earlier invitation through retry or pool transports.
 - **Times are passed as wall-clock + time-zone name**, with no UTC conversion math, which
   avoids DST off-by-one bugs.
 
@@ -421,6 +423,46 @@ wrap a hand-built transport in.
 
 ---
 
+## Operation acceptance
+
+The transport checks success status and raw response metadata before Kiota model
+hydration and before retry middleware can replay a result. SDK parsing must then
+confirm the required models. These are acceptance acknowledgements, not final
+message-delivery receipts.
+
+| Operation | Required success evidence |
+| --- | --- |
+| sendMail, draft send, event cancel | `202` with an empty body |
+| Draft, small attachment, event creation | `201` with a nonempty string ID |
+| Event update | `200` with the requested event ID |
+| Event lookup | `200` with a valid `value` collection of event IDs; paginated empty pages are resolved before creation |
+| Upload session | `201` with a usable HTTPS upload URL, unexpired ISO timestamp and initial byte-zero range |
+| Upload progress | `200` with the exact next sequential byte range |
+| Final upload | `201` and a usable HTTPS `Location`; the final request must cover the last byte |
+
+Missing, malformed, coerced or interrupted successful responses produce a
+`Swift_Transport_NonRetryableException` with static diagnostics and the observed
+status. This refusal persists if SDK/caller middleware replaces an error, and
+Swift retry/failover/round-robin cannot replay it. A separately initiated send
+gets fresh state. Ordinary non-success responses, native transient retries and
+CAE remain supported before any notification has been accepted.
+
+Outlook's documented final upload can have an empty body. Its `Location` confirms
+completion without a JSON model; an empty completion body is presented to Kiota
+without a JSON content-type hint. Other valid JSON and nonseekable responses are
+buffered for the normal SDK parser. Upload URLs remain opaque and are never
+copied into returned diagnostics.
+
+Sources: [sendMail](https://learn.microsoft.com/en-us/graph/api/user-sendmail),
+[draft/send](https://learn.microsoft.com/en-us/graph/api/message-send),
+[create message](https://learn.microsoft.com/en-us/graph/api/user-post-messages),
+[attachments](https://learn.microsoft.com/en-us/graph/api/message-post-attachments),
+[upload sessions and chunks](https://learn.microsoft.com/en-us/graph/outlook-large-attachments),
+[event list](https://learn.microsoft.com/en-us/graph/api/user-list-events),
+[create](https://learn.microsoft.com/en-us/graph/api/user-post-events),
+[update](https://learn.microsoft.com/en-us/graph/api/event-update), and
+[cancel](https://learn.microsoft.com/en-us/graph/api/event-cancel).
+
 ## Failure diagnostics
 
 Returned SDK operation failures are Swift transport exceptions with a static
@@ -450,11 +492,9 @@ Arbitrary caller frames, SDK logging and callbacks remain caller-controlled.
   dropped, and it is counted as an extra recipient in the return value.
 - **Body must be `text/plain` or `text/html`.** Any other body content type is unmapped and
   will surface as an unhandled error rather than a wrapped `Swift_TransportException`.
-- **Successful-response ambiguity remains under audit.** A draft response missing its ID can currently cause automatic repeated draft creation. See [#86](https://code.go-redrock.com/trac/swiftmailer/-/issues/86); status/diagnostic fixes do not close this acceptance gap.
 - **No tags / metadata.** Unlike SendGrid/Mailgun/etc., the `X-Mailer-Tag` and
   `X-Mailer-Metadata-*` conventions are not implemented for Graph.
-- **Large-attachment and calendar flows are mock-tested only** — validate against a live
-  M365 tenant before production (see the callouts above).
+- **Large-attachment and calendar tests use synthetic endpoints.** Real SDK serialization, authentication, parsing and upload logic are exercised, but live-tenant delivery is not covered.
 
 ---
 
@@ -468,7 +508,7 @@ Arbitrary caller frames, SDK logging and callbacks remain caller-controlled.
 | `Cannot use from-address mode: message has no From address` | `useFromAddressAsSendingAccountUserId()` set but the message has no `From` | Set a `From` address, or use `setSendingAccountUserId()` / default `/me` |
 | `Attachment '…' is N bytes, exceeding Microsoft Graph's 157286400-byte limit` | Attachment over the 150 MB ceiling | Host the file and send a link, or split it |
 | Recipients get a dead `.ics` with no Accept/Decline | Calendar conversion not enabled, or the `.ics` isn't `METHOD:REQUEST`/`CANCEL` | Call `enableCalendarEventConversion()`; confirm the payload's `METHOD` and that it's `text/calendar` |
-| `Graph calendar CANCEL: no event matched iCalUId '…'` (E_USER_NOTICE) | Cancelling an event that was never created via Graph (so no `iCalUId` match) | Expected — nothing to cancel; the notice is informational |
+| `Graph calendar CANCEL: no event matched invite '…'` (E_USER_NOTICE) | Cancelling an event that was never created via Graph (so no invite-key match) | Expected — nothing to cancel; the notice is informational |
 | Duplicate calendar entries on retry | `UID` missing from the `.ics` (no `transactionId` to de-dupe on) | Ensure invitations carry a stable `UID` |
 | `InvalidArgumentException: Large-attachment threshold must be a positive byte count` | `setLargeAttachmentThreshold()` called with `< 1` | Pass a positive byte count |
 

@@ -166,6 +166,7 @@
 \class_alias('Swift_Transport_Api_GmailRefreshCredentials', 'Swift\Transport\Api\GmailRefreshCredentials');
 \class_alias('Swift_Transport_Api_GmailRequestPolicy', 'Swift\Transport\Api\GmailRequestPolicy');
 \class_alias('Swift_Transport_Api_GoogleTransport', 'Swift\Transport\Api\GoogleTransport');
+\class_alias('Swift_Transport_Api_GraphAcceptancePolicy', 'Swift\Transport\Api\GraphAcceptancePolicy');
 \class_alias('Swift_Transport_Api_GraphOAuthGrant', 'Swift\Transport\Api\GraphOAuthGrant');
 \class_alias('Swift_Transport_Api_GraphOAuthGrantFactory', 'Swift\Transport\Api\GraphOAuthGrantFactory');
 \class_alias('Swift_Transport_Api_GraphOAuthGrantPolicy', 'Swift\Transport\Api\GraphOAuthGrantPolicy');

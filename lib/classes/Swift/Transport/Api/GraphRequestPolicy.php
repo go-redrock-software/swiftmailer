@@ -79,14 +79,14 @@ class Swift_Transport_Api_GraphRequestPolicy
         return 0;
     }
 
-    public static function scopeClient(#[SensitiveParameter] GraphServiceClient $client): GraphServiceClient
+    public static function scopeClient(#[SensitiveParameter] GraphServiceClient $client, ?Swift_Transport_Api_GraphAcceptancePolicy $acceptance = null): GraphServiceClient
     {
         if (!(new ReflectionObject($client))->isCloneable()) {
             throw new Swift_Transport_NonRetryableException('The Graph client must support cloning for isolated HTTP requests.');
         }
         $adapter = $client->getRequestAdapter();
         self::assertAdapter($client, $adapter);
-        $scoped = self::scope($adapter);
+        $scoped = self::scope($adapter, $acceptance);
         $copy   = clone $client;
         self::replace(self::adapterProperty(), $copy, $scoped);
         if ($copy->getRequestAdapter() !== $scoped) {
@@ -123,7 +123,7 @@ class Swift_Transport_Api_GraphRequestPolicy
         $property->setValue($copy, $replacement);
     }
 
-    public static function scope(#[SensitiveParameter] RequestAdapter $adapter): RequestAdapter
+    public static function scope(#[SensitiveParameter] RequestAdapter $adapter, ?Swift_Transport_Api_GraphAcceptancePolicy $acceptance = null): RequestAdapter
     {
         if (!$adapter instanceof GuzzleRequestAdapter || !(new ReflectionObject($adapter))->isCloneable()) {
             throw new Swift_Transport_NonRetryableException('Graph requires a cloneable Kiota Guzzle adapter for isolated HTTP requests.');
@@ -141,7 +141,7 @@ class Swift_Transport_Api_GraphRequestPolicy
             throw new Swift_Transport_NonRetryableException('The Kiota adapter must use a Guzzle-compatible HTTP client.');
         }
         $copy = clone $adapter;
-        self::replace($property, $copy, new Swift_Transport_Api_NoRedirectClient($http));
+        self::replace($property, $copy, new Swift_Transport_Api_NoRedirectClient($http, null !== $acceptance ? $acceptance->validateRequest(...) : null, null !== $acceptance ? $acceptance->validateResponse(...) : null));
         if (!$reflection->hasProperty('authenticationProvider')) {
             throw new Swift_Transport_NonRetryableException('The Kiota adapter authentication configuration is unsupported.');
         }

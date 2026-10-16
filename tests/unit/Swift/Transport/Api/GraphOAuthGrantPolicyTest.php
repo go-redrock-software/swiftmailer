@@ -134,7 +134,7 @@ class Swift_Transport_Api_GraphOAuthGrantPolicyTest extends TestCase
         $fixture = $this->sdk($old, [$denied, $this->token(), $denied, $this->token()], [
             $this->challenge(), Swift_GraphSdkFixture::json(201, ['id'        => 'draft-id']),
             $this->challenge(), Swift_GraphSdkFixture::json(201, ['uploadUrl' => 'https://uploads.safe.test/session?token=fixture', 'expirationDateTime' => '2099-01-01T00:00:00Z', 'nextExpectedRanges' => ['0-']]),
-            Swift_GraphSdkFixture::json(201, ['nextExpectedRanges' => []]), new Response(202), new Response(202),
+            new Response(201, ['Location' => 'https://outlook.office.com/attachments/fixture-id']), new Response(202), new Response(202),
         ]);
         $transport = new Swift_Transport_Api_MicrosoftGraphTransport($fixture->client);
         $transport->setLargeAttachmentThreshold(16);

@@ -76,7 +76,7 @@ if ($calendar) {
         $before[] = $json(201, ['uploadUrl' => 'https://uploads.safe.test/session?token=TRACE-UPLOAD', 'expirationDateTime' => '2099-01-01T00:00:00Z', 'nextExpectedRanges' => ['0-']]);
     }
     if ('draft send' === $stage) {
-        $before[] = $json(201, ['id' => 'large-attachment-id', 'nextExpectedRanges' => []]);
+        $before[] = new GuzzleHttp\Psr7\Response(201, ['Location' => 'https://outlook.office.com/attachments/fixture-id']);
     }
 }
 $expectedResources = 'token' === $input['phase'] ? 0 : \count($before) + 1;

@@ -191,7 +191,9 @@ class Swift_Integration_ApiDefaultDispatcherTest extends PHPUnit\Framework\TestC
                     throw new RuntimeException('Provider failure');
                 }
 
-                return new GuzzleHttp\Psr7\Response('Google' === $provider ? 200 : 202, ['Content-Type' => 'application/json'], '{"id":"sdk-id"}');
+                return 'Google' === $provider
+                    ? new GuzzleHttp\Psr7\Response(200, ['Content-Type' => 'application/json'], '{"id":"sdk-id"}')
+                    : new GuzzleHttp\Psr7\Response(202);
             };
             $http = new GuzzleHttp\Client(['handler' => new GuzzleHttp\Handler\MockHandler([$handler])]);
             if ('Google' === $provider) {

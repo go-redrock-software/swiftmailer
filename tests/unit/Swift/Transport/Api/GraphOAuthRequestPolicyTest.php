@@ -236,7 +236,7 @@ class Swift_Transport_Api_GraphOAuthRequestPolicyTest extends TestCase
             Swift_GraphSdkFixture::json(201, ['id' => 'draft-id']),
             $challenge,
             Swift_GraphSdkFixture::json(201, ['uploadUrl' => 'https://uploads.safe.test/session?token=fixture', 'expirationDateTime' => '2099-01-01T00:00:00Z', 'nextExpectedRanges' => ['0-']]),
-            Swift_GraphSdkFixture::json(201, ['nextExpectedRanges' => []]),
+            new Response(201, ['Location' => 'https://outlook.office.com/attachments/fixture-id']),
             new Response(202),
         ] : [$challenge, new Response(202), $challenge, new Response(202)];
         $denied   = new Response(400, ['Content-Type' => 'application/json'], '{"error":"invalid_grant","error_description":"fixture refresh denied"}');

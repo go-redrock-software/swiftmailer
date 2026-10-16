@@ -69,7 +69,24 @@ class Swift_GraphSdkFixture
             return new Response(202);
         }
         if ('PATCH' === $request->getMethod() && \str_contains($path, '/events/')) {
-            return self::json(200, ['id' => 'fixture-event']);
+            return self::json(200, ['id' => \rawurldecode(\basename($path))]);
+        }
+
+        if ('POST' === $request->getMethod() && \str_ends_with($path, '/messages')) {
+            return self::json(201, ['id' => 'fixture-draft']);
+        }
+        if ('POST' === $request->getMethod() && \str_ends_with($path, '/attachments')) {
+            return self::json(201, ['id' => 'fixture-attachment']);
+        }
+        if ('POST' === $request->getMethod() && \str_ends_with($path, '/createUploadSession')) {
+            return self::json(201, ['uploadUrl' => 'https://uploads.safe.test/session?token=fixture', 'expirationDateTime' => '2099-01-01T00:00:00Z', 'nextExpectedRanges' => ['0-']]);
+        }
+        if ('PUT' === $request->getMethod() && 'uploads.safe.test' === $request->getUri()->getHost()) {
+            \preg_match('/^bytes (\d+)-(\d+)\/(\d+)$/', $request->getHeaderLine('Content-Range'), $range);
+
+            return (int) $range[2] + 1 === (int) $range[3]
+                ? new Response(201, ['Location' => 'https://outlook.office.com/attachments/fixture-id'])
+                : self::json(200, ['nextExpectedRanges' => [(string) ((int) $range[2] + 1)]]);
         }
 
         return self::json(400, ['error' => ['code' => 'UnexpectedFixtureRequest', 'message' => $request->getMethod().' '.$path]]);
