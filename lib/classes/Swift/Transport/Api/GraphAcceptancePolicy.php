@@ -98,14 +98,14 @@ class Swift_Transport_Api_GraphAcceptancePolicy
             $body = (string) $response->getBody();
             if ('upload chunk' === $this->operation) {
                 $this->validateChunk($request, $response, $body);
-            } elseif (\in_array($this->operation, ['sendMail', 'draft send', 'event cancel'], true)) {
-                if (202 !== $this->status || '' !== $body) {
+            } elseif (\in_array($this->operation, ['sendMail', 'draft send', 'event cancel', 'event delete'], true)) {
+                if (('event delete' === $this->operation ? 204 : 202) !== $this->status || '' !== $body) {
                     $this->refuse();
                 }
                 $this->notified = true;
             } else {
                 $this->data     = self::object($body);
-                $expectedStatus = \in_array($this->operation, ['event lookup', 'event update'], true) ? 200 : 201;
+                $expectedStatus = \in_array($this->operation, ['event lookup', 'event update', 'event read'], true) ? 200 : 201;
                 if ($this->status !== $expectedStatus) {
                     $this->refuse();
                 }
@@ -116,7 +116,7 @@ class Swift_Transport_Api_GraphAcceptancePolicy
                 } elseif (!self::validId($this->data->id ?? null)) {
                     $this->refuse();
                 }
-                if ('event update' === $this->operation && $this->data->id !== \rawurldecode(\basename($request->getUri()->getPath()))) {
+                if (\in_array($this->operation, ['event update', 'event read'], true) && $this->data->id !== \rawurldecode(\basename($request->getUri()->getPath()))) {
                     $this->refuse();
                 }
                 if (\in_array($this->operation, ['event create', 'event update'], true)) {
@@ -153,14 +153,14 @@ class Swift_Transport_Api_GraphAcceptancePolicy
     private function validResult(#[SensitiveParameter] mixed $result): bool
     {
         return match ($this->operation) {
-            'sendMail', 'draft send', 'event cancel' => null                                                           === $result,
-            'draft'                                  => $result instanceof Message                 && $result->getId() === $this->data?->id,
-            'small attachment'                       => $result instanceof Attachment              && $result->getId() === $this->data?->id,
-            'event create', 'event update'           => $result instanceof Event                   && $result->getId() === $this->data?->id,
-            'event lookup'                           => $result instanceof EventCollectionResponse && $this->validCollectionResult($result),
-            'upload session'                         => $result instanceof UploadSession           && $result->getUploadUrl() === $this->uploadUrl && $result->getExpirationDateTime()?->format('U.u') === $this->uploadExpiry?->format('U.u') && $result->getNextExpectedRanges() === $this->data?->nextExpectedRanges,
-            'upload chunk'                           => $this->uploadComplete                      && $this->uploaded         === $this->uploadSize,
-            default                                  => false,
+            'sendMail', 'draft send', 'event cancel', 'event delete' => null                                                           === $result,
+            'draft'                                                  => $result instanceof Message                 && $result->getId() === $this->data?->id,
+            'small attachment'                                       => $result instanceof Attachment              && $result->getId() === $this->data?->id,
+            'event create', 'event update', 'event read'             => $result instanceof Event                   && $result->getId() === $this->data?->id,
+            'event lookup'                                           => $result instanceof EventCollectionResponse && $this->validCollectionResult($result),
+            'upload session'                                         => $result instanceof UploadSession           && $result->getUploadUrl() === $this->uploadUrl && $result->getExpirationDateTime()?->format('U.u') === $this->uploadExpiry?->format('U.u') && $result->getNextExpectedRanges() === $this->data?->nextExpectedRanges,
+            'upload chunk'                                           => $this->uploadComplete                      && $this->uploaded         === $this->uploadSize,
+            default                                                  => false,
         };
     }
 

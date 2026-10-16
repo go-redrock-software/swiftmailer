@@ -246,23 +246,28 @@ class Swift_Transport_DsnGraphTest extends TestCase
     /** @dataProvider calendarModes */
     public function testConstructedGraphClientRetainsCalendarOperations(string $dsn, string $token, string $prefix, bool $application, string $operation): void
     {
-        $wire   = [];
-        $tokens = [];
-        [$http] = $this->http([Swift_GraphSdkFixture::json(200, ['value' => 'create' === $operation ? [] : [['id' => 'event-id']]]),
-            'cancel' === $operation ? new Response(202) : Swift_GraphSdkFixture::json('create' === $operation ? 201 : 200, ['id' => 'event-id'])], $wire);
+        $wire      = [];
+        $tokens    = [];
+        $responses = [Swift_GraphSdkFixture::json(200, ['value' => 'create' === $operation ? [] : [['id' => 'event-id']]])];
+        if ('create' !== $operation) {
+            $responses[] = Swift_GraphSdkFixture::json(200, ['id' => 'event-id', 'attendees' => [['emailAddress' => ['address' => 'to@safe.test']]]]);
+        }
+        $responses[] = 'cancel' === $operation ? new Response(202) : Swift_GraphSdkFixture::json('create' === $operation ? 201 : 200, ['id' => 'event-id']);
+        [$http]      = $this->http($responses, $wire);
         [$tokenHttp] = $this->http([new Response(200, ['Content-Type' => 'application/json'], '{"access_token":"sdk-access","expires_in":3600}')], $tokens);
         $transport   = $this->create($dsn, $http, $tokenHttp);
         $this->client($transport, $http);
         $transport->enableCalendarEventConversion();
         $ics = \implode("\r\n", ['BEGIN:VCALENDAR', 'VERSION:2.0', 'METHOD:'.('cancel' === $operation ? 'CANCEL' : 'REQUEST'), 'BEGIN:VEVENT', 'UID:fixture-invite', 'DTSTART:20261102T090000Z', 'DTEND:20261102T100000Z', 'SUMMARY:fixture', 'ATTENDEE:mailto:to@safe.test', 'END:VEVENT', 'END:VCALENDAR', '']);
-        $this->assertSame(4, $transport->send($this->message()->attach(new Swift_Attachment($ics, 'invite.ics', 'text/calendar')), $failed));
+        $this->assertSame(1, $transport->send($this->message()->attach(new Swift_Attachment($ics, 'invite.ics', 'text/calendar')), $failed));
         $this->assertSame([], $failed);
-        $this->assertCount(2, $wire);
+        $this->assertCount('create' === $operation ? 2 : 3, $wire);
+        $mutation = 'create' === $operation ? 1 : 2;
         $this->assertCount($application ? 1 : 0, $tokens);
         $this->assertSame('GET', $wire[0]['request']->getMethod());
         $this->assertSame($prefix.'/events', $wire[0]['request']->getUri()->getPath());
-        $this->assertSame('update' === $operation ? 'PATCH' : 'POST', $wire[1]['request']->getMethod());
-        $this->assertSame($prefix.'/events'.('create' === $operation ? '' : '/event-id'.('cancel' === $operation ? '/cancel' : '')), $wire[1]['request']->getUri()->getPath());
+        $this->assertSame('update' === $operation ? 'PATCH' : 'POST', $wire[$mutation]['request']->getMethod());
+        $this->assertSame($prefix.'/events'.('create' === $operation ? '' : '/event-id'.('cancel' === $operation ? '/cancel' : '')), $wire[$mutation]['request']->getUri()->getPath());
         foreach ($wire as $entry) {
             $this->assertSame('Bearer '.$token, $entry['request']->getHeaderLine('Authorization'));
         }

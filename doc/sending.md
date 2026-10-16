@@ -403,7 +403,9 @@ Constructor: `__construct(Swift_Transport $inner, int $maxRetries = 3, int $base
   it dropped its connection.
 
 **Classification.** The default `Swift_Transport_DefaultRetryClassifier`
-decides retryability in this order:
+first rejects `Swift_Transport_NonRetryableException`, including when it appears
+in a wrapped exception's cause chain. This type marks policy/version conflicts
+that replay cannot safely resolve. For other exceptions it decides in this order:
 
 1. A `Swift_Transport_NonRetryableException` or PHP `Error` anywhere in the cause
    chain -- never retried. HTTP transports use the marker when acceptance is

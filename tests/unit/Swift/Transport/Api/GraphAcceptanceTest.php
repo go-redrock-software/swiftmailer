@@ -40,7 +40,7 @@ class Swift_Transport_Api_GraphAcceptanceTest extends TestCase
         $this->assertCount($prefix + 1, $wire->requests);
         $this->assertSame(0, $fallbackObserver->before);
         $this->assertSame([1, 1, Swift_Events_SendEvent::RESULT_FAILED], [$observer->before, $observer->completed, $observer->result]);
-        $this->assertEqualsCanonicalizing(['to@safe.test', 'copy@safe.test', 'blind@safe.test'], $failed);
+        $this->assertEqualsCanonicalizing(\str_starts_with($stage, 'event') ? ['to@safe.test'] : ['to@safe.test', 'copy@safe.test', 'blind@safe.test'], $failed);
         $this->assertSame($original, $message->toString());
         $this->assertSame($snapshot, [$http->getConfig(), (string) $stack, $client->getRequestAdapter()]);
     }
@@ -50,7 +50,7 @@ class Swift_Transport_Api_GraphAcceptanceTest extends TestCase
         foreach (self::stages() as $stage) {
             $status = self::status($stage);
             $bodies = ['empty' => '', 'malformed JSON' => '{"PRIVATE-PROVIDER":', 'array' => '[]', 'null' => 'null'];
-            if (!\in_array($stage, ['sendMail', 'draft send', 'event cancel'], true)) {
+            if (!\in_array($stage, ['sendMail', 'draft send', 'event cancel', 'event delete'], true)) {
                 $bodies['missing fields'] = '{}';
                 $bodies['coercible id']   = '{"id":123,"value":[{"id":123}],"uploadUrl":123,"nextExpectedRanges":[]}';
             } else {
@@ -66,15 +66,15 @@ class Swift_Transport_Api_GraphAcceptanceTest extends TestCase
             foreach (['sync rejected', 'async rejected'] as $mode) {
                 yield $stage.' / '.$mode => [$stage, $status, '', $mode, 'retry'];
             }
-            yield $stage.' / incorrect successful status' => [$stage, 204, '', 'normal', 'retry'];
+            yield $stage.' / incorrect successful status' => [$stage, 'event delete' === $stage ? 202 : 204, '', 'normal', 'retry'];
         }
         foreach (['', ' ', "bad\nidentifier", 0, 123, false, null, []] as $id) {
-            foreach (['draft', 'small attachment', 'event create', 'event update', 'event lookup'] as $stage) {
+            foreach (['draft', 'small attachment', 'event create', 'event update', 'event read', 'event lookup'] as $stage) {
                 $data = 'event lookup' === $stage ? ['value' => [['id' => $id]]] : ['id' => $id];
                 yield $stage.' / invalid typed id '.\json_encode($id) => [$stage, self::status($stage), \json_encode($data), 'normal', 'retry'];
             }
         }
-        foreach (['draft', 'small attachment', 'upload session', 'event lookup', 'event create', 'event update', 'upload chunk'] as $stage) {
+        foreach (['draft', 'small attachment', 'upload session', 'event lookup', 'event create', 'event update', 'event read', 'upload chunk'] as $stage) {
             $body = match ($stage) {
                 'upload session' => \json_encode(['uploadUrl' => 'https://uploads.safe.test/session?token=fixture', 'expirationDateTime' => '2099-01-01T00:00:00Z', 'nextExpectedRanges' => ['0-']]),
                 'event lookup'   => '{"value":[]}',
@@ -83,6 +83,7 @@ class Swift_Transport_Api_GraphAcceptanceTest extends TestCase
             };
             yield $stage.' / wrong status with otherwise valid evidence' => [$stage, 200 === self::status($stage) ? 201 : 200, $body, 'normal', 'retry'];
         }
+        yield 'read event identity mismatch' => ['event read', 200, '{"id":"wrong-event-id"}', 'normal', 'retry'];
         yield 'updated event identity mismatch' => ['event update', 200, '{"id":"wrong-event-id"}', 'normal', 'retry'];
         foreach (['{}', '{"value":null}', '{"value":{}}', '{"value":[null]}', '{"value":[{}]}', '{"value":[{"id":"event-id"},null]}'] as $body) {
             yield 'lookup collection '.$body => ['event lookup', 200, $body, 'normal', 'retry'];
@@ -95,7 +96,7 @@ class Swift_Transport_Api_GraphAcceptanceTest extends TestCase
         [$transport, $client, $http, $stack, $wire, $message, $prefix] = $this->scenario($stage, self::status($stage), null, $nonseekable ? 'nonseekable' : 'normal');
         $snapshot                                                      = [$http->getConfig(), (string) $stack, $client->getRequestAdapter()];
         $failed                                                        = ['previous@safe.test'];
-        $expected                                                      = \str_starts_with($stage, 'event') ? 4 : 3;
+        $expected                                                      = \str_starts_with($stage, 'event') ? 1 : 3;
         $this->assertSame($expected, $transport->send($message, $failed));
         $this->assertSame([], $failed);
         $this->assertGreaterThanOrEqual($prefix + 1, \count($wire->requests));
@@ -146,7 +147,7 @@ class Swift_Transport_Api_GraphAcceptanceTest extends TestCase
     {
         foreach (['retry', 'failover', 'roundrobin'] as $wrapper) {
             foreach (['network', 'server'] as $failure) {
-                foreach (['event create', 'event update', 'event cancel'] as $stage) {
+                foreach (['event create', 'event update', 'event cancel', 'event delete'] as $stage) {
                     yield $wrapper.' / '.$failure.' / '.$stage => [$wrapper, $failure, $stage];
                 }
             }
@@ -166,12 +167,12 @@ class Swift_Transport_Api_GraphAcceptanceTest extends TestCase
                 ? Swift_GraphSdkFixture::json(200, ['value' => [], '@odata.nextLink' => 'https://graph.microsoft.com/v1.0/me/events?skiptoken=fixture'])
                 : Swift_GraphSdkFixture::json(200, ['value' => $found ? [['id' => 'existing-event']] : []]);
         };
-        $this->assertSame(4, $transport->send($message));
-        $this->assertCount(3, $wire->requests);
+        $this->assertSame(1, $transport->send($message));
+        $this->assertCount($found ? 4 : 3, $wire->requests);
         $this->assertSame('GET', $wire->requests[1]['request']->getMethod());
         $this->assertSame('skiptoken=fixture', $wire->requests[1]['request']->getUri()->getQuery());
-        $this->assertSame($found ? 'PATCH' : 'POST', $wire->requests[2]['request']->getMethod());
-        $this->assertSame($found ? '/v1.0/me/events/existing-event' : '/v1.0/me/events', $wire->requests[2]['request']->getUri()->getPath());
+        $this->assertSame($found ? 'PATCH' : 'POST', $wire->requests[$found ? 3 : 2]['request']->getMethod());
+        $this->assertSame($found ? '/v1.0/me/events/existing-event' : '/v1.0/me/events', $wire->requests[$found ? 3 : 2]['request']->getUri()->getPath());
     }
 
     public static function paginatedLookups(): iterable
@@ -350,7 +351,7 @@ class Swift_Transport_Api_GraphAcceptanceTest extends TestCase
 
     public static function modelStages(): iterable
     {
-        foreach (['draft', 'small attachment', 'upload session', 'event lookup', 'event create', 'event update'] as $stage) {
+        foreach (['draft', 'small attachment', 'upload session', 'event lookup', 'event create', 'event update', 'event read'] as $stage) {
             yield [$stage];
         }
     }
@@ -553,15 +554,16 @@ class Swift_Transport_Api_GraphAcceptanceTest extends TestCase
 
     private static function stages(): array
     {
-        return ['sendMail', 'draft', 'small attachment', 'upload session', 'upload chunk', 'draft send', 'event lookup', 'event create', 'event update', 'event cancel'];
+        return ['sendMail', 'draft', 'small attachment', 'upload session', 'upload chunk', 'draft send', 'event lookup', 'event create', 'event update', 'event cancel', 'event read', 'event delete'];
     }
 
     private static function status(string $stage): int
     {
         return match ($stage) {
-            'sendMail', 'draft send', 'event cancel' => 202,
-            'event lookup', 'event update'           => 200,
-            default                                  => 201,
+            'sendMail', 'draft send', 'event cancel'     => 202,
+            'event delete'                               => 204,
+            'event lookup', 'event update', 'event read' => 200,
+            default                                      => 201,
         };
     }
 
@@ -570,37 +572,40 @@ class Swift_Transport_Api_GraphAcceptanceTest extends TestCase
         $message  = (new Swift_Message('PRIVATE-SUBJECT', 'PRIVATE-BODY'))->setFrom('sender@safe.test')->setTo('to@safe.test')->setCc('copy@safe.test')->setBcc('blind@safe.test');
         $calendar = \str_starts_with($stage, 'event');
         if ($calendar) {
-            $ics = \implode("\r\n", ['BEGIN:VCALENDAR', 'VERSION:2.0', 'METHOD:'.('event cancel' === $stage ? 'CANCEL' : 'REQUEST'), 'BEGIN:VEVENT', 'UID:fixture-invite', 'DTSTART:20261102T090000Z', 'DTEND:20261102T100000Z', 'SUMMARY:PRIVATE-EVENT', 'ATTENDEE:mailto:to@safe.test', 'END:VEVENT', 'END:VCALENDAR', '']);
+            $ics = \implode("\r\n", ['BEGIN:VCALENDAR', 'VERSION:2.0', 'METHOD:'.(\in_array($stage, ['event cancel', 'event delete'], true) ? 'CANCEL' : 'REQUEST'), 'BEGIN:VEVENT', 'UID:fixture-invite', 'DTSTART:20261102T090000Z', 'DTEND:20261102T100000Z', 'SUMMARY:PRIVATE-EVENT', 'ATTENDEE:mailto:to@safe.test', 'END:VEVENT', 'END:VCALENDAR', '']);
             $message->attach(new Swift_Attachment($ics, 'invite.ics', 'text/calendar'));
         } elseif ('sendMail' !== $stage) {
             $message->attach(new Swift_Attachment(\str_repeat('x', 32), 'large.bin', 'application/octet-stream'));
             $message->attach(new Swift_Attachment('tiny', 'small.txt', 'text/plain'));
         }
         $prefix = match ($stage) {
-            'sendMail', 'draft', 'event lookup' => 0, 'small attachment', 'event create', 'event update', 'event cancel' => 1, 'upload session' => 2, 'upload chunk' => 3, 'draft send' => 4
+            'sendMail', 'draft', 'event lookup' => 0, 'small attachment', 'event create', 'event read' => 1, 'event update', 'event cancel', 'event delete' => 2, 'upload session' => 2, 'upload chunk' => 3, 'draft send' => 4
         };
         $wire    = (object) ['requests' => [], 'rewrite' => null];
         $handler = function (RequestInterface $request, array $options) use ($stage, $status, $body, $mode, $wire): mixed {
             $wire->requests[] = ['request' => $request, 'body' => (string) $request->getBody(), 'options' => $options];
             $path             = $request->getUri()->getPath();
             $current          = match (true) {
-                'PUT'   === $request->getMethod()             => 'upload chunk',
-                'GET'   === $request->getMethod()             => 'event lookup',
-                'PATCH' === $request->getMethod()             => 'event update',
-                \str_ends_with($path, '/sendMail')            => 'sendMail',
-                \str_ends_with($path, '/createUploadSession') => 'upload session',
-                \str_ends_with($path, '/attachments')         => 'small attachment',
-                \str_ends_with($path, '/messages')            => 'draft',
-                \str_ends_with($path, '/send')                => 'draft send',
-                \str_ends_with($path, '/cancel')              => 'event cancel',
-                default                                       => 'event create',
+                'DELETE' === $request->getMethod()                                   => 'event delete',
+                'PUT'    === $request->getMethod()                                      => 'upload chunk',
+                'GET'    === $request->getMethod() && !\str_ends_with($path, '/events') => 'event read',
+                'GET'    === $request->getMethod()                                      => 'event lookup',
+                'PATCH'  === $request->getMethod()                                    => 'event update',
+                \str_ends_with($path, '/sendMail')                                   => 'sendMail',
+                \str_ends_with($path, '/createUploadSession')                        => 'upload session',
+                \str_ends_with($path, '/attachments')                                => 'small attachment',
+                \str_ends_with($path, '/messages')                                   => 'draft',
+                \str_ends_with($path, '/send')                                       => 'draft send',
+                \str_ends_with($path, '/cancel')                                     => 'event cancel',
+                default                                                              => 'event create',
             };
             $data = match ($current) {
-                'sendMail', 'draft send', 'event cancel', 'upload chunk' => null,
-                'event lookup'                                           => ['value' => \in_array($stage, ['event update', 'event cancel'], true) ? [['id' => 'event-id']] : []],
-                'upload session'                                         => ['uploadUrl' => 'https://uploads.safe.test/session?token=PRIVATE-UPLOAD', 'expirationDateTime' => '2099-01-01T00:00:00Z', 'nextExpectedRanges' => ['0-']],
-                'event update'                                           => ['id' => \rawurldecode(\basename($path))],
-                default                                                  => ['id' => \str_replace(' ', '-', $current).'-id'],
+                'sendMail', 'draft send', 'event cancel', 'event delete', 'upload chunk' => null,
+                'event lookup'                                                           => ['value' => \in_array($stage, ['event update', 'event cancel', 'event read', 'event delete'], true) ? [['id' => 'event-id']] : []],
+                'upload session'                                                         => ['uploadUrl' => 'https://uploads.safe.test/session?token=PRIVATE-UPLOAD', 'expirationDateTime' => '2099-01-01T00:00:00Z', 'nextExpectedRanges' => ['0-']],
+                'event update'                                                           => ['id' => \rawurldecode(\basename($path))],
+                'event read'                                                             => ['id' => \rawurldecode(\basename($path)), 'attendees' => [['emailAddress' => ['address' => 'to@safe.test']]], 'type' => 'singleInstance', 'isOrganizer' => true, '@odata.etag' => 'W/"fixture"'],
+                default                                                                  => ['id' => \str_replace(' ', '-', $current).'-id'],
             };
             $raw     = null === $data ? '' : \json_encode($data, JSON_THROW_ON_ERROR);
             $headers = null === $data ? [] : ['Content-Type' => 'application/json'];
@@ -647,6 +652,9 @@ class Swift_Transport_Api_GraphAcceptanceTest extends TestCase
         $transport->setLargeAttachmentThreshold(16);
         if ($calendar) {
             $transport->enableCalendarEventConversion();
+            if ('event delete' === $stage) {
+                $transport->registerPlugin(new Swift_Plugins_AllowlistPlugin(['*@safe.test']));
+            }
         }
 
         return [$transport, $client, $http, $stack, $wire, $message, $prefix];

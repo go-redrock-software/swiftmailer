@@ -29,11 +29,7 @@ class MicrosoftGraphCalendarTest extends TestCase
 
     private function dispatcher(): \Swift_Events_EventDispatcher
     {
-        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
-        $dispatcher->method('createSendEvent')->willReturn($this->createMock(\Swift_Events_SendEvent::class));
-        $dispatcher->method('createTransportChangeEvent')->willReturn($this->createMock(\Swift_Events_TransportChangeEvent::class));
-
-        return $dispatcher;
+        return new \Swift_Events_SimpleEventDispatcher();
     }
 
     private function message(string $ics): \Swift_Message
@@ -88,8 +84,8 @@ class MicrosoftGraphCalendarTest extends TestCase
 
         $result = $transport->send($this->message($this->requestInviteIcs()));
 
-        // One attendee via the created event, plus the single To recipient.
-        $this->assertSame(2, $result);
+        // The calendar operation notifies one attendee; no ordinary mail is sent.
+        $this->assertSame(1, $result);
         $this->assertSame(['GET /v1.0/me/events', 'POST /v1.0/me/events'], $fixture->paths());
     }
 
@@ -130,7 +126,7 @@ class MicrosoftGraphCalendarTest extends TestCase
         $transport->setSendEmailAlongsideEvent(true);
 
         $result = $transport->send($this->message($this->requestInviteIcs()));
-        $this->assertSame(2, $result); // 1 To recipient + 1 attendee via the event
+        $this->assertSame(2, $result); // One calendar notification and one ordinary mail.
         $this->assertSame(['GET /v1.0/me/events', 'POST /v1.0/me/events', 'POST /v1.0/me/sendMail'], $fixture->paths());
     }
 
@@ -288,8 +284,8 @@ class MicrosoftGraphCalendarTest extends TestCase
 
         // Two attendees (one per invite) plus the single To recipient.
         $result = $transport->send($m);
-        $this->assertSame(3, $result);
-        $this->assertSame(['GET /v1.0/me/events', 'POST /v1.0/me/events', 'GET /v1.0/me/events', 'POST /v1.0/me/events'], $fixture->paths());
+        $this->assertSame(2, $result);
+        $this->assertSame(['GET /v1.0/me/events', 'GET /v1.0/me/events', 'POST /v1.0/me/events', 'POST /v1.0/me/events'], $fixture->paths());
     }
 
     // -- detection by .ics filename when the content type isn't text/calendar ---
@@ -311,7 +307,7 @@ class MicrosoftGraphCalendarTest extends TestCase
         $m->attach(new \Swift_Attachment($this->requestInviteIcs(), 'meeting.ics', 'application/octet-stream'));
 
         $result = $transport->send($m);
-        $this->assertSame(2, $result); // 1 To recipient + 1 attendee via the event
+        $this->assertSame(1, $result); // Only the calendar attendee is notified.
         $this->assertSame(['GET /v1.0/me/events', 'POST /v1.0/me/events'], $fixture->paths());
     }
 
@@ -326,7 +322,7 @@ class MicrosoftGraphCalendarTest extends TestCase
         $transport->enableCalendarEventConversion();
 
         $result = $transport->send($this->message($this->requestInviteIcs()));
-        $this->assertSame(2, $result); // 1 To recipient + 1 attendee via the event
+        $this->assertSame(1, $result); // Only the calendar attendee is notified.
         $this->assertSame(['GET /v1.0/users/user-123/events', 'POST /v1.0/users/user-123/events'], $fixture->paths());
     }
 
@@ -437,12 +433,12 @@ class MicrosoftGraphCalendarTest extends TestCase
     public function testFindEventIdReturnsFirstMatch(): void
     {
         $fixture = new \Swift_GraphSdkFixture(static fn ($request) => 'GET' === $request->getMethod()
-            ? \Swift_GraphSdkFixture::json(200, ['value' => [['id' => 'evt-graph-1'], ['id' => 'evt-graph-2']]])
+            ? (\str_ends_with($request->getUri()->getPath(), '/events') ? \Swift_GraphSdkFixture::json(200, ['value' => [['id' => 'evt-graph-1'], ['id' => 'evt-graph-2']]]) : \Swift_GraphSdkFixture::json(200, ['id' => 'evt-graph-1', 'attendees' => [['emailAddress' => ['address' => 'bob@example.com']]]]))
             : \Swift_GraphSdkFixture::json(200, ['id' => 'evt-graph-1']));
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client);
         $transport->enableCalendarEventConversion();
         $transport->send($this->message(\str_replace('cal-1@example.com', "o'brien-uid", $this->requestInviteIcs())));
-        $this->assertSame(['GET /v1.0/me/events', 'PATCH /v1.0/me/events/evt-graph-1'], $fixture->paths());
+        $this->assertSame(['GET /v1.0/me/events', 'GET /v1.0/me/events/evt-graph-1', 'PATCH /v1.0/me/events/evt-graph-1'], $fixture->paths());
         \parse_str($fixture->requests[0]['request']->getUri()->getQuery(), $query);
         $this->assertSame("singleValueExtendedProperties/Any(ep: ep/id eq '".\Swift_Transport_Api_MicrosoftGraphTransport::INVITE_KEY_PROPERTY_ID."' and ep/value eq 'o''brien-uid|bob@example.com')", $query['$filter']);
         $this->assertSame('id', $query['$select']);
@@ -460,21 +456,21 @@ class MicrosoftGraphCalendarTest extends TestCase
     public function testCancelGraphEventPostsCancel(): void
     {
         $fixture = new \Swift_GraphSdkFixture(static fn ($request) => 'GET' === $request->getMethod()
-            ? \Swift_GraphSdkFixture::json(200, ['value' => [['id' => 'evt-graph-1']]]) : new \GuzzleHttp\Psr7\Response(202));
+            ? (\str_ends_with($request->getUri()->getPath(), '/events') ? \Swift_GraphSdkFixture::json(200, ['value' => [['id' => 'evt-graph-1']]]) : \Swift_GraphSdkFixture::json(200, ['id' => 'evt-graph-1', 'attendees' => [['emailAddress' => ['address' => 'bob@example.com']]]])) : new \GuzzleHttp\Psr7\Response(202));
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client);
         $transport->enableCalendarEventConversion();
         $transport->send($this->message(\str_replace('METHOD:REQUEST', 'METHOD:CANCEL', $this->requestInviteIcs())));
-        $this->assertSame(['GET /v1.0/me/events', 'POST /v1.0/me/events/evt-graph-1/cancel'], $fixture->paths());
+        $this->assertSame(['GET /v1.0/me/events', 'GET /v1.0/me/events/evt-graph-1', 'POST /v1.0/me/events/evt-graph-1/cancel'], $fixture->paths());
     }
 
     public function testUpdateGraphEventPatches(): void
     {
         $fixture = new \Swift_GraphSdkFixture(static fn ($request) => 'GET' === $request->getMethod()
-            ? \Swift_GraphSdkFixture::json(200, ['value' => [['id' => 'evt-graph-1']]]) : \Swift_GraphSdkFixture::json(200, ['id' => 'evt-graph-1']));
+            ? (\str_ends_with($request->getUri()->getPath(), '/events') ? \Swift_GraphSdkFixture::json(200, ['value' => [['id' => 'evt-graph-1']]]) : \Swift_GraphSdkFixture::json(200, ['id' => 'evt-graph-1', 'attendees' => [['emailAddress' => ['address' => 'bob@example.com']]]])) : \Swift_GraphSdkFixture::json(200, ['id' => 'evt-graph-1']));
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client);
         $transport->enableCalendarEventConversion();
         $transport->send($this->message($this->requestInviteIcs()));
-        $this->assertSame(['GET /v1.0/me/events', 'PATCH /v1.0/me/events/evt-graph-1'], $fixture->paths());
+        $this->assertSame(['GET /v1.0/me/events', 'GET /v1.0/me/events/evt-graph-1', 'PATCH /v1.0/me/events/evt-graph-1'], $fixture->paths());
     }
 
     // -- send() routes each parsed entry to CREATE / UPDATE / CANCEL ---
@@ -482,7 +478,7 @@ class MicrosoftGraphCalendarTest extends TestCase
     public function testCancelInviteCancelsMatchingEvent(): void
     {
         $fixture = new \Swift_GraphSdkFixture(static fn ($request) => 'GET' === $request->getMethod()
-            ? \Swift_GraphSdkFixture::json(200, ['value' => [['id' => 'evt-graph-1']]])
+            ? (\str_ends_with($request->getUri()->getPath(), '/events') ? \Swift_GraphSdkFixture::json(200, ['value' => [['id' => 'evt-graph-1']]]) : \Swift_GraphSdkFixture::json(200, ['id' => 'evt-graph-1', 'attendees' => [['emailAddress' => ['address' => 'bob@example.com']]]]))
             : new \GuzzleHttp\Psr7\Response(202));
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client, null, $this->dispatcher());
         $transport->enableCalendarEventConversion();
@@ -495,7 +491,7 @@ class MicrosoftGraphCalendarTest extends TestCase
             'END:VEVENT', 'END:VCALENDAR',
         ]);
         $transport->send($this->messageWithIcs($cancelIcs));
-        $this->assertSame(['GET /v1.0/me/events', 'POST /v1.0/me/events/evt-graph-1/cancel'], $fixture->paths());
+        $this->assertSame(['GET /v1.0/me/events', 'GET /v1.0/me/events/evt-graph-1', 'POST /v1.0/me/events/evt-graph-1/cancel'], $fixture->paths());
     }
 
     public function testCancelInviteWithNoMatchMakesNoEventCall(): void
@@ -546,7 +542,7 @@ class MicrosoftGraphCalendarTest extends TestCase
         $this->assertSame(['GET /v1.0/me/events'], $fixture->paths());
     }
 
-    public function testNoMatchCancelCountsOnlyToRecipient(): void
+    public function testNoMatchCancelCountsNoRecipients(): void
     {
         $fixture   = new \Swift_GraphSdkFixture();
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client, null, $this->dispatcher());
@@ -560,14 +556,14 @@ class MicrosoftGraphCalendarTest extends TestCase
             'END:VEVENT', 'END:VCALENDAR',
         ]);
         $result = @$transport->send($this->messageWithIcs($cancelIcs));
-        $this->assertSame(1, $result, 'no-match CANCEL: only the To recipient is counted');
+        $this->assertSame(0, $result, 'no-match CANCEL: nobody is notified');
         $this->assertSame(['GET /v1.0/me/events'], $fixture->paths());
     }
 
-    public function testMatchedCancelCountsToPlusAttendee(): void
+    public function testMatchedCancelCountsOnlyNotifiedAttendees(): void
     {
         $fixture = new \Swift_GraphSdkFixture(static fn ($request) => 'GET' === $request->getMethod()
-            ? \Swift_GraphSdkFixture::json(200, ['value' => [['id' => 'evt-graph-1']]])
+            ? (\str_ends_with($request->getUri()->getPath(), '/events') ? \Swift_GraphSdkFixture::json(200, ['value' => [['id' => 'evt-graph-1']]]) : \Swift_GraphSdkFixture::json(200, ['id' => 'evt-graph-1', 'attendees' => [['emailAddress' => ['address' => 'bob@example.com']]]]))
             : new \GuzzleHttp\Psr7\Response(202));
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client, null, $this->dispatcher());
         $transport->enableCalendarEventConversion();
@@ -580,14 +576,14 @@ class MicrosoftGraphCalendarTest extends TestCase
             'END:VEVENT', 'END:VCALENDAR',
         ]);
         $result = $transport->send($this->messageWithIcs($cancelIcs));
-        $this->assertSame(2, $result, 'matched CANCEL: 1 To recipient + 1 cancelled-event attendee');
-        $this->assertSame(['GET /v1.0/me/events', 'POST /v1.0/me/events/evt-graph-1/cancel'], $fixture->paths());
+        $this->assertSame(1, $result, 'matched CANCEL: only the cancelled-event attendee');
+        $this->assertSame(['GET /v1.0/me/events', 'GET /v1.0/me/events/evt-graph-1', 'POST /v1.0/me/events/evt-graph-1/cancel'], $fixture->paths());
     }
 
     public function testUpdateInviteWithSequencePatchesMatchingEvent(): void
     {
         $fixture = new \Swift_GraphSdkFixture(static fn ($request) => 'GET' === $request->getMethod()
-            ? \Swift_GraphSdkFixture::json(200, ['value' => [['id' => 'evt-graph-1']]])
+            ? (\str_ends_with($request->getUri()->getPath(), '/events') ? \Swift_GraphSdkFixture::json(200, ['value' => [['id' => 'evt-graph-1']]]) : \Swift_GraphSdkFixture::json(200, ['id' => 'evt-graph-1', 'attendees' => [['emailAddress' => ['address' => 'bob@example.com']]]]))
             : \Swift_GraphSdkFixture::json(200, ['id' => 'evt-graph-1']));
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client, null, $this->dispatcher());
         $transport->enableCalendarEventConversion();
@@ -600,7 +596,7 @@ class MicrosoftGraphCalendarTest extends TestCase
             'END:VEVENT', 'END:VCALENDAR',
         ]);
         $transport->send($this->messageWithIcs($updateIcs));
-        $this->assertSame(['GET /v1.0/me/events', 'PATCH /v1.0/me/events/evt-graph-1'], $fixture->paths());
+        $this->assertSame(['GET /v1.0/me/events', 'GET /v1.0/me/events/evt-graph-1', 'PATCH /v1.0/me/events/evt-graph-1'], $fixture->paths());
         $this->assertSame('Rescheduled', $fixture->payload()['subject']);
     }
 
@@ -642,8 +638,8 @@ class MicrosoftGraphCalendarTest extends TestCase
         $message->setBody('Please join.');
         $message->attach(new RequestMethodCalendarMimePart($this->requestInviteIcs()));
 
-        // One attendee via the created event, plus the single To recipient.
-        $this->assertSame(2, $transport->send($message));
+        // The calendar operation notifies one attendee; no ordinary mail is sent.
+        $this->assertSame(1, $transport->send($message));
         $this->assertSame(['GET /v1.0/me/events', 'POST /v1.0/me/events'], $fixture->paths());
     }
 }

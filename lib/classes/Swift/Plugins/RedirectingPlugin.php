@@ -80,6 +80,7 @@ class Swift_Plugins_RedirectingPlugin implements Swift_Events_SendListener
     {
         $message = $evt->getMessage();
         $headers = $message->getHeaders();
+        $evt->addRecipientFilter($this->filterDeliveryRecipients(...));
 
         // Store original recipients as instance properties (not in headers)
         $this->originalRecipients = $evt->captureRecipientState();
@@ -141,6 +142,21 @@ class Swift_Plugins_RedirectingPlugin implements Swift_Events_SendListener
         foreach ($recipients as $address => $name) {
             if ($this->isWhitelisted($address)) {
                 $filtered[$address] = $name;
+            }
+        }
+
+        return $filtered;
+    }
+
+    private function filterDeliveryRecipients(array $recipients): array
+    {
+        if (!$recipients) {
+            return [];
+        }
+        $filtered = $this->filterNameAddresses($recipients);
+        foreach ((array) $this->recipient as $recipient) {
+            if (!\array_key_exists($recipient, $filtered)) {
+                $filtered[$recipient] = null;
             }
         }
 

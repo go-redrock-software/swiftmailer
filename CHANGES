@@ -36,6 +36,13 @@ Unreleased
    delivery counts are preserved. Messages with no To recipient are rejected
    before HTTP because Sweego requires a public recipient (GitLab #48).
 
+ * Graph calendar conversion now applies allowlist/catch-all/redirect policies to
+   ICS attendees and uses the adjusted audience for lookups. Policy-controlled
+   cancellations require a known organizer, safe stored audience and exact ETag;
+   conditional deletion prevents cancelling a changed audience. Existing-event
+   updates with recipient policy are rejected because this transport has no
+   verified conditional PATCH contract (GitLab #42).
+
  * API transports now create a dispatcher when the first plugin is registered.
    Previously, omitting the optional dispatcher silently discarded listeners,
    including allowlist and redirect policies. Injected dispatchers are preserved
@@ -106,6 +113,14 @@ Unreleased
  * Sweego attachments and inline images are now base64-encoded for the API
    instead of sent as raw bytes. Empty file content and filename "0" retain
    their required fields; absent optional metadata is omitted (GitLab #49).
+
+ * Graph calendar-only sends no longer count unsent mail headers. Notification
+   counts use submitted/current audiences; zero-delivery operations add no
+   spurious failed mail recipients or empty sendMail requests. Policy cleanup
+   remains event-scoped (#42).
+ * Swift_Transport_NonRetryableException marks policy/version conflicts that
+   the default retry classifier must not replay, including wrapped failures.
+   Graph stale-version cancellations retain HTTP 412 without blind retry (#42).
 
  * Explicit API envelopes now control raw delivery payloads for Postal,
    Mandrill, Mailgun, Infobip and both SES variants. Other API paths reject
