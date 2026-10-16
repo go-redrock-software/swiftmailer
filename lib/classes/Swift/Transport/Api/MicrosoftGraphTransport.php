@@ -1043,7 +1043,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
         string $eventId,
     ): ?Event {
         $config                  = new EventItemRequestBuilderGetRequestConfiguration();
-        $config->queryParameters = EventItemRequestBuilderGetRequestConfiguration::createQueryParameters(select: ['attendees', 'type', 'isOrganizer']);
+        $config->queryParameters = EventItemRequestBuilderGetRequestConfiguration::createQueryParameters(select: ['id', 'attendees', 'type', 'isOrganizer']);
 
         return $this->operation($userRequestBuilder, 'event read', fn () => $userRequestBuilder->events()->byEventId($eventId)->get($config)->wait());
     }
