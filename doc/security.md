@@ -148,15 +148,17 @@ remain detached. See [Graph DSNs](dsn.md#microsoft-graph-sdk-dsns).
 
 ## Plugin output escaping
 
-Escaping in the debug/reporting plugins is **not uniform** -- know which output is safe to render in a browser:
+The debug/reporting plugins escape dynamic text before emitting HTML:
 
 | Plugin | Output escaping |
 |-|-|
 | `Swift_Plugins_Loggers_EchoLogger` | Escapes every entry with `htmlspecialchars()` (`ENT_QUOTES`) in both its HTML and plain paths. Safe to render. |
 | `Swift_Plugins_ReadReceiptPlugin` | Escapes the tracking URL with `htmlspecialchars(..., ENT_QUOTES, 'UTF-8')`. |
-| `Swift_Plugins_Reporters_HtmlReporter` | **Does not escape.** `notify()` echoes the recipient address directly (`echo 'PASS '.$address`). |
+| `Swift_Plugins_Reporters_HtmlReporter` | Escapes recipient addresses in success and failure output with `htmlspecialchars(..., ENT_QUOTES \| ENT_SUBSTITUTE, 'UTF-8')`. Invalid UTF-8 is replaced with U+FFFD. |
 
-`HtmlReporter` is trusted-input only: do not render its output in a browser when recipient addresses can be attacker-controlled, or wrap the addresses yourself. (`Swift_Plugins_RedirectingPlugin` keeps original recipients in private properties and adds no `X-Swift-*` headers, so it does not leak them into the message.)
+Before the fix tracked in [issue #33](https://code.go-redrock.com/trac/swiftmailer/-/issues/33), `HtmlReporter` inserted recipient addresses directly into its HTML output (CWE-79). A valid quoted address such as `"<img src=x onerror=alert(1)>"@example.org` could execute JavaScript when an application displayed the report in a browser. Address validation alone does not prevent HTML injection. The reporter now renders addresses as text, including literal entity-like input; callers should pass the original address without pre-escaping it. On older releases, avoid displaying `HtmlReporter` output containing untrusted recipients in a browser.
+
+`Swift_Plugins_RedirectingPlugin` keeps original recipients in private properties and adds no `X-Swift-*` headers, so it does not leak them into the message.
 
 ## Transport hardening
 

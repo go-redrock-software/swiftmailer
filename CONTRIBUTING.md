@@ -110,6 +110,36 @@ Config is `infection.json5`: it mutates `lib/classes` (excluding
 `minMsi: 78` / `minCoveredMsi: 95`. Both `composer` scripts first generate coverage
 (`infection:coverage`, which needs Xdebug in coverage mode).
 
+Coverage generation and Infection's mutant runner both use the isolated
+`vendor/bin/simple-phpunit` executable. Keep these in sync. The project-installed
+`vendor/bin/phpunit` loads the project's Composer files before PHPUnit executes
+its configured bootstrap. Swift's eager namespace aliases then load source
+classes before Infection can install its include interceptor, causing tests to
+exercise the original classes and report escaping mutants. The isolated runner
+loads the project through the test bootstrap after interception is active.
+
+The merge request job obtains its file filter with
+`php bin/ci/mutation-diff.php "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"`. It fetches
+the exact target branch into an explicit tracking ref before comparing immutable
+commit IDs. `GIT_DEPTH: "0"` requests full history; the helper also recovers both
+source and target ancestry when invoked in a shallow checkout. Its stderr
+diagnostic records the fetched target commit and source-file count.
+
+Both mutation CI jobs and the Composer mutation scripts export the normal test
+deprecation policy to Infection and its child processes, including the PHPUnit
+version probe. Coverage generation keeps its existing command-local override.
+Neither the baseline nor mutation thresholds change.
+
+Only a successful comparison with no changed PHP source files skips mutation
+testing. A missing target, unavailable merge base or failed fetch fails the job.
+Git arguments are passed without a shell and filenames are read with NUL
+separators. Spaces and Unicode are supported; commas and line breaks fail
+explicitly because Infection's comma-separated filter cannot represent them.
+The helper requires a target-project checkout: fork-project pipelines must run
+in the parent project rather than compare against a same-named branch in the
+fork. See Git's [fetch refspecs](https://git-scm.com/docs/git-fetch) and GitLab's
+[merge request variables](https://docs.gitlab.com/ci/variables/predefined_variables/).
+
 ## Adding a class → regenerate the class map
 
 Because classes are PSR-0 underscore-named, adding one may require regenerating the
