@@ -12,6 +12,11 @@ use AsyncAws\Ses\SesClient;
 use Google\Client as GoogleClient;
 use Google\Service\Gmail;
 use GuzzleHttp\ClientInterface as GuzzleClientInterface;
+use Microsoft\Graph\GraphRequestAdapter;
+use Microsoft\Graph\GraphServiceClient;
+use Microsoft\Kiota\Authentication\Oauth\ProviderFactory;
+use Microsoft\Kiota\Authentication\PhpLeagueAccessTokenProvider;
+use Microsoft\Kiota\Authentication\PhpLeagueAuthenticationProvider;
 use Nyholm\Dsn\Configuration\Url;
 use Nyholm\Dsn\DsnParser;
 use Nyholm\Dsn\Exception\InvalidDsnException;
@@ -48,6 +53,8 @@ class Swift_Transport_DsnTransportFactory
         'inbox_id',
         'session_token',
         'refresh_token',
+        'tenant_id',
+        'user_id',
     ];
 
     private const array SENDGRID_TRACKING_PARAMETERS = ['click_tracking', 'click_tracking_text', 'open_tracking'];
@@ -77,11 +84,17 @@ class Swift_Transport_DsnTransportFactory
 
     private ?GuzzleClientInterface $gmailHttpClient = null;
 
+    private ?GuzzleClientInterface $graphHttpClient = null;
+
+    private ?GuzzleClientInterface $graphTokenHttpClient = null;
+
     /** Optional caller-owned HTTP clients for factory-created SDK clients. */
-    public function __construct(#[SensitiveParameter] ?HttpClientInterface $sesHttpClient = null, #[SensitiveParameter] ?GuzzleClientInterface $gmailHttpClient = null)
+    public function __construct(#[SensitiveParameter] ?HttpClientInterface $sesHttpClient = null, #[SensitiveParameter] ?GuzzleClientInterface $gmailHttpClient = null, #[SensitiveParameter] ?GuzzleClientInterface $graphHttpClient = null, #[SensitiveParameter] ?GuzzleClientInterface $graphTokenHttpClient = null)
     {
-        $this->sesHttpClient   = $sesHttpClient;
-        $this->gmailHttpClient = $gmailHttpClient;
+        $this->sesHttpClient        = $sesHttpClient;
+        $this->gmailHttpClient      = $gmailHttpClient;
+        $this->graphHttpClient      = $graphHttpClient;
+        $this->graphTokenHttpClient = $graphTokenHttpClient;
     }
 
     public function fromDsnString(#[SensitiveParameter] string $dsnString): Swift_Transport
@@ -193,11 +206,13 @@ class Swift_Transport_DsnTransportFactory
 
     private function createTransport(#[SensitiveParameter] string $dsnString): Swift_Transport
     {
-        $nyholmDsn    = $this->parseDsnUrl($dsnString);
-        $dsn          = new Swift_Dsn($nyholmDsn);
-        $gmailOptions = null;
+        $nyholmDsn  = $this->parseDsnUrl($dsnString);
+        $dsn        = new Swift_Dsn($nyholmDsn);
+        $sdkOptions = null;
         if ('gmail+api' === $dsn->getScheme()) {
-            $gmailOptions = $this->parseGmailOptions($dsnString, $dsn);
+            $sdkOptions = $this->parseGmailOptions($dsnString, $dsn);
+        } elseif ('microsoft-graph' === $dsn->getScheme()) {
+            $sdkOptions = $this->parseGraphOptions($dsnString, $dsn);
         } else {
             $this->validateDsnParameters($dsn->getParameters());
         }
@@ -205,7 +220,7 @@ class Swift_Transport_DsnTransportFactory
 
         $class           = $dsn->getTransportClass();
         $smtpOptions     = $this->parseSmtpOptions($dsnString, $dsn, $class);
-        $providerOptions = $gmailOptions ?? $this->parseHttpProviderOptions($dsnString, $dsn);
+        $providerOptions = $sdkOptions ?? $this->parseHttpProviderOptions($dsnString, $dsn);
 
         // NullTransport needs an event dispatcher
         if (Swift_Transport_NullTransport::class === $class) {
@@ -255,9 +270,12 @@ class Swift_Transport_DsnTransportFactory
     /** @return array<string, string> */
     private function parseHttpProviderOptions(#[SensitiveParameter] string $dsnString, #[SensitiveParameter] Swift_Dsn $dsn): array
     {
-        $options = $this->canonicalOptions($dsnString, $dsn->getParameters(), ['region', 'inbox_id', 'session_token', 'refresh_token'], 'HTTP provider');
+        $options = $this->canonicalOptions($dsnString, $dsn->getParameters(), ['region', 'inbox_id', 'session_token', 'refresh_token', 'tenant_id', 'user_id'], 'HTTP provider');
         if (isset($options['refresh_token'])) {
             throw new InvalidArgumentException('refresh_token requires the Gmail API scheme.');
+        }
+        if (isset($options['tenant_id']) || isset($options['user_id'])) {
+            throw new InvalidArgumentException('tenant_id and user_id require the Microsoft Graph scheme.');
         }
         if (isset($options['region'])) {
             if (\in_array($dsn->getScheme(), ['amazon+api', 'amazon+http'], true)) {
@@ -300,7 +318,7 @@ class Swift_Transport_DsnTransportFactory
             return $this->createGmailTransport($dsnString, $dsn, $options);
         }
         if ('microsoft-graph' === $scheme) {
-            throw new InvalidArgumentException('This DSN scheme requires an explicitly constructed SDK client; construct its transport directly.');
+            return $this->createGraphTransport($dsnString, $dsn, $options);
         }
         $dispatcher = new Swift_Events_SimpleEventDispatcher();
         $apiKey     = $dsn->getUser() ?? $dsn->getPassword() ?? '';
@@ -341,6 +359,103 @@ class Swift_Transport_DsnTransportFactory
 
         // These remaining HTTP providers share the base constructor contract.
         return new $class($apiKey, null, $dispatcher);
+    }
+
+    /** @return array<string, string> */
+    private function parseGraphOptions(#[SensitiveParameter] string $dsnString, #[SensitiveParameter] Swift_Dsn $dsn): array
+    {
+        $names = ['tenant_id', 'user_id', 'retries', 'retry_delay'];
+        if (\array_diff(\array_keys($dsn->getParameters()), $names)) {
+            throw new InvalidArgumentException('Graph DSN options may contain only tenant_id, user_id, retries and retry_delay.');
+        }
+
+        return $this->canonicalOptions($dsnString, $dsn->getParameters(), $names, 'Graph');
+    }
+
+    /** @param array<string, string> $options */
+    private function createGraphTransport(#[SensitiveParameter] string $dsnString, #[SensitiveParameter] Swift_Dsn $dsn, #[SensitiveParameter] array $options): Swift_Transport
+    {
+        $this->requireFixedHttpEndpoint($dsnString, $dsn);
+        $user     = $this->graphCredential($dsn->getUser());
+        $mailbox  = isset($options['user_id']) ? $this->graphCredential($options['user_id']) : null;
+        $password = $dsn->getPassword();
+        $tenant   = $options['tenant_id'] ?? null;
+        if (null !== \parse_url($dsnString, \PHP_URL_PASS)) {
+            $password = $this->graphCredential($password, true);
+            if (null === $tenant || null === $mailbox || !\preg_match('/\A[A-Za-z0-9][A-Za-z0-9._-]*\z/D', $tenant)) {
+                throw new InvalidArgumentException('Graph application DSNs require a safe tenant_id and explicit user_id mailbox.');
+            }
+        } elseif (null !== $tenant || !\preg_match('/\A[A-Za-z0-9._~+\/-]+=*\z/D', $user)) {
+            throw new InvalidArgumentException('Graph bearer DSNs require one valid token without a password or tenant_id.');
+        }
+        try {
+            if (null === $password) {
+                $authentication = new Swift_Transport_Api_GraphBearerAuthenticationProvider($user);
+            } else {
+                $context = new Swift_Transport_Api_GraphClientCredentialContext($tenant, $user, $password);
+                $oauth   = ProviderFactory::create($context, [], 'https://login.microsoftonline.com', 'https://graph.microsoft.com');
+                if (null !== $this->graphTokenHttpClient) {
+                    $oauth->setHttpClient($this->graphTokenHttpClient);
+                }
+                $token          = new PhpLeagueAccessTokenProvider($context, ['https://graph.microsoft.com/.default'], ['graph.microsoft.com'], $oauth);
+                $authentication = PhpLeagueAuthenticationProvider::createWithAccessTokenProvider($token);
+            }
+            $adapter = new GraphRequestAdapter($authentication, $this->createGraphHttpClient(null === $mailbox));
+            $adapter->setBaseUrl('https://graph.microsoft.com/v1.0');
+            $client = GraphServiceClient::createWithRequestAdapter($adapter);
+
+            return new Swift_Transport_Api_MicrosoftGraphTransport($client, $mailbox, new Swift_Events_SimpleEventDispatcher());
+        } catch (Throwable) {
+            throw new InvalidArgumentException('Unable to construct the Graph SDK client from explicit DSN authentication.');
+        }
+    }
+
+    /** Add the SDK's /me URL translation to an isolated caller configuration. */
+    private function createGraphHttpClient(bool $useMe): ?GuzzleHttp\Client
+    {
+        if (null === $this->graphHttpClient) {
+            return null;
+        }
+        $config = $this->graphHttpClient->getConfig();
+        if (!\is_array($config)) {
+            throw new InvalidArgumentException('Graph HTTP clients must expose compatible configuration.');
+        }
+        $handler = $config['handler'] ?? null;
+        if ($handler instanceof GuzzleHttp\HandlerStack) {
+            $stack = clone $handler;
+        } elseif (\is_callable($handler)) {
+            $stack = GuzzleHttp\HandlerStack::create($handler);
+        } else {
+            throw new InvalidArgumentException('Graph HTTP clients must expose a callable handler.');
+        }
+        if ($useMe) {
+            $stack->unshift(Microsoft\Graph\Core\Middleware\GraphMiddleware::urlReplace(new Microsoft\Kiota\Http\Middleware\Options\UrlReplaceOption(true, ['/users/me-token-to-replace' => '/me'])), 'swift_graph_me_url');
+        }
+        $config['handler']     = $stack;
+        $config['http_errors'] = false;
+        unset($config['auth']);
+        if (isset($config['headers'])) {
+            if (!\is_array($config['headers'])) {
+                throw new InvalidArgumentException('Graph HTTP clients must expose compatible headers.');
+            }
+            foreach (\array_keys($config['headers']) as $name) {
+                if (0 === \strcasecmp((string) $name, 'Authorization')) {
+                    unset($config['headers'][$name]);
+                }
+            }
+        }
+
+        return new GuzzleHttp\Client($config);
+    }
+
+    private function graphCredential(#[SensitiveParameter] ?string $value, bool $allowSpace = false): string
+    {
+        $pattern = $allowSpace ? '/[^\x20-\x7e]/' : '/[^\x21-\x7e]/';
+        if (null === $value || '' === $value || \preg_match($pattern, $value)) {
+            throw new InvalidArgumentException('Graph credentials must be nonempty printable ASCII strings; identifiers cannot contain spaces.');
+        }
+
+        return $value;
     }
 
     /** @return array<string, string> */

@@ -18,8 +18,8 @@ event model see [events.md](events.md).
 | **Base class** | `Swift_Transport_AbstractApiTransport` (SDK-backed; HTTP policy through Kiota) |
 | **Dependency** | `microsoft/microsoft-graph` (`^2.10`) |
 | **Constructor** | `(GraphServiceClient $client, ?string $sendingAccountUserId = null, ?Swift_Events_EventDispatcher $dispatcher = null)` |
-| **DSN scheme** | `microsoft-graph` (mapped, but **not** DSN-constructible — the SDK client must be injected) |
-| **Auth** | Provided entirely by the injected `GraphServiceClient` (OAuth2 via `microsoft/kiota-authentication-phpleague`) |
+| **DSN scheme** | `microsoft-graph` (explicit bearer or application credentials) |
+| **Auth** | Explicit DSN authentication or injected `GraphServiceClient` (OAuth2 via `microsoft/kiota-authentication-phpleague`) |
 | **Tags / Metadata** | Not supported |
 
 ---
@@ -412,14 +412,26 @@ a simple dispatcher; subsequent listeners reuse it.
 
 ## DSN
 
-The scheme `microsoft-graph` is registered in `Swift_Dsn`'s transport map, so
-`Swift_Dsn::getTransportClass()` resolves it to
-`Swift_Transport_Api_MicrosoftGraphTransport`. However, like the other SDK-backed
-transports (Amazon SES, Google), it **cannot be fully built from a DSN string** — there is
-no way to express a `GraphServiceClient` and its OAuth context in a DSN. Construct the
-transport directly with an injected client, as shown above. See [dsn.md](dsn.md) for the
-DSN system and the meta-transport wrappers (`failover`, `roundrobin`, `retry`) you can still
-wrap a hand-built transport in.
+The operational factory builds real Graph SDK clients from explicit credentials:
+
+```text
+microsoft-graph://ACCESS_TOKEN@default
+microsoft-graph://CLIENT_ID:CLIENT_SECRET@default?tenant_id=TENANT&user_id=sender%40example.com
+```
+
+Bearer mode defaults to delegated `/me`, or accepts an explicit `user_id`.
+Application mode requires an explicit mailbox and tenant and uses the fixed
+Graph `.default` scope. The SDK owns application token exchange, caching and
+renewal. Fixed bearer tokens require caller renewal; a claims challenge requires
+a new token. Construction performs no I/O or ambient credential discovery.
+
+See [the Graph DSN contract](dsn.md#microsoft-graph-sdk-dsns) for strict options,
+encoding, fixed global endpoints and separate caller-owned resource/token HTTP
+clients. Resource HTTP defaults cannot override SDK authentication or authenticate
+foreign uploads: the factory removes `auth` and `Authorization` from its isolated
+client copy. Native SDK injection supports advanced flows and CAE callbacks.
+The `retry`, `failover` and `roundrobin` DSN wrappers retain the same terminal
+acceptance and diagnostic boundaries as native construction.
 
 ---
 
@@ -479,7 +491,11 @@ causes and failed metadata inspection use Swift_Transport_NonRetryableException.
 The default retry classifier recognizes final 401/403 and standard OAuth
 authentication error codes, including `400 invalid_client`, through a static
 authentication-failure diagnostic. It retains existing transient statuses,
-including HTTP 500. Other shared classifier rules remain unchanged.
+including HTTP 500. Native `ContinuousAccessEvaluationException` also supplies a
+typed authentication signal when the safe code is zero; it stays zero and does
+not acquire a hard-failure marker. This stops default Swift retries of an
+unresolved claims challenge. Real authoritative transient status still wins.
+Other shared classifier rules remain unchanged.
 Arbitrary caller frames, SDK logging and callbacks remain caller-controlled.
 
 ## Known limitations

@@ -129,6 +129,17 @@ Documented empty-body final uploads use their Location acknowledgement. See
 compatibility. Ordinary non-success and pre-notification transient errors retain
 their existing retry classification.
 
+**9. Graph DSN authentication.** Explicit bearer/application DSNs pin Graph and
+Entra token hosts, reject unsupported authentication/options before I/O and never
+look up ambient credentials. The factory keeps resource and token clients
+separate and strips HTTP authentication defaults from its private resource copy.
+Static bearer authentication requires the exact Graph HTTPS origin and cannot
+follow a claims challenge with the same token. Foreign upload hosts receive no
+factory bearer. Native unresolved CAE exceptions use a static authentication
+classification even with safe code zero; original claims and exception graphs
+remain detached. See [Graph DSNs](dsn.md#microsoft-graph-sdk-dsns).
+
+
 ## Plugin output escaping
 
 Escaping in the debug/reporting plugins is **not uniform** -- know which output is safe to render in a browser:

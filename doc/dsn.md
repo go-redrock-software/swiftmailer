@@ -105,7 +105,7 @@ When no port is given, `smtp+ssl` defaults to 465 and the others to 587.
 
 ### HTTP API
 
-HTTP providers use their own constructor contracts. SES and Gmail SDK routes support the explicit authentication forms below. Microsoft Graph still requires native client construction and rejects operational DSNs with a credential-safe `InvalidArgumentException`.
+HTTP providers use their own constructor contracts. SES, Gmail and Microsoft Graph SDK routes support the explicit authentication forms below.
 
 | Scheme | Transport Class | DSN-constructible | Credential / notes |
 |-|-|-|-|
@@ -126,7 +126,7 @@ HTTP providers use their own constructor contracts. SES and Gmail SDK routes sup
 | `mailjet` | `Swift_Transport_Api_MailJetTransport` | Yes | User = public key; password = private key |
 | `scaleway` | `Swift_Transport_Api_ScalewayTransport` | Yes | User = project ID; password = API key |
 | `gmail+api` | `Swift_Transport_Api_GoogleTransport` | Yes | Explicit bearer token or renewable OAuth; see below |
-| `microsoft-graph` | `Swift_Transport_Api_MicrosoftGraphTransport` | No | Requires a `GraphServiceClient` object |
+| `microsoft-graph` | `Swift_Transport_Api_MicrosoftGraphTransport` | Yes | Explicit bearer token or application credentials |
 | `amazon+api` | `Swift_Transport_Api_AmazonSesApiTransport` | Yes | AWS access-key user and secret password; real AsyncAws SES v2 client |
 | `amazon+http` | `Swift_Transport_Api_AmazonSesHttpTransport` | Yes | Same SDK construction; preserves native response-ID behavior |
 | `mailtrap` | `Swift_Transport_Api_MailtrapTransport` | Yes | API token; live sending endpoint |
@@ -164,7 +164,60 @@ exclusive to Mailgun, Scaleway and the two SES API schemes; `inbox_id` is exclus
 Both options require a canonical scalar spelling and exactly one occurrence,
 using PHP's configured query separators. Invalid options fail before HTTP I/O.
 
-Microsoft Graph still requires an explicitly constructed client object. Native SDK construction remains available for advanced Gmail and SES authentication.
+Native SDK construction remains available for advanced authentication and client configuration.
+
+### Microsoft Graph SDK DSNs
+
+```text
+microsoft-graph://ACCESS_TOKEN@default
+microsoft-graph://ACCESS_TOKEN@default?user_id=sender%40example.com
+microsoft-graph://CLIENT_ID:CLIENT_SECRET@default?tenant_id=TENANT&user_id=sender%40example.com
+```
+
+Bearer mode uses an externally managed token; an omitted `user_id` selects `/me`.
+It cannot renew a token or satisfy a new claims challenge: recreate the transport
+with a fresh token. Application mode requires both `tenant_id` and `user_id` and
+uses the native SDK's client-credentials grant, in-memory cache and renewal with
+`https://graph.microsoft.com/.default`. Configure application permissions and
+admin consent in Entra ID. Reuse the transport to retain its token cache.
+Construction performs no HTTP requests or ambient credential discovery.
+
+Resource URLs are fixed to `https://graph.microsoft.com/v1.0` and token requests
+to `https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token`. Only `default`
+is accepted as the DSN host, without a port, fragment or base path (a single `/`
+is allowed). Custom clouds, endpoints and scopes require native SDK construction.
+Tenant identifiers must be safe single path segments; credentials are nonempty
+printable ASCII, with spaces allowed only in client secrets. Percent-encode DSN
+components, including reserved characters. Literal `0` values are preserved.
+
+Only canonical, single scalar `tenant_id`, `user_id`, `retries` and `retry_delay`
+options are accepted on this scheme. Duplicates, arrays, normalized aliases and
+foreign provider options reject before I/O. Bearer mode rejects a tenant or
+password instead of ignoring it.
+
+Supply separate caller-owned Guzzle clients when needed:
+
+```php
+$factory = new Swift_Transport_DsnTransportFactory(
+    graphHttpClient: $resourceHttpClient,
+    graphTokenHttpClient: $tokenHttpClient,
+);
+```
+
+These are the third and fourth factory arguments; existing SES/Gmail arguments
+retain their positions. The resource client must expose Guzzle-compatible
+configuration and a callable handler. The factory copies its configuration and
+clones its handler stack, installs the SDK's `/me` translation when needed, sets
+`http_errors` to false for Kiota, and removes default `auth` and `Authorization`.
+Other headers/options are preserved. SDK authentication supplies the resource
+bearer; unrelated upload hosts receive no factory authentication. The token
+client belongs to the native OAuth provider. Neither caller configuration is
+mutated. Per-send redirect and diagnostic safeguards apply to both paths.
+
+Native SDK construction remains available for authorization-code, OBO,
+certificate, managed credentials and application-owned CAE callbacks. An unresolved
+native CAE challenge is classified as authentication failure even when its safe
+exception code is zero; default Swift retries stop without replaying the same token.
 
 ### Gmail SDK DSNs
 
@@ -309,7 +362,7 @@ Only a fixed whitelist of parameters is accepted (`Swift_Transport_DsnTransportF
 
 `verify_peer`, `peer_fingerprint`, `source_ip`, `smtputf8`, `command`, `retries`, `retry_delay`, `click_tracking`, `click_tracking_text`, `open_tracking`, `timeout`, `auth_mode`, `local_domain`
 
-Any parameter outside this list is **not** silently dropped and does **not** throw — it triggers an `E_USER_WARNING` (`unknown DSN parameter "x" will be ignored`) and is then ignored. This validation runs for every scheme.
+Provider-specific parameters also include `region`, `inbox_id`, `session_token`, `refresh_token`, `tenant_id` and `user_id`; each is restricted to its documented scheme. SDK routes use their strict contracts above and reject unsupported options. Other unknown parameters trigger an `E_USER_WARNING` (`unknown DSN parameter "x" will be ignored`) and are ignored.
 
 ### SMTP parameters
 

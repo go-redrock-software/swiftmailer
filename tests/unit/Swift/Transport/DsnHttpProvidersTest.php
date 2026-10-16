@@ -83,7 +83,9 @@ class Swift_Transport_DsnHttpProvidersTest extends TestCase
 
     public static function invalidDsns(): iterable
     {
-        foreach (['microsoft-graph', 'amazon+api', 'amazon+http'] as $scheme) {
+        yield ['microsoft-graph://KEY:secret@default'];
+        yield ['retry(microsoft-graph://KEY:secret@default)'];
+        foreach (['amazon+api', 'amazon+http'] as $scheme) {
             yield [$scheme.'://KEY@default'];
             yield ['retry('.$scheme.'://KEY@default)'];
         }

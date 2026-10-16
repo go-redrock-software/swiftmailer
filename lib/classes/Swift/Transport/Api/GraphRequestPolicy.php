@@ -7,6 +7,7 @@ use Microsoft\Graph\GraphServiceClient;
 use Microsoft\Kiota\Abstractions\ApiException;
 use Microsoft\Kiota\Abstractions\BaseRequestBuilder;
 use Microsoft\Kiota\Abstractions\RequestAdapter;
+use Microsoft\Kiota\Authentication\Oauth\ContinuousAccessEvaluationException;
 use Microsoft\Kiota\Http\GuzzleRequestAdapter;
 
 /**
@@ -25,7 +26,7 @@ class Swift_Transport_Api_GraphRequestPolicy
         $terminal = Swift_Transport_RetryPolicy::isTerminalFailure($error);
         try {
             $code                  = self::failureCode($error);
-            $authenticationFailure = \in_array($code, [0, 400], true) && self::isOAuthAuthenticationFailure($error);
+            $authenticationFailure = \in_array($code, [0, 400], true) && self::isAuthenticationFailure($error);
         } catch (Throwable) {
             $terminal              = true;
             $code                  = 0;
@@ -37,9 +38,12 @@ class Swift_Transport_Api_GraphRequestPolicy
         return new $class('Failed to send email through Microsoft Graph (status '.$code.$detail.').', $code);
     }
 
-    private static function isOAuthAuthenticationFailure(#[SensitiveParameter] Throwable $error): bool
+    private static function isAuthenticationFailure(#[SensitiveParameter] Throwable $error): bool
     {
         for ($cause = $error; null !== $cause; $cause = $cause->getPrevious()) {
+            if ($cause instanceof ContinuousAccessEvaluationException) {
+                return true;
+            }
             if (!$cause instanceof IdentityProviderException) {
                 continue;
             }

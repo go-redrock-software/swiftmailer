@@ -208,7 +208,7 @@ $transport = (new Swift_Transport_DsnTransportFactory())
     ->fromDsnString('mailjet://PUBLIC_KEY:PRIVATE_KEY@default');
 ```
 
-> **Note:** Microsoft Graph is listed in the DSN map but rejects DSN construction with a credential-safe `InvalidArgumentException`; inject an explicitly constructed SDK client into its native transport. Gmail and SES support the explicit SDK DSNs documented below.
+Gmail, SES and Microsoft Graph support explicit SDK DSNs. Advanced authentication remains available through native SDK client injection.
 
 Both Amazon SES routes now support [SDK DSN construction](dsn.md#amazon-ses-sdk-dsns) with explicit credentials/region/session-token and optional caller-owned HTTP injection. Direct SDK injection remains available for advanced credential providers.
 
@@ -595,7 +595,7 @@ $transport = new Swift_Transport_Api_GoogleTransport($client);
 | | |
 |-|-|
 | **Class** | `Swift_Transport_Api_MicrosoftGraphTransport` |
-| **DSN** | `microsoft-graph://...` (not DSN-constructible -- requires GraphServiceClient) |
+| **DSN** | `microsoft-graph://TOKEN@default` or explicit application credentials |
 | **Base class** | `AbstractApiTransport` (HTTP through Kiota SDK) |
 | **Constructor** | `(GraphServiceClient $client, ?string $sendingAccountUserId = null, ?EventDispatcher $eventDispatcher = null)` |
 | **Dependency** | `microsoft/microsoft-graph` |
@@ -618,6 +618,15 @@ $transport->useFromAddressAsSendingAccountUserId();
 // Or set it manually later
 $transport->setSendingAccountUserId('other-user@company.com');
 ```
+
+The [Graph DSN forms](dsn.md#microsoft-graph-sdk-dsns) construct a real SDK adapter
+with an externally managed bearer or renewable application credentials. App mode
+requires `tenant_id` and `user_id` and uses the fixed Graph `.default` scope.
+Optional `graphHttpClient` and `graphTokenHttpClient` factory arguments keep
+resource and OAuth HTTP configuration separate. The resource configuration is
+copied, with native `/me` translation, Kiota response handling and authentication
+defaults removed; caller clients remain unchanged. Native SDK injection supports
+advanced authentication and callbacks.
 
 The Graph transport has grown well beyond simple sends: large attachments (>= 3 MB, `LARGE_ATTACHMENT_THRESHOLD`) are routed through the draft + upload-session flow and rejected above Graph's 150 MB per-attachment cap (`MAX_ATTACHMENT_SIZE`), and `text/calendar` parts (`METHOD:REQUEST` / `CANCEL`) can be converted into real Calendar events via `enableCalendarEventConversion()`. Those flows are covered in the dedicated [Microsoft Graph guide](microsoft-graph.md); this page documents only the constructor and transport basics.
 

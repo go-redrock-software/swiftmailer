@@ -419,8 +419,11 @@ Two classes turn connection strings into transports:
   Google Client using explicit bearer or renewable OAuth credentials, a fixed scope/universe,
   and optional caller-owned Guzzle HTTP. Its refresh adapter preserves zero-valued form
   credentials while retaining SDK request/response/cache handling. Gmail rejects unknown
-  options before construction. Graph still rejects DSN construction before credentials
-  reach a client parameter. Scoped SMTP,
+  options before construction. Graph constructs native Graph/Kiota clients with explicit
+  bearer or renewable application credentials, fixed endpoints/scope and separate resource/token
+  Guzzle clients. Its resource configuration is isolated and stripped of authentication defaults;
+  native SDK cache/renewal/CAE state remains in use. Both SDK routes reject unknown
+  options before I/O. Scoped SMTP,
   HTTP provider and SendGrid options share canonical-name/scalar/occurrence validation using PHP's
   configured query separators. A small adapter preserves literal-zero userinfo
   lost by the installed Nyholm 2.0.1 parser while retaining its validated URL/query representation.

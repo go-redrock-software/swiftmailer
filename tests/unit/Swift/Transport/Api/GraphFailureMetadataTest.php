@@ -65,6 +65,12 @@ class Swift_Transport_Api_GraphFailureMetadataTest extends TestCase
                 throw new TypeError('TRACE-broken OAuth metadata');
             }
         }, 0, true, false];
+        $cae = new Microsoft\Kiota\Authentication\Oauth\ContinuousAccessEvaluationException('TRACE-CAE-message', 'TRACE-claims');
+        yield 'unresolved CAE authentication' => [$cae, 0, false, false];
+        yield 'nested unresolved CAE authentication' => [new RuntimeException('TRACE-wrapper', 0, $cae), 0, false, false];
+        yield 'CAE preserves authoritative token status' => [new Swift_TransportException('TRACE-token', 503, $cae), 503, false, true];
+        yield 'CAE cannot override typed resource status' => [new Microsoft\Kiota\Authentication\Oauth\ContinuousAccessEvaluationException('TRACE-CAE-message', 'TRACE-claims', 0, $api(500)), 500, false, true];
+        yield 'CAE preserves hard PHP Error cause' => [new Microsoft\Kiota\Authentication\Oauth\ContinuousAccessEvaluationException('TRACE-CAE-message', 'TRACE-claims', 0, new TypeError('TRACE-error')), 0, true, false];
         yield 'network with no code' => [new RuntimeException('TRACE-network'), 0, false, true];
         yield 'metadata getter failure is terminal' => [new class('TRACE-metadata') extends ApiException {
             public function getResponseStatusCode(): ?int
