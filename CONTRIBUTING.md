@@ -238,3 +238,27 @@ You can execute the GitLab jobs on your own machine with
 reads `.gitlab-ci.yml` and keeps its state — the flattened `expanded-gitlab-ci.yml`,
 builds, cache, and artifacts — under the git-ignored `.gitlab-ci-local/` directory.
 Useful for reproducing a CI failure without pushing.
+
+### HTML reporter streaming tests
+
+The unit suite exercises real CLI and PHP-FPM workers over private Unix sockets.
+A separate ready/release barrier holds the worker after `notify()`, so assertions
+inspect client bytes before completion rather than relying on sleeps. Both
+captured and streamed output must retain the same escaped HTML. The worker loads
+the exact selected reporter file before Composer aliases. Under Infection 0.29,
+its checked active include-replacement mapping supplies the mutant path because
+Reflection retains the original filename. Each runtime case also invokes the
+reporter in the parent to compare captured HTML with client output and provide
+actual source-line coverage.
+
+Install a matching PHP-FPM binary alongside PHP CLI, or set
+`SWIFTMAILER_PHP_FPM` to its absolute executable path. CI uses the official PHP FPM
+images and sets `SWIFTMAILER_REQUIRE_FPM=1`, making a missing runtime a failure.
+Local CLI-only installations explicitly skip FPM cases; those skips do not prove
+FastCGI streaming. Windows/non-Unix environments cannot run the private socket
+matrix. Child processes receive only the controlled test configuration and
+`XDEBUG_MODE=off`, and are reaped on success, failure and bounded timeouts.
+
+The reporter flushes backend buffers, not PHP user buffers or proxy/browser
+buffers. Buffered controls document that limit. Do not suppress the two flush
+mutations or reduce the repository's MSI thresholds to make the audit pass.
