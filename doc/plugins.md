@@ -396,7 +396,10 @@ are preserved; a replacement envelope carries the filtered recipients.
 rejection stops later `beforeSendPerformed` listeners, so a later redirect does
 not rescue a send rejected by an earlier allowlist. Both plugins use the same
 original-recipient snapshot when `sendPerformed` restores the message; a plugin
-that never ran its before hook leaves cleanup untouched.
+completion without any recipient policy leaves cleanup untouched. Snapshots belong
+to each send event, so reusing a plugin across nested or overlapping sends does
+not overwrite another message’s originals. Custom event subclasses retain their
+`getMessage()` behavior when capturing and restoring recipients.
 
 **Gotchas:**
 - Patterns are case-insensitive. Wildcards use `*@domain` syntax; anything else

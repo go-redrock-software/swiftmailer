@@ -21,6 +21,14 @@ class Swift_Transport_Api_GmailRequestPolicy
         }
     }
 
+    public function validateRequest(#[SensitiveParameter] RequestInterface $request): void
+    {
+        $this->assertUsable();
+        if ($this->accepted && 'POST' === $request->getMethod() && \str_ends_with($request->getUri()->getPath(), '/users/me/messages/send')) {
+            $this->refuseAcceptance();
+        }
+    }
+
     public function validateResponse(#[SensitiveParameter] RequestInterface $request, #[SensitiveParameter] ResponseInterface $response, #[SensitiveParameter] ?Throwable $error = null): ResponseInterface
     {
         $this->assertUsable();

@@ -64,7 +64,19 @@ class Swift_Transport_Api_SesHttpClient implements HttpClientInterface
                         return false;
                     }
 
-                    return $this->strategy->shouldRetry($context, $responseContent, $exception);
+                    $path         = \parse_url($context->getInfo('url'), \PHP_URL_PATH);
+                    $acceptedSend = $status >= 200 && $status < 300 && 'POST' === $context->getInfo('http_method') && \is_string($path) && \str_ends_with($path, '/v2/email/outbound-emails');
+                    if ($acceptedSend) {
+                        // Record success headers before caller code can throw or retry.
+                        $this->policy->observeSendStatus($status);
+                    }
+                    $this->policy->assertAcceptance();
+                    $retry = $this->strategy->shouldRetry($context, $responseContent, $exception);
+                    if ($acceptedSend && true === $retry) {
+                        $this->policy->refuseAcceptance($status);
+                    }
+
+                    return $retry;
                 }
 
                 public function getDelay(AsyncContext $context, ?string $responseContent, ?TransportExceptionInterface $exception): int

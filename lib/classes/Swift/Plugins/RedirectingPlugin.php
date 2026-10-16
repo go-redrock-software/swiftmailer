@@ -27,8 +27,6 @@ class Swift_Plugins_RedirectingPlugin implements Swift_Events_SendListener
      */
     private $whitelist = [];
 
-    private ?array $originalRecipients = null;
-
     /**
      * Create a new RedirectingPlugin.
      */
@@ -80,10 +78,9 @@ class Swift_Plugins_RedirectingPlugin implements Swift_Events_SendListener
     {
         $message = $evt->getMessage();
         $headers = $message->getHeaders();
+        // Each send event owns its snapshot, including nested sends with this plugin.
+        $evt->captureRecipientState();
         $evt->addRecipientFilter($this->filterDeliveryRecipients(...));
-
-        // Store original recipients as instance properties (not in headers)
-        $this->originalRecipients = $evt->captureRecipientState();
 
         if (null !== $envelope = $evt->getEnvelope()) {
             $recipients = \array_values(\array_filter($envelope->getRecipients(), fn (string $address): bool => $this->isWhitelisted($address)));
@@ -189,18 +186,17 @@ class Swift_Plugins_RedirectingPlugin implements Swift_Events_SendListener
     #[Override]
     public function sendPerformed(Swift_Events_SendEvent $evt)
     {
-        if (null === $this->originalRecipients) {
+        if (!$evt->hasRecipientFilters()) {
             return;
         }
 
         $message = $evt->getMessage();
-        foreach ($this->originalRecipients as $field => $recipients) {
+        foreach ($evt->captureRecipientState() as $field => $recipients) {
             if (null === $recipients) {
                 $message->getHeaders()->removeAll($field);
             } else {
                 $message->{'set'.\ucfirst($field)}($recipients);
             }
         }
-        $this->originalRecipients = null;
     }
 }

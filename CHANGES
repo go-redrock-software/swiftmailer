@@ -4,10 +4,28 @@ Changelog
 Maintained by `Redrock Software Corporation <https://www.go-redrock.com/>`_ since
 2022. This fork continues Swiftmailer development for legacy and enterprise
 applications that cannot migrate to Symfony Mailer, integrating features from
-Symfony Mailer while preserving full backward compatibility.
+Symfony Mailer while retaining legacy APIs. Intentional delivery-safety changes
+are documented in doc/upgrading.md.
 
 Unreleased
 ----------
+
+ Fixed:
+
+ * Preserve independent pool failure histories after cloning, including subclasses
+   with their own clone hooks. Retain serialized metadata compatibility and lazy
+   initialization for subclasses that omit the parent constructor (GitLab #90).
+ * Preserve legacy immediate pool recovery on start() unless a retry period is
+   explicitly configured. Timed recovery remains available through constructors,
+   setRetryPeriod() and pool DSNs (GitLab #90).
+ * Restore recipient snapshots from each send event and honor overridden
+   getMessage() implementations. Shared plugins now support nested and overlapping
+   sends without losing another message's original recipients (GitLab #90).
+ * Accept equivalent API envelopes when the same mailbox appears in multiple
+   recipient fields, while still rejecting actual audience overrides (GitLab #90).
+ * Prevent caller Gmail middleware and SES retry strategies from replaying send
+   requests after successful response headers. Ordinary failure and credential
+   retries retain their existing behavior (GitLab #90).
 
  Security:
 

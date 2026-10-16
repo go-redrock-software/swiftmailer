@@ -60,7 +60,7 @@ class Swift_Transport_Api_GoogleTransport extends Swift_Transport_AbstractApiTra
             // so refresh credentials and token callbacks retain their normal behavior.
             $client->getCache();
             $scoped = clone $client;
-            $http   = new Swift_Transport_Api_NoRedirectClient($client->getHttpClient(), $policy->assertUsable(...), $policy->validateResponse(...));
+            $http   = new Swift_Transport_Api_NoRedirectClient($client->getHttpClient(), $policy->validateRequest(...), $policy->validateResponse(...));
             $scoped->setHttpClient($http);
             $scoped->setDefer(false);
             if ($scoped->getHttpClient() !== $http || $scoped->shouldDefer()) {

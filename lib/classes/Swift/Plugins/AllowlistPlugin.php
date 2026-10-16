@@ -31,9 +31,6 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
 
     private ?string $redirectTo;
 
-    /** @var array|null Stored original recipients for restoration */
-    private ?array $originalRecipients = null;
-
     /**
      * @param string[]    $allowedPatterns Exact addresses or '*@domain' wildcards
      * @param string|null $redirectTo      Optional catch-all address for non-allowed recipients
@@ -52,7 +49,7 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
         $evt->addRecipientFilter($this->filterDeliveryRecipients(...));
 
         // Store original recipients
-        $this->originalRecipients = [
+        $originalRecipients = [
             'to'  => $message->getTo(),
             'cc'  => $message->getCc(),
             'bcc' => $message->getBcc(),
@@ -64,22 +61,22 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
         }
 
         if (null !== $this->redirectTo) {
-            $this->applyRedirect($message);
+            $this->applyRedirect($message, $originalRecipients);
 
             return;
         }
 
         // Filter each recipient field
-        $filteredTo  = $this->filterRecipients($this->originalRecipients['to'] ?? []);
-        $filteredCc  = $this->filterRecipients($this->originalRecipients['cc'] ?? []);
-        $filteredBcc = $this->filterRecipients($this->originalRecipients['bcc'] ?? []);
+        $filteredTo  = $this->filterRecipients($originalRecipients['to'] ?? []);
+        $filteredCc  = $this->filterRecipients($originalRecipients['cc'] ?? []);
+        $filteredBcc = $this->filterRecipients($originalRecipients['bcc'] ?? []);
 
         // If no recipients left at all, reject with reason
         if (null === $envelope && empty($filteredTo) && empty($filteredCc) && empty($filteredBcc) && !\array_filter($evt->getRecipientGroups())) {
             $allOriginalAddresses = \array_keys(\array_merge(
-                $this->originalRecipients['to']  ?? [],
-                $this->originalRecipients['cc']  ?? [],
-                $this->originalRecipients['bcc'] ?? [],
+                $originalRecipients['to']  ?? [],
+                $originalRecipients['cc']  ?? [],
+                $originalRecipients['bcc'] ?? [],
             ));
 
             $evt->reject(\sprintf(
@@ -93,10 +90,10 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
         // Apply filtered recipients
         $message->setTo($filteredTo);
 
-        if (null !== $this->originalRecipients['cc']) {
+        if (null !== $originalRecipients['cc']) {
             $message->setCc($filteredCc);
         }
-        if (null !== $this->originalRecipients['bcc']) {
+        if (null !== $originalRecipients['bcc']) {
             $message->setBcc($filteredBcc);
         }
     }
@@ -104,7 +101,7 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
     #[Override]
     public function sendPerformed(Swift_Events_SendEvent $evt): void
     {
-        if (null === $this->originalRecipients) {
+        if (!$evt->hasRecipientFilters()) {
             return;
         }
 
@@ -118,8 +115,6 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
                 $message->{'set'.\ucfirst($field)}($recipients);
             }
         }
-
-        $this->originalRecipients = null;
     }
 
     private function filterEnvelope(Swift_Events_SendEvent $evt, Swift_Envelope $envelope): bool
@@ -141,11 +136,11 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
         return true;
     }
 
-    private function applyRedirect(Swift_Mime_SimpleMessage $message): void
+    private function applyRedirect(Swift_Mime_SimpleMessage $message, array $originalRecipients): void
     {
         $filtered      = [];
         $needsRedirect = false;
-        foreach ($this->originalRecipients as $field => $recipients) {
+        foreach ($originalRecipients as $field => $recipients) {
             $filtered[$field] = $this->filterRecipients($recipients ?? []);
             if (\count($filtered[$field]) < \count($recipients ?? [])) {
                 $needsRedirect = true;
@@ -159,10 +154,10 @@ class Swift_Plugins_AllowlistPlugin implements Swift_Events_SendListener
         }
 
         $message->setTo($newTo);
-        if (null !== $this->originalRecipients['cc']) {
+        if (null !== $originalRecipients['cc']) {
             $message->setCc($filtered['cc']);
         }
-        if (null !== $this->originalRecipients['bcc']) {
+        if (null !== $originalRecipients['bcc']) {
             $message->setBcc($filtered['bcc']);
         }
     }

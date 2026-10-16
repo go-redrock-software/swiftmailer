@@ -131,8 +131,10 @@ abstract class Swift_Transport_AbstractApiTransport implements Swift_Transport
             foreach (['getTo', 'getCc', 'getBcc'] as $method) {
                 $headers = \array_merge($headers, \array_keys($message->$method() ?? []));
             }
-            $headers    = \array_map($this->normalizeEnvelopeAddress(...), $headers);
-            $recipients = \array_map($this->normalizeEnvelopeAddress(...), $envelope->getRecipients());
+            // The same mailbox can occur in several header fields. Compare
+            // audiences, as Envelope::fromMessage() already removes repeated keys.
+            $headers    = \array_unique(\array_map($this->normalizeEnvelopeAddress(...), $headers));
+            $recipients = \array_unique(\array_map($this->normalizeEnvelopeAddress(...), $envelope->getRecipients()));
             \sort($headers);
             \sort($recipients);
             if ($headers !== $recipients) {
