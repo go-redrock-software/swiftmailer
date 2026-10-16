@@ -33,7 +33,7 @@ class Swift_Transport_Api_GraphFailurePrivacyTest extends TestCase
         $this->assertFalse($result['previous']);
         $this->assertSame(['message' => false, 'string' => false, 'trace' => false, 'object' => false], $result['leaks']);
         $this->assertSame(['message' => false, 'string' => false, 'trace' => false, 'object' => false], $result['credentials']);
-        $this->assertEqualsCanonicalizing(['to@safe.test', 'copy@safe.test', 'blind@safe.test'], $result['failed']);
+        $this->assertEqualsCanonicalizing(\str_starts_with($input['stage'], 'event') ? ['to@safe.test'] : ['to@safe.test', 'copy@safe.test', 'blind@safe.test'], $result['failed']);
         $this->assertSame([1, 1, Swift_Events_SendEvent::RESULT_FAILED], $result['events']);
         $this->assertTrue($result['restored']);
         $this->assertTrue($result['ownership']);

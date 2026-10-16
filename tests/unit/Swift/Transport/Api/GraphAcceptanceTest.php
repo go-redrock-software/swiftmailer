@@ -585,19 +585,20 @@ class Swift_Transport_Api_GraphAcceptanceTest extends TestCase
         $handler = function (RequestInterface $request, array $options) use ($stage, $status, $body, $mode, $wire): mixed {
             $wire->requests[] = ['request' => $request, 'body' => (string) $request->getBody(), 'options' => $options];
             $path             = $request->getUri()->getPath();
-            $current          = match (true) {
-                'DELETE' === $request->getMethod()                                   => 'event delete',
-                'PUT'    === $request->getMethod()                                      => 'upload chunk',
-                'GET'    === $request->getMethod() && !\str_ends_with($path, '/events') => 'event read',
-                'GET'    === $request->getMethod()                                      => 'event lookup',
-                'PATCH'  === $request->getMethod()                                    => 'event update',
-                \str_ends_with($path, '/sendMail')                                   => 'sendMail',
-                \str_ends_with($path, '/createUploadSession')                        => 'upload session',
-                \str_ends_with($path, '/attachments')                                => 'small attachment',
-                \str_ends_with($path, '/messages')                                   => 'draft',
-                \str_ends_with($path, '/send')                                       => 'draft send',
-                \str_ends_with($path, '/cancel')                                     => 'event cancel',
-                default                                                              => 'event create',
+            $current          = match ($request->getMethod()) {
+                'DELETE' => 'event delete',
+                'PUT'    => 'upload chunk',
+                'GET'    => \str_ends_with($path, '/events') ? 'event lookup' : 'event read',
+                'PATCH'  => 'event update',
+                default  => match (true) {
+                    \str_ends_with($path, '/sendMail')            => 'sendMail',
+                    \str_ends_with($path, '/createUploadSession') => 'upload session',
+                    \str_ends_with($path, '/attachments')         => 'small attachment',
+                    \str_ends_with($path, '/messages')            => 'draft',
+                    \str_ends_with($path, '/send')                => 'draft send',
+                    \str_ends_with($path, '/cancel')              => 'event cancel',
+                    default                                       => 'event create',
+                },
             };
             $data = match ($current) {
                 'sendMail', 'draft send', 'event cancel', 'event delete', 'upload chunk' => null,
