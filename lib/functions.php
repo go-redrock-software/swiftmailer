@@ -43,13 +43,6 @@ function obfuscate(string $text, string $replaceWith = 'x'): array|string|null
 function getRawMessage(\Swift_Mime_SimpleMessage $message): string
 {
     $messageString = $message->toString();
-    // Handle attachments
-    foreach ($message->getChildren() ?? [] as $attachment) {
-        if ($attachment instanceof \Swift_Mime_Attachment) {
-            $attachmentString = $attachment->toString();
-            $messageString .= "\r\n".$attachmentString;
-        }
-    }
 
     // Gmail's messages.send `raw` field must be base64URL-encoded (RFC 4648 §5),
     // not standard base64: real MIME contains bytes that encode to '+' and '/', which

@@ -23,6 +23,8 @@ class Swift_Plugins_Reporters_HtmlReporter implements Swift_Plugins_Reporter
      */
     public function notify(Swift_Mime_SimpleMessage $message, $address, $result)
     {
+        $address = \htmlspecialchars($address, \ENT_QUOTES | \ENT_SUBSTITUTE, 'UTF-8');
+
         if (self::RESULT_PASS == $result) {
             echo '<div style="color: #fff; background: #006600; padding: 2px; margin: 2px;">'.PHP_EOL;
             echo 'PASS '.$address.PHP_EOL;

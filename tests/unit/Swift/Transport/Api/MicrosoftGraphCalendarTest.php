@@ -27,21 +27,9 @@ class MicrosoftGraphCalendarTest extends TestCase
         ]);
     }
 
-    private function promise(): \Http\Promise\Promise
-    {
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-
-        return $promise;
-    }
-
     private function dispatcher(): \Swift_Events_EventDispatcher
     {
-        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
-        $dispatcher->method('createSendEvent')->willReturn($this->createMock(\Swift_Events_SendEvent::class));
-        $dispatcher->method('createTransportChangeEvent')->willReturn($this->createMock(\Swift_Events_TransportChangeEvent::class));
-
-        return $dispatcher;
+        return new \Swift_Events_SimpleEventDispatcher();
     }
 
     private function message(string $ics): \Swift_Message
@@ -88,23 +76,17 @@ class MicrosoftGraphCalendarTest extends TestCase
 
     public function testRequestInviteIsCreatedAsEventAndEmailSkipped(): void
     {
-        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
-        $eventsBuilder->expects($this->once())->method('post')->willReturn($this->promise());
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('events')->willReturn($eventsBuilder);
-        $userItemBuilder->expects($this->never())->method('sendMail');
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('me')->willReturn($userItemBuilder);
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $this->dispatcher());
         $transport->enableCalendarEventConversion();
 
         $result = $transport->send($this->message($this->requestInviteIcs()));
 
-        // One attendee via the created event, plus the single To recipient.
-        $this->assertSame(2, $result);
+        // The calendar operation notifies one attendee; no ordinary mail is sent.
+        $this->assertSame(1, $result);
+        $this->assertSame(['GET /v1.0/me/events', 'POST /v1.0/me/events'], $fixture->paths());
     }
 
     // -- invite + a real (non-.ics) attachment: the attachment must still be delivered ---
@@ -113,18 +95,8 @@ class MicrosoftGraphCalendarTest extends TestCase
     {
         // Default sendEmailAlongsideEvent (false), but a genuine PDF rides alongside the
         // invite. The .ics is converted to an event; the PDF must NOT be silently dropped.
-        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
-        $eventsBuilder->expects($this->once())->method('post')->willReturn($this->promise());
-
-        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->expects($this->once())->method('post')->willReturn($this->promise());
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('events')->willReturn($eventsBuilder);
-        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('me')->willReturn($userItemBuilder);
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $this->dispatcher());
         $transport->enableCalendarEventConversion();
@@ -139,52 +111,38 @@ class MicrosoftGraphCalendarTest extends TestCase
         $m->attach(new \Swift_Attachment($this->requestInviteIcs(), 'invite.ics', 'text/calendar'));
 
         $transport->send($m);
+        $this->assertSame(['GET /v1.0/me/events', 'POST /v1.0/me/events', 'POST /v1.0/me/sendMail'], $fixture->paths());
     }
 
     // -- sendAlongside also sends the email (without the broken .ics) ---
 
     public function testRequestInviteWithSendAlongsideSendsBoth(): void
     {
-        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
-        $eventsBuilder->expects($this->once())->method('post')->willReturn($this->promise());
-
-        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->expects($this->once())->method('post')->willReturn($this->promise());
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('events')->willReturn($eventsBuilder);
-        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('me')->willReturn($userItemBuilder);
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $this->dispatcher());
         $transport->enableCalendarEventConversion();
         $transport->setSendEmailAlongsideEvent(true);
 
         $result = $transport->send($this->message($this->requestInviteIcs()));
-        $this->assertSame(2, $result); // 1 To recipient + 1 attendee via the event
+        $this->assertSame(2, $result); // One calendar notification and one ordinary mail.
+        $this->assertSame(['GET /v1.0/me/events', 'POST /v1.0/me/events', 'POST /v1.0/me/sendMail'], $fixture->paths());
     }
 
     // -- conversion disabled: .ics rides along as a normal attachment ---
 
     public function testConversionDisabledSendsIcsAsAttachment(): void
     {
-        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->expects($this->once())->method('post')->willReturn($this->promise());
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
-        $userItemBuilder->expects($this->never())->method('events');
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('me')->willReturn($userItemBuilder);
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $this->dispatcher());
         // conversion intentionally left disabled
 
         $result = $transport->send($this->message($this->requestInviteIcs()));
         $this->assertSame(1, $result); // 1 To recipient; .ics sent as a plain attachment, no event
+        $this->assertSame(['POST /v1.0/me/sendMail'], $fixture->paths());
     }
 
     // -- non-REQUEST methods are not converted ---
@@ -203,21 +161,15 @@ class MicrosoftGraphCalendarTest extends TestCase
             'END:VCALENDAR',
         ]);
 
-        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->expects($this->once())->method('post')->willReturn($this->promise());
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
-        $userItemBuilder->expects($this->never())->method('events');
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('me')->willReturn($userItemBuilder);
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $this->dispatcher());
         $transport->enableCalendarEventConversion();
 
         $result = $transport->send($this->message($publishIcs));
         $this->assertSame(1, $result); // 1 To recipient; PUBLISH not converted, no event
+        $this->assertSame(['POST /v1.0/me/sendMail'], $fixture->paths());
     }
 
     // -- convertParsedEventToGraphEvent maps fields onto the Graph model ---
@@ -279,15 +231,8 @@ class MicrosoftGraphCalendarTest extends TestCase
             'END:VCALENDAR',
         ]);
 
-        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->expects($this->once())->method('post')->willReturn($this->promise());
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
-        $userItemBuilder->expects($this->never())->method('events');
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('me')->willReturn($userItemBuilder);
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $this->dispatcher());
         $transport->enableCalendarEventConversion();
@@ -295,21 +240,15 @@ class MicrosoftGraphCalendarTest extends TestCase
         // Must not throw, and must not create an event.
         $result = $transport->send($this->message($malformed));
         $this->assertSame(1, $result); // 1 To recipient; malformed .ics falls back to an attachment, no event
+        $this->assertSame(['POST /v1.0/me/sendMail'], $fixture->paths());
     }
 
     // -- conversion enabled but no calendar part: ordinary sendMail, no event ---
 
     public function testNoCalendarPartSendsNormally(): void
     {
-        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->expects($this->once())->method('post')->willReturn($this->promise());
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
-        $userItemBuilder->expects($this->never())->method('events');
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('me')->willReturn($userItemBuilder);
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $this->dispatcher());
         $transport->enableCalendarEventConversion();
@@ -322,21 +261,15 @@ class MicrosoftGraphCalendarTest extends TestCase
 
         $result = $transport->send($m);
         $this->assertSame(1, $result); // 1 To recipient; ordinary sendMail, no event
+        $this->assertSame(['POST /v1.0/me/sendMail'], $fixture->paths());
     }
 
     // -- multiple invites create multiple events ---
 
     public function testMultipleInvitesCreateMultipleEvents(): void
     {
-        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
-        $eventsBuilder->expects($this->exactly(2))->method('post')->willReturn($this->promise());
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('events')->willReturn($eventsBuilder);
-        $userItemBuilder->expects($this->never())->method('sendMail');
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('me')->willReturn($userItemBuilder);
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $this->dispatcher());
         $transport->enableCalendarEventConversion();
@@ -351,22 +284,16 @@ class MicrosoftGraphCalendarTest extends TestCase
 
         // Two attendees (one per invite) plus the single To recipient.
         $result = $transport->send($m);
-        $this->assertSame(3, $result);
+        $this->assertSame(2, $result);
+        $this->assertSame(['GET /v1.0/me/events', 'GET /v1.0/me/events', 'POST /v1.0/me/events', 'POST /v1.0/me/events'], $fixture->paths());
     }
 
     // -- detection by .ics filename when the content type isn't text/calendar ---
 
     public function testDetectionByIcsFilename(): void
     {
-        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
-        $eventsBuilder->expects($this->once())->method('post')->willReturn($this->promise());
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('events')->willReturn($eventsBuilder);
-        $userItemBuilder->expects($this->never())->method('sendMail');
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('me')->willReturn($userItemBuilder);
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $this->dispatcher());
         $transport->enableCalendarEventConversion();
@@ -380,55 +307,31 @@ class MicrosoftGraphCalendarTest extends TestCase
         $m->attach(new \Swift_Attachment($this->requestInviteIcs(), 'meeting.ics', 'application/octet-stream'));
 
         $result = $transport->send($m);
-        $this->assertSame(2, $result); // 1 To recipient + 1 attendee via the event
+        $this->assertSame(1, $result); // Only the calendar attendee is notified.
+        $this->assertSame(['GET /v1.0/me/events', 'POST /v1.0/me/events'], $fixture->paths());
     }
 
     // -- explicit user id routes events through /users/{id}, not /me ---
 
     public function testExplicitUserIdRoutesEventsThroughByUserId(): void
     {
-        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
-        $eventsBuilder->expects($this->once())->method('post')->willReturn($this->promise());
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('events')->willReturn($eventsBuilder);
-
-        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
-        $usersBuilder->expects($this->once())->method('byUserId')->with('user-123')->willReturn($userItemBuilder);
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('users')->willReturn($usersBuilder);
-        $graphClient->expects($this->never())->method('me');
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'user-123', $this->dispatcher());
         $transport->enableCalendarEventConversion();
 
         $result = $transport->send($this->message($this->requestInviteIcs()));
-        $this->assertSame(2, $result); // 1 To recipient + 1 attendee via the event
+        $this->assertSame(1, $result); // Only the calendar attendee is notified.
+        $this->assertSame(['GET /v1.0/users/user-123/events', 'POST /v1.0/users/user-123/events'], $fixture->paths());
     }
 
     // -- send-alongside strips the .ics but keeps real file attachments ---
 
     public function testSendAlongsideStripsIcsButKeepsFileAttachment(): void
     {
-        $captured = null;
-
-        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
-        $eventsBuilder->expects($this->once())->method('post')->willReturn($this->promise());
-
-        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->method('post')->willReturnCallback(function ($body) use (&$captured) {
-            $captured = $body;
-
-            return $this->promise();
-        });
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('events')->willReturn($eventsBuilder);
-        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('me')->willReturn($userItemBuilder);
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $this->dispatcher());
         $transport->enableCalendarEventConversion();
@@ -443,6 +346,7 @@ class MicrosoftGraphCalendarTest extends TestCase
         $m->attach(new \Swift_Attachment($this->requestInviteIcs(), 'invite.ics', 'text/calendar'));
 
         $transport->send($m);
+        $captured = $fixture->mailBody();
 
         $this->assertNotNull($captured, 'sendMail should have been called');
         $attachments = $captured->getMessage()->getAttachments() ?? [];
@@ -450,6 +354,7 @@ class MicrosoftGraphCalendarTest extends TestCase
 
         $this->assertContains('report.pdf', $names, 'real attachment must survive');
         $this->assertNotContains('invite.ics', $names, 'the broken .ics must be stripped');
+        $this->assertSame(['GET /v1.0/me/events', 'POST /v1.0/me/events', 'POST /v1.0/me/sendMail'], $fixture->paths());
     }
 
     // -- extractCalendarInvites(): REQUEST and CANCEL are extracted; others are not ---
@@ -527,117 +432,56 @@ class MicrosoftGraphCalendarTest extends TestCase
 
     public function testFindEventIdReturnsFirstMatch(): void
     {
-        $event = new \Microsoft\Graph\Generated\Models\Event();
-        $event->setId('evt-graph-1');
-        $response = new \Microsoft\Graph\Generated\Models\EventCollectionResponse();
-        $response->setValue([$event]);
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn($response);
-
-        $capturedConfig = null;
-        $eventsBuilder  = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
-        $eventsBuilder->method('get')->willReturnCallback(function ($config) use (&$capturedConfig, $promise) {
-            $capturedConfig = $config;
-
-            return $promise;
-        });
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('events')->willReturn($eventsBuilder);
-
-        $t      = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
-        $method = new \ReflectionMethod($t, 'findEventIdByInviteKey');
-        $id     = $method->invoke($t, $userItemBuilder, "o'brien-uid");
-
-        $this->assertSame('evt-graph-1', $id);
-        $this->assertSame(
-            "singleValueExtendedProperties/Any(ep: ep/id eq '".\Swift_Transport_Api_MicrosoftGraphTransport::INVITE_KEY_PROPERTY_ID."' and ep/value eq 'o''brien-uid')",
-            $capturedConfig->queryParameters->filter,
-        );
+        $fixture = new \Swift_GraphSdkFixture(static fn ($request) => 'GET' === $request->getMethod()
+            ? (\str_ends_with($request->getUri()->getPath(), '/events') ? \Swift_GraphSdkFixture::json(200, ['value' => [['id' => 'evt-graph-1'], ['id' => 'evt-graph-2']]]) : \Swift_GraphSdkFixture::json(200, ['id' => 'evt-graph-1', 'attendees' => [['emailAddress' => ['address' => 'bob@example.com']]]]))
+            : \Swift_GraphSdkFixture::json(200, ['id' => 'evt-graph-1']));
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client);
+        $transport->enableCalendarEventConversion();
+        $transport->send($this->message(\str_replace('cal-1@example.com', "o'brien-uid", $this->requestInviteIcs())));
+        $this->assertSame(['GET /v1.0/me/events', 'GET /v1.0/me/events/evt-graph-1', 'PATCH /v1.0/me/events/evt-graph-1'], $fixture->paths());
+        \parse_str($fixture->requests[0]['request']->getUri()->getQuery(), $query);
+        $this->assertSame("singleValueExtendedProperties/Any(ep: ep/id eq '".\Swift_Transport_Api_MicrosoftGraphTransport::INVITE_KEY_PROPERTY_ID."' and ep/value eq 'o''brien-uid|bob@example.com')", $query['$filter']);
+        $this->assertSame('id', $query['$select']);
     }
 
     public function testFindEventIdReturnsNullWhenNoMatch(): void
     {
-        $response = new \Microsoft\Graph\Generated\Models\EventCollectionResponse();
-        $response->setValue([]);
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn($response);
-
-        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
-        $eventsBuilder->method('get')->willReturn($promise);
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('events')->willReturn($eventsBuilder);
-
-        $t      = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
-        $method = new \ReflectionMethod($t, 'findEventIdByInviteKey');
-        $this->assertNull($method->invoke($t, $userItemBuilder, 'missing-uid'));
+        $fixture   = new \Swift_GraphSdkFixture();
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client);
+        $transport->enableCalendarEventConversion();
+        $transport->send($this->message($this->requestInviteIcs()));
+        $this->assertSame(['GET /v1.0/me/events', 'POST /v1.0/me/events'], $fixture->paths());
     }
 
     public function testCancelGraphEventPostsCancel(): void
     {
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-
-        $cancelBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\Item\Cancel\CancelRequestBuilder::class);
-        $cancelBuilder->expects($this->once())->method('post')->willReturn($promise);
-
-        $eventItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\Item\EventItemRequestBuilder::class);
-        $eventItemBuilder->method('cancel')->willReturn($cancelBuilder);
-
-        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
-        $eventsBuilder->method('byEventId')->with('evt-graph-1')->willReturn($eventItemBuilder);
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('events')->willReturn($eventsBuilder);
-
-        $t      = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
-        $method = new \ReflectionMethod($t, 'cancelGraphEvent');
-        $method->invoke($t, $userItemBuilder, 'evt-graph-1');
+        $fixture = new \Swift_GraphSdkFixture(static fn ($request) => 'GET' === $request->getMethod()
+            ? (\str_ends_with($request->getUri()->getPath(), '/events') ? \Swift_GraphSdkFixture::json(200, ['value' => [['id' => 'evt-graph-1']]]) : \Swift_GraphSdkFixture::json(200, ['id' => 'evt-graph-1', 'attendees' => [['emailAddress' => ['address' => 'bob@example.com']]]])) : new \GuzzleHttp\Psr7\Response(202));
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client);
+        $transport->enableCalendarEventConversion();
+        $transport->send($this->message(\str_replace('METHOD:REQUEST', 'METHOD:CANCEL', $this->requestInviteIcs())));
+        $this->assertSame(['GET /v1.0/me/events', 'GET /v1.0/me/events/evt-graph-1', 'POST /v1.0/me/events/evt-graph-1/cancel'], $fixture->paths());
     }
 
     public function testUpdateGraphEventPatches(): void
     {
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-
-        $eventItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\Item\EventItemRequestBuilder::class);
-        $eventItemBuilder->expects($this->once())->method('patch')->willReturn($promise);
-
-        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
-        $eventsBuilder->method('byEventId')->with('evt-graph-1')->willReturn($eventItemBuilder);
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('events')->willReturn($eventsBuilder);
-
-        $t      = new \Swift_Transport_Api_MicrosoftGraphTransport($this->createMock(GraphServiceClient::class));
-        $method = new \ReflectionMethod($t, 'updateGraphEvent');
-        $method->invoke($t, $userItemBuilder, 'evt-graph-1', new \Microsoft\Graph\Generated\Models\Event());
+        $fixture = new \Swift_GraphSdkFixture(static fn ($request) => 'GET' === $request->getMethod()
+            ? (\str_ends_with($request->getUri()->getPath(), '/events') ? \Swift_GraphSdkFixture::json(200, ['value' => [['id' => 'evt-graph-1']]]) : \Swift_GraphSdkFixture::json(200, ['id' => 'evt-graph-1', 'attendees' => [['emailAddress' => ['address' => 'bob@example.com']]]])) : \Swift_GraphSdkFixture::json(200, ['id' => 'evt-graph-1']));
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client);
+        $transport->enableCalendarEventConversion();
+        $transport->send($this->message($this->requestInviteIcs()));
+        $this->assertSame(['GET /v1.0/me/events', 'GET /v1.0/me/events/evt-graph-1', 'PATCH /v1.0/me/events/evt-graph-1'], $fixture->paths());
     }
 
     // -- send() routes each parsed entry to CREATE / UPDATE / CANCEL ---
 
-    private function dispatcherTransport(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder $userItemBuilder, array $stub): \Swift_Transport_Api_MicrosoftGraphTransport
-    {
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('me')->willReturn($userItemBuilder);
-
-        $transport = $this->getMockBuilder(\Swift_Transport_Api_MicrosoftGraphTransport::class)
-            ->setConstructorArgs([$graphClient, null, $this->dispatcher()])
-            ->onlyMethods($stub)
-            ->getMock();
-        $transport->enableCalendarEventConversion();
-
-        return $transport;
-    }
-
     public function testCancelInviteCancelsMatchingEvent(): void
     {
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->expects($this->never())->method('sendMail');
-
-        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByInviteKey', 'cancelGraphEvent']);
-        $transport->method('findEventIdByInviteKey')->willReturn('evt-graph-1');
-        $transport->expects($this->once())->method('cancelGraphEvent')->with($userItemBuilder, 'evt-graph-1');
+        $fixture = new \Swift_GraphSdkFixture(static fn ($request) => 'GET' === $request->getMethod()
+            ? (\str_ends_with($request->getUri()->getPath(), '/events') ? \Swift_GraphSdkFixture::json(200, ['value' => [['id' => 'evt-graph-1']]]) : \Swift_GraphSdkFixture::json(200, ['id' => 'evt-graph-1', 'attendees' => [['emailAddress' => ['address' => 'bob@example.com']]]]))
+            : new \GuzzleHttp\Psr7\Response(202));
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client, null, $this->dispatcher());
+        $transport->enableCalendarEventConversion();
 
         $cancelIcs = \implode("\r\n", [
             'BEGIN:VCALENDAR', 'METHOD:CANCEL', 'BEGIN:VEVENT',
@@ -647,17 +491,14 @@ class MicrosoftGraphCalendarTest extends TestCase
             'END:VEVENT', 'END:VCALENDAR',
         ]);
         $transport->send($this->messageWithIcs($cancelIcs));
+        $this->assertSame(['GET /v1.0/me/events', 'GET /v1.0/me/events/evt-graph-1', 'POST /v1.0/me/events/evt-graph-1/cancel'], $fixture->paths());
     }
 
     public function testCancelInviteWithNoMatchMakesNoEventCall(): void
     {
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->expects($this->never())->method('events');
-        $userItemBuilder->expects($this->never())->method('sendMail');
-
-        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByInviteKey', 'cancelGraphEvent']);
-        $transport->method('findEventIdByInviteKey')->willReturn(null);
-        $transport->expects($this->never())->method('cancelGraphEvent');
+        $fixture   = new \Swift_GraphSdkFixture();
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client, null, $this->dispatcher());
+        $transport->enableCalendarEventConversion();
 
         $cancelIcs = \implode("\r\n", [
             'BEGIN:VCALENDAR', 'METHOD:CANCEL', 'BEGIN:VEVENT',
@@ -667,19 +508,14 @@ class MicrosoftGraphCalendarTest extends TestCase
         ]);
         // @ suppresses the expected E_USER_NOTICE so the test does not error on it.
         @$transport->send($this->messageWithIcs($cancelIcs));
+        $this->assertSame(['GET /v1.0/me/events'], $fixture->paths());
     }
 
     public function testNoMatchCancelEmitsNoticeNamingTheICalUId(): void
     {
-        // The no-match CANCEL path warns operators via E_USER_NOTICE. Assert it actually
-        // fires and names the operation + the unmatched iCalUId, so a silently-dropped
-        // cancellation is observable in logs.
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->expects($this->never())->method('events');
-        $userItemBuilder->expects($this->never())->method('sendMail');
-
-        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByInviteKey', 'cancelGraphEvent']);
-        $transport->method('findEventIdByInviteKey')->willReturn(null);
+        $fixture   = new \Swift_GraphSdkFixture();
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client, null, $this->dispatcher());
+        $transport->enableCalendarEventConversion();
 
         $cancelIcs = \implode("\r\n", [
             'BEGIN:VCALENDAR', 'METHOD:CANCEL', 'BEGIN:VEVENT',
@@ -703,20 +539,14 @@ class MicrosoftGraphCalendarTest extends TestCase
         $this->assertNotNull($captured, 'a no-match CANCEL must emit an E_USER_NOTICE');
         $this->assertStringContainsString('Graph calendar CANCEL', $captured);
         $this->assertStringContainsString('cancel-notice@example.com', $captured);
+        $this->assertSame(['GET /v1.0/me/events'], $fixture->paths());
     }
 
-    public function testNoMatchCancelCountsOnlyToRecipient(): void
+    public function testNoMatchCancelCountsNoRecipients(): void
     {
-        // A CANCEL that matches no Graph event cancels nothing, so the calendar op
-        // contributes 0. The single To recipient is still counted, so send() returns 1
-        // (count(To)=1 + calendar 0).
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->expects($this->never())->method('events');
-        $userItemBuilder->expects($this->never())->method('sendMail');
-
-        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByInviteKey', 'cancelGraphEvent']);
-        $transport->method('findEventIdByInviteKey')->willReturn(null);
-        $transport->expects($this->never())->method('cancelGraphEvent');
+        $fixture   = new \Swift_GraphSdkFixture();
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client, null, $this->dispatcher());
+        $transport->enableCalendarEventConversion();
 
         $cancelIcs = \implode("\r\n", [
             'BEGIN:VCALENDAR', 'METHOD:CANCEL', 'BEGIN:VEVENT',
@@ -726,19 +556,17 @@ class MicrosoftGraphCalendarTest extends TestCase
             'END:VEVENT', 'END:VCALENDAR',
         ]);
         $result = @$transport->send($this->messageWithIcs($cancelIcs));
-        $this->assertSame(1, $result, 'no-match CANCEL: only the To recipient is counted');
+        $this->assertSame(0, $result, 'no-match CANCEL: nobody is notified');
+        $this->assertSame(['GET /v1.0/me/events'], $fixture->paths());
     }
 
-    public function testMatchedCancelCountsToPlusAttendee(): void
+    public function testMatchedCancelCountsOnlyNotifiedAttendees(): void
     {
-        // A CANCEL that matches a Graph event notifies its one attendee (calendar
-        // contributes 1) on top of the single To recipient, so send() returns 2.
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->expects($this->never())->method('sendMail');
-
-        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByInviteKey', 'cancelGraphEvent']);
-        $transport->method('findEventIdByInviteKey')->willReturn('evt-graph-1');
-        $transport->expects($this->once())->method('cancelGraphEvent')->with($userItemBuilder, 'evt-graph-1');
+        $fixture = new \Swift_GraphSdkFixture(static fn ($request) => 'GET' === $request->getMethod()
+            ? (\str_ends_with($request->getUri()->getPath(), '/events') ? \Swift_GraphSdkFixture::json(200, ['value' => [['id' => 'evt-graph-1']]]) : \Swift_GraphSdkFixture::json(200, ['id' => 'evt-graph-1', 'attendees' => [['emailAddress' => ['address' => 'bob@example.com']]]]))
+            : new \GuzzleHttp\Psr7\Response(202));
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client, null, $this->dispatcher());
+        $transport->enableCalendarEventConversion();
 
         $cancelIcs = \implode("\r\n", [
             'BEGIN:VCALENDAR', 'METHOD:CANCEL', 'BEGIN:VEVENT',
@@ -748,17 +576,17 @@ class MicrosoftGraphCalendarTest extends TestCase
             'END:VEVENT', 'END:VCALENDAR',
         ]);
         $result = $transport->send($this->messageWithIcs($cancelIcs));
-        $this->assertSame(2, $result, 'matched CANCEL: 1 To recipient + 1 cancelled-event attendee');
+        $this->assertSame(1, $result, 'matched CANCEL: only the cancelled-event attendee');
+        $this->assertSame(['GET /v1.0/me/events', 'GET /v1.0/me/events/evt-graph-1', 'POST /v1.0/me/events/evt-graph-1/cancel'], $fixture->paths());
     }
 
     public function testUpdateInviteWithSequencePatchesMatchingEvent(): void
     {
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->expects($this->never())->method('sendMail');
-
-        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByInviteKey', 'updateGraphEvent']);
-        $transport->method('findEventIdByInviteKey')->willReturn('evt-graph-1');
-        $transport->expects($this->once())->method('updateGraphEvent')->with($userItemBuilder, 'evt-graph-1', $this->isInstanceOf(\Microsoft\Graph\Generated\Models\Event::class));
+        $fixture = new \Swift_GraphSdkFixture(static fn ($request) => 'GET' === $request->getMethod()
+            ? (\str_ends_with($request->getUri()->getPath(), '/events') ? \Swift_GraphSdkFixture::json(200, ['value' => [['id' => 'evt-graph-1']]]) : \Swift_GraphSdkFixture::json(200, ['id' => 'evt-graph-1', 'attendees' => [['emailAddress' => ['address' => 'bob@example.com']]]]))
+            : \Swift_GraphSdkFixture::json(200, ['id' => 'evt-graph-1']));
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client, null, $this->dispatcher());
+        $transport->enableCalendarEventConversion();
 
         $updateIcs = \implode("\r\n", [
             'BEGIN:VCALENDAR', 'METHOD:REQUEST', 'BEGIN:VEVENT',
@@ -768,20 +596,15 @@ class MicrosoftGraphCalendarTest extends TestCase
             'END:VEVENT', 'END:VCALENDAR',
         ]);
         $transport->send($this->messageWithIcs($updateIcs));
+        $this->assertSame(['GET /v1.0/me/events', 'GET /v1.0/me/events/evt-graph-1', 'PATCH /v1.0/me/events/evt-graph-1'], $fixture->paths());
+        $this->assertSame('Rescheduled', $fixture->payload()['subject']);
     }
 
     public function testUpdateInviteWithNoMatchFallsBackToCreate(): void
     {
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
-        $eventsBuilder->expects($this->once())->method('post')->willReturn($promise);
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('events')->willReturn($eventsBuilder);
-
-        $transport = $this->dispatcherTransport($userItemBuilder, ['findEventIdByInviteKey', 'updateGraphEvent']);
-        $transport->method('findEventIdByInviteKey')->willReturn(null);
-        $transport->expects($this->never())->method('updateGraphEvent');
+        $fixture   = new \Swift_GraphSdkFixture();
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client, null, $this->dispatcher());
+        $transport->enableCalendarEventConversion();
 
         $updateIcs = \implode("\r\n", [
             'BEGIN:VCALENDAR', 'METHOD:REQUEST', 'BEGIN:VEVENT',
@@ -790,6 +613,8 @@ class MicrosoftGraphCalendarTest extends TestCase
             'SUMMARY:Rescheduled', 'END:VEVENT', 'END:VCALENDAR',
         ]);
         $transport->send($this->messageWithIcs($updateIcs));
+        $this->assertSame(['GET /v1.0/me/events', 'POST /v1.0/me/events'], $fixture->paths());
+        $this->assertSame('Rescheduled', $fixture->payload()['subject']);
     }
 
     // -- a parameterised text/calendar content-type (a real calendar MIME part, e.g. the
@@ -800,15 +625,8 @@ class MicrosoftGraphCalendarTest extends TestCase
 
     public function testParameterisedCalendarContentTypeInviteConvertsToEvent(): void
     {
-        $eventsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Events\EventsRequestBuilder::class);
-        $eventsBuilder->expects($this->once())->method('post')->willReturn($this->promise());
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('events')->willReturn($eventsBuilder);
-        $userItemBuilder->expects($this->never())->method('sendMail');
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('me')->willReturn($userItemBuilder);
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $this->dispatcher());
         $transport->enableCalendarEventConversion();
@@ -820,8 +638,9 @@ class MicrosoftGraphCalendarTest extends TestCase
         $message->setBody('Please join.');
         $message->attach(new RequestMethodCalendarMimePart($this->requestInviteIcs()));
 
-        // One attendee via the created event, plus the single To recipient.
-        $this->assertSame(2, $transport->send($message));
+        // The calendar operation notifies one attendee; no ordinary mail is sent.
+        $this->assertSame(1, $transport->send($message));
+        $this->assertSame(['GET /v1.0/me/events', 'POST /v1.0/me/events'], $fixture->paths());
     }
 }
 

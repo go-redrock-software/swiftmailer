@@ -127,6 +127,7 @@ smoke-tests:
     MAILPIT_SMTP_HOST: mailpit
     MAILPIT_SMTP_PORT: "1025"
     MAILPIT_API_URL: "http://mailpit:8025"
+    SYMFONY_DEPRECATIONS_HELPER: "max[direct]=0&baselineFile=./tests/deprecation-baseline.json"
   before_script:
     - apt-get update -qq && apt-get install -y -qq git unzip libicu-dev libzip-dev libxml2-dev libcurl4-openssl-dev > /dev/null
     - docker-php-ext-install intl iconv mbstring zip dom curl > /dev/null 2>&1 || true
@@ -147,10 +148,12 @@ smoke-tests:
 mutation-testing:
   extends: .test-job
   stage: mutation
+  variables:
+    SYMFONY_DEPRECATIONS_HELPER: "max[direct]=0&baselineFile=./tests/deprecation-baseline.json"
   script:
     - pecl install xdebug > /dev/null 2>&1 && docker-php-ext-enable xdebug
     - mkdir -p .infection/infection
-    - SYMFONY_DEPRECATIONS_HELPER=disabled XDEBUG_MODE=coverage vendor/bin/phpunit
+    - SYMFONY_DEPRECATIONS_HELPER=disabled XDEBUG_MODE=coverage vendor/bin/simple-phpunit
         --testsuite='SwiftMailer unit tests'
         --coverage-xml=.infection/infection/coverage-xml
         --log-junit=.infection/infection/junit.xml
@@ -180,17 +183,19 @@ mutation-testing:
 mutation-testing-mr:
   extends: .test-job
   stage: mutation
+  variables:
+    GIT_DEPTH: "0"
+    SYMFONY_DEPRECATIONS_HELPER: "max[direct]=0&baselineFile=./tests/deprecation-baseline.json"
   script:
-    - pecl install xdebug > /dev/null 2>&1 && docker-php-ext-enable xdebug
-    - CHANGED=$(git diff --name-only origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}...HEAD
-        -- 'lib/classes/**.php' | paste -sd, -)
+    - CHANGED=$(php bin/ci/mutation-diff.php "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME")
     - |
       if [ -z "$CHANGED" ]; then
         echo "No source files changed, skipping mutation testing."
         exit 0
       fi
+    - pecl install xdebug > /dev/null 2>&1 && docker-php-ext-enable xdebug
     - mkdir -p .infection/infection
-    - SYMFONY_DEPRECATIONS_HELPER=disabled XDEBUG_MODE=coverage vendor/bin/phpunit
+    - SYMFONY_DEPRECATIONS_HELPER=disabled XDEBUG_MODE=coverage vendor/bin/simple-phpunit
         --testsuite='SwiftMailer unit tests'
         --coverage-xml=.infection/infection/coverage-xml
         --log-junit=.infection/infection/junit.xml

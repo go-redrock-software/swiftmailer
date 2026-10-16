@@ -17,7 +17,7 @@
     "tmpDir": ".infection",
     "phpUnit": {
         "configDir": ".",
-        "customPath": "vendor/bin/phpunit"
+        "customPath": "vendor/bin/simple-phpunit"
     },
     "testFramework": "phpunit",
     "testFrameworkOptions": "--testsuite='SwiftMailer unit tests'",

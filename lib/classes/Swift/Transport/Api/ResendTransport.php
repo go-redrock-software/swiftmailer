@@ -12,21 +12,24 @@ class Swift_Transport_Api_ResendTransport extends Swift_Transport_AbstractHttpAp
     #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
+        $this->validateEnvelope($message, $envelope);
+
         $payload = $this->getPayload($message);
 
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
             'headers' => \array_merge($this->getAuthHeaders(), [
                 'Content-Type' => 'application/json',
             ]),
-            'json'        => $payload,
-            'http_errors' => false,
+            'json'            => $payload,
+            'http_errors'     => false,
+            'allow_redirects' => false,
         ]);
 
         $parsed     = $this->parseResponse($response);
         $statusCode = $response->getStatusCode();
 
         if ($statusCode < 200 || $statusCode >= 300) {
-            $errorMessage = $parsed['message'] ?? 'Unknown error';
+            $errorMessage = $this->responseText($parsed['message'] ?? null, 'Unknown error');
             throw new Swift_TransportException(\sprintf('Resend API error (%d): %s', $statusCode, $errorMessage));
         }
 
@@ -53,9 +56,7 @@ class Swift_Transport_Api_ResendTransport extends Swift_Transport_AbstractHttpAp
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        $body = $this->getResponseBody($response);
-
-        return \json_decode($body, true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]

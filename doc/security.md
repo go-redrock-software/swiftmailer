@@ -12,6 +12,7 @@ This fork of SwiftMailer ships a set of defensive features aimed at the ways a m
 | `#[\SensitiveParameter]` on keys/passwords | On, automatic | -- |
 | Guzzle request/response error leakage | On, automatic (`http_errors => false`) | -- |
 | API response body size cap (1 MiB) | On, automatic | -- |
+| HTTP API redirect refusal | Direct HTTP, Gmail, Graph resources and standard Graph OAuth | Applied through per-request options or scoped SDK/HTTP configuration |
 | Sendmail metacharacter rejection | On, automatic | `setCommand()` |
 | Sendmail binary allowlist (DSN) | On when using DSN factory | -- |
 | DSN parameter validation | On, automatic | -- |
@@ -51,6 +52,12 @@ This is automatic -- there is nothing to enable. Any CR/LF in a subject, custom 
 
 The result is also truncated to 255 characters, preserving the extension. `setFile()` runs the source path through `basename()` first. All automatic.
 
+## Bcc privacy with explicit SMTP envelopes
+
+SMTP transports suppress the `Bcc` header during transmission even when an explicit `Swift_Envelope` supplies the delivery addresses. Envelope recipients still receive the message as configured; their addresses are not copied into MIME headers. The original Bcc field is restored on the caller's message after the transaction, including when sending fails.
+
+Older releases skipped this suppression for explicit envelopes and could disclose blind recipients to every recipient through the transmitted `Bcc` header (CWE-200). On those releases, remove the Bcc header yourself before sending with an explicit envelope; retain any intended blind recipients in the envelope's recipient list.
+
 ## Credential protection
 
 Three independent layers keep secrets out of logs, traces, and error output:
@@ -72,19 +79,122 @@ $mailer->registerPlugin(new Swift_Plugins_LoggerPlugin(new Swift_Plugins_Loggers
 
 **3. Guzzle error leakage prevention.** HTTP API transports issue Guzzle requests with `'http_errors' => false`. That stops Guzzle from throwing a `RequestException` whose message embeds the full outbound request -- including the `Authorization` header that carries the API key. Transports inspect the status code themselves and raise a `Swift_TransportException` containing only the provider's error message, never the request.
 
+**4. DSN diagnostics.** The operational factory, public mailer helper and metadata
+configuration helper replace Nyholm syntax/type/function parse failures with a
+static `InvalidArgumentException`. They discard the original exception because
+its message, private DSN property and trace can contain credentials. The CLI
+prints `DSN: [redacted]` instead of any DSN fields, including when using the
+environment variable. Use an environment-provided DSN to avoid argv process-list
+exposure as well. Direct Nyholm calls, caller-owned trace frames and arbitrary
+remote provider error messages are outside this boundary.
+
+**5. SES failure graphs.** SES transport failures use a static diagnostic and
+safe status without retaining the SDK cause. Sensitive callable/error parameters
+also protect local trace arguments that can refer to a credentialed SDK client.
+Isolated error tests inspect full printed exception objects as well as messages
+and string traces. This boundary covers returned SES send failures, including
+PHP Error causes; it does not sanitize arbitrary caller-owned argument frames.
+Malformed or incomplete successful SES responses are terminal acceptance
+ambiguities and cannot trigger automatic resend through retry/failover.
+
+**6. Gmail failure graphs and acceptance.** Returned terminal Gmail send errors
+use static diagnostics and safe numeric status without retaining SDK messages,
+causes or their OAuth-bearing trace graphs. This includes message/token redirects,
+PHP Error causes and malformed or interrupted successful send responses.
+Isolated tests inspect messages, string traces and printed exception objects with
+argument recording enabled and disabled. Caller-owned argument frames and event
+callbacks remain caller-controlled. Ordinary SDK errors retain zero-return
+behavior. Successful sends require an observed valid Message JSON and decoded
+message ID; ambiguous acceptance cannot trigger automatic resend through retry
+or pool wrappers. Token exchange bodies are validated by the Google SDK.
+Gmail DSNs select explicit bearer or refresh credentials, fixed standard Google
+endpoints/universe and the send scope. Ambient credential selection is disabled.
+Invalid factory inputs and SDK-construction failures use static diagnostics
+without retaining credential-bearing SDK causes.
+
+**7. Graph failure graphs and status.** Returned Graph SDK operation failures
+contain static Swift diagnostics and safe numeric status, with no credential-bearing
+SDK message or previous cause. Isolated tests inspect full printed exception
+objects and string traces across resource, OAuth, draft/upload and calendar paths.
+Kiota response metadata and operation-local token HTTP status prevent ordinary
+401/403 errors from being mistaken for connection failures coded zero. Recognized
+OAuth token error codes receive a static authentication-failure diagnostic; raw
+provider descriptions are never copied. HTTP 500
+retains a static transient classification. Redirects, rejected 3xx responses and
+PHP Error causes retain hard-failure markers. Caller-owned frames, SDK logging
+and callbacks remain caller-controlled.
+
+**8. Graph operation acceptance.** Successful raw Graph responses must satisfy
+operation-specific status, typed ID/collection/session or sequential upload
+completion evidence before SDK coercion. Malformed, interrupted or unresolved
+success is a permanent safe failure. Confirmed notification followed by a later
+failure also prevents whole-send replay. Lookup pagination stays in the original
+collection; bad collections cannot imply no match and create a duplicate event.
+Documented empty-body final uploads use their Location acknowledgement. See
+[operation acceptance](microsoft-graph.md#operation-acceptance) for contracts and
+compatibility. Ordinary non-success and pre-notification transient errors retain
+their existing retry classification.
+
+**9. Graph DSN authentication.** Explicit bearer/application DSNs pin Graph and
+Entra token hosts, reject unsupported authentication/options before I/O and never
+look up ambient credentials. The factory keeps resource and token clients
+separate and strips HTTP authentication defaults from its private resource copy.
+Static bearer authentication requires the exact Graph HTTPS origin and cannot
+follow a claims challenge with the same token. Foreign upload hosts receive no
+factory bearer. Native unresolved CAE exceptions use a static authentication
+classification even with safe code zero; original claims and exception graphs
+remain detached. See [Graph DSNs](dsn.md#microsoft-graph-sdk-dsns).
+
+
 ## Plugin output escaping
 
-Escaping in the debug/reporting plugins is **not uniform** -- know which output is safe to render in a browser:
+The debug/reporting plugins escape dynamic text before emitting HTML:
 
 | Plugin | Output escaping |
 |-|-|
 | `Swift_Plugins_Loggers_EchoLogger` | Escapes every entry with `htmlspecialchars()` (`ENT_QUOTES`) in both its HTML and plain paths. Safe to render. |
 | `Swift_Plugins_ReadReceiptPlugin` | Escapes the tracking URL with `htmlspecialchars(..., ENT_QUOTES, 'UTF-8')`. |
-| `Swift_Plugins_Reporters_HtmlReporter` | **Does not escape.** `notify()` echoes the recipient address directly (`echo 'PASS '.$address`). |
+| `Swift_Plugins_Reporters_HtmlReporter` | Escapes recipient addresses in success and failure output with `htmlspecialchars(..., ENT_QUOTES \| ENT_SUBSTITUTE, 'UTF-8')`. Invalid UTF-8 is replaced with U+FFFD. |
 
-`HtmlReporter` is trusted-input only: do not render its output in a browser when recipient addresses can be attacker-controlled, or wrap the addresses yourself. (`Swift_Plugins_RedirectingPlugin` keeps original recipients in private properties and adds no `X-Swift-*` headers, so it does not leak them into the message.)
+Before the fix tracked in [issue #33](https://code.go-redrock.com/trac/swiftmailer/-/issues/33), `HtmlReporter` inserted recipient addresses directly into its HTML output (CWE-79). A valid quoted address such as `"<img src=x onerror=alert(1)>"@example.org` could execute JavaScript when an application displayed the report in a browser. Address validation alone does not prevent HTML injection. The reporter now renders addresses as text, including literal entity-like input; callers should pass the original address without pre-escaping it. On older releases, avoid displaying `HtmlReporter` output containing untrusted recipients in a browser.
+
+`Swift_Plugins_RedirectingPlugin` keeps original recipients in private properties and adds no `X-Swift-*` headers, so it does not leak them into the message.
 
 ## Transport hardening
+
+### API listener registration
+
+Registering a plugin on an API transport initializes a dispatcher if none was
+supplied. A registered allowlist or redirect policy is therefore enforced with
+default constructor options. A caller-supplied dispatcher is preserved, and the
+lazy dispatcher is reused. No policy is enabled until you register one. See
+[API plugin registration](api-transports.md#registering-plugins) for details.
+
+### Recipient safety policies and explicit envelopes
+
+`AllowlistPlugin` and `RedirectingPlugin` enforce their configured policies on
+both message headers and explicit `Swift_Envelope` recipients. Earlier versions
+rewrote headers alone, allowing blocked envelope-only recipients to bypass
+dev/staging delivery restrictions. Envelope senders remain unchanged, and the
+plugins replace the event's envelope without mutating the caller's value object.
+
+Failover and load-balanced pools forward registered plugins to active and retired
+configured backends. A restored backend therefore retains policies registered
+while it was inactive. Weighted duplicate references receive each registration
+once per backend identity. Configure the pool before registering plugins; newly
+supplied backends do not inherit listeners from a replaced pool.
+
+Policies compose in registration order. An allowlist rejection stops delivery
+before a later redirect can run. A configured catch-all or redirect target is an
+explicit delivery exception; choose these targets as carefully as the allowlist.
+Original envelope-only addresses are not copied into MIME headers or metadata.
+On older releases, avoid explicit envelopes when relying on these safety plugins.
+
+The integration regressions exercise SMTP command generation, an envelope-aware
+HTTP transport's request payload, and a header-based provider payload. Full
+envelope override support in concrete API providers is a separate gap tracked
+in [issue #39](https://code.go-redrock.com/trac/swiftmailer/-/issues/39); for
+example, SendGrid currently builds payload addresses from message headers.
 
 ### Sendmail command validation and allowlist
 
@@ -112,6 +222,39 @@ Transports that accept a **custom base URL** (`Swift_Transport_Api_InfoBipTransp
 - rejects any host that is -- or whose DNS name resolves to -- a private or reserved IP range.
 
 This prevents a misconfigured or attacker-supplied endpoint from turning the mailer into an SSRF vector.
+
+### HTTP API request destinations
+
+The 17 built-in direct HTTP API providers refuse automatic redirects on send
+and network health-check requests. Per-request enforcement preserves the rule
+when a supplied client enables redirects by default. Both same-origin and
+cross-origin redirects are refused, keeping credentials and message data at the
+configured endpoint. Redirect send failures use the non-retryable marker so the
+retry, failover and load-balanced wrappers do not replay them, including with
+permissive custom retry classifiers; network health checks return false.
+
+Gmail additionally refuses redirects for message requests and SDK token
+exchanges through an isolated Google Client copy and HTTP handler configuration.
+A redirect raises the same non-retryable failure. The caller's HTTP client,
+handler stack, options and deferred mode remain intact; normal authentication
+callbacks and shared token-cache updates still occur. Custom Google Client
+subclasses must support cloning and honor HTTP/defer setters.
+
+Graph resource requests also refuse redirects through a scoped Kiota adapter
+and HTTP configuration. This includes mail, draft attachments, upload chunks and
+calendar operations. Its local-only ping makes no network request. The original
+Graph client and adapter remain intact. The supported adapter boundary is
+described in [the Graph guide](microsoft-graph.md#request-destinations-and-sdk-compatibility).
+
+Graph's standard Kiota/PhpLeague OAuth token client also uses an isolated redirect
+policy for initial grants, refresh and CAE. A redirect stays non-retryable if the
+SDK replaces its error or attempts a fallback grant. Original provider/HTTP
+configuration and shared cache behavior are retained.
+
+Custom authentication/token implementations outside that known chain own their
+HTTP policy. SES retains its SDK HTTP policy and requires a separate safeguard. See
+[API request safeguards](api-transports.md#security) for the scope and custom
+HTTP transport requirements.
 
 ### API response body size cap
 

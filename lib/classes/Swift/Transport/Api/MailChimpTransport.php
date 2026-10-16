@@ -21,21 +21,29 @@ class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHtt
     #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
-        $payload = $this->getPayload($message);
+        $payload  = null === $envelope ? $this->getPayload($message) : $this->getRawPayload($message, $envelope);
+        $endpoint = $this->getEndpoint();
+        if (null !== $envelope) {
+            $endpoint = \preg_replace('~/send(?:\.json)?$~', '/send-raw.json', $endpoint, 1, $replacements);
+            if (!$replacements) {
+                throw new Swift_TransportException('Mandrill does not support raw envelope delivery through this custom endpoint.');
+            }
+        }
 
-        $response = $this->httpClient->request('POST', $this->getEndpoint(), [
+        $response = $this->httpClient->request('POST', $endpoint, [
             'headers' => [
                 'Content-Type' => 'application/json',
                 'Accept'       => 'application/json',
             ],
-            'json'        => $payload,
-            'http_errors' => false,
+            'json'            => $payload,
+            'http_errors'     => false,
+            'allow_redirects' => false,
         ]);
 
         $result = $this->parseResponse($response);
 
         if (isset($result['status']) && 'error' === $result['status']) {
-            throw new Swift_TransportException(\sprintf('Mandrill API error: %s', $result['message'] ?? 'Unknown error'));
+            throw new Swift_TransportException(\sprintf('Mandrill API error: %s', $this->responseText($result['message'] ?? null, 'Unknown error')));
         }
 
         // Result is an array of per-recipient statuses
@@ -43,6 +51,22 @@ class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHtt
         foreach ($result as $recipientResult) {
             if (isset($recipientResult['status']) && \in_array($recipientResult['status'], ['sent', 'queued'], true)) {
                 ++$successCount;
+            }
+        }
+        $status = $response->getStatusCode();
+        if ($status < 200 || $status >= 300) {
+            if ($successCount > 0) {
+                throw $this->invalidResponse($response, 'Mandrill acceptance conflicts with HTTP status', ambiguous: true);
+            }
+
+            throw new Swift_TransportException(\sprintf('Mandrill API error (HTTP %d): %s', $status, $this->responseText($result['message'] ?? null, 'Unknown error')), $status);
+        }
+        if (!\array_is_list($result)) {
+            throw $this->invalidResponse($response, 'Invalid Mandrill recipient result list');
+        }
+        foreach ($result as $recipientResult) {
+            if (!\is_array($recipientResult) || !\is_string($recipientResult['status'] ?? null)) {
+                throw $this->invalidResponse($response, 'Invalid Mandrill recipient result');
             }
         }
 
@@ -63,8 +87,9 @@ class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHtt
                     'Content-Type' => 'application/json',
                     'Accept'       => 'application/json',
                 ],
-                'json'        => ['key' => $this->apiKey],
-                'http_errors' => false,
+                'json'            => ['key' => $this->apiKey],
+                'http_errors'     => false,
+                'allow_redirects' => false,
             ]);
 
             $body = $this->getResponseBody($response);
@@ -90,13 +115,38 @@ class Swift_Transport_Api_MailChimpTransport extends Swift_Transport_AbstractHtt
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        return \json_decode($this->getResponseBody($response), true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]
     protected function getPingEndpoint(): string
     {
         return 'https://mandrillapp.com/api/1.0/users/ping';
+    }
+
+    private function getRawPayload(Swift_Mime_SimpleMessage $message, Swift_Envelope $envelope): array
+    {
+        $tags     = $this->extractTags($message);
+        $metadata = $this->extractMetadata($message);
+        $headers  = [];
+        if ($tags) {
+            foreach ($tags as $tag) {
+                if (\str_contains($tag, ',')) {
+                    throw new Swift_TransportException('Mandrill raw delivery does not support commas in tag names.');
+                }
+            }
+            $headers['X-MC-Tags'] = \implode(',', $tags);
+        }
+        if ($metadata) {
+            $headers['X-MC-Metadata'] = \json_encode($metadata, JSON_THROW_ON_ERROR);
+        }
+
+        return [
+            'key'         => $this->apiKey,
+            'raw_message' => $this->getRawMessageWithoutBcc($message, $headers),
+            'from_email'  => $envelope->getSender(),
+            'to'          => \array_values(\array_unique($envelope->getRecipients())),
+        ];
     }
 
     private function getPayload(Swift_Mime_SimpleMessage $message): array

@@ -30,26 +30,32 @@ class Swift_Transport_Api_ScalewayTransport extends Swift_Transport_AbstractHttp
     #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
+        $this->validateEnvelope($message, $envelope);
+
         $payload = $this->buildPayload($message);
 
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
             'headers' => \array_merge($this->getAuthHeaders(), [
                 'Content-Type' => 'application/json',
             ]),
-            'json'        => $payload,
-            'http_errors' => false,
+            'json'            => $payload,
+            'http_errors'     => false,
+            'allow_redirects' => false,
         ]);
 
         $statusCode = $response->getStatusCode();
 
         if ($statusCode < 200 || $statusCode >= 300) {
             $parsed       = $this->parseResponse($response);
-            $errorMessage = $parsed['message'] ?? 'Unknown error';
+            $errorMessage = $this->responseText($parsed['message'] ?? null, 'Unknown error');
 
             throw new Swift_TransportException(\sprintf('Scaleway API error (%d): %s', $statusCode, $errorMessage));
         }
 
-        $parsed    = $this->parseResponse($response);
+        $parsed = $this->parseResponse($response);
+        if (isset($parsed['emails']) && (!\is_array($parsed['emails']) || !\array_is_list($parsed['emails']) || (isset($parsed['emails'][0]) && !\is_array($parsed['emails'][0])))) {
+            throw $this->invalidResponse($response, 'Invalid Scaleway message results');
+        }
         $messageId = $parsed['emails'][0]['message_id'] ?? null;
 
         return [
@@ -78,9 +84,7 @@ class Swift_Transport_Api_ScalewayTransport extends Swift_Transport_AbstractHttp
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        $body = $this->getResponseBody($response);
-
-        return \json_decode($body, true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]
@@ -98,32 +102,7 @@ class Swift_Transport_Api_ScalewayTransport extends Swift_Transport_AbstractHttp
         $fromEmail = \array_key_first($from);
         $fromName  = $from[$fromEmail] ?? null;
 
-        $toRecipients      = $this->mapAddresses($message->getTo() ?? []);
         $additionalHeaders = [];
-
-        // CC recipients must be added to the `to` array for delivery,
-        // and also declared via an additional_header so the CC header appears.
-        $cc = $message->getCc();
-        if (!empty($cc)) {
-            $ccAddresses  = $this->mapAddresses($cc);
-            $toRecipients = \array_merge($toRecipients, $ccAddresses);
-
-            $ccHeaderParts = [];
-            foreach ($cc as $email => $name) {
-                $ccHeaderParts[] = $this->formatAddress($email, $name);
-            }
-            $additionalHeaders[] = [
-                'key'   => 'Cc',
-                'value' => \implode(', ', $ccHeaderParts),
-            ];
-        }
-
-        // BCC recipients are added to the `to` array for delivery only — no header.
-        $bcc = $message->getBcc();
-        if (!empty($bcc)) {
-            $bccAddresses = $this->mapAddresses($bcc);
-            $toRecipients = \array_merge($toRecipients, $bccAddresses);
-        }
 
         // Reply-To via additional_headers
         $replyTo = $message->getReplyTo();
@@ -143,10 +122,18 @@ class Swift_Transport_Api_ScalewayTransport extends Swift_Transport_AbstractHttp
                 'email' => $fromEmail,
                 'name'  => $fromName,
             ]),
-            'to'         => $toRecipients,
+            'to'         => $this->mapAddresses($message->getTo() ?? []),
             'subject'    => $message->getSubject(),
             'project_id' => $this->projectId,
         ];
+
+        // Keep blind recipients out of public address fields and visible headers.
+        if ($cc = $message->getCc()) {
+            $payload['cc'] = $this->mapAddresses($cc);
+        }
+        if ($bcc = $message->getBcc()) {
+            $payload['bcc'] = $this->mapAddresses($bcc);
+        }
 
         $body = $this->getMessageBody($message);
         if (null !== $body['text']) {

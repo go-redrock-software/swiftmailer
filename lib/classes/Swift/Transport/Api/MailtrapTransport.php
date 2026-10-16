@@ -38,28 +38,37 @@ class Swift_Transport_Api_MailtrapTransport extends Swift_Transport_AbstractHttp
     #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
+        $this->validateEnvelope($message, $envelope);
+
         $payload = $this->buildPayload($message);
 
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
             'headers' => \array_merge($this->getAuthHeaders(), [
                 'Content-Type' => 'application/json',
             ]),
-            'json'        => $payload,
-            'http_errors' => false,
+            'json'            => $payload,
+            'http_errors'     => false,
+            'allow_redirects' => false,
         ]);
 
         $parsed     = $this->parseResponse($response);
         $statusCode = $response->getStatusCode();
+        if (true === ($parsed['success'] ?? null) && ($statusCode < 200 || $statusCode >= 300)) {
+            throw $this->invalidResponse($response, 'Mailtrap acceptance conflicts with HTTP status', ambiguous: true);
+        }
 
         if ($statusCode < 200 || $statusCode >= 300 || (isset($parsed['success']) && false === $parsed['success'])) {
             $errorMessage = 'Unknown error';
-            if (!empty($parsed['errors'])) {
-                $errorMessage = \implode('; ', $parsed['errors']);
+            if ($errors = $this->responseErrors($parsed['errors'] ?? null)) {
+                $errorMessage = \implode('; ', $errors);
             }
 
             throw new Swift_TransportException(\sprintf('Mailtrap API error (%d): %s', $statusCode, $errorMessage));
         }
 
+        if (isset($parsed['message_ids']) && (!\is_array($parsed['message_ids']) || !\array_is_list($parsed['message_ids']))) {
+            throw $this->invalidResponse($response, 'Invalid Mailtrap message identifiers');
+        }
         $messageId = $parsed['message_ids'][0] ?? null;
 
         return [
@@ -89,9 +98,7 @@ class Swift_Transport_Api_MailtrapTransport extends Swift_Transport_AbstractHttp
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        $body = $this->getResponseBody($response);
-
-        return \json_decode($body, true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]

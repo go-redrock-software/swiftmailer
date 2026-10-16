@@ -2,6 +2,23 @@
 
 class Swift_Events_SendEventTest extends PHPUnit\Framework\TestCase
 {
+    public function testRecipientSnapshotIsStableAndScopedToTheSendEvent(): void
+    {
+        $message  = (new Swift_Message())->setTo(['original@example.com' => 'Original']);
+        $event    = new Swift_Events_SendEvent($this->createTransport(), $message);
+        $original = ['to' => ['original@example.com' => 'Original'], 'cc' => null, 'bcc' => null];
+
+        $snapshot = $event->captureRecipientState();
+        $this->assertSame($original, $snapshot);
+        $snapshot['to'] = [];
+        $message->setTo('rewritten@example.com');
+
+        $this->assertSame($original, $event->captureRecipientState());
+        $this->assertSame(['rewritten@example.com' => null], $message->getTo());
+        $nextEvent = new Swift_Events_SendEvent($this->createTransport(), $message);
+        $this->assertSame(['rewritten@example.com' => null], $nextEvent->captureRecipientState()['to']);
+    }
+
     public function testMessageCanBeFetchedViaGetter()
     {
         $message   = $this->createMessage();
@@ -15,6 +32,38 @@ class Swift_Events_SendEventTest extends PHPUnit\Framework\TestCase
             $ref,
             '%s: Message should be returned from getMessage()',
         );
+    }
+
+    public function testAdditionalAudiencesFollowPolicyOrderAndCanBeDiscoveredLater(): void
+    {
+        $evt   = $this->createEvent($this->createTransport(), $this->createMessage());
+        $input = ['blocked@example.com' => 'Blocked', 'kept@example.com' => 'Kept'];
+        $evt->setRecipientGroups(['calendar' => $input]);
+        $this->assertFalse($evt->hasRecipientFilters());
+        $this->assertSame($input, $evt->filterRecipients($input));
+        $evt->addRecipientFilter(static function (array $recipients): array {
+            unset($recipients['blocked@example.com']);
+
+            return $recipients + ['sink@example.com' => null];
+        });
+        $evt->addRecipientFilter(static function (array $recipients): array {
+            unset($recipients['sink@example.com']);
+
+            return $recipients;
+        });
+        $this->assertTrue($evt->hasRecipientFilters());
+        $this->assertSame(['calendar' => ['kept@example.com' => 'Kept']], $evt->getRecipientGroups());
+        $evt->setRecipientGroups(['stored-event' => $input]);
+        $this->assertSame(['stored-event' => ['kept@example.com' => 'Kept']], $evt->getRecipientGroups());
+        $this->assertSame(['kept@example.com' => 'Kept'], $evt->filterRecipients($input));
+        $copy                 = $evt->getRecipientGroups();
+        $copy['stored-event'] = [];
+        $this->assertNotSame($copy, $evt->getRecipientGroups());
+        $next = $this->createEvent($this->createTransport(), $this->createMessage());
+        $this->assertFalse($next->hasRecipientFilters());
+        $this->assertSame($input, $next->filterRecipients($input));
+        $evt->setRecipientGroups(['submitted' => ['sink@example.com' => null]], false);
+        $this->assertSame(['submitted' => ['sink@example.com' => null]], $evt->getRecipientGroups(), 'Already verified delivery metadata must not be filtered again');
     }
 
     public function testTransportCanBeFetchViaGetter()

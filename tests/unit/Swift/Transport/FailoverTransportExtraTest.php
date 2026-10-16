@@ -262,7 +262,7 @@ class Swift_Transport_FailoverTransportExtraTest extends PHPUnit\Framework\TestC
         $this->assertFalse($transport->isStarted());
     }
 
-    public function testRestartAfterAllDead(): void
+    public function testRestartAfterAllDeadWithZeroRetryPeriod(): void
     {
         $message = new Swift_Message();
         $message->setTo(['to@example.com' => 'To']);
@@ -294,6 +294,7 @@ class Swift_Transport_FailoverTransportExtraTest extends PHPUnit\Framework\TestC
         $this->assertFalse($transport->isStarted());
 
         // Restart
+        $transport->setRetryPeriod(0);
         $transport->start();
         $this->assertTrue($transport->isStarted());
     }

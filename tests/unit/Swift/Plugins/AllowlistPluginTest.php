@@ -2,6 +2,88 @@
 
 class Swift_Plugins_AllowlistPluginTest extends PHPUnit\Framework\TestCase
 {
+    /**
+     * @dataProvider provideRedirectRecipients
+     */
+    public function testRedirectPreservesAllowedFieldsAndCatchesBlockedRecipients(array $original, array $expected): void
+    {
+        $plugin  = new Swift_Plugins_AllowlistPlugin(['*@safe.com', 'catchall@dev.example.com'], 'catchall@dev.example.com');
+        $message = (new Swift_Message('Redirect recipients'))->setFrom('sender@safe.com');
+        foreach ($original as $field => $recipients) {
+            if (null !== $recipients) {
+                $message->{'set'.$field}($recipients);
+            }
+        }
+        $event = $this->createSendEvent($message);
+
+        // A second send must start with the original recipients again.
+        for ($send = 0; $send < 2; ++$send) {
+            $plugin->beforeSendPerformed($event);
+
+            $this->assertFalse($event->isRejected());
+            foreach ($expected as $field => $recipients) {
+                $this->assertSame($recipients, $message->{'get'.$field}(), $field.' during delivery');
+            }
+            $this->assertFalse($message->getHeaders()->has('X-Original-To'));
+            $this->assertStringNotContainsString('blocked@external.com', $message->toString());
+
+            $plugin->sendPerformed($event);
+            foreach ($original as $field => $recipients) {
+                $this->assertSame($recipients, $message->{'get'.$field}(), $field.' after delivery');
+            }
+        }
+    }
+
+    public static function provideRedirectRecipients(): iterable
+    {
+        $allowedTo  = ['to@safe.com' => 'Allowed To'];
+        $allowedCc  = ['cc@safe.com' => 'Allowed Cc'];
+        $allowedBcc = ['bcc@safe.com' => 'Allowed Bcc'];
+        $blocked    = ['blocked@external.com' => 'Blocked'];
+        $catchall   = ['catchall@dev.example.com' => 'catchall@dev.example.com'];
+
+        yield 'all allowed' => [
+            ['To' => $allowedTo, 'Cc' => $allowedCc, 'Bcc' => $allowedBcc],
+            ['To' => $allowedTo, 'Cc' => $allowedCc, 'Bcc' => $allowedBcc],
+        ];
+        yield 'blocked To' => [
+            ['To' => $blocked, 'Cc' => null, 'Bcc' => null],
+            ['To' => $catchall, 'Cc' => null, 'Bcc' => null],
+        ];
+        yield 'blocked Cc' => [
+            ['To' => $allowedTo, 'Cc' => $blocked, 'Bcc' => $allowedBcc],
+            ['To' => $allowedTo + $catchall, 'Cc' => [], 'Bcc' => $allowedBcc],
+        ];
+        yield 'blocked Bcc' => [
+            ['To' => $allowedTo, 'Cc' => $allowedCc, 'Bcc' => $blocked],
+            ['To' => $allowedTo + $catchall, 'Cc' => $allowedCc, 'Bcc' => []],
+        ];
+        yield 'Cc only blocked' => [
+            ['To' => null, 'Cc' => $blocked, 'Bcc' => null],
+            ['To' => $catchall, 'Cc' => [], 'Bcc' => null],
+        ];
+        yield 'Bcc only blocked' => [
+            ['To' => null, 'Cc' => null, 'Bcc' => $blocked],
+            ['To' => $catchall, 'Cc' => null, 'Bcc' => []],
+        ];
+        yield 'Cc only allowed' => [
+            ['To' => null, 'Cc' => $allowedCc, 'Bcc' => null],
+            ['To' => [], 'Cc' => $allowedCc, 'Bcc' => null],
+        ];
+        yield 'Bcc only allowed' => [
+            ['To' => null, 'Cc' => null, 'Bcc' => $allowedBcc],
+            ['To' => [], 'Cc' => null, 'Bcc' => $allowedBcc],
+        ];
+        yield 'overlapping recipients in all fields' => [
+            ['To' => $allowedTo + $blocked, 'Cc' => $allowedTo + $blocked, 'Bcc' => $allowedTo + $blocked],
+            ['To' => $allowedTo + $catchall, 'Cc' => $allowedTo, 'Bcc' => $allowedTo],
+        ];
+        yield 'catchall already allowed in To retains display name' => [
+            ['To' => ['catchall@dev.example.com' => 'QA Team'], 'Cc' => $blocked, 'Bcc' => null],
+            ['To' => ['catchall@dev.example.com' => 'QA Team'], 'Cc' => [], 'Bcc' => null],
+        ];
+    }
+
     private function createSendEvent(Swift_Message $message): Swift_Events_SendEvent
     {
         $transport = $this->createMock(Swift_Transport::class);

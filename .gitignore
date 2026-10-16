@@ -154,6 +154,7 @@ fabric.properties
 /app/bootstrap.php.cache
 /var/bootstrap.php.cache
 /bin/*
+!/bin/ci/
 !bin/console
 !bin/symfony_requirements
 !bin/swiftmailer-test

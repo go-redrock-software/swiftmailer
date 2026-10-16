@@ -35,27 +35,48 @@ class Swift_Transport_Api_PostalTransport extends Swift_Transport_AbstractHttpAp
     #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
-        $payload = $this->getPayload($message);
+        $recipients = null !== $envelope ? \array_values(\array_unique($envelope->getRecipients())) : null;
+        $payload    = null === $envelope ? $this->getPayload($message) : [
+            'mail_from' => $envelope->getSender(),
+            'rcpt_to'   => $recipients,
+            'data'      => \base64_encode($this->getRawMessageWithoutBcc($message)),
+        ];
 
-        $response = $this->httpClient->request('POST', $this->getEndpoint(), [
+        $endpoint = null === $envelope ? $this->getEndpoint() : 'https://'.$this->host.'/api/v1/send/raw';
+        $response = $this->httpClient->request('POST', $endpoint, [
             'headers' => \array_merge($this->getAuthHeaders(), [
                 'Content-Type' => 'application/json',
             ]),
-            'json'        => $payload,
-            'http_errors' => false,
+            'json'            => $payload,
+            'http_errors'     => false,
+            'allow_redirects' => false,
         ]);
 
         $result = $this->parseResponse($response);
 
-        if (($result['status'] ?? null) !== 'success') {
-            $errorCode    = $result['data']['code']    ?? 'UnknownError';
-            $errorMessage = $result['data']['message'] ?? 'Unknown error';
+        $status = $response->getStatusCode();
+        if ($status >= 200 && $status < 300 && !\is_string($result['status'] ?? null)) {
+            throw $this->invalidResponse($response, 'Invalid Postal acceptance status');
+        }
+        if ('success' === ($result['status'] ?? null) && ($status < 200 || $status >= 300)) {
+            throw $this->invalidResponse($response, 'Postal acceptance conflicts with HTTP status', ambiguous: true);
+        }
+        if ($status < 200 || $status >= 300 || ($result['status'] ?? null) !== 'success') {
+            $errorCode    = $this->responseText($result['data']['code'] ?? null, 'UnknownError');
+            $errorMessage = $this->responseText($result['data']['message'] ?? null, 'Unknown error');
             throw new Swift_TransportException(\sprintf('Postal API error (%s): %s', $errorCode, $errorMessage));
+        }
+        if (isset($result['data']) && !\is_array($result['data'])) {
+            throw $this->invalidResponse($response, 'Invalid Postal message results');
+        }
+        $acceptedRecipients = $result['data']['messages'] ?? $recipients;
+        if (null !== $recipients && !\is_array($acceptedRecipients)) {
+            throw $this->invalidResponse($response, 'Invalid Postal recipient results');
         }
 
         return [
             'message_id' => $result['data']['message_id'] ?? null,
-            'recipients' => $this->countRecipients($message),
+            'recipients' => null === $recipients ? $this->countRecipients($message) : \count($acceptedRecipients),
         ];
     }
 
@@ -76,7 +97,7 @@ class Swift_Transport_Api_PostalTransport extends Swift_Transport_AbstractHttpAp
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        return \json_decode($this->getResponseBody($response), true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]

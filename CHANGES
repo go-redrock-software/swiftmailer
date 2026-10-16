@@ -9,6 +9,60 @@ Symfony Mailer while preserving full backward compatibility.
 Unreleased
 ----------
 
+ Security:
+
+ * Standard Kiota/PhpLeague Graph OAuth token requests now refuse redirects,
+   including initial grants, refresh and CAE challenges. Scoped provider copies
+   preserve caller HTTP configuration and shared authentication state, while a
+   terminal redirect marker survives SDK fallback/error handling (GitLab #60).
+
+ * Microsoft Graph resource requests now refuse HTTP redirects during mail,
+   draft/upload-session and calendar operations. The transport uses a scoped
+   Kiota adapter copy, preserving caller configuration and ordinary SDK
+   authentication/retry behavior. Redirect failures disable default Swift
+   retries. Graph OAuth token HTTP policy remains separate (GitLab #58).
+
+ * Gmail SDK sends now refuse redirects for message requests and token
+   exchanges using scoped HTTP configuration. Caller-owned SDK/client defaults
+   and normal authentication callbacks/cache behavior are preserved (GitLab #55).
+
+ * Built-in HTTP API sends and network health checks now refuse redirects
+   per request, including when an injected client enables them. Requests stay
+   at the configured endpoint instead of automatically resubmitting credentials
+   or message data to a Location target (GitLab #53).
+
+ * Sweego now sends Cc and Bcc through their native API fields. Previously,
+   blind recipients were included in the public To list. Display names and
+   delivery counts are preserved. Messages with no To recipient are rejected
+   before HTTP because Sweego requires a public recipient (GitLab #48).
+
+ * Graph calendar conversion now applies allowlist/catch-all/redirect policies to
+   ICS attendees and uses the adjusted audience for lookups. Policy-controlled
+   cancellations require a known organizer, safe stored audience and exact ETag;
+   conditional deletion prevents cancelling a changed audience. Existing-event
+   updates with recipient policy are rejected because this transport has no
+   verified conditional PATCH contract (GitLab #42).
+
+ * API transports now create a dispatcher when the first plugin is registered.
+   Previously, omitting the optional dispatcher silently discarded listeners,
+   including allowlist and redirect policies. Injected dispatchers are preserved
+   and subsequent registrations reuse the same dispatcher (GitLab #44).
+
+ * AllowlistPlugin and RedirectingPlugin now enforce recipient policy on
+   explicit SMTP envelopes, preventing envelope-only recipients from bypassing
+   dev/staging delivery restrictions. The explicit sender is preserved, and
+   cooperating recipient plugins restore the original message in either
+   registration order.
+
+ * Scaleway now submits To, Cc and Bcc in their separate API fields, keeping
+   blind recipients out of the public To list. Names, recipient counts and
+   Reply-To behavior are preserved (GitLab #43).
+
+ * HTML delivery reports now escape recipient addresses in success and failure
+   output, preventing cross-site scripting when reports include untrusted
+   recipients. Valid UTF-8 is preserved and invalid sequences are replaced
+   instead of hiding the address (GitLab #33, CWE-79).
+
  Documentation:
 
  * Complete in-repo documentation overhaul so no external docs site is
@@ -28,6 +82,65 @@ Unreleased
    autoloading, and behavior are unchanged.
 
  Bug Fixes:
+
+ * Swift, IO and transport exceptions now accept PHP Throwable causes,
+   preserving TypeError/ParseError identities and retry-marker chains instead
+   of throwing a second constructor TypeError. PHP Error causes are permanent
+   under the default retry classifier, preventing automatic replay (GitLab #61).
+
+ * Gmail sends now execute immediately even when the supplied Google Client
+   has deferred operations enabled; the caller's deferred mode is preserved.
+   Deferred request objects are no longer counted as accepted mail (GitLab #56).
+
+ * Gmail raw MIME export no longer appends attachments a second time after the
+   final MIME boundary. Binary, stream and inline attachments remain part of
+   the complete base64url-encoded message (GitLab #57).
+
+ * Azure's health check now accepts successful 2xx responses and its expected
+   authenticated 404 acknowledgement. Redirects and other client/server errors
+   are reported as unhealthy (GitLab #54).
+
+ * Sweego now preserves sender display names such as "0", using the same
+   name omission rules as recipient addresses. Null and empty names
+   remain omitted (GitLab #52).
+
+ * HTTP API transports now handle scalar/malformed JSON, invalid response
+   fields and conflicting HTTP acceptance statuses through normal transport
+   failure reporting. Ambiguous responses disable automatic retry with the
+   default classifier to avoid duplicate delivery. Existing empty-body and
+   status/header-only acknowledgements are preserved (GitLab #50).
+
+ * Sweego attachments and inline images are now base64-encoded for the API
+   instead of sent as raw bytes. Empty file content and filename "0" retain
+   their required fields; absent optional metadata is omitted (GitLab #49).
+
+ * Graph calendar-only sends no longer count unsent mail headers. Notification
+   counts use submitted/current audiences; zero-delivery operations add no
+   spurious failed mail recipients or empty sendMail requests. Policy cleanup
+   remains event-scoped (#42).
+ * Swift_Transport_NonRetryableException marks policy/version conflicts that
+   the default retry classifier must not replay, including wrapped failures.
+   Graph stale-version cancellations retain HTTP 412 without blind retry (#42).
+
+ * Explicit API envelopes now control raw delivery payloads for Postal,
+   Mandrill, Mailgun, Infobip and both SES variants. Other API paths reject
+   unsupported overrides before submission. Raw MIME copies omit blind-recipient
+   headers and preserve visible headers and attachments. Provider-specific
+   sender limits are documented (GitLab #39).
+ * SES, Gmail and Graph SDK sends now expose the effective envelope to recipient
+   policy plugins and always dispatch completion for cleanup. SES no longer
+   bypasses allowlist/redirect policies. SES counts all submitted recipients;
+   Graph excludes Reply-To from its delivery count (GitLab #39).
+
+ * AllowlistPlugin catch-all mode now preserves allowed To/Cc/Bcc recipients
+   and redirects blocked recipients from every field, including Cc-only and
+   Bcc-only messages. Recipient fields are restored after sending, and an
+   existing catch-all display name is preserved (GitLab #34).
+
+ * The class-map generator now also regenerates runtime namespace aliases from
+   the same sorted source map. Eight missing aliases are restored, including
+   the send/report result enums. Repeated generation is deterministic; invalid
+   source stops generation before either output is written (GitLab #51).
 
  * ESMTP greeting: when EHLO fails and the HELO fallback fails too, the
    exception keeps the EHLO reply (and its code). A server that closes the
@@ -59,6 +172,9 @@ Unreleased
  * API transports: the event dispatcher is now null-safe across all code
    paths, so transports constructed without a dispatcher no longer fail in
    `start()`/`stop()`/exception dispatch.
+ * SMTP transports now suppress Bcc headers when sending with an explicit
+   envelope, preventing disclosure of blind recipients (CWE-200). The original
+   Bcc field is restored after the transaction, including on failure.
 
 6.5.0 (2026-06-04)
 ------------------

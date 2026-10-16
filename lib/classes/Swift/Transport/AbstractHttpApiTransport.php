@@ -64,8 +64,9 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
 
         try {
             $response = $this->httpClient->request('GET', $this->getPingEndpoint(), [
-                'headers'     => $this->getAuthHeaders(),
-                'http_errors' => false,
+                'headers'         => $this->getAuthHeaders(),
+                'http_errors'     => false,
+                'allow_redirects' => false,
             ]);
 
             return $response->getStatusCode() >= 200 && $response->getStatusCode() < 300;
@@ -105,6 +106,10 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
         try {
             $result = $this->doSend($message, $envelope);
 
+            $messageId = $result['message_id'] ?? null;
+            if (null !== $messageId && !\is_scalar($messageId)) {
+                throw new Swift_Transport_NonRetryableException('API returned an invalid message identifier. Delivery cannot be confirmed; automatic retry is disabled.');
+            }
             if ($evt) {
                 $evt->setResult(Swift_Events_SendEvent::RESULT_SUCCESS);
             }
@@ -112,7 +117,7 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
             $recipientCount = $result['recipients'] ?? $this->countRecipients($message);
 
             $sentMessage = new Swift_SentMessage($message, $this, [
-                'message_id' => $result['message_id'] ?? null,
+                'message_id' => null === $messageId ? null : (string) $messageId,
                 'recipients' => $recipientCount,
                 'debug'      => $result,
             ]);
@@ -161,7 +166,7 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
      *
      * @param Swift_Envelope|null $envelope Optional explicit SMTP envelope
      *
-     * @return array{message_id?: string, recipients?: int} Result data
+     * @return array{message_id?: mixed, recipients?: int} Untrusted provider result; send() validates identifier values before constructing a SentMessage
      */
     abstract protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array;
 
@@ -186,6 +191,66 @@ abstract class Swift_Transport_AbstractHttpApiTransport extends Swift_Transport_
     abstract protected function getPingEndpoint(): string;
 
     protected const MAX_RESPONSE_SIZE = 1048576; // 1 MB
+
+    /** Decode provider JSON without letting remote scalar values violate the array contract. */
+    protected function decodeJsonResponse(ResponseInterface $response): array
+    {
+        $status = $response->getStatusCode();
+        if ($status < 200 || ($status >= 300 && $status < 400)) {
+            throw $this->invalidResponse($response, 'Unexpected HTTP status');
+        }
+        try {
+            $body = $this->getResponseBody($response);
+        } catch (Exception $error) {
+            throw $this->invalidResponse($response, 'Unable to read API response', $error);
+        }
+        // Some APIs acknowledge acceptance using only the status/headers.
+        if ('' === \trim($body)) {
+            return [];
+        }
+        try {
+            $decoded = \json_decode($body, true, 512, \JSON_THROW_ON_ERROR);
+        } catch (JsonException $error) {
+            throw $this->invalidResponse($response, 'Malformed JSON in API response', $error);
+        }
+        if (!\is_array($decoded)) {
+            throw $this->invalidResponse($response, 'API response must contain a JSON object or array');
+        }
+
+        return $decoded;
+    }
+
+    protected function invalidResponse(ResponseInterface $response, string $reason, ?Exception $previous = null, bool $ambiguous = false): Swift_TransportException
+    {
+        $status  = $response->getStatusCode();
+        $message = \sprintf('%s (HTTP %d).', $reason, $status);
+        if ($status < 400 || $ambiguous) {
+            return new Swift_Transport_NonRetryableException($message.' Delivery cannot be confirmed; automatic retry is disabled.', $status, $previous);
+        }
+
+        return new Swift_TransportException($message, $status, $previous);
+    }
+
+    protected function responseText(mixed $value, string $fallback): string
+    {
+        return \is_scalar($value) ? (string) $value : $fallback;
+    }
+
+    /** Collect printable error details without assuming a provider's container shape. */
+    protected function responseErrors(mixed $value): array
+    {
+        if (!\is_array($value)) {
+            return \is_scalar($value) ? [(string) $value] : [];
+        }
+        $messages = [];
+        \array_walk_recursive($value, static function ($detail) use (&$messages): void {
+            if (\is_scalar($detail)) {
+                $messages[] = (string) $detail;
+            }
+        });
+
+        return $messages;
+    }
 
     protected function getResponseBody(ResponseInterface $response): string
     {

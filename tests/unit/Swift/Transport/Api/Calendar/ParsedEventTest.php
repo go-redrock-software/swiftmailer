@@ -45,4 +45,18 @@ class ParsedEventTest extends TestCase
         $event = $this->parse($this->ics('cancel'));
         $this->assertTrue($event->isCancel());
     }
+
+    public function testReplacingAttendeesPreservesImmutableEventDetails(): void
+    {
+        $event     = $this->parse($this->ics('REQUEST'));
+        $attendees = [['email' => 'sink@example.com', 'name' => 'Sink', 'type' => 'required']];
+        $copy      = $event->withAttendees($attendees);
+        $this->assertSame([], $event->attendees);
+        $this->assertSame($attendees, $copy->attendees);
+        $this->assertNotSame($event, $copy);
+        $original = \get_object_vars($event);
+        $updated  = \get_object_vars($copy);
+        unset($original['attendees'], $updated['attendees']);
+        $this->assertSame($original, $updated);
+    }
 }

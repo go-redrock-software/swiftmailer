@@ -52,13 +52,15 @@ class Swift_Transport_Api_AzureTransport extends Swift_Transport_AbstractHttpApi
             $signedHeaders = $this->signRequest('GET', $url, '');
 
             $response = $this->httpClient->request('GET', $url, [
-                'headers'     => $signedHeaders,
-                'http_errors' => false,
+                'headers'         => $signedHeaders,
+                'http_errors'     => false,
+                'allow_redirects' => false,
             ]);
 
-            // 404 means auth succeeded but operation not found (expected).
-            // 401 means bad credentials.
-            return 401 !== $response->getStatusCode();
+            // A successful probe or the expected missing operation authenticates the endpoint.
+            $status = $response->getStatusCode();
+
+            return ($status >= 200 && $status < 300) || 404 === $status;
         } catch (Exception $e) {
             return false;
         }
@@ -67,6 +69,8 @@ class Swift_Transport_Api_AzureTransport extends Swift_Transport_AbstractHttpApi
     #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
+        $this->validateEnvelope($message, $envelope);
+
         $payload = $this->buildPayload($message);
         $url     = $this->getEndpoint();
         $body    = \json_encode($payload, JSON_THROW_ON_ERROR);
@@ -75,16 +79,17 @@ class Swift_Transport_Api_AzureTransport extends Swift_Transport_AbstractHttpApi
         $signedHeaders['Content-Type'] = 'application/json';
 
         $response = $this->httpClient->request('POST', $url, [
-            'headers'     => $signedHeaders,
-            'body'        => $body,
-            'http_errors' => false,
+            'headers'         => $signedHeaders,
+            'body'            => $body,
+            'http_errors'     => false,
+            'allow_redirects' => false,
         ]);
 
         $result = $this->parseResponse($response);
 
-        if ($response->getStatusCode() >= 400) {
-            $errorCode    = $result['error']['code']    ?? 'Unknown';
-            $errorMessage = $result['error']['message'] ?? 'Unknown error';
+        if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
+            $errorCode    = $this->responseText($result['error']['code'] ?? null, 'Unknown');
+            $errorMessage = $this->responseText($result['error']['message'] ?? null, 'Unknown error');
 
             throw new Swift_TransportException(\sprintf('Azure Communication Services API error %s: %s', $errorCode, $errorMessage));
         }
@@ -111,7 +116,7 @@ class Swift_Transport_Api_AzureTransport extends Swift_Transport_AbstractHttpApi
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        return \json_decode($this->getResponseBody($response), true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]

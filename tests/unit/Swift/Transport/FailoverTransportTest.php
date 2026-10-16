@@ -369,7 +369,7 @@ class Swift_Transport_FailoverTransportTest extends SwiftMailerTestCase
         }
     }
 
-    public function testRestartingTransportRestartsDeadDelegates()
+    public function testRestartingTransportRestartsDeadDelegatesWithZeroRetryPeriod()
     {
         $e = new Swift_TransportException('b0rken');
 
@@ -446,6 +446,7 @@ class Swift_Transport_FailoverTransportTest extends SwiftMailerTestCase
             $this->assertFalse($transport->isStarted());
         }
         // Restart and re-try
+        $transport->setRetryPeriod(0);
         $transport->start();
         $this->assertTrue($transport->isStarted());
         $this->assertEquals(10, $transport->send($message2));

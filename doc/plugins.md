@@ -327,8 +327,13 @@ every recipient field is filtered down to whitelisted addresses, and the
 redirect recipient(s) are added to To. The originals are restored on
 `sendPerformed`.
 
+With an explicit `Swift_Envelope`, the same whitelist is applied to delivery
+recipients and the redirect target(s) are added once. The envelope sender is
+preserved. An empty target list with no whitelisted envelope recipients rejects
+the send. Original envelope-only recipients are never copied into message headers.
+
 **Gotcha — no recipient leakage:** the original recipients are held in
-**private plugin properties, not in `X-Swift-To` / `X-Swift-Cc` / `X-Swift-Bcc`
+**private state, not in `X-Swift-To` / `X-Swift-Cc` / `X-Swift-Bcc`
 headers**. Earlier versions stashed them in those headers, which travelled with
 the redirected message and leaked the real recipient list (including Bcc). They
 no longer touch the outgoing headers — only whitelisted addresses and the
@@ -373,17 +378,33 @@ AllowlistPlugin: all recipients removed by allowlist filter (a@x.com, b@y.com)
 That reason is available via `$evt->getRejectionReason()` (and is logged by
 [LoggerPlugin](#loggerplugin)).
 
-**Redirect mode (with `$redirectTo`):** allowed To recipients pass through; if
-any To recipient was filtered out, the catch-all is appended to To. Cc and Bcc
-are always cleared.
+**Redirect mode (with `$redirectTo`):** allowed recipients remain in their
+original To/Cc/Bcc fields, including display names. If any recipient in any
+field is blocked, the catch-all is added to To once. This also works for
+messages addressed only through Cc or Bcc. An existing allowed To entry for the
+catch-all retains its display name.
+
+**Explicit envelopes:** the allowlist also filters envelope recipients,
+independently of visible message headers. Delivery is rejected if no envelope
+recipients survive in filter mode, even when a visible To address is allowed.
+Conversely, allowed envelope-only recipients can deliver when all visible
+recipients were removed. Catch-all mode adds the configured target once when
+any envelope recipient is blocked. The explicit sender and caller's envelope
+are preserved; a replacement envelope carries the filtered recipients.
+
+**Combining recipient policies:** plugins apply in registration order. A
+rejection stops later `beforeSendPerformed` listeners, so a later redirect does
+not rescue a send rejected by an earlier allowlist. Both plugins use the same
+original-recipient snapshot when `sendPerformed` restores the message; a plugin
+that never ran its before hook leaves cleanup untouched.
 
 **Gotchas:**
 - Patterns are case-insensitive. Wildcards use `*@domain` syntax; anything else
   is matched as an exact address.
 - Original recipients are restored on the message after sending — the message
   object is not permanently modified.
-- Redirect mode does **not** add an `X-Original-To` header (older docs claimed
-  it did); it only clears Cc/Bcc and appends the catch-all to To.
+- Redirect mode does **not** add an `X-Original-To` header; original blocked
+  recipients, including Bcc, are not copied into visible headers or metadata.
 
 ### ImpersonatePlugin
 
@@ -597,12 +618,12 @@ backend:
 | `RESULT_FAIL` (`0x10`) | Recipient could not be accepted |
 | `notify(Swift_Mime_SimpleMessage $message, string $address, int $result)` | Called once per To/Cc/Bcc recipient |
 
-**Gotcha — `HtmlReporter` and untrusted input:** the HTML reporter echoes each
-recipient address **without escaping** it into the HTML output. It is a
-debugging/CLI-style aid; do not render its output in a context where recipient
-addresses could be attacker-controlled, or wrap/escape the output yourself.
-(`EchoLogger`, by contrast, does escape its entries — see
-[LoggerPlugin](#loggerplugin).)
+`HtmlReporter` escapes each recipient address as UTF-8 text, including quotes,
+ampersands and angle brackets. Invalid UTF-8 sequences are replaced with U+FFFD.
+Pass original addresses without pre-escaping them. Older releases emitted raw
+addresses and could allow JavaScript execution when reports containing
+attacker-controlled recipients were displayed in a browser; see
+[security hardening](security.md#plugin-output-escaping).
 
 ---
 

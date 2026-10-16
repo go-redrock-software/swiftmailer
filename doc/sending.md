@@ -48,7 +48,7 @@ deliver a message. Every transport implements the `Swift_Transport` interface
 | `Swift_SpoolTransport` | Queues messages in a `Swift_Spool` for deferred delivery. |
 | `Swift_NullTransport` | Pretends to send but discards the message (useful for testing). |
 
-You can also build any transport from a DSN connection string with
+You can also build supported transports from a DSN connection string with
 `Swift_Transport_DsnTransportFactory`. See [dsn.md](dsn.md) for syntax.
 
 ## The SMTP Transport
@@ -117,6 +117,27 @@ re-issues `EHLO` over the upgraded connection before sending mail.
 > `CONNECTION_ENCRYPTION_MODE_*` constants above (or their string values
 > `'tls'` / `'ssl'`).
 
+### SMTP connection settings
+
+The DSN factory accepts the same native settings used in code:
+
+```php
+$transport = (new Swift_Transport_DsnTransportFactory())->fromDsnString(
+    'smtp+tls://user:password@mail.example.com:587?timeout=5&auth_mode=login&local_domain=mailer.example.com'
+);
+
+// Equivalent native controls:
+$transport->setTimeout(5)->setAuthMode('LOGIN')->setLocalDomain('mailer.example.com');
+```
+
+The DSN timeout is a positive whole number of seconds and applies to connection
+and read operations, rather than a deadline for the entire message. Authentication
+mode selects an installed mechanism; omitting it keeps the normal priority order.
+The local domain controls EHLO/HELO and accepts a validated ASCII hostname or IP
+address. These options remain attached to their SMTP leaf inside retry/pool
+wrappers. See [SMTP DSN parameters](dsn.md#smtp-parameters) for validation and
+address formatting.
+
 ### Authentication
 
 Many servers require a username and password before relaying mail:
@@ -156,6 +177,11 @@ An invalid mode throws `Swift_TransportException` (`Auth mode <x> is invalid`).
 > MD5 algorithm. Prefer `XOAUTH2`, or `PLAIN`/`LOGIN` over a TLS connection.
 > `XOAUTH2` uses the username as the account/email and the password as the
 > OAuth2 access token.
+
+A non-empty username string `0` is authenticated, and a password string `0` is
+sent unchanged. Empty or omitted usernames continue to skip AUTH. Explicit
+mechanism selection also treats a non-empty string as a selection, including a
+custom registered keyword `0`.
 
 ### Other SMTP options
 
@@ -250,8 +276,8 @@ $mailer = new Swift_Mailer(new Swift_NullTransport());
 ### Failover
 
 `Swift_FailoverTransport` provides high availability. It tries each wrapped
-transport in order and returns as soon as one accepts the message. Dead
-transports are set aside for the remainder of the run.
+transport in order and returns as soon as one accepts the message. Failed
+backends are set aside for a configurable cooldown (60 seconds by default).
 
 ```php
 $transport = new Swift_FailoverTransport([
@@ -260,7 +286,8 @@ $transport = new Swift_FailoverTransport([
 ]);
 ```
 
-When a transport throws, the failover is logged via `trigger_error()` at
+When a transport throws an ordinary backend failure, the failover is logged via
+`trigger_error()` at
 `E_USER_WARNING` level (`Swiftmailer: Failover from <class>: <message>`), then
 the next transport is tried. If every transport fails or none are configured, a
 `Swift_TransportException` is thrown.
@@ -278,10 +305,80 @@ $transport = new Swift_LoadBalancedTransport([
 ]);
 ```
 
-A transport that throws is retired for the rest of the run; retiring it is
-logged via `trigger_error()` at `E_USER_WARNING`
+A transport that throws an ordinary backend failure is retired until its
+configured cooldown expires (60 seconds by default). Ordinary errors raised while stopping that backend are logged via
+`trigger_error()` at `E_USER_WARNING`
 (`Swiftmailer: LoadBalancedTransport error from <class>: <message>`). If all
 transports are exhausted, a `Swift_TransportException` is thrown.
+
+### Restoring and checking a pool
+
+Both pools accept a non-negative integer retry period in seconds:
+
+```php
+$transport = new Swift_LoadBalancedTransport([
+    $primaryTransport,
+    $backupTransport,
+], 15);
+
+// The same second argument works on Swift_FailoverTransport.
+$transport->setRetryPeriod(30); // Fluent; applies to original failure times.
+$seconds = $transport->getRetryPeriod(); // 30
+
+// Low-level classes accept the period as their first constructor argument.
+$pool = new Swift_Transport_FailoverTransport(15);
+$pool->setTransports([$primaryTransport, $backupTransport]);
+```
+
+At entry to `send()`, `ping()` and `start()`, eligible backends return to the
+active pool. Recovery uses elapsed monotonic time and never sleeps or starts a
+background timer. A failed recovery attempt begins a new cooldown. Automatic
+startup by `Swift_Mailer` or a retry wrapper respects the same deadline.
+
+`start()` now respects this cooldown. To make retired backends immediately
+eligible on the next operation, explicitly set `setRetryPeriod(0)`. An operation
+tries only its initial eligible slots; zero does not create an unbounded retry
+loop for the same message. Replacing the pool with `setTransports()` also clears
+its failure history.
+
+Repeated starts preserve the configured number of entries, including intentional
+duplicate references used for weighting. All slots for the same backend object
+share one cooldown and return together. Different backend objects retain
+independent failure times. Failover keeps its current successful backend until
+that backend fails; recovery does not force a switch back to the primary.
+
+Plugins registered through a pool reach all currently configured backends,
+including retired backends that may later return. Each plugin is forwarded once
+per configured backend identity, so weighted duplicate references do not bind
+listeners repeatedly. Set the configured pool before registering its plugins;
+replacing a pool does not copy old listeners into newly supplied transports.
+
+Health checks retire the backend that failed its check and preserve the healthy
+backends' relative order. Callback-driven pool replacement takes precedence over
+a failure or completed cleanup from the old pool. Later restoration does not
+reintroduce a backend excluded by that replacement.
+
+### Terminal failures and pool replacement
+
+A `Swift_Transport_NonRetryableException` or PHP `Error` anywhere in a failure's
+cause chain ends the current send across failover, load balancing and retry
+wrappers, including nested wrappers. The original exception propagates without
+trying another backend or marking the message's backend dead. This also applies
+to startup, retry-restart and terminal cleanup failures. It prevents replay after
+an API response leaves acceptance uncertain or a request policy refuses delivery.
+An ordinary exception raised during cleanup retains the existing fallback behavior.
+
+These hard terminal failures take precedence over custom retry classifiers.
+Custom classifiers still decide how to handle ordinary transport failures,
+including authentication failures. Failover may try another configured backend
+for an ordinary backend-specific authentication failure.
+
+Calling `setTransports()` replaces a pool and clears any cached failover
+selection. The next send or health check uses the replacement pool. The last
+successful transport remains available through `getLastUsedTransport()` until a
+new send starts; a failed send clears it. A message-specific terminal failure
+leaves the configured backend available for a later explicit send. Reentrant
+pool replacement during a callback is preserved.
 
 ### Retry
 
@@ -306,20 +403,27 @@ Constructor: `__construct(Swift_Transport $inner, int $maxRetries = 3, int $base
   it dropped its connection.
 
 **Classification.** The default `Swift_Transport_DefaultRetryClassifier`
-decides retryability in this order:
+first rejects `Swift_Transport_NonRetryableException`, including when it appears
+in a wrapped exception's cause chain. This type marks policy/version conflicts
+that replay cannot safely resolve. For other exceptions it decides in this order:
 
-1. Permanent message patterns (e.g. `authentication failed`, `invalid api
+1. A `Swift_Transport_NonRetryableException` or PHP `Error` anywhere in the cause
+   chain -- never retried. HTTP transports use the marker when acceptance is
+   uncertain. Wrapped `TypeError`, `ParseError` and other PHP errors remain
+   permanent even with transient message text or a retryable outer code.
+2. Permanent message patterns (e.g. `authentication failed`, `invalid api
    key`, `mailbox not found`, `relay access denied`) -- never retried.
-2. Retryable message patterns (e.g. `connection reset`, `rate limit`,
+3. Retryable message patterns (e.g. `connection reset`, `rate limit`,
    `service unavailable`, `internal server error`) -- retried.
-3. Permanent codes (SMTP `500`, `501`, `530`, `535`, `550`-`554`; HTTP `401`,
+4. Permanent codes (SMTP `500`, `501`, `530`, `535`, `550`-`554`; HTTP `401`,
    `403`) -- not retried.
-4. Retryable codes (SMTP `421`, `450`, `451`, `452`; HTTP `429`, `502`, `503`,
+5. Retryable codes (SMTP `421`, `450`, `451`, `452`; HTTP `429`, `502`, `503`,
    `504`) -- retried.
-5. Code `0` (connection-level failure with no SMTP/HTTP code) -- retried.
-6. Any other `4xx` code -- retried; everything else is treated as permanent.
+6. Code `0` (connection-level failure with no SMTP/HTTP code) -- retried.
+7. Any other `4xx` code -- retried; everything else is treated as permanent.
 
-Implement `Swift_Transport_RetryClassifier` to customize this. You can also
+Implement `Swift_Transport_RetryClassifier` to customize ordinary failure
+classification; explicit terminal causes above always stop delivery. You can also
 configure retry through a DSN (`retry(...)` wrapper or `retries`/`retry_delay`
 query params) -- see [dsn.md](dsn.md).
 
@@ -465,10 +569,19 @@ $numSent = $mailer->send($message, $failures, $envelope);
 string and there must be at least one string recipient, otherwise the
 constructor throws `InvalidArgumentException`. `Swift_Envelope::fromMessage()`
 builds one using the same header-derivation logic the transports use. When an
-explicit envelope is supplied, the SMTP transport uses it verbatim -- it does
-**not** strip `Bcc` or inspect headers. A `beforeSendPerformed` listener may
+explicit envelope is supplied, the SMTP transport uses its sender and recipients
+instead of deriving delivery addresses from headers. It still suppresses the
+`Bcc` header during transmission and restores the original field afterward,
+including on failure. An absent `Bcc` field remains absent. A `beforeSendPerformed` listener may
 replace the envelope via `setEnvelope()`; the transport re-reads it after the
 event fires.
+
+API transport support depends on the provider endpoint. Postal and Mandrill
+support independent recipients and sender fields; Mailgun and Infobip support
+independent recipients with the message From address. SES maps the sender to
+bounce/complaint forwarding, with AWS managing SMTP MAIL FROM. Other API paths
+accept matching envelopes and reject unsupported overrides before submission.
+See the [API envelope capability table](api-transports.md#explicit-envelopes).
 
 ### Finding Rejected Addresses
 

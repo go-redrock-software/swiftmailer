@@ -118,7 +118,7 @@ class Swift_Transport_RetryTransport implements Swift_Transport
                 return $this->innerTransport->send($message, $failedRecipients, $envelope);
             } catch (Swift_TransportException $e) {
                 $elapsed = $this->getCurrentTime() - $startTime;
-                if (!$this->classifier->isRetryable($e) || $attempt >= $this->maxRetries || $elapsed >= self::TOTAL_TIMEOUT_SECONDS) {
+                if (Swift_Transport_RetryPolicy::isTerminalFailure($e) || !$this->classifier->isRetryable($e) || $attempt >= $this->maxRetries || $elapsed >= self::TOTAL_TIMEOUT_SECONDS) {
                     throw $e;
                 }
 
@@ -130,6 +130,9 @@ class Swift_Transport_RetryTransport implements Swift_Transport
                     try {
                         $this->innerTransport->start();
                     } catch (Swift_TransportException $startException) {
+                        if (Swift_Transport_RetryPolicy::isTerminalFailure($startException)) {
+                            throw $startException;
+                        }
                         // Will be retried on next iteration
                     }
                 }

@@ -60,6 +60,15 @@ class Swift_Events_SendEvent extends Swift_Events_EventObject
     /** Optional explicit SMTP envelope. */
     private ?Swift_Envelope $envelope = null;
 
+    /** @var array|null Recipient state before the first recipient policy rewrites the message. */
+    private ?array $recipientState = null;
+
+    /** @var array<string, array<string, string|null>> Additional delivery audiences. */
+    private array $recipientGroups = [];
+
+    /** @var list<callable(array<string, string|null>): array<string, string|null>> */
+    private array $recipientFilters = [];
+
     /**
      * Create a new SendEvent for $source and $message.
      */
@@ -88,6 +97,77 @@ class Swift_Events_SendEvent extends Swift_Events_EventObject
     public function getMessage()
     {
         return $this->message;
+    }
+
+    /**
+     * Capture the original To/Cc/Bcc fields once for cooperating recipient policies.
+     *
+     * Completion listeners run in registration order, so every recipient policy
+     * must restore this shared snapshot rather than another policy's temporary fields.
+     *
+     * @return array{to: array|null, cc: array|null, bcc: array|null}
+     */
+    public function captureRecipientState(): array
+    {
+        return $this->recipientState ??= [
+            'to'  => $this->message->getTo(),
+            'cc'  => $this->message->getCc(),
+            'bcc' => $this->message->getBcc(),
+        ];
+    }
+
+    /**
+     * Set transport-specific audiences, applying policies already registered on this event.
+     *
+     * @param array<string, array<string, string|null>> $groups
+     * @param bool                                      $applyFilters False when recording an already-verified delivery decision
+     */
+    public function setRecipientGroups(array $groups, bool $applyFilters = true): void
+    {
+        $this->recipientGroups = [];
+        foreach ($groups as $name => $recipients) {
+            $this->recipientGroups[$name] = $applyFilters ? $this->filterRecipients($recipients) : $recipients;
+        }
+    }
+
+    /** @return array<string, array<string, string|null>> */
+    public function getRecipientGroups(): array
+    {
+        return $this->recipientGroups;
+    }
+
+    /**
+     * Register a reusable policy in listener order, without another send-event dispatch.
+     *
+     * @param callable(array<string, string|null>): array<string, string|null> $filter
+     */
+    public function addRecipientFilter(callable $filter): void
+    {
+        $this->recipientFilters[] = $filter;
+        foreach ($this->recipientGroups as $name => $recipients) {
+            $this->recipientGroups[$name] = $filter($recipients);
+        }
+    }
+
+    public function hasRecipientFilters(): bool
+    {
+        return [] !== $this->recipientFilters;
+    }
+
+    /**
+     * Apply the same policy to an audience discovered later (for example a stored event).
+     *
+     * @param array<string, string|null> $recipients
+     *
+     * @return array<string, string|null>
+     */
+    public function filterRecipients(array $recipients): array
+    {
+        foreach ($this->recipientFilters as $filter) {
+            $recipients = $filter($recipients);
+        }
+
+        return $recipients;
     }
 
     /**

@@ -64,6 +64,12 @@ class Swift_Transport_Api_Calendar_ParsedEvent
         return 'REQUEST' === \strtoupper((string) $this->method);
     }
 
+    /** @param array<int, array{email: string, name: string|null, type: string}> $attendees */
+    public function withAttendees(array $attendees): self
+    {
+        return new self($this->subject, $this->body, $this->isHtmlBody, $this->location, $this->start, $this->startTimeZone, $this->end, $this->endTimeZone, $this->isAllDay, $this->organizerEmail, $this->organizerName, $attendees, $this->uid, $this->method, $this->sequence, $this->url);
+    }
+
     /**
      * True for METHOD:CANCEL — a cancellation of a previously-sent invitation. Like
      * REQUEST, M365 mangles these when delivered as a sendMail attachment, so we route

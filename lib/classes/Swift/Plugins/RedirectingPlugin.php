@@ -27,11 +27,7 @@ class Swift_Plugins_RedirectingPlugin implements Swift_Events_SendListener
      */
     private $whitelist = [];
 
-    private ?array $originalTo = null;
-
-    private ?array $originalCc = null;
-
-    private ?array $originalBcc = null;
+    private ?array $originalRecipients = null;
 
     /**
      * Create a new RedirectingPlugin.
@@ -84,11 +80,25 @@ class Swift_Plugins_RedirectingPlugin implements Swift_Events_SendListener
     {
         $message = $evt->getMessage();
         $headers = $message->getHeaders();
+        $evt->addRecipientFilter($this->filterDeliveryRecipients(...));
 
         // Store original recipients as instance properties (not in headers)
-        $this->originalTo  = $headers->has('to') ? $message->getTo() : null;
-        $this->originalCc  = $headers->has('cc') ? $message->getCc() : null;
-        $this->originalBcc = $headers->has('bcc') ? $message->getBcc() : null;
+        $this->originalRecipients = $evt->captureRecipientState();
+
+        if (null !== $envelope = $evt->getEnvelope()) {
+            $recipients = \array_values(\array_filter($envelope->getRecipients(), fn (string $address): bool => $this->isWhitelisted($address)));
+            foreach ((array) $this->recipient as $recipient) {
+                if (!\in_array($recipient, $recipients, true)) {
+                    $recipients[] = $recipient;
+                }
+            }
+            if (!$recipients) {
+                $evt->reject('RedirectingPlugin: no envelope recipients remain after redirection');
+
+                return;
+            }
+            $evt->setEnvelope(new Swift_Envelope($envelope->getSender(), $recipients));
+        }
 
         // Filter remaining headers against whitelist
         $this->filterHeaderSet($headers, 'To');
@@ -138,6 +148,21 @@ class Swift_Plugins_RedirectingPlugin implements Swift_Events_SendListener
         return $filtered;
     }
 
+    private function filterDeliveryRecipients(array $recipients): array
+    {
+        if (!$recipients) {
+            return [];
+        }
+        $filtered = $this->filterNameAddresses($recipients);
+        foreach ((array) $this->recipient as $recipient) {
+            if (!\array_key_exists($recipient, $filtered)) {
+                $filtered[$recipient] = null;
+            }
+        }
+
+        return $filtered;
+    }
+
     /**
      * Matches address against whitelist of regular expressions.
      *
@@ -164,27 +189,18 @@ class Swift_Plugins_RedirectingPlugin implements Swift_Events_SendListener
     #[Override]
     public function sendPerformed(Swift_Events_SendEvent $evt)
     {
-        $this->restoreMessage($evt->getMessage());
-    }
-
-    private function restoreMessage(Swift_Mime_SimpleMessage $message)
-    {
-        if (null !== $this->originalTo) {
-            $message->setTo($this->originalTo);
-        } else {
-            $message->setTo(null);
+        if (null === $this->originalRecipients) {
+            return;
         }
 
-        if (null !== $this->originalCc) {
-            $message->setCc($this->originalCc);
+        $message = $evt->getMessage();
+        foreach ($this->originalRecipients as $field => $recipients) {
+            if (null === $recipients) {
+                $message->getHeaders()->removeAll($field);
+            } else {
+                $message->{'set'.\ucfirst($field)}($recipients);
+            }
         }
-
-        if (null !== $this->originalBcc) {
-            $message->setBcc($this->originalBcc);
-        }
-
-        $this->originalTo  = null;
-        $this->originalCc  = null;
-        $this->originalBcc = null;
+        $this->originalRecipients = null;
     }
 }
