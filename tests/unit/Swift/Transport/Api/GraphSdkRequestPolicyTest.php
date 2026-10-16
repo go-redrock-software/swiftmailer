@@ -51,7 +51,7 @@ class Swift_Transport_Api_GraphSdkRequestPolicyTest extends TestCase
             $this->assertFalse($request['options']['allow_redirects']);
             $this->assertContains($request['request']->getUri()->getHost(), ['graph.microsoft.com', 'uploads.safe.test']);
         }
-        $this->assertEqualsCanonicalizing(['allowed@safe.test', 'blocked@outside.test', 'copy@safe.test', 'blind@outside.test'], $failed);
+        $this->assertEqualsCanonicalizing($calendar ? ['allowed@safe.test'] : ['allowed@safe.test', 'blocked@outside.test', 'copy@safe.test', 'blind@outside.test'], $failed);
         $this->assertSame(1, $observer->before);
         $this->assertSame(1, $observer->completed);
         $this->assertSame(Swift_Events_SendEvent::RESULT_FAILED, $observer->result);
@@ -481,6 +481,9 @@ class Swift_Transport_Api_GraphSdkRequestPolicyTest extends TestCase
             $message->attach(new Swift_Attachment($ics, 'invite.ics', 'text/calendar'));
             if ('event lookup' !== $stage) {
                 $responses[] = $this->json(200, ['value' => 'event create' === $stage ? [] : [['id' => 'event-id']]]);
+                if (\in_array($stage, ['event update', 'event cancel'], true)) {
+                    $responses[] = $this->json(200, ['id' => 'event-id', 'attendees' => [['emailAddress' => ['address' => 'allowed@safe.test']]]]);
+                }
             }
         } elseif ('sendMail' !== $stage) {
             $message->attach(new Swift_Attachment('PRIVATE-ATTACHMENT-BYTES', 'large.bin', 'application/octet-stream'));

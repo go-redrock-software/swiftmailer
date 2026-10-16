@@ -171,8 +171,8 @@ abstract class Swift_Transport_AbstractApiTransport implements Swift_Transport
     /**
      * Run an SDK send with the same envelope-aware policy lifecycle as HTTP sends.
      *
-     * @param callable(?Swift_Envelope, ?Swift_Events_SendEvent): int $send
-     * @param array<string, array<string, string|null>>               $recipientGroups
+     * @param (callable(?Swift_Envelope): int)|(callable(?Swift_Envelope, ?Swift_Events_SendEvent): int) $send
+     * @param array<string, array<string, string|null>>                                                  $recipientGroups
      */
     protected function sendWithEvents(Swift_Mime_SimpleMessage $message, &$failedRecipients, ?Swift_Envelope $envelope, #[SensitiveParameter] callable $send, array $recipientGroups = []): int
     {
@@ -195,7 +195,12 @@ abstract class Swift_Transport_AbstractApiTransport implements Swift_Transport
             }
             $envelope = $evt->getEnvelope();
 
-            $sent = $send($envelope, $evt);
+            // Existing callbacks take only the envelope. Do not add an unbound event
+            // argument: PHP retains extra arguments in exception traces, and the
+            // event references its SDK transport. Calendar callbacks explicitly opt in.
+            $callback = Closure::fromCallable($send);
+            $arity    = (new ReflectionFunction($callback))->getNumberOfParameters();
+            $sent     = $arity > 1 ? $callback($envelope, $evt) : $callback($envelope);
             if (0 === $sent) {
                 $recipients       = $this->getSendRecipients($message, $envelope, $evt);
                 $failedRecipients = \array_values(\array_unique(\array_merge($failedRecipients, $recipients)));

@@ -62,6 +62,9 @@ if ($calendar) {
     $message->attach(new Swift_Attachment($ics, 'invite.ics', 'text/calendar'));
     if ('event lookup' !== $stage) {
         $before[] = $json(200, ['value' => 'event create' === $stage ? [] : [['id' => 'event-id']]]);
+        if (\in_array($stage, ['event update', 'event cancel'], true)) {
+            $before[] = $json(200, ['id' => 'event-id', 'attendees' => [['emailAddress' => ['address' => 'to@safe.test']]]]);
+        }
     }
 } elseif ('sendMail' !== $stage) {
     $message->attach(new Swift_Attachment('fixture-large-attachment-bytes', 'large.bin', 'application/octet-stream'));
