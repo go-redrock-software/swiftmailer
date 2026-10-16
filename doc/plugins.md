@@ -625,6 +625,18 @@ addresses and could allow JavaScript execution when reports containing
 attacker-controlled recipients were displayed in a browser; see
 [security hardening](security.md#plugin-output-escaping).
 
+`HtmlReporter` calls `flush()` after each report. With PHP-FPM and PHP output
+buffering disabled, the report can reach the FastCGI client before the request
+finishes. This does not empty PHP user-level buffers created by `ob_start()` or
+`output_buffering`; the application retains control of those buffers. CLI output
+is commonly already unbuffered, so a CLI output-capture test alone cannot prove
+that the backend flush still works.
+
+Web-server, proxy and browser buffering can delay display even after PHP sends
+the bytes. The reporter therefore cannot guarantee immediate browser rendering.
+See PHP's [flush documentation](https://www.php.net/manual/en/function.flush.php)
+and [system-buffer limits](https://www.php.net/manual/en/outcontrol.flushing-system-buffers.php).
+
 ---
 
 ## Connection
