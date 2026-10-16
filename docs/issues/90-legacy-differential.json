@@ -1,0 +1,900 @@
+{
+  "baseline_commit": "9200d453",
+  "merged_commit": "2cb8116d71c2b079ab2d5043e9161cb00da65440",
+  "original_cases": 3959,
+  "note": "Unmodified original test files. Remaining errors/failures are explicit expectation/fixture incompatibilities, not a claim that the original suite is green. Provider/SDK behavior is verified separately with real SDKs and synthetic HTTP.",
+  "summary": {
+    "legacy-mock": 3,
+    "scoped-sdk-policy": 71,
+    "native-fixture-preflight": 3,
+    "provider-contract-correction": 8,
+    "provider-privacy-correction": 3,
+    "delivery-safeguard": 2,
+    "smtp-privacy-correction": 3,
+    "regression-restored": 5
+  },
+  "cases": [
+    {
+      "test": "Swift_Plugins_RedirectingPluginTest::testPluginChangesRecipients",
+      "baseline": "passed",
+      "merged": "failure",
+      "corrected": "failure",
+      "classification": "legacy-mock",
+      "reason": "Fully mocked SendEvent stubs the new event snapshot/filter methods instead of exercising real recipient state. Real and delegated events, absent headers, nesting and plugin order are covered separately.",
+      "evidence": "tests/unit/Swift/Integration/RecipientStateCompatibilityTest.php"
+    },
+    {
+      "test": "Swift_Plugins_RedirectingPluginTest::testPluginRespectsUnsetToList",
+      "baseline": "passed",
+      "merged": "failure",
+      "corrected": "failure",
+      "classification": "legacy-mock",
+      "reason": "Fully mocked SendEvent stubs the new event snapshot/filter methods instead of exercising real recipient state. Real and delegated events, absent headers, nesting and plugin order are covered separately.",
+      "evidence": "tests/unit/Swift/Integration/RecipientStateCompatibilityTest.php"
+    },
+    {
+      "test": "Swift_Plugins_RedirectingPluginTest::testPluginRespectsAWhitelistOfPatterns",
+      "baseline": "passed",
+      "merged": "failure",
+      "corrected": "failure",
+      "classification": "legacy-mock",
+      "reason": "Fully mocked SendEvent stubs the new event snapshot/filter methods instead of exercising real recipient state. Real and delegated events, absent headers, nesting and plugin order are covered separately.",
+      "evidence": "tests/unit/Swift/Integration/RecipientStateCompatibilityTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesApiTransportTest::testPingReturnsTrueWhenAddressNotSuppressed",
+      "baseline": "passed",
+      "merged": "failure",
+      "corrected": "failure",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesApiTransportTest::testSendBasicMessage",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesApiTransportTest::testSendAutoStarts",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesApiTransportTest::testSendWithCc",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesApiTransportTest::testSendWithBcc",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesApiTransportTest::testSendWithReplyTo",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesApiTransportTest::testSendWithHtmlBodySetsHtmlNotText",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesApiTransportTest::testSendReturnsZeroWhenNoMessageId",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesApiTransportTest::testSendMapsConfigurationSetHeader",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesApiTransportTest::testSendMapsSourceArnHeaderToIdentityArn",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesApiTransportTest::testSendMapsListManagementOptionsHeader",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesApiTransportTest::testSendMapsReturnPathToFeedbackForwarding",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesApiTransportTest::testSendExtractsMailerTagsIntoEmailTagsAndRemovesHeader",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesApiTransportTest::testSendWithMultipleMailerTags",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesApiTransportTest::testSendWithMultipleToRecipients",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesApiTransportTest::testSendBEncodesUtf8DisplayName",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesApiTransportTest::testSendWithoutDisplayNamesUsesBareEmails",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesHttpTransportTest::testPingReturnsTrueOnSuccess",
+      "baseline": "passed",
+      "merged": "failure",
+      "corrected": "failure",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesHttpTransportTest::testSendBasicMessage",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesHttpTransportTest::testSendCountsMultipleRecipients",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesHttpTransportTest::testSendWithBccRecipients",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesHttpTransportTest::testSendAddsMessageIdHeader",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesHttpTransportTest::testSendWithOnlyToRecipients",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesHttpTransportTest::testSendWithReturnPath",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesHttpTransportTest::testSendWithConfigurationSetHeader",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesHttpTransportTest::testSendWithSourceArnHeader",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesHttpTransportTest::testSendWithListManagementOptionsHeader",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesHttpTransportTest::testSendWithMailerTagHeaders",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesHttpTransportTest::testSendWithMultipleMailerTags",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_AmazonSesHttpTransportTest::testSendWithAllSesHeaders",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_MicrosoftGraphCalendarMailboxTest::testStudentAndStaffInvitesForOneAppointmentBothBecomeEvents",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "native-fixture-preflight",
+      "reason": "In-memory mailbox does not implement the newly required calendar audience preflight GET; its expected GET/PATCH/POST sequence predates safe audience and conditional-cancellation checks.",
+      "evidence": "tests/unit/Swift/Transport/Api/MicrosoftGraphCalendarMailboxTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_MicrosoftGraphCalendarMailboxTest::testRescheduleUpdatesOnlyThatRecipientsEvent",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "native-fixture-preflight",
+      "reason": "In-memory mailbox does not implement the newly required calendar audience preflight GET; its expected GET/PATCH/POST sequence predates safe audience and conditional-cancellation checks.",
+      "evidence": "tests/unit/Swift/Transport/Api/MicrosoftGraphCalendarMailboxTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_MicrosoftGraphCalendarMailboxTest::testCancelCancelsOnlyThatRecipientsEvent",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "native-fixture-preflight",
+      "reason": "In-memory mailbox does not implement the newly required calendar audience preflight GET; its expected GET/PATCH/POST sequence predates safe audience and conditional-cancellation checks.",
+      "evidence": "tests/unit/Swift/Transport/Api/MicrosoftGraphCalendarMailboxTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\MicrosoftGraphCalendarTest::testRequestInviteIsCreatedAsEventAndEmailSkipped",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\MicrosoftGraphCalendarTest::testRequestInviteWithRealAttachmentSendsBothEvenWithoutSendAlongside",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\MicrosoftGraphCalendarTest::testRequestInviteWithSendAlongsideSendsBoth",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\MicrosoftGraphCalendarTest::testConversionDisabledSendsIcsAsAttachment",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\MicrosoftGraphCalendarTest::testPublishMethodIsNotConverted",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\MicrosoftGraphCalendarTest::testMalformedIcsFallsBackToAttachment",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\MicrosoftGraphCalendarTest::testNoCalendarPartSendsNormally",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\MicrosoftGraphCalendarTest::testMultipleInvitesCreateMultipleEvents",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\MicrosoftGraphCalendarTest::testDetectionByIcsFilename",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\MicrosoftGraphCalendarTest::testExplicitUserIdRoutesEventsThroughByUserId",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\MicrosoftGraphCalendarTest::testSendAlongsideStripsIcsButKeepsFileAttachment",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\MicrosoftGraphCalendarTest::testFindEventIdReturnsFirstMatch",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\MicrosoftGraphCalendarTest::testFindEventIdReturnsNullWhenNoMatch",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\MicrosoftGraphCalendarTest::testCancelGraphEventPostsCancel",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\MicrosoftGraphCalendarTest::testUpdateGraphEventPatches",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\MicrosoftGraphCalendarTest::testCancelInviteCancelsMatchingEvent",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\MicrosoftGraphCalendarTest::testCancelInviteWithNoMatchMakesNoEventCall",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\MicrosoftGraphCalendarTest::testNoMatchCancelEmitsNoticeNamingTheICalUId",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\MicrosoftGraphCalendarTest::testNoMatchCancelCountsOnlyToRecipient",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\MicrosoftGraphCalendarTest::testMatchedCancelCountsToPlusAttendee",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\MicrosoftGraphCalendarTest::testUpdateInviteWithSequencePatchesMatchingEvent",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\MicrosoftGraphCalendarTest::testUpdateInviteWithNoMatchFallsBackToCreate",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\MicrosoftGraphCalendarTest::testParameterisedCalendarContentTypeInviteConvertsToEvent",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\Swift_Transport_Api_MicrosoftGraphTransportTest::testSendBasicMessageSuccess",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\Swift_Transport_Api_MicrosoftGraphTransportTest::testSendWithReplyTo",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\Swift_Transport_Api_MicrosoftGraphTransportTest::testSendWithAttachments",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\Swift_Transport_Api_MicrosoftGraphTransportTest::testSendWithInlineAttachment",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\Swift_Transport_Api_MicrosoftGraphTransportTest::testSendWithHtmlBodyType",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\Swift_Transport_Api_MicrosoftGraphTransportTest::testSendWithCcExercisesCcPath",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\Swift_Transport_Api_MicrosoftGraphTransportTest::testSendWithBccExercisesBccPath",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\Swift_Transport_Api_MicrosoftGraphTransportTest::testSendWithMultipleToRecipientsSendsAndCountsAll",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\Swift_Transport_Api_MicrosoftGraphTransportTest::testSendUsesMeEndpointWhenNoUserId",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\Swift_Transport_Api_MicrosoftGraphTransportTest::testSendUsesFromAddressAsUserId",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\Swift_Transport_Api_MicrosoftGraphTransportTest::testSendViaDraftAttachesSmallInlineUploadsLargeAndSends",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\Swift_Transport_Api_MicrosoftGraphTransportTest::testSendViaDraftBuildsAttachmentItemFromTheLargeAttachment",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\Swift_Transport_Api_MicrosoftGraphTransportTest::testLargeAttachmentRoutesThroughDraftFlow",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\Swift_Transport_Api_MicrosoftGraphTransportTest::testSmallAttachmentStillUsesSendMail",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\Swift_Transport_Api_MicrosoftGraphTransportTest::testSendMultipartAlternativeWithoutAttachmentsDoesNotRejectBodyMimePart",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\Swift_Transport_Api_MicrosoftGraphTransportTest::testSendMultipartAlternativeWithAttachmentShipsOnlyTheAttachment",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\Swift_Transport_Api_MicrosoftGraphTransportTest::testSendKeepsCalendarMimePartAsAttachmentInsteadOfDroppingIt",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Mock adapter/model or direct protected helper call lacks the scoped native HTTP operation and acceptance evidence now required. Native SDK requests exercise mail/draft/calendar behavior separately; unsupported adapters are intentionally refused.",
+      "evidence": "tests/unit/Swift/Transport/Api/GraphSdkRequestPolicyTest.php; tests/unit/Swift/Transport/Api/GraphAcceptanceTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_PayloadContractTest::testSweegoPayloadConformsToPublishedSchema",
+      "baseline": "passed",
+      "merged": "failure",
+      "corrected": "failure",
+      "classification": "provider-contract-correction",
+      "reason": "Legacy assertion flattens Cc/Bcc into public recipients or rejects native cc/bcc schema fields. Published API supports separate cc/bcc; privacy fix is intentional.",
+      "evidence": "tests/unit/Swift/Transport/Api/SweegoHttpContractTest.php; tests/unit/Swift/Transport/Api/SweegoRecipientPrivacyTest.php; tests/unit/Swift/Transport/Api/SweegoAttachmentEncodingTest.php"
+    },
+    {
+      "test": "Swift_Transport_Api_PayloadContractTest::testAmazonSesHttpRequestConformsToAsyncAwsSesV2",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "scoped-sdk-policy",
+      "reason": "Legacy mock/subclass bypasses native SES HTTP acceptance/ownership evidence. Unsupported custom clients are intentionally refused; native current/lowest SDK signing, MIME, IDs, failures and credentials are exercised separately.",
+      "evidence": "tests/unit/Swift/Transport/Api/SesPolicyCompatibilityTest.php; tests/unit/Swift/Transport/Api/SesMimeDeliveryTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\ScalewayTransportTest::testSendMessageWithCc",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "provider-privacy-correction",
+      "reason": "Legacy expectation flattens To/Cc/Bcc into public To; provider native fields now preserve blind-recipient privacy.",
+      "evidence": "tests/unit/Swift/Transport/Api/ScalewayTransportTest.php; tests/unit/Swift/Transport/Api/PayloadContractTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\ScalewayTransportTest::testSendMessageWithBcc",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "provider-privacy-correction",
+      "reason": "Legacy expectation flattens To/Cc/Bcc into public To; provider native fields now preserve blind-recipient privacy.",
+      "evidence": "tests/unit/Swift/Transport/Api/ScalewayTransportTest.php; tests/unit/Swift/Transport/Api/PayloadContractTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\ScalewayTransportTest::testSendMessageWithCcAndBcc",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "provider-privacy-correction",
+      "reason": "Legacy expectation flattens To/Cc/Bcc into public To; provider native fields now preserve blind-recipient privacy.",
+      "evidence": "tests/unit/Swift/Transport/Api/ScalewayTransportTest.php; tests/unit/Swift/Transport/Api/PayloadContractTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\Swift_Transport_Api_SendgridTransportTest::testParseResponseReturnsDecodedJson",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "delivery-safeguard",
+      "reason": "Mock response has HTTP status 0, which cannot confirm delivery.",
+      "evidence": "tests/unit/Swift/Integration/EnvelopeCompatibilityTest.php; tests/unit/Swift/Transport/Api/HttpResponseBoundaryTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\Swift_Transport_Api_SendgridTransportTest::testSendWithEnvelopeUsesEnvelopeRecipientsAndSender",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "delivery-safeguard",
+      "reason": "A genuinely different explicit envelope used to be silently ignored; API now rejects overrides it cannot represent.",
+      "evidence": "tests/unit/Swift/Integration/EnvelopeCompatibilityTest.php; tests/unit/Swift/Transport/Api/HttpResponseBoundaryTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\SweegoTransportTest::testSendBasicMessage",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "provider-contract-correction",
+      "reason": "Legacy exact-array assertion omits recipient display names; native provider recipient objects preserve them.",
+      "evidence": "tests/unit/Swift/Transport/Api/SweegoHttpContractTest.php; tests/unit/Swift/Transport/Api/SweegoRecipientPrivacyTest.php; tests/unit/Swift/Transport/Api/SweegoAttachmentEncodingTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\SweegoTransportTest::testSendMessageWithCc",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "provider-contract-correction",
+      "reason": "Legacy assertion flattens Cc/Bcc into public recipients or rejects native cc/bcc schema fields. Published API supports separate cc/bcc; privacy fix is intentional.",
+      "evidence": "tests/unit/Swift/Transport/Api/SweegoHttpContractTest.php; tests/unit/Swift/Transport/Api/SweegoRecipientPrivacyTest.php; tests/unit/Swift/Transport/Api/SweegoAttachmentEncodingTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\SweegoTransportTest::testSendMessageWithBcc",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "provider-contract-correction",
+      "reason": "Legacy assertion flattens Cc/Bcc into public recipients or rejects native cc/bcc schema fields. Published API supports separate cc/bcc; privacy fix is intentional.",
+      "evidence": "tests/unit/Swift/Transport/Api/SweegoHttpContractTest.php; tests/unit/Swift/Transport/Api/SweegoRecipientPrivacyTest.php; tests/unit/Swift/Transport/Api/SweegoAttachmentEncodingTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\SweegoTransportTest::testSendMessageWithCcAndBcc",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "provider-contract-correction",
+      "reason": "Legacy assertion flattens Cc/Bcc into public recipients or rejects native cc/bcc schema fields. Published API supports separate cc/bcc; privacy fix is intentional.",
+      "evidence": "tests/unit/Swift/Transport/Api/SweegoHttpContractTest.php; tests/unit/Swift/Transport/Api/SweegoRecipientPrivacyTest.php; tests/unit/Swift/Transport/Api/SweegoAttachmentEncodingTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\SweegoTransportTest::testSendMessageWithAttachments",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "provider-contract-correction",
+      "reason": "Legacy expectation sends raw attachment bytes; published Sweego contract requires base64 content.",
+      "evidence": "tests/unit/Swift/Transport/Api/SweegoHttpContractTest.php; tests/unit/Swift/Transport/Api/SweegoRecipientPrivacyTest.php; tests/unit/Swift/Transport/Api/SweegoAttachmentEncodingTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\SweegoTransportTest::testSendMessageWithInlineImage",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "provider-contract-correction",
+      "reason": "Legacy expectation sends raw attachment bytes; published Sweego contract requires base64 content.",
+      "evidence": "tests/unit/Swift/Transport/Api/SweegoHttpContractTest.php; tests/unit/Swift/Transport/Api/SweegoRecipientPrivacyTest.php; tests/unit/Swift/Transport/Api/SweegoAttachmentEncodingTest.php"
+    },
+    {
+      "test": "Swift\\Transport\\Api\\SweegoTransportTest::testSendMessageWithMultipleRecipients",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "provider-contract-correction",
+      "reason": "Legacy exact-array assertion omits recipient display names; native provider recipient objects preserve them.",
+      "evidence": "tests/unit/Swift/Transport/Api/SweegoHttpContractTest.php; tests/unit/Swift/Transport/Api/SweegoRecipientPrivacyTest.php; tests/unit/Swift/Transport/Api/SweegoAttachmentEncodingTest.php"
+    },
+    {
+      "test": "Swift_Transport_EsmtpTransport_ExtensionSupportTest::testSendDoesNotStripBccWhenEnvelopeProvided",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "smtp-privacy-correction",
+      "reason": "Legacy expectation requires no Bcc removal with an explicit envelope. Transmitted MIME must strip Bcc and then restore the caller message.",
+      "evidence": "tests/unit/Swift/Transport/EsmtpTransportTest.php"
+    },
+    {
+      "test": "Swift_Transport_EsmtpTransportTest::testSendDoesNotStripBccWhenEnvelopeProvided",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "smtp-privacy-correction",
+      "reason": "Legacy expectation requires no Bcc removal with an explicit envelope. Transmitted MIME must strip Bcc and then restore the caller message.",
+      "evidence": "tests/unit/Swift/Transport/EsmtpTransportTest.php"
+    },
+    {
+      "test": "Swift_Transport_FailoverTransportExtraTest::testRestartAfterAllDead",
+      "baseline": "passed",
+      "merged": "failure",
+      "corrected": "passed",
+      "classification": "regression-restored",
+      "reason": "Legacy explicit start() immediately restores retired pool backends; timed recovery now requires explicit configuration.",
+      "evidence": "tests/unit/Swift/Transport/PoolCompatibilityTest.php"
+    },
+    {
+      "test": "Swift_Transport_FailoverTransportTest::testRestartingTransportRestartsDeadDelegates",
+      "baseline": "passed",
+      "merged": "failure",
+      "corrected": "passed",
+      "classification": "regression-restored",
+      "reason": "Legacy explicit start() immediately restores retired pool backends; timed recovery now requires explicit configuration.",
+      "evidence": "tests/unit/Swift/Transport/PoolCompatibilityTest.php"
+    },
+    {
+      "test": "Swift_Transport_LoadBalancedTransportExtraTest::testStartRestoredDeadTransports",
+      "baseline": "passed",
+      "merged": "failure",
+      "corrected": "passed",
+      "classification": "regression-restored",
+      "reason": "Legacy explicit start() immediately restores retired pool backends; timed recovery now requires explicit configuration.",
+      "evidence": "tests/unit/Swift/Transport/PoolCompatibilityTest.php"
+    },
+    {
+      "test": "Swift_Transport_LoadBalancedTransportTest::testRestartingTransportRestartsDeadDelegates",
+      "baseline": "passed",
+      "merged": "failure",
+      "corrected": "passed",
+      "classification": "regression-restored",
+      "reason": "Legacy explicit start() immediately restores retired pool backends; timed recovery now requires explicit configuration.",
+      "evidence": "tests/unit/Swift/Transport/PoolCompatibilityTest.php"
+    },
+    {
+      "test": "Swift_Transport_LoadBalancedTransportTest::testStartRevivesDeadTransports",
+      "baseline": "passed",
+      "merged": "failure",
+      "corrected": "passed",
+      "classification": "regression-restored",
+      "reason": "Legacy explicit start() immediately restores retired pool backends; timed recovery now requires explicit configuration.",
+      "evidence": "tests/unit/Swift/Transport/PoolCompatibilityTest.php"
+    },
+    {
+      "test": "Swift_Transport_SendmailTransportTest::testSendDoesNotStripBccWhenEnvelopeProvided",
+      "baseline": "passed",
+      "merged": "error",
+      "corrected": "error",
+      "classification": "smtp-privacy-correction",
+      "reason": "Legacy expectation requires no Bcc removal with an explicit envelope. Transmitted MIME must strip Bcc and then restore the caller message.",
+      "evidence": "tests/unit/Swift/Transport/EsmtpTransportTest.php"
+    }
+  ]
+}

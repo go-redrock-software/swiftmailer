@@ -22,10 +22,12 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
      */
     private $deadTransports = [];
 
-    /** @var SplObjectStorage<Swift_Transport, float> */
-    private SplObjectStorage $failedSince;
+    /** @var SplObjectStorage<Swift_Transport, float>|null Copied before writes; null supports legacy constructors and serialized pools. */
+    private ?SplObjectStorage $failedSince = null;
 
     private int $retryPeriod = 60;
+
+    private ?bool $automaticRecovery = null;
 
     /**
      * The Transports which are used in rotation.
@@ -47,11 +49,16 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
     /** Failed-backend cooldown in seconds; this constructor may also be called explicitly. */
     public function __construct(int $retryPeriod = 60)
     {
+        // The original no-argument constructor was a no-op. Enable timed
+        // recovery only when the caller explicitly configures a period.
+        $this->usesAutomaticRecovery();
         $this->failedSince ??= new SplObjectStorage();
-        $this->setRetryPeriod($retryPeriod);
+        if (\func_num_args() > 0) {
+            $this->setRetryPeriod($retryPeriod);
+        }
     }
 
-    /** Failed-backend cooldown in seconds. */
+    /** Configured failed-backend cooldown in seconds. */
     public function getRetryPeriod(): int
     {
         return $this->retryPeriod;
@@ -63,7 +70,18 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
         if ($retryPeriod < 0) {
             throw new InvalidArgumentException('retryPeriod must be a non-negative number of seconds.');
         }
-        $this->retryPeriod = $retryPeriod;
+        if (!isset($this->failedSince)) {
+            // A pool serialized before cooldown support has no failure times.
+            $this->failedSince = new SplObjectStorage();
+            if ($this->deadTransports) {
+                $configuredAt = $this->getCurrentTime();
+                foreach ($this->deadTransports as $transport) {
+                    $this->failedSince->offsetSet($transport, $configuredAt);
+                }
+            }
+        }
+        $this->retryPeriod       = $retryPeriod;
+        $this->automaticRecovery = true;
 
         return $this;
     }
@@ -74,10 +92,16 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
         return \hrtime(true) / 1_000_000_000;
     }
 
+    /** Older serialized timed pools already own initialized failure metadata. */
+    private function usesAutomaticRecovery(): bool
+    {
+        return $this->automaticRecovery ??= isset($this->failedSince);
+    }
+
     /** Recover only at operation entry, so a zero period cannot create an inner retry loop. */
     protected function restoreDueTransports(): void
     {
-        if (!$this->deadTransports) {
+        if (!$this->usesAutomaticRecovery() || !$this->deadTransports || null === $this->failedSince) {
             return;
         }
         $now       = $this->getCurrentTime();
@@ -92,8 +116,11 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
             }
         }
         $this->deadTransports = $waiting;
-        foreach ($recovered as $transport) {
-            $this->failedSince->offsetUnset($transport);
+        if (\count($recovered) > 0) {
+            $this->failedSince = clone $this->failedSince;
+            foreach ($recovered as $transport) {
+                $this->failedSince->offsetUnset($transport);
+            }
         }
     }
 
@@ -104,6 +131,7 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
      */
     public function setTransports(array $transports)
     {
+        $this->usesAutomaticRecovery();
         $this->transports     = $transports;
         $this->deadTransports = [];
         $this->failedSince    = new SplObjectStorage();
@@ -147,6 +175,15 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
     #[Override]
     public function start()
     {
+        if (!$this->usesAutomaticRecovery()) {
+            // Preserve the legacy explicit-restart contract unless the caller
+            // opted into a cooldown. Clear quarantine without duplicating slots.
+            $this->transports     = \array_merge($this->transports, $this->deadTransports);
+            $this->deadTransports = [];
+            $this->failedSince    = new SplObjectStorage();
+
+            return;
+        }
         $this->restoreDueTransports();
     }
 
@@ -290,6 +327,8 @@ class Swift_Transport_LoadBalancedTransport implements Swift_Transport
         }
         if ($configurationVersion === $this->transportConfigurationVersion) {
             $this->deadTransports = \array_merge($this->deadTransports, $retired);
+            $this->usesAutomaticRecovery();
+            $this->failedSince = isset($this->failedSince) ? clone $this->failedSince : new SplObjectStorage();
             $this->failedSince->offsetSet($transport, $failedAt);
         }
     }

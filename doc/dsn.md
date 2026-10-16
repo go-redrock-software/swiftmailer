@@ -515,15 +515,15 @@ $transport = $factory->fromDsnString(
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `retry_period` | `60` | Seconds before a failed backend can return to the pool. `0` permits recovery on the next operation. |
+| `retry_period` | Omitted | Explicitly enables timed recovery after this many seconds. `0` permits recovery on the next operation. Omission preserves immediate recovery on explicit `start()`. |
 
 The value must be a non-negative decimal integer within PHP's integer range.
 Unknown, duplicate, array, negative, fractional and overflowing wrapper options
 are rejected before inner transports are constructed. An empty wrapper query
-uses the default. Cooldown recovery occurs at entry to `send()`, `ping()` or
+preserves legacy manual recovery. With an explicit period, cooldown recovery occurs at entry to `send()`, `ping()` or
 `start()` and does not sleep. A healthy failover selection remains sticky.
 See [pool recovery](sending.md#restoring-and-checking-a-pool) for runtime controls
-and the changed manual-start behavior.
+and manual-start behavior.
 
 This option controls backend availability. Per-transport `retries` and
 `retry_delay` continue to control message retry attempts and backoff.

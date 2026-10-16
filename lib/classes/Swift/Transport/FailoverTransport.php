@@ -23,7 +23,7 @@ class Swift_Transport_FailoverTransport extends Swift_Transport_LoadBalancedTran
     /** Failed-backend cooldown in seconds; this constructor may also be called explicitly. */
     public function __construct(int $retryPeriod = 60)
     {
-        parent::__construct($retryPeriod);
+        parent::__construct(...(\func_num_args() > 0 ? [$retryPeriod] : []));
     }
 
     #[Override]

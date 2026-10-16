@@ -109,11 +109,16 @@ class Swift_Events_SendEvent extends Swift_Events_EventObject
      */
     public function captureRecipientState(): array
     {
-        return $this->recipientState ??= [
-            'to'  => $this->message->getTo(),
-            'cc'  => $this->message->getCc(),
-            'bcc' => $this->message->getBcc(),
-        ];
+        if (null === $this->recipientState) {
+            $message              = $this->getMessage();
+            $this->recipientState = [
+                'to'  => $message->getTo(),
+                'cc'  => $message->getCc(),
+                'bcc' => $message->getBcc(),
+            ];
+        }
+
+        return $this->recipientState;
     }
 
     /**

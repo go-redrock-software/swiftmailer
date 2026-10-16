@@ -119,10 +119,13 @@ class Swift_Transport_DsnTransportFactory
                 $transports[] = $this->fromDsnString($innerDsn);
             }
 
+            // An omitted pool option retains legacy manual recovery. An explicit
+            // retry_period, including zero or 60, opts into timed recovery.
+            $periodArguments = '' === ($matches[3] ?? '') ? [] : [$retryPeriod];
             if ('failover' === $wrapper) {
-                $transport = new Swift_Transport_FailoverTransport($retryPeriod);
+                $transport = new Swift_Transport_FailoverTransport(...$periodArguments);
             } else {
-                $transport = new Swift_Transport_LoadBalancedTransport($retryPeriod);
+                $transport = new Swift_Transport_LoadBalancedTransport(...$periodArguments);
             }
             $transport->setTransports($transports);
 
