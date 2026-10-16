@@ -264,6 +264,7 @@ class Swift_Transport_Api_SendgridTransportTest extends TestCase
 
         $response = $this->createMock(\Psr\Http\Message\ResponseInterface::class);
         $response->method('getBody')->willReturn($stream);
+        $response->method('getStatusCode')->willReturn(200);
 
         $result = $reflection->invoke($this->transport, $response);
         $this->assertSame(['key' => 'value'], $result);
@@ -362,10 +363,8 @@ class Swift_Transport_Api_SendgridTransportTest extends TestCase
         $this->transport->send($message);
     }
 
-    public function testSendWithEnvelopeUsesEnvelopeRecipientsAndSender(): void
+    public function testSendRejectsUnsupportedEnvelopeOverrideBeforeSubmission(): void
     {
-        // Covers AbstractHttpApiTransport lines 199 and 232:
-        // countRecipients and getEnvelopeSender using activeEnvelope
         $message = $this->createSwiftMessage();
         $message->setFrom(['original@example.com' => 'Original']);
         $message->setTo(['to@example.com' => 'Recipient']);
@@ -374,9 +373,7 @@ class Swift_Transport_Api_SendgridTransportTest extends TestCase
 
         $envelope = new \Swift_Envelope('envelope-sender@example.com', ['env-rcpt@example.com']);
 
-        $this->httpClientMock->expects($this->once())
-            ->method('request')
-            ->willReturn(new Response(202, [], ''));
+        $this->httpClientMock->expects($this->never())->method('request');
 
         $evt = $this->createMock(\Swift_Events_SendEvent::class);
         $evt->method('bubbleCancelled')->willReturn(false);
@@ -385,8 +382,9 @@ class Swift_Transport_Api_SendgridTransportTest extends TestCase
         $this->eventDispatcherMock->method('createTransportChangeEvent')
             ->willReturn($this->createMock(\Swift_Events_TransportChangeEvent::class));
 
-        $result = $this->transport->send($message, $failedRecipients, $envelope);
-        $this->assertSame(1, $result);
+        $this->expectException(\Swift_TransportException::class);
+        $this->expectExceptionMessage('does not support an envelope sender');
+        $this->transport->send($message, $failedRecipients, $envelope);
     }
 
     public function testSendThrowsTransportExceptionOnApiFailure(): void

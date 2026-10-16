@@ -19,21 +19,24 @@ class Swift_Transport_Api_MailomatTransport extends Swift_Transport_AbstractHttp
     #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
+        $this->validateEnvelope($message, $envelope);
+
         $payload = $this->getPayload($message);
 
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
             'headers' => \array_merge($this->getAuthHeaders(), [
                 'Content-Type' => 'application/json',
             ]),
-            'json'        => $payload,
-            'http_errors' => false,
+            'json'            => $payload,
+            'http_errors'     => false,
+            'allow_redirects' => false,
         ]);
 
         $statusCode = $response->getStatusCode();
         $parsed     = $this->parseResponse($response);
 
         if ($statusCode < 200 || $statusCode >= 300) {
-            $errorMessage = $parsed['message'] ?? $parsed['error'] ?? 'Unknown error';
+            $errorMessage = $this->responseText($parsed['message'] ?? $parsed['error'] ?? null, 'Unknown error');
             throw new Swift_TransportException(\sprintf('Mailomat API error (%d): %s', $statusCode, $errorMessage));
         }
 
@@ -60,9 +63,7 @@ class Swift_Transport_Api_MailomatTransport extends Swift_Transport_AbstractHttp
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        $body = $this->getResponseBody($response);
-
-        return \json_decode($body, true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]

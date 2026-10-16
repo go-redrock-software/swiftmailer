@@ -17,29 +17,38 @@ class Swift_Transport_FailoverTransport extends Swift_Transport_LoadBalancedTran
 {
     /**
      * Registered transport currently used.
-     *
-     * @var Swift_Transport
      */
-    private $currentTransport;
+    private ?Swift_Transport $currentTransport = null;
 
-    // needed as __construct is called from elsewhere explicitly
-    public function __construct()
+    /** Failed-backend cooldown in seconds; this constructor may also be called explicitly. */
+    public function __construct(int $retryPeriod = 60)
     {
-        parent::__construct();
+        parent::__construct($retryPeriod);
+    }
+
+    #[Override]
+    public function setTransports(array $transports)
+    {
+        parent::setTransports($transports);
+        $this->currentTransport = null;
     }
 
     #[Override]
     public function ping()
     {
+        $this->restoreDueTransports();
         $maxTransports = \count($this->transports);
         for (
             $i        = 0; $i < $maxTransports
         && $transport = $this->getNextTransport(); ++$i
         ) {
+            $configurationVersion = $this->transportConfigurationVersion;
             if ($transport->ping()) {
                 return true;
             }
-            $this->killCurrentTransport();
+            if ($configurationVersion === $this->transportConfigurationVersion) {
+                $this->killCurrentTransport();
+            }
         }
 
         return \count($this->transports) > 0;
@@ -58,14 +67,16 @@ class Swift_Transport_FailoverTransport extends Swift_Transport_LoadBalancedTran
     #[Override]
     public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null)
     {
-        $maxTransports           = \count($this->transports);
-        $sent                    = 0;
         $this->lastUsedTransport = null;
+        $this->restoreDueTransports();
+        $maxTransports = \count($this->transports);
+        $sent          = 0;
 
         for (
             $i        = 0; $i < $maxTransports
         && $transport = $this->getNextTransport(); ++$i
         ) {
+            $configurationVersion = $this->transportConfigurationVersion;
             try {
                 if (!$transport->isStarted()) {
                     $transport->start();
@@ -77,6 +88,12 @@ class Swift_Transport_FailoverTransport extends Swift_Transport_LoadBalancedTran
                     return $sent;
                 }
             } catch (Swift_TransportException $e) {
+                if (Swift_Transport_RetryPolicy::isTerminalFailure($e)) {
+                    throw $e;
+                }
+                if ($configurationVersion !== $this->transportConfigurationVersion) {
+                    continue;
+                }
                 @\trigger_error(\sprintf(
                     'Swiftmailer: Failover from %s: %s',
                     \get_class($transport),
@@ -97,6 +114,16 @@ class Swift_Transport_FailoverTransport extends Swift_Transport_LoadBalancedTran
     {
         if (!isset($this->currentTransport)) {
             $this->currentTransport = parent::getNextTransport();
+        } elseif ($this->currentTransport !== \end($this->transports)) {
+            // Restoration can append backends after the cached selection.
+            // Keep the selected backend in the position the retirement hook owns.
+            $key = \array_search($this->currentTransport, $this->transports, true);
+            if (false === $key) {
+                $this->currentTransport = parent::getNextTransport();
+            } else {
+                unset($this->transports[$key]);
+                $this->transports[] = $this->currentTransport;
+            }
         }
 
         return $this->currentTransport;

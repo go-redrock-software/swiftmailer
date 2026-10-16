@@ -64,6 +64,7 @@ class Swift_Transport_AbstractApiTransportTest extends PHPUnit\Framework\TestCas
             ->with($plugin);
 
         $transport->registerPlugin($plugin);
+        $this->assertSame($this->eventDispatcherMock, $transport->eventDispatcher);
     }
 
     public function testStopSetsNotStarted(): void

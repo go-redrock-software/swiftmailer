@@ -357,26 +357,9 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
 
     public function testSendBasicMessageSuccess(): void
     {
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-
-        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->method('post')->willReturn($promise);
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
-
-        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
-        $usersBuilder->method('byUserId')->willReturn($userItemBuilder);
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('users')->willReturn($usersBuilder);
-
-        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
-        $sendEvt    = $this->createMock(\Swift_Events_SendEvent::class);
-        $changeEvt  = $this->createMock(\Swift_Events_TransportChangeEvent::class);
-        $dispatcher->method('createSendEvent')->willReturn($sendEvt);
-        $dispatcher->method('createTransportChangeEvent')->willReturn($changeEvt);
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
+        $dispatcher  = new \Swift_Events_SimpleEventDispatcher();
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'user-id', $dispatcher);
 
@@ -388,32 +371,18 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
 
         $result = $transport->send($m);
         $this->assertSame(1, $result); // 1 To recipient counted, no CC/BCC/replyTo
+        $this->assertSame(['POST /v1.0/users/user-id/sendMail'], $fixture->paths());
+        $this->assertSame('Test Subject', $fixture->payload()['Message']['subject']);
+        $this->assertSame('Hello body', $fixture->payload()['Message']['body']['content']);
     }
 
     // -- send: with reply-to ---
 
     public function testSendWithReplyTo(): void
     {
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-
-        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->method('post')->willReturn($promise);
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
-
-        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
-        $usersBuilder->method('byUserId')->willReturn($userItemBuilder);
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('users')->willReturn($usersBuilder);
-
-        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
-        $sendEvt    = $this->createMock(\Swift_Events_SendEvent::class);
-        $changeEvt  = $this->createMock(\Swift_Events_TransportChangeEvent::class);
-        $dispatcher->method('createSendEvent')->willReturn($sendEvt);
-        $dispatcher->method('createTransportChangeEvent')->willReturn($changeEvt);
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
+        $dispatcher  = new \Swift_Events_SimpleEventDispatcher();
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'user-id', $dispatcher);
 
@@ -425,33 +394,18 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $m->setBody('Hello');
 
         $result = $transport->send($m);
-        $this->assertSame(2, $result); // 1 To + replyTo
+        $this->assertSame(1, $result); // Reply-To does not receive this message.
+        $this->assertSame(['POST /v1.0/users/user-id/sendMail'], $fixture->paths());
+        $this->assertSame('reply@example.com', $fixture->payload()['Message']['replyTo'][0]['emailAddress']['address']);
     }
 
     // -- send: with attachments ---
 
     public function testSendWithAttachments(): void
     {
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-
-        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->method('post')->willReturn($promise);
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
-
-        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
-        $usersBuilder->method('byUserId')->willReturn($userItemBuilder);
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('users')->willReturn($usersBuilder);
-
-        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
-        $sendEvt    = $this->createMock(\Swift_Events_SendEvent::class);
-        $changeEvt  = $this->createMock(\Swift_Events_TransportChangeEvent::class);
-        $dispatcher->method('createSendEvent')->willReturn($sendEvt);
-        $dispatcher->method('createTransportChangeEvent')->willReturn($changeEvt);
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
+        $dispatcher  = new \Swift_Events_SimpleEventDispatcher();
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'user-id', $dispatcher);
 
@@ -464,32 +418,17 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
 
         $result = $transport->send($m);
         $this->assertSame(1, $result); // 1 To recipient counted
+        $this->assertSame(['POST /v1.0/users/user-id/sendMail'], $fixture->paths());
+        $this->assertCount(1, $fixture->payload()['Message']['attachments']);
     }
 
     // -- send: with inline attachment ---
 
     public function testSendWithInlineAttachment(): void
     {
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-
-        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->method('post')->willReturn($promise);
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
-
-        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
-        $usersBuilder->method('byUserId')->willReturn($userItemBuilder);
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('users')->willReturn($usersBuilder);
-
-        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
-        $sendEvt    = $this->createMock(\Swift_Events_SendEvent::class);
-        $changeEvt  = $this->createMock(\Swift_Events_TransportChangeEvent::class);
-        $dispatcher->method('createSendEvent')->willReturn($sendEvt);
-        $dispatcher->method('createTransportChangeEvent')->willReturn($changeEvt);
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
+        $dispatcher  = new \Swift_Events_SimpleEventDispatcher();
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'user-id', $dispatcher);
 
@@ -505,6 +444,8 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
 
         $result = $transport->send($m);
         $this->assertSame(1, $result); // 1 To recipient counted
+        $this->assertSame(['POST /v1.0/users/user-id/sendMail'], $fixture->paths());
+        $this->assertTrue($fixture->payload()['Message']['attachments'][0]['isInline']);
     }
 
     // -- send: bubble cancelled ---
@@ -562,26 +503,9 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
 
     public function testSendThrowsTransportExceptionOnApiFailure(): void
     {
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willThrowException(new \RuntimeException('Graph API error'));
-
-        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->method('post')->willReturn($promise);
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
-
-        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
-        $usersBuilder->method('byUserId')->willReturn($userItemBuilder);
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('users')->willReturn($usersBuilder);
-
-        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
-        $sendEvt    = $this->createMock(\Swift_Events_SendEvent::class);
-        $changeEvt  = $this->createMock(\Swift_Events_TransportChangeEvent::class);
-        $dispatcher->method('createSendEvent')->willReturn($sendEvt);
-        $dispatcher->method('createTransportChangeEvent')->willReturn($changeEvt);
+        $fixture     = new \Swift_GraphSdkFixture(static fn () => \Swift_GraphSdkFixture::json(403, ['error' => ['code' => 'FixtureDenied', 'message' => 'fixture failure']]));
+        $graphClient = $fixture->client;
+        $dispatcher  = new \Swift_Events_SimpleEventDispatcher();
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'user-id', $dispatcher);
 
@@ -600,26 +524,9 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
 
     public function testSendWithHtmlBodyType(): void
     {
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-
-        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->method('post')->willReturn($promise);
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
-
-        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
-        $usersBuilder->method('byUserId')->willReturn($userItemBuilder);
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('users')->willReturn($usersBuilder);
-
-        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
-        $sendEvt    = $this->createMock(\Swift_Events_SendEvent::class);
-        $changeEvt  = $this->createMock(\Swift_Events_TransportChangeEvent::class);
-        $dispatcher->method('createSendEvent')->willReturn($sendEvt);
-        $dispatcher->method('createTransportChangeEvent')->willReturn($changeEvt);
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
+        $dispatcher  = new \Swift_Events_SimpleEventDispatcher();
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'user-id', $dispatcher);
 
@@ -631,40 +538,17 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
 
         $result = $transport->send($m);
         $this->assertSame(1, $result); // 1 To recipient counted
+        $this->assertSame(['POST /v1.0/users/user-id/sendMail'], $fixture->paths());
+        $this->assertSame(['content' => '<p>HTML Content</p>', 'contentType' => 'html'], $fixture->payload()['Message']['body']);
     }
 
-    // Note: testSendWithoutSendEvent is not possible because the transport has a bug
-    // in its finally block (line 205) that passes $evt to dispatchEvent even when null.
-
-    // -- send: with CC (exercises CC path despite transport bug) ---
+    // -- send: with CC ---
 
     public function testSendWithCcExercisesCcPath(): void
     {
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-
-        $captured        = null;
-        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->method('post')->willReturnCallback(function ($body) use ($promise, &$captured) {
-            $captured = $body;
-
-            return $promise;
-        });
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
-
-        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
-        $usersBuilder->method('byUserId')->willReturn($userItemBuilder);
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('users')->willReturn($usersBuilder);
-
-        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
-        $sendEvt    = $this->createMock(\Swift_Events_SendEvent::class);
-        $changeEvt  = $this->createMock(\Swift_Events_TransportChangeEvent::class);
-        $dispatcher->method('createSendEvent')->willReturn($sendEvt);
-        $dispatcher->method('createTransportChangeEvent')->willReturn($changeEvt);
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
+        $dispatcher  = new \Swift_Events_SimpleEventDispatcher();
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'user-id', $dispatcher);
 
@@ -678,7 +562,8 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         // CC is an [address => name] map; the recipient must carry the address, not
         // the name. The previous array_map-over-values implementation threw a
         // TypeError here, so this test would have caught the regression.
-        $result = $transport->send($m);
+        $result   = $transport->send($m);
+        $captured = $fixture->mailBody();
 
         $this->assertSame(2, $result); // 1 To + 1 CC recipient counted
 
@@ -686,37 +571,16 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $this->assertCount(1, $cc);
         $this->assertSame('cc@example.com', $cc[0]->getEmailAddress()->getAddress());
         $this->assertSame('CC Name', $cc[0]->getEmailAddress()->getName());
+        $this->assertSame(['POST /v1.0/users/user-id/sendMail'], $fixture->paths());
     }
 
-    // -- send: with BCC (exercises BCC path despite transport bug) ---
+    // -- send: with BCC ---
 
     public function testSendWithBccExercisesBccPath(): void
     {
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-
-        $captured        = null;
-        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->method('post')->willReturnCallback(function ($body) use ($promise, &$captured) {
-            $captured = $body;
-
-            return $promise;
-        });
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
-
-        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
-        $usersBuilder->method('byUserId')->willReturn($userItemBuilder);
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('users')->willReturn($usersBuilder);
-
-        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
-        $sendEvt    = $this->createMock(\Swift_Events_SendEvent::class);
-        $changeEvt  = $this->createMock(\Swift_Events_TransportChangeEvent::class);
-        $dispatcher->method('createSendEvent')->willReturn($sendEvt);
-        $dispatcher->method('createTransportChangeEvent')->willReturn($changeEvt);
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
+        $dispatcher  = new \Swift_Events_SimpleEventDispatcher();
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'user-id', $dispatcher);
 
@@ -729,7 +593,8 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
 
         // BCC takes the same [address => name] path as CC; assert the address lands
         // on the recipient rather than triggering the old TypeError.
-        $result = $transport->send($m);
+        $result   = $transport->send($m);
+        $captured = $fixture->mailBody();
 
         $this->assertSame(2, $result); // 1 To + 1 BCC recipient counted
 
@@ -737,37 +602,16 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $this->assertCount(1, $bcc);
         $this->assertSame('bcc@example.com', $bcc[0]->getEmailAddress()->getAddress());
         $this->assertSame('BCC Name', $bcc[0]->getEmailAddress()->getName());
+        $this->assertSame(['POST /v1.0/users/user-id/sendMail'], $fixture->paths());
     }
 
     // -- send: with multiple To recipients (all sent and counted) ---
 
     public function testSendWithMultipleToRecipientsSendsAndCountsAll(): void
     {
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-
-        $captured        = null;
-        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->method('post')->willReturnCallback(function ($body) use ($promise, &$captured) {
-            $captured = $body;
-
-            return $promise;
-        });
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
-
-        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
-        $usersBuilder->method('byUserId')->willReturn($userItemBuilder);
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('users')->willReturn($usersBuilder);
-
-        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
-        $sendEvt    = $this->createMock(\Swift_Events_SendEvent::class);
-        $changeEvt  = $this->createMock(\Swift_Events_TransportChangeEvent::class);
-        $dispatcher->method('createSendEvent')->willReturn($sendEvt);
-        $dispatcher->method('createTransportChangeEvent')->willReturn($changeEvt);
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
+        $dispatcher  = new \Swift_Events_SimpleEventDispatcher();
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'user-id', $dispatcher);
 
@@ -781,7 +625,8 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $m->setBody('Hello');
 
         // Every To address must be sent (not just the first) and each must be counted.
-        $result = $transport->send($m);
+        $result   = $transport->send($m);
+        $captured = $fixture->mailBody();
 
         $this->assertSame(2, $result); // both To recipients counted
 
@@ -791,30 +636,16 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $this->assertSame('First Recipient', $to[0]->getEmailAddress()->getName());
         $this->assertSame('second@example.com', $to[1]->getEmailAddress()->getAddress());
         $this->assertSame('Second Recipient', $to[1]->getEmailAddress()->getName());
+        $this->assertSame(['POST /v1.0/users/user-id/sendMail'], $fixture->paths());
     }
 
     // -- send: /me endpoint (delegated, no user ID) ---
 
     public function testSendUsesMeEndpointWhenNoUserId(): void
     {
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-
-        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->method('post')->willReturn($promise);
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('me')->willReturn($userItemBuilder);
-        $graphClient->expects($this->never())->method('users');
-
-        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
-        $sendEvt    = $this->createMock(\Swift_Events_SendEvent::class);
-        $changeEvt  = $this->createMock(\Swift_Events_TransportChangeEvent::class);
-        $dispatcher->method('createSendEvent')->willReturn($sendEvt);
-        $dispatcher->method('createTransportChangeEvent')->willReturn($changeEvt);
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
+        $dispatcher  = new \Swift_Events_SimpleEventDispatcher();
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, null, $dispatcher);
 
@@ -826,35 +657,16 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
 
         $transport->send($m);
         $this->assertTrue($transport->isUsingMeEndpoint());
+        $this->assertSame(['POST /v1.0/me/sendMail'], $fixture->paths());
     }
 
     // -- send: from-address mode ---
 
     public function testSendUsesFromAddressAsUserId(): void
     {
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-
-        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->method('post')->willReturn($promise);
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
-
-        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
-        $usersBuilder->expects($this->once())
-            ->method('byUserId')
-            ->with('from@example.com')
-            ->willReturn($userItemBuilder);
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('users')->willReturn($usersBuilder);
-
-        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
-        $sendEvt    = $this->createMock(\Swift_Events_SendEvent::class);
-        $changeEvt  = $this->createMock(\Swift_Events_TransportChangeEvent::class);
-        $dispatcher->method('createSendEvent')->willReturn($sendEvt);
-        $dispatcher->method('createTransportChangeEvent')->willReturn($changeEvt);
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
+        $dispatcher  = new \Swift_Events_SimpleEventDispatcher();
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'ignored-id', $dispatcher);
         $transport->useFromAddressAsSendingAccountUserId();
@@ -866,7 +678,8 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $m->setBody('Hello');
 
         $transport->send($m);
-        $this->assertTrue(true);
+
+        $this->assertSame(['POST /v1.0/users/from@example.com/sendMail'], $fixture->paths());
     }
 
     // -- convertSwiftEmailAddressToGraphRecipient: with name set to null (strict) ---
@@ -964,125 +777,38 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
 
     public function testSendViaDraftAttachesSmallInlineUploadsLargeAndSends(): void
     {
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-
-        // Draft POST returns a Message carrying an id.
-        $draft = new \Microsoft\Graph\Generated\Models\Message();
-        $draft->setId('draft-123');
-        $draftPromise = $this->createMock(\Http\Promise\Promise::class);
-        $draftPromise->method('wait')->willReturn($draft);
-
-        // Upload session POST returns an UploadSession.
-        $uploadSession  = new \Microsoft\Graph\Generated\Models\UploadSession();
-        $sessionPromise = $this->createMock(\Http\Promise\Promise::class);
-        $sessionPromise->method('wait')->willReturn($uploadSession);
-
-        $createUpload = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Messages\Item\Attachments\CreateUploadSession\CreateUploadSessionRequestBuilder::class);
-        $createUpload->expects($this->once())->method('post')->willReturn($sessionPromise);
-
-        $attachmentsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Messages\Item\Attachments\AttachmentsRequestBuilder::class);
-        $attachmentsBuilder->expects($this->once())->method('post')->willReturn($promise);          // one small attachment
-        $attachmentsBuilder->method('createUploadSession')->willReturn($createUpload);
-
-        $sendBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Messages\Item\Send\SendRequestBuilder::class);
-        $sendBuilder->expects($this->once())->method('post')->willReturn($promise);
-
-        $messageItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Messages\Item\MessageItemRequestBuilder::class);
-        $messageItemBuilder->method('attachments')->willReturn($attachmentsBuilder);
-        $messageItemBuilder->method('send')->willReturn($sendBuilder);
-
-        $messagesBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Messages\MessagesRequestBuilder::class);
-        $messagesBuilder->expects($this->once())->method('post')->willReturn($draftPromise);         // draft create
-        $messagesBuilder->method('byMessageId')->with('draft-123')->willReturn($messageItemBuilder);
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('messages')->willReturn($messagesBuilder);
-
-        // Partial mock: stub only uploadLargeAttachment so no real streaming occurs.
-        $transport = $this->getMockBuilder(\Swift_Transport_Api_MicrosoftGraphTransport::class)
-            ->setConstructorArgs([$this->createMock(GraphServiceClient::class)])
-            ->onlyMethods(['uploadLargeAttachment'])
-            ->getMock();
-        $transport->expects($this->once())->method('uploadLargeAttachment');
-
-        $graphMessage = new \Microsoft\Graph\Generated\Models\Message();
-        $small        = new \Swift_Attachment('small body', 'small.txt', 'text/plain');
-        $large        = new \Swift_Attachment('large body bytes', 'big.bin', 'application/octet-stream');
-
-        $method = new \ReflectionMethod($transport, 'sendViaDraft');
-        $method->invoke($transport, $userItemBuilder, $graphMessage, [$small], [$large]);
+        $fixture   = new \Swift_GraphSdkFixture();
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client);
+        $transport->setLargeAttachmentThreshold(16);
+        $message = (new \Swift_Message('fixture', 'body'))->setFrom('sender@safe.test')->setTo('to@safe.test')
+            ->attach(new \Swift_Attachment('small body', 'small.txt', 'text/plain'))
+            ->attach(new \Swift_Attachment('large attachment body bytes', 'big.bin', 'application/octet-stream'));
+        $this->assertSame(1, $transport->send($message, $failed));
+        $this->assertSame([], $failed);
+        $this->assertSame(['POST /v1.0/me/messages', 'POST /v1.0/me/messages/fixture-draft/attachments', 'POST /v1.0/me/messages/fixture-draft/attachments/createUploadSession', 'PUT /session', 'POST /v1.0/me/messages/fixture-draft/send'], $fixture->paths());
+        $this->assertSame('small.txt', $fixture->payload(1)['name']);
+        $this->assertSame('large attachment body bytes', $fixture->requests[3]['body']);
     }
 
     public function testSendViaDraftBuildsAttachmentItemFromTheLargeAttachment(): void
     {
-        // Capture the CreateUploadSessionPostRequestBody handed to createUploadSession()
-        // and assert the AttachmentItem mirrors the source attachment's metadata.
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-
-        $draft = new \Microsoft\Graph\Generated\Models\Message();
-        $draft->setId('draft-xyz');
-        $draftPromise = $this->createMock(\Http\Promise\Promise::class);
-        $draftPromise->method('wait')->willReturn($draft);
-
-        $uploadSession  = new \Microsoft\Graph\Generated\Models\UploadSession();
-        $sessionPromise = $this->createMock(\Http\Promise\Promise::class);
-        $sessionPromise->method('wait')->willReturn($uploadSession);
-
-        $capturedBody = null;
-        $createUpload = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Messages\Item\Attachments\CreateUploadSession\CreateUploadSessionRequestBuilder::class);
-        $createUpload->method('post')->willReturnCallback(function ($body) use (&$capturedBody, $sessionPromise) {
-            $capturedBody = $body;
-
-            return $sessionPromise;
-        });
-
-        $attachmentsBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Messages\Item\Attachments\AttachmentsRequestBuilder::class);
-        $attachmentsBuilder->method('createUploadSession')->willReturn($createUpload);
-
-        $sendBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Messages\Item\Send\SendRequestBuilder::class);
-        $sendBuilder->method('post')->willReturn($promise);
-
-        $messageItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Messages\Item\MessageItemRequestBuilder::class);
-        $messageItemBuilder->method('attachments')->willReturn($attachmentsBuilder);
-        $messageItemBuilder->method('send')->willReturn($sendBuilder);
-
-        $messagesBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\Messages\MessagesRequestBuilder::class);
-        $messagesBuilder->method('post')->willReturn($draftPromise);
-        $messagesBuilder->method('byMessageId')->with('draft-xyz')->willReturn($messageItemBuilder);
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('messages')->willReturn($messagesBuilder);
-
-        $transport = $this->getMockBuilder(\Swift_Transport_Api_MicrosoftGraphTransport::class)
-            ->setConstructorArgs([$this->createMock(GraphServiceClient::class)])
-            ->onlyMethods(['uploadLargeAttachment'])
-            ->getMock();
-        $transport->method('uploadLargeAttachment');
-
-        $body  = 'the large attachment payload bytes';
-        $large = new \Swift_Attachment($body, 'big.bin', 'application/octet-stream');
-
-        $method = new \ReflectionMethod($transport, 'sendViaDraft');
-        $method->invoke($transport, $userItemBuilder, new \Microsoft\Graph\Generated\Models\Message(), [], [$large]);
-
-        $this->assertInstanceOf(
-            \Microsoft\Graph\Generated\Users\Item\Messages\Item\Attachments\CreateUploadSession\CreateUploadSessionPostRequestBody::class,
-            $capturedBody,
-            'createUploadSession()->post() should receive a CreateUploadSessionPostRequestBody',
-        );
-        $item = $capturedBody->getAttachmentItem();
-        $this->assertNotNull($item, 'the upload body must carry an AttachmentItem');
+        $fixture   = new \Swift_GraphSdkFixture();
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client);
+        $transport->setLargeAttachmentThreshold(16);
+        $body    = 'the large attachment payload bytes';
+        $message = (new \Swift_Message('fixture', 'body'))->setFrom('sender@safe.test')->setTo('to@safe.test')
+            ->attach(new \Swift_Attachment($body, 'big.bin', 'application/octet-stream'));
+        $this->assertSame(1, $transport->send($message));
+        $parser      = new \Microsoft\Kiota\Serialization\Json\JsonParseNodeFactory();
+        $requestBody = $parser->getRootParseNode('application/json', Utils::streamFor($fixture->requests[1]['body']))
+            ->getObjectValue([\Microsoft\Graph\Generated\Users\Item\Messages\Item\Attachments\CreateUploadSession\CreateUploadSessionPostRequestBody::class, 'createFromDiscriminatorValue']);
+        $item = $requestBody->getAttachmentItem();
+        $this->assertNotNull($item);
         $this->assertSame('big.bin', $item->getName());
         $this->assertSame(\strlen($body), $item->getSize());
         $this->assertSame('application/octet-stream', $item->getContentType());
-        // A normal (disposition 'attachment') file is not inline.
         $this->assertFalse($item->getIsInline());
-        $this->assertSame(
-            \Microsoft\Graph\Generated\Models\AttachmentType::FILE,
-            $item->getAttachmentType()->value(),
-        );
+        $this->assertSame(\Microsoft\Graph\Generated\Models\AttachmentType::FILE, $item->getAttachmentType()->value());
     }
 
     public function testSendViaDraftRejectsAttachmentOverGraphLimitBeforeCreatingDraft(): void
@@ -1134,58 +860,20 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
 
     public function testLargeAttachmentRoutesThroughDraftFlow(): void
     {
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        // sendMail must NOT be used when a large attachment is present.
-        $userItemBuilder->expects($this->never())->method('sendMail');
-
-        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
-        $usersBuilder->method('byUserId')->willReturn($userItemBuilder);
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('users')->willReturn($usersBuilder);
-
-        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
-        $dispatcher->method('createSendEvent')->willReturn($this->createMock(\Swift_Events_SendEvent::class));
-        $dispatcher->method('createTransportChangeEvent')->willReturn($this->createMock(\Swift_Events_TransportChangeEvent::class));
-
-        $transport = $this->getMockBuilder(\Swift_Transport_Api_MicrosoftGraphTransport::class)
-            ->setConstructorArgs([$graphClient, 'user-id', $dispatcher])
-            ->onlyMethods(['sendViaDraft'])
-            ->getMock();
-        $transport->expects($this->once())->method('sendViaDraft');
-        // Drop the threshold so a tiny body trips the draft flow; the threshold itself
-        // is the subject under test, not the cost of allocating a multi-megabyte string.
+        $fixture   = new \Swift_GraphSdkFixture();
+        $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($fixture->client, 'user-id');
         $transport->setLargeAttachmentThreshold(10);
-
-        $m = new \Swift_Message();
-        $m->setFrom(['from@example.com' => 'Sender']);
-        $m->setTo(['to@example.com' => 'Recipient']);
-        $m->setSubject('Big');
-        $m->setBody('Hello');
-        $m->attach(new \Swift_Attachment('this body is over ten bytes', 'huge.bin', 'application/octet-stream'));
-
-        $transport->send($m);
+        $message = (new \Swift_Message('Big', 'Hello'))->setFrom('from@example.com')->setTo('to@example.com')
+            ->attach(new \Swift_Attachment('this body is over ten bytes', 'huge.bin', 'application/octet-stream'));
+        $this->assertSame(1, $transport->send($message));
+        $this->assertSame(['POST /v1.0/users/user-id/messages', 'POST /v1.0/users/user-id/messages/fixture-draft/attachments/createUploadSession', 'PUT /session', 'POST /v1.0/users/user-id/messages/fixture-draft/send'], $fixture->paths());
     }
 
     public function testSmallAttachmentStillUsesSendMail(): void
     {
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-
-        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->expects($this->once())->method('post')->willReturn($promise);
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
-        $userItemBuilder->expects($this->never())->method('messages');
-
-        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
-        $usersBuilder->method('byUserId')->willReturn($userItemBuilder);
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('users')->willReturn($usersBuilder);
-
-        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
-        $dispatcher->method('createSendEvent')->willReturn($this->createMock(\Swift_Events_SendEvent::class));
-        $dispatcher->method('createTransportChangeEvent')->willReturn($this->createMock(\Swift_Events_TransportChangeEvent::class));
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
+        $dispatcher  = new \Swift_Events_SimpleEventDispatcher();
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'user-id', $dispatcher);
 
@@ -1197,6 +885,8 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $m->attach(new \Swift_Attachment('tiny', 'tiny.txt', 'text/plain'));
 
         $transport->send($m);
+        $this->assertSame(['POST /v1.0/users/user-id/sendMail'], $fixture->paths());
+        $this->assertSame('tiny.txt', $fixture->payload()['Message']['attachments'][0]['name']);
     }
 
     // -- send: multipart/alternative body must not be treated as an attachment --
@@ -1210,24 +900,9 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
     // because the alternative body part is always present on a multipart/alternative mail.
     public function testSendMultipartAlternativeWithoutAttachmentsDoesNotRejectBodyMimePart(): void
     {
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-
-        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->expects($this->once())->method('post')->willReturn($promise);
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
-
-        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
-        $usersBuilder->method('byUserId')->willReturn($userItemBuilder);
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('users')->willReturn($usersBuilder);
-
-        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
-        $dispatcher->method('createSendEvent')->willReturn($this->createMock(\Swift_Events_SendEvent::class));
-        $dispatcher->method('createTransportChangeEvent')->willReturn($this->createMock(\Swift_Events_TransportChangeEvent::class));
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
+        $dispatcher  = new \Swift_Events_SimpleEventDispatcher();
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'user-id', $dispatcher);
 
@@ -1240,6 +915,8 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
 
         $result = $transport->send($m);
         $this->assertSame(1, $result);
+        $this->assertSame(['POST /v1.0/users/user-id/sendMail'], $fixture->paths());
+        $this->assertEmpty($fixture->payload()['Message']['attachments'] ?? []);
     }
 
     // Regression companion: with a real attachment present alongside the text/plain
@@ -1247,29 +924,9 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
     // MimePart must be filtered out, not attached and not crash the send.
     public function testSendMultipartAlternativeWithAttachmentShipsOnlyTheAttachment(): void
     {
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-
-        $captured        = null;
-        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->method('post')->willReturnCallback(function ($body) use ($promise, &$captured) {
-            $captured = $body;
-
-            return $promise;
-        });
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
-
-        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
-        $usersBuilder->method('byUserId')->willReturn($userItemBuilder);
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('users')->willReturn($usersBuilder);
-
-        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
-        $dispatcher->method('createSendEvent')->willReturn($this->createMock(\Swift_Events_SendEvent::class));
-        $dispatcher->method('createTransportChangeEvent')->willReturn($this->createMock(\Swift_Events_TransportChangeEvent::class));
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
+        $dispatcher  = new \Swift_Events_SimpleEventDispatcher();
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'user-id', $dispatcher);
 
@@ -1281,13 +938,15 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $m->addPart('Report', 'text/plain');
         $m->attach(new \Swift_Attachment('<html></html>', 'Usage Snapshot - Report.html', 'text/html'));
 
-        $result = $transport->send($m);
+        $result   = $transport->send($m);
+        $captured = $fixture->mailBody();
         $this->assertSame(1, $result);
 
         // The body MimePart is filtered out; only the real file reaches Graph.
         $attachments = $captured->getMessage()->getAttachments();
         $this->assertCount(1, $attachments);
         $this->assertSame('Usage Snapshot - Report.html', $attachments[0]->getName());
+        $this->assertSame(['POST /v1.0/users/user-id/sendMail'], $fixture->paths());
     }
 
     // Regression: a text/calendar invite is a Swift_MimePart (like the application's
@@ -1299,29 +958,9 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
     // calendar MimePart has no filename or Content-Disposition.
     public function testSendKeepsCalendarMimePartAsAttachmentInsteadOfDroppingIt(): void
     {
-        $promise = $this->createMock(\Http\Promise\Promise::class);
-        $promise->method('wait')->willReturn(null);
-
-        $captured        = null;
-        $sendMailBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\SendMail\SendMailRequestBuilder::class);
-        $sendMailBuilder->method('post')->willReturnCallback(function ($body) use ($promise, &$captured) {
-            $captured = $body;
-
-            return $promise;
-        });
-
-        $userItemBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\Item\UserItemRequestBuilder::class);
-        $userItemBuilder->method('sendMail')->willReturn($sendMailBuilder);
-
-        $usersBuilder = $this->createMock(\Microsoft\Graph\Generated\Users\UsersRequestBuilder::class);
-        $usersBuilder->method('byUserId')->willReturn($userItemBuilder);
-
-        $graphClient = $this->createMock(GraphServiceClient::class);
-        $graphClient->method('users')->willReturn($usersBuilder);
-
-        $dispatcher = $this->createMock(\Swift_Events_EventDispatcher::class);
-        $dispatcher->method('createSendEvent')->willReturn($this->createMock(\Swift_Events_SendEvent::class));
-        $dispatcher->method('createTransportChangeEvent')->willReturn($this->createMock(\Swift_Events_TransportChangeEvent::class));
+        $fixture     = new \Swift_GraphSdkFixture();
+        $graphClient = $fixture->client;
+        $dispatcher  = new \Swift_Events_SimpleEventDispatcher();
 
         $transport = new \Swift_Transport_Api_MicrosoftGraphTransport($graphClient, 'user-id', $dispatcher);
 
@@ -1333,7 +972,8 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $m->addPart('Your appointment', 'text/plain'); // alternative body -> skipped
         $m->attach(new CalendarLikeMimePart("BEGIN:VCALENDAR\r\nMETHOD:REQUEST\r\nEND:VCALENDAR\r\n"));
 
-        $result = $transport->send($m);
+        $result   = $transport->send($m);
+        $captured = $fixture->mailBody();
         $this->assertSame(1, $result);
 
         // The invite rides along as an attachment; the alternative body part does not.
@@ -1342,6 +982,7 @@ class Swift_Transport_Api_MicrosoftGraphTransportTest extends TestCase
         $this->assertSame('invite.ics', $attachments[0]->getName());
         $this->assertTrue($attachments[0]->getIsInline());
         $this->assertStringStartsWith('text/calendar', (string) $attachments[0]->getContentType());
+        $this->assertSame(['POST /v1.0/users/user-id/sendMail'], $fixture->paths());
     }
 }
 

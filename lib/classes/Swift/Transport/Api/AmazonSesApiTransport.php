@@ -27,12 +27,17 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
 
     public function ping(): bool
     {
+        // Older supported SES packages expose only sendEmail, with no safe health operation.
+        if (!$this->sesClient instanceof SesClient || !(new ReflectionObject($this->sesClient))->hasMethod('getSuppressedDestination')) {
+            return false;
+        }
+
         // async-aws's SesClient has no getAccountSendingEnabled(). Probe the
         // SESv2 suppression endpoint instead: a reachable account returns either
         // the suppressed-destination record or a NotFoundException -- both prove
-        // the API answered. Only a transport/credential failure is unhealthy.
+        // the API answered. Other API, transport and credential failures are unhealthy.
         try {
-            $this->sesClient->getSuppressedDestination(['EmailAddress' => 'ping@swiftmailer.invalid'])->resolve();
+            Swift_Transport_Api_SesRequestPolicy::run($this->sesClient, static fn (SesClient $client) => $client->getSuppressedDestination(['EmailAddress' => 'ping@swiftmailer.invalid'])->resolve());
 
             return true;
         } catch (AsyncAws\Ses\Exception\NotFoundException $e) {
@@ -44,6 +49,11 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
 
     public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null): int
     {
+        return $this->sendWithEvents($message, $failedRecipients, $envelope, fn (?Swift_Envelope $effective): int => $this->sendMessage($message, $effective));
+    }
+
+    private function sendMessage(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope): int
+    {
         if (!$this->isStarted()) {
             $this->start();
         }
@@ -51,12 +61,21 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
         try {
             $tags    = $this->extractSesTagsFromMessage($message);
             $request = $this->getRequest($message, $tags);
+            if (null !== $envelope) {
+                $request->setDestination(new AsyncAws\Ses\ValueObject\Destination(['ToAddresses' => \array_values(\array_unique($envelope->getRecipients()))]));
+                $request->setFeedbackForwardingEmailAddress($envelope->getSender());
+            }
+            if (null !== $envelope && null === $request->getContent()?->getRaw()) {
+                $request->setContent(new AsyncAws\Ses\ValueObject\EmailContent(['Raw' => ['Data' => $this->getRawMessageWithoutBcc($message)]]));
+            }
 
-            $result = $this->sesClient->sendEmail($request);
+            $messageId = Swift_Transport_Api_SesRequestPolicy::run($this->sesClient, static fn (SesClient $client) => $client->sendEmail($request)->getMessageId());
 
-            return $result->getMessageId() ? 1 : 0;
-        } catch (Exception $e) {
-            $this->throwException(new Swift_TransportException('Unable to send email: '.$e->getMessage(), 0, $e));
+            $recipients = null !== $envelope ? \array_unique($envelope->getRecipients()) : \array_merge(\array_keys($message->getTo() ?? []), \array_keys($message->getCc() ?? []), \array_keys($message->getBcc() ?? []));
+
+            return null !== $messageId && '' !== $messageId ? \count($recipients) : 0;
+        } catch (Throwable $e) {
+            $this->throwException(Swift_Transport_Api_SesRequestPolicy::detachedFailure($e, 'Unable to send email'));
         }
 
         return 0;
@@ -100,12 +119,16 @@ class Swift_Transport_Api_AmazonSesApiTransport extends Swift_Transport_Abstract
             $request['Destination']['BccAddresses'] = $this->stringifyAddresses($bcc);
         }
 
-        // SES Simple bodies are mutually exclusive: HTML or Text, never both.
-        $bodyPart = ['Data' => $message->getBody(), 'Charset' => 'utf-8'];
-        if ('text/html' === $message->getBodyContentType()) {
-            $request['Content']['Simple']['Body']['Html'] = $bodyPart;
+        // Preserve complete child parts before AsyncAws constructs the content model.
+        if ($message->getChildren()) {
+            $request['Content'] = ['Raw' => ['Data' => $this->getRawMessageWithoutBcc($message)]];
         } else {
-            $request['Content']['Simple']['Body']['Text'] = $bodyPart;
+            $bodyPart = ['Data' => $message->getBody(), 'Charset' => 'utf-8'];
+            if ('text/html' === $message->getBodyContentType()) {
+                $request['Content']['Simple']['Body']['Html'] = $bodyPart;
+            } else {
+                $request['Content']['Simple']['Body']['Text'] = $bodyPart;
+            }
         }
 
         if ($replyTo = $message->getReplyTo()) {

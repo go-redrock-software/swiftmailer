@@ -17,6 +17,9 @@ class ClassNameVisitor extends NodeVisitorAbstract
         if ($node instanceof Node\Stmt\Class_
             || $node instanceof Node\Stmt\Interface_
             || $node instanceof Node\Stmt\Trait_) {
+            if (null === $node->name) {
+                return;
+            }
             $name = $node->name->toString();
 
             if (!\str_contains($name, '_')) {

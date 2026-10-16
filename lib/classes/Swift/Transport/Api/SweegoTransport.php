@@ -21,6 +21,8 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
     #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
+        $this->validateEnvelope($message, $envelope);
+
         $payload = $this->buildPayload($message);
 
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
@@ -28,15 +30,16 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
                 'Content-Type' => 'application/json',
                 'Accept'       => 'application/json',
             ]),
-            'json'        => $payload,
-            'http_errors' => false,
+            'json'            => $payload,
+            'http_errors'     => false,
+            'allow_redirects' => false,
         ]);
 
         $statusCode = $response->getStatusCode();
 
         if ($statusCode < 200 || $statusCode >= 300) {
             $parsed       = $this->parseResponse($response);
-            $errorMessage = $parsed['message'] ?? $parsed['error'] ?? 'Unknown error';
+            $errorMessage = $this->responseText($parsed['message'] ?? $parsed['error'] ?? null, 'Unknown error');
 
             throw new Swift_TransportException(\sprintf('Sweego API error (%d): %s', $statusCode, $errorMessage));
         }
@@ -66,7 +69,7 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        return \json_decode($this->getResponseBody($response), true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]
@@ -84,34 +87,12 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
         $fromEmail = \array_key_first($from);
         $fromName  = $from[$fromEmail] ?? null;
 
-        $recipients = [];
-        foreach ($message->getTo() ?? [] as $email => $name) {
-            $recipients[] = ['email' => $email];
+        $recipients = $this->formatAddressList($message->getTo() ?? []);
+        if (!$recipients) {
+            throw new Swift_TransportException('Sweego requires at least one To recipient; Cc/Bcc-only messages are not supported.');
         }
 
         $headers = [];
-
-        // CC recipients are merged into recipients, with a Cc header added
-        $cc = $message->getCc();
-        if (!empty($cc)) {
-            foreach ($cc as $email => $name) {
-                $recipients[] = ['email' => $email];
-            }
-
-            $ccParts = [];
-            foreach ($cc as $email => $name) {
-                $ccParts[] = $this->formatAddress($email, $name);
-            }
-            $headers['Cc'] = \implode(', ', $ccParts);
-        }
-
-        // BCC recipients are merged into recipients — no header
-        $bcc = $message->getBcc();
-        if (!empty($bcc)) {
-            foreach ($bcc as $email => $name) {
-                $recipients[] = ['email' => $email];
-            }
-        }
 
         // Reply-To goes in the headers object
         $replyTo = $message->getReplyTo();
@@ -124,18 +105,21 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
         }
 
         $payload = [
-            'channel'       => 'email',
-            'provider'      => 'sweego',
+            'channel'  => 'email',
+            'provider' => 'sweego',
             // Sweego's documented value is 'transac' (see the send API reference and the
             // Symfony sweego-mailer bridge), NOT 'transactional'.
             'campaign-type' => 'transac',
-            'from'          => \array_filter([
-                'email' => $fromEmail,
-                'name'  => $fromName,
-            ]),
-            'recipients' => $recipients,
-            'subject'    => $message->getSubject(),
+            'from'          => $this->formatAddressList([$fromEmail => $fromName])[0],
+            'recipients'    => $recipients,
+            'subject'       => $message->getSubject(),
         ];
+        // Sweego exposes every `recipients` address in To. Copy roles have native fields.
+        foreach (['cc' => $message->getCc(), 'bcc' => $message->getBcc()] as $field => $addresses) {
+            if ($addresses) {
+                $payload[$field] = $this->formatAddressList($addresses);
+            }
+        }
 
         $body = $this->getMessageBody($message);
         if (null !== $body['text']) {
@@ -148,12 +132,16 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
         $attachments = $this->getMessageAttachments($message);
         if (!empty($attachments)) {
             $payload['attachments'] = \array_map(static function (array $attachment): array {
-                return \array_filter([
-                    'content'     => $attachment['content'],
-                    'filename'    => $attachment['filename'],
-                    'disposition' => $attachment['disposition'],
-                    'content_id'  => $attachment['contentId'],
-                ]);
+                return \array_merge(
+                    [
+                        'content'  => \base64_encode($attachment['content'] ?? ''),
+                        'filename' => $attachment['filename'],
+                    ],
+                    \array_filter([
+                        'disposition' => $attachment['disposition'],
+                        'content_id'  => $attachment['contentId'],
+                    ], static fn (?string $value): bool => null !== $value && '' !== $value),
+                );
             }, $attachments);
         }
 
@@ -162,5 +150,20 @@ class Swift_Transport_Api_SweegoTransport extends Swift_Transport_AbstractHttpAp
         }
 
         return $payload;
+    }
+
+    /** Omit absent names while preserving strings such as "0" for every address role. */
+    private function formatAddressList(array $addresses): array
+    {
+        $recipients = [];
+        foreach ($addresses as $email => $name) {
+            $recipient = ['email' => $email];
+            if (null !== $name && '' !== $name) {
+                $recipient['name'] = $name;
+            }
+            $recipients[] = $recipient;
+        }
+
+        return $recipients;
     }
 }

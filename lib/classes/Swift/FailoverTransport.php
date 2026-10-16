@@ -20,9 +20,9 @@ class Swift_FailoverTransport extends Swift_Transport_FailoverTransport
      *
      * @param Swift_Transport[] $transports
      */
-    public function __construct($transports = [])
+    public function __construct(#[SensitiveParameter] $transports = [], int $retryPeriod = 60)
     {
-        parent::__construct();
+        parent::__construct($retryPeriod);
 
         $this->setTransports($transports);
     }

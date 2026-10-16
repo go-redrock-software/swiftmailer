@@ -80,11 +80,15 @@ abstract class Swift
     }
 
     /**
-     * @codeCoverageIgnore Dead code — getTransportClass() does not exist on Swift_Dsn_Configuration
+     * Create a mailer using a DSN-configured transport.
+     *
+     * The legacy name is retained; use Swift_Transport_DsnTransportFactory for a transport alone.
+     *
+     * @return Swift_Mailer
      */
-    public static function createTransportFromDsn(string $dsn)
+    public static function createTransportFromDsn(#[SensitiveParameter] string $dsn)
     {
-        $transport = (new Swift_Dsn_Configuration($dsn))->getTransportClass();
+        $transport = (new Swift_Transport_DsnTransportFactory())->fromDsnString($dsn);
 
         return new Swift_Mailer($transport);
     }

@@ -41,7 +41,7 @@ class Swift_Transport_Api_GoogleTransportTest extends TestCase
             // of standard base64 become '-' and '_' and the '=' padding is dropped. A real
             // MIME message's standard base64 contains those characters, so asserting their
             // absence fails if getRawMessage() regresses to plain base64_encode().
-            $this->assertDoesNotMatchRegularExpression('#[+/=]#', $rawMessage, $description . ' (Gmail raw must be base64url)');
+            $this->assertDoesNotMatchRegularExpression('#[+/=]#', $rawMessage, $description.' (Gmail raw must be base64url)');
 
             $decodedMessage = base64url_decode($rawMessage);
 

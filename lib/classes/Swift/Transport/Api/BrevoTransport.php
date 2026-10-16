@@ -12,6 +12,8 @@ class Swift_Transport_Api_BrevoTransport extends Swift_Transport_AbstractHttpApi
     #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
+        $this->validateEnvelope($message, $envelope);
+
         $payload = $this->getPayload($message);
 
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
@@ -19,16 +21,17 @@ class Swift_Transport_Api_BrevoTransport extends Swift_Transport_AbstractHttpApi
                 'Content-Type' => 'application/json',
                 'Accept'       => 'application/json',
             ]),
-            'json'        => $payload,
-            'http_errors' => false,
+            'json'            => $payload,
+            'http_errors'     => false,
+            'allow_redirects' => false,
         ]);
 
         $statusCode = $response->getStatusCode();
 
         if ($statusCode < 200 || $statusCode >= 300) {
             $parsed       = $this->parseResponse($response);
-            $errorMessage = $parsed['message'] ?? 'Unknown error';
-            $errorCode    = $parsed['code']    ?? $statusCode;
+            $errorMessage = $this->responseText($parsed['message'] ?? null, 'Unknown error');
+            $errorCode    = $this->responseText($parsed['code'] ?? null, (string) $statusCode);
 
             throw new Swift_TransportException(\sprintf('Brevo API error (%s): %s', $errorCode, $errorMessage));
         }
@@ -56,7 +59,7 @@ class Swift_Transport_Api_BrevoTransport extends Swift_Transport_AbstractHttpApi
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        return \json_decode($this->getResponseBody($response), true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]

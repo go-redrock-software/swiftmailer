@@ -52,8 +52,8 @@ if (!\getenv('SWIFTMAILER_DSN') && $args->dsn) {
     $output->warning('Passing DSN as a CLI argument exposes credentials in the process list. Use SWIFTMAILER_DSN env var instead.');
 }
 
-$displayDsn = \preg_replace('#://([^:]+):([^@]+)@#', '://$1:****@', $dsnString);
-$output->info('DSN:       ' . $displayDsn);
+// Credentials can appear in userinfo, query values and provider-specific fields.
+$output->info('DSN:       [redacted]');
 $output->info('From:      ' . $args->from);
 $output->info('To:        ' . $args->to);
 $output->info('Subject:   ' . $args->subject);

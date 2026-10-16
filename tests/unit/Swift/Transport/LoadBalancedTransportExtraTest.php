@@ -203,7 +203,7 @@ class Swift_Transport_LoadBalancedTransportExtraTest extends PHPUnit\Framework\T
         $this->assertTrue($transport->ping());
     }
 
-    public function testStartRestoredDeadTransports(): void
+    public function testStartRestoredDeadTransportsWithZeroRetryPeriod(): void
     {
         $t1      = $this->createMock(Swift_Transport::class);
         $t2      = $this->createMock(Swift_Transport::class);
@@ -228,6 +228,7 @@ class Swift_Transport_LoadBalancedTransportExtraTest extends PHPUnit\Framework\T
         $this->assertFalse($transport->isStarted());
 
         // Restart should restore dead transports
+        $transport->setRetryPeriod(0);
         $transport->start();
         $this->assertTrue($transport->isStarted());
     }

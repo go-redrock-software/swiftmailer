@@ -167,7 +167,8 @@ class Swift_Transport_Esmtp_AuthHandler implements Swift_Transport_EsmtpHandler
      */
     public function afterEhlo(Swift_Transport_SmtpAgent $agent)
     {
-        if ($this->username) {
+        // The non-empty string '0' is a valid SMTP username.
+        if ($this->username || '0' === $this->username) {
             $count  = 0;
             $errors = [];
             foreach ($this->getAuthenticatorsForAgent() as $authenticator) {
@@ -261,7 +262,8 @@ class Swift_Transport_Esmtp_AuthHandler implements Swift_Transport_EsmtpHandler
      */
     protected function getAuthenticatorsForAgent()
     {
-        if (!$mode = \strtolower($this->auth_mode ?? '')) {
+        $mode = \strtolower($this->auth_mode ?? '');
+        if ('' === $mode) {
             // No explicit mode means the credential is a password, so password mechanisms go
             // first. XOAUTH2 takes a bearer token: Gmail treats a password sent that way as a
             // failed login and then rejects the valid password (535-5.7.8), so it is only a

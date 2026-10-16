@@ -223,6 +223,8 @@ class Swift_Mime_SimpleMessage extends Swift_Mime_MimePart
 
     /**
      * Get the from address of this message.
+     *
+     * @return array|null Null when no From header exists
      */
     public function getFrom()
     {
@@ -329,7 +331,7 @@ class Swift_Mime_SimpleMessage extends Swift_Mime_MimePart
     /**
      * Get the To addresses of this message.
      *
-     * @return array
+     * @return array|null Null when no To header exists
      */
     public function getTo()
     {
@@ -380,7 +382,7 @@ class Swift_Mime_SimpleMessage extends Swift_Mime_MimePart
     /**
      * Get the Cc address of this message.
      *
-     * @return array
+     * @return array|null Null when no Cc header exists
      */
     public function getCc()
     {
@@ -431,7 +433,7 @@ class Swift_Mime_SimpleMessage extends Swift_Mime_MimePart
     /**
      * Get the Bcc addresses of this message.
      *
-     * @return array
+     * @return array|null Null when no Bcc header exists
      */
     public function getBcc()
     {

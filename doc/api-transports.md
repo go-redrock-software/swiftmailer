@@ -52,6 +52,87 @@ All API transports implement the `Swift_Transport` interface:
 | `send($message, &$failedRecipients, $envelope)` | Sends the message; returns recipient count |
 | `registerPlugin($plugin)` | Binds an event listener plugin |
 
+## Registering plugins
+
+All 21 concrete API transports accept an optional event dispatcher. When it is
+omitted, the first `registerPlugin()` call creates a `Swift_Events_SimpleEventDispatcher`
+and binds the listener. Later registrations reuse it, and an explicitly injected
+dispatcher is retained. The simple dispatcher deduplicates repeated registration
+of the same listener object. Without registered plugins or an injected dispatcher,
+the transport continues to send without public event dispatch.
+
+```php
+$transport = new Swift_Transport_Api_SendgridTransport($apiKey);
+$transport->registerPlugin(new Swift_Plugins_AllowlistPlugin(['*@safe.example']));
+$mailer = new Swift_Mailer($transport);
+```
+
+The DSN factory already creates a dispatcher for API transports. Direct
+construction now enforces registered policies too. API envelope limitations
+still apply, and calendar conversion requires its own audience-policy handling.
+
+## Explicit envelopes
+
+The optional `Swift_Envelope` is checked after recipient-policy plugins run.
+An API transport never silently substitutes header recipients for a different
+explicit delivery list. Unsupported overrides throw `Swift_TransportException`
+before a provider delivery request. With no explicit envelope, existing provider
+payload formats remain in use.
+
+The following table describes this implementation, checked against the linked
+provider contracts on 2026-10-15. A matching envelope uses the message From address
+and the To/Cc/Bcc address multiset; recipient order and ASCII domain case do not
+matter. Local-part case remains significant. “Matching only” describes the
+implemented endpoint, rather than every feature a provider might offer.
+
+| Transport / provider contract | Recipient override | Sender behavior with an explicit envelope |
+|---|---|---|
+| [Postal](https://postalserver.github.io/postal-api/controllers/send/raw) | Raw MIME plus `rcpt_to` | Separate `mail_from` |
+| [Mandrill / MailChimp](https://mailchimp.com/developer/transactional/api/messages/send-raw/) | Raw MIME plus `to` | Separate `from_email` |
+| [Mailgun](https://documentation.mailgun.com/_spec/docs/mailgun/api-reference/send/mailgun.json) | MIME upload plus `to` | Must match message From |
+| [Infobip](https://api.infobip.com/platform/1/openapi) | Base64 MIME plus `destinations` at `/email/4/mime` | Must match message From; MIME From retained |
+| [Amazon SES API and HTTP variants](https://docs.aws.amazon.com/ses/latest/APIReference-V2/API_SendEmail.html) | Raw content plus `Destination.ToAddresses` | Maps to `FeedbackForwardingEmailAddress` for bounce/complaint forwarding; AWS controls wire MAIL FROM |
+| [Gmail](https://developers.google.com/workspace/gmail/api/guides/sending) | Matching only | Must match message From |
+| [Microsoft Graph](https://learn.microsoft.com/en-us/graph/api/user-sendmail) | Matching only | Must match message From; send-as permissions still apply |
+| [SendGrid](https://github.com/sendgrid/sendgrid-php/blob/main/USAGE.md#mail-send) | Matching only | Must match message From |
+| [Postmark](https://postmarkapp.com/developer/api/email-api) | Matching only | Must match message From |
+| [Brevo](https://developers.brevo.com/reference/send-transac-email) | Matching only | Must match message From |
+| [AhaSend](https://ahasend.com/docs/send-api/send-email) | Matching only (v1 transport) | Must match message From |
+| [MailerSend](https://developers.mailersend.com/api/v1/email.html) | Matching only | Must match message From |
+| [Mailjet](https://dev.mailjet.com/email/guides/send-api-v31/) | Matching only | Must match message From |
+| [MailPace](https://docs.mailpace.com/reference/send/) | Matching only | Must match message From |
+| [Mailomat](https://api.mailomat.swiss/docs#tag/Message) | Matching only | Must match message From |
+| [Mailtrap](https://docs.mailtrap.io/developers/email-sending) | Matching only | Must match message From |
+| [Scaleway](https://www.scaleway.com/en/developers/api/transactional-email/) | Matching only | Must match message From |
+| [Sweego](https://learn.sweego.io/docs/sweego/send-send-post) | Matching only | Must match message From |
+| [Azure Communication Services](https://learn.microsoft.com/en-us/rest/api/communication/email/email/send) | Matching only | Must match message From |
+| [Resend](https://resend.com/docs/api-reference/emails/send-email) | Matching only | Must match message From |
+
+Raw delivery paths preserve visible From/To/Cc, MIME parts and attachments on a
+separate message copy, removing Bcc and Resent-Bcc headers before submission.
+They submit each distinct envelope recipient once. Gmail instead needs Bcc in
+its MIME input to deliver those recipients, and relies on Gmail's delivery
+handling; the original message is unchanged. Graph uses its separate Bcc field.
+A provider's acceptance count is not a final delivery receipt.
+
+SES requires the feedback forwarding address to satisfy AWS identity and
+permission rules. It does **not** offer arbitrary SMTP MAIL FROM through this
+request field. Use SMTP when that distinction is required. The raw SES path
+retains the visible message From, configuration and tag options.
+
+Mandrill raw sends carry tags and metadata through documented `X-MC-Tags` and
+`X-MC-Metadata` SMTP controls. Tag names containing commas cannot be represented
+faithfully in the raw tag list and are rejected. Infobip and Mailgun reject an
+independent sender rather than replacing the visible From header.
+
+All four SDK transports now put the effective envelope on the send event and
+fire `sendPerformed` in `finally`, including provider failures and policy
+rejection. SES therefore honors AllowlistPlugin and RedirectingPlugin. Graph
+calendar conversion rejects an explicit envelope because event invitation
+attendees are a separate delivery mechanism. Disable conversion to use matching
+mail envelopes. Calendar conversion without an envelope still needs a separate
+recipient-policy audit.
+
 ## Helper Methods (AbstractHttpApiTransport)
 
 These protected methods are available to all HTTP API transports and are useful when creating custom transports:
@@ -120,17 +201,16 @@ $message->getHeaders()->addTextHeader('X-Mailer-Metadata-campaign', 'feb-2026');
 
 ## DSN-Based Instantiation
 
-Most simple-constructor transports can be instantiated via DSN strings using `Swift_Dsn`. The DSN scheme maps to a transport class, and the user/password/host/parameters carry credentials.
+The operational `Swift_Transport_DsnTransportFactory` builds all plain HTTP providers with their actual constructor contracts. `Swift_Dsn` is metadata; use the factory to obtain a transport. See [provider DSN configuration](dsn.md#http-provider-configuration) for required credential order, endpoint hosts, region and inbox options.
 
 ```php
-use Nyholm\Dsn\DsnParser;
-
-$dsn = new Swift_Dsn(DsnParser::parse('sendgrid://SG.your-api-key@default'));
-$transportClass = $dsn->getTransportClass();
-// Returns: Swift_Transport_Api_SendgridTransport
+$transport = (new Swift_Transport_DsnTransportFactory())
+    ->fromDsnString('mailjet://PUBLIC_KEY:PRIVATE_KEY@default');
 ```
 
-> **Note:** Transports that require SDK client objects (Amazon SES, Google, Microsoft Graph) are listed in the DSN map but cannot be fully constructed from a DSN string alone -- they need their SDK client injected manually.
+Gmail, SES and Microsoft Graph support explicit SDK DSNs. Advanced authentication remains available through native SDK client injection.
+
+Both Amazon SES routes now support [SDK DSN construction](dsn.md#amazon-ses-sdk-dsns) with explicit credentials/region/session-token and optional caller-owned HTTP injection. Direct SDK injection remains available for advanced credential providers.
 
 ### Supported DSN Schemes
 
@@ -176,11 +256,48 @@ $transportClass = $dsn->getTransportClass();
 | **Auth method** | Bearer token (`Authorization: Bearer {apiKey}`) |
 | **Tags** | Yes -- `categories` (array, multiple tags) |
 | **Metadata** | Yes -- `custom_args` in personalizations |
+| **Tracking** | Optional click, plain-text click and open tracking overrides |
 
 ```php
 $transport = new Swift_Transport_Api_SendgridTransport('SG.your-api-key');
+$transport->setClickTracking(false)
+    ->setClickTrackingText(false)
+    ->setOpenTracking(false);
 $mailer = new Swift_Mailer($transport);
 ```
+
+The three nullable boolean settings map to SendGrid's optional
+[`tracking_settings`](https://www.twilio.com/docs/sendgrid/api-reference/mail-send/mail-send)
+fields:
+
+| Accessors | JSON field |
+| --- | --- |
+| `getClickTracking()` / `setClickTracking(?bool)` | `click_tracking.enable` |
+| `getClickTrackingText()` / `setClickTrackingText(?bool)` | `click_tracking.enable_text` |
+| `getOpenTracking()` / `setOpenTracking(?bool)` | `open_tracking.enable` |
+
+All default to `null`, which omits the corresponding field from the request and
+preserves the existing provider behavior. Explicit `false` is sent as a JSON
+boolean. A setter accepts `null` to remove that override on later sends.
+These settings apply to all messages sent through that transport; change them
+between sends or use separately configured transport instances for different
+policies. The message itself is not modified.
+
+Plain-text click tracking is a separate provider flag. To request click tracking
+for both HTML and plain-text content, set both click flags to `true`; configuring
+one flag does not implicitly set the other. Open tracking uses SendGrid's pixel
+behavior; the transport does not insert a pixel or rewrite links locally.
+
+The same controls are available through the SendGrid HTTP DSN:
+
+```php
+$transport = (new Swift_Transport_DsnTransportFactory())->fromDsnString(
+    'sendgrid://SG.your-api-key@default?click_tracking=0&click_tracking_text=0&open_tracking=0'
+);
+```
+
+See [tracking DSN options](dsn.md#sendgrid-tracking-parameters) for validation,
+provider scope and retry/pool combinations.
 
 ---
 
@@ -252,14 +369,16 @@ $transport = new Swift_Transport_Api_BrevoTransport('your-api-key');
 |-|-|
 | **Class** | `Swift_Transport_Api_AmazonSesApiTransport` |
 | **DSN** | `amazon+api://...` (not fully DSN-constructible -- requires SesClient) |
-| **Base class** | `AbstractApiTransport` (directly, no Guzzle) |
+| **Base class** | `AbstractApiTransport` (HTTP through the Google SDK and Guzzle) |
 | **Constructor** | `(SesClient $sesClient, ?EventDispatcher $eventDispatcher)` |
 | **Dependency** | `async-aws/ses` |
 | **Auth method** | AWS SDK credentials (IAM access key / secret) |
 | **Tags** | Yes -- `EmailTags` with `Name=tag` |
 | **Metadata** | No -- `X-Mailer-Metadata-*` headers are not extracted |
 
-Uses the SES v2 `SendEmail` API with the `Simple` content format. Supports SES-specific headers:
+Uses the SES v2 `SendEmail` API. Messages with neither child MIME parts nor an explicit envelope use `Simple`
+content. Attachments, inline parts and alternative bodies select complete raw
+MIME; explicit envelopes also select raw MIME. Supports SES-specific headers:
 
 - `X-SES-CONFIGURATION-SET` -- set a configuration set
 - `X-SES-SOURCE-ARN` -- specify source ARN for cross-account sending
@@ -291,11 +410,102 @@ $transport = new Swift_Transport_Api_AmazonSesApiTransport($ses);
 | **Tags** | Yes -- `EmailTags` with `Name=tag` |
 | **Metadata** | Not extracted |
 
-Uses the SES v2 `SendEmail` API (async-aws SDK) with the `Simple` content format -- the same request schema as the API variant, not the historical raw-HTTP path. Also supports `X-SES-CONFIGURATION-SET`, `X-SES-SOURCE-ARN`, and `X-SES-LIST-MANAGEMENT-OPTIONS` headers. Adds the `X-SES-Message-ID` response header to the message after sending.
+Uses the same SES v2 `Simple`/raw MIME selection as the API variant through the
+async-aws SDK. Also supports `X-SES-CONFIGURATION-SET`, `X-SES-SOURCE-ARN`, and `X-SES-LIST-MANAGEMENT-OPTIONS` headers. Adds the `X-SES-Message-ID` response header to the message after sending.
 
 ```php
 $transport = new Swift_Transport_Api_AmazonSesHttpTransport($ses);
 ```
+
+---
+
+### SES failures and acceptance
+
+Both transports validate successful SendEmail response JSON before SDK coercion.
+An acceptance ID must be a nonempty string without whitespace/control characters;
+`"0"` is preserved. Missing, null, scalar/array, malformed JSON and interrupted
+2xx responses produce a permanent ambiguity, preventing retry/failover from
+resending a message that may already have been accepted. Health, credential and
+HTTP error responses use their normal SDK handling. A refusal is local to one
+operation; a later explicit send starts a fresh policy context.
+
+Returned SES send failures expose a static Swift diagnostic and safe numeric
+status, with a terminal marker for redirects, ambiguous acceptance or PHP Error
+causes. Original SDK messages and previous causes are intentionally unavailable:
+they retain credential-bearing client/response graphs. Normal HTTP 429/500/502/
+503/504 and connection failures retain transient classification. This changes
+code that previously inspected SDK-specific causes; inspect the Swift status and
+terminal classification instead. Generic Swift exception cause support is
+unchanged. Explicit application exception-event cancellation remains supported.
+
+### SES MIME delivery
+
+Both variants serialize the complete message once when child parts are present,
+including attachments, inline images and text/HTML alternatives. Child-only
+messages with no root body use their MIME parts directly. A separate
+MIME copy removes Bcc and Resent-Bcc headers; `Destination` still routes blind
+recipients. From/To/Cc, reply-to, body encodings, filenames and Content-IDs remain
+in the MIME message. SES configuration, identity ARN, list management, tags and
+feedback forwarding remain request fields. An explicit envelope retains its own
+recipients and feedback forwarding sender without replacing visible MIME headers.
+
+Raw data is passed to AsyncAws as MIME bytes; the SDK base64-encodes the JSON
+`Content.Raw.Data` field. Each attachment's MIME transfer encoding is preserved
+inside that outer encoding. This path also works with SES 1.8. Messages without
+child parts and without an envelope retain the existing `Simple` payload. The
+HTTP variant continues adding `X-SES-Message-ID` after successful sends, and tag
+extraction continues removing `X-Mailer-Tag` from the original message.
+
+### SES HTTP policy and supported clients
+
+Both SES transports require a configured `AsyncAws\Ses\SesClient`. The HTTP
+variant retains its untyped constructor for compatibility; an opaque SDK object,
+custom SES subclass, or uninitialized client fails with a permanent transport
+exception when used. Its `ping()` returns false for unsupported clients.
+
+Each send and health probe uses an operation-local SDK copy. Redirects are
+refused for resource requests and the supported AsyncAws credential-provider
+chain. A 3xx cannot forward the message, enter a caller retry strategy, or be
+replayed by `RetryTransport`. Existing exception-listener cancellation still
+returns zero accepted recipients. Swift send events expose the original client.
+AWS signing, normal SDK retries and serializers remain in use. The scoped HTTP
+adapter preserves lazy responses and streaming identity, validating headers
+before AsyncAws consumes a response.
+
+Supported Symfony HTTP clients are `CurlHttpClient`, `NativeHttpClient`,
+`AmpHttpClient` and `MockHttpClient`, optionally wrapped in the standard
+`RetryableHttpClient`, `TraceableHttpClient` and `ScopingHttpClient` decorators.
+The policy clones decorator ownership and guards every retry strategy while
+retaining normal non-3xx decisions, delays, progress callbacks and trace records.
+It sets `max_redirects=0` per request. Custom subclasses and other decorators
+(including `CachingHttpClient`) require an isolation contract and currently fail
+before a request. These restrictions apply even when credentials are cached.
+The original client retains its options and redirect/retry behavior.
+
+Supported AsyncAws providers are `Credentials`, `ConfigurationProvider`,
+`NullProvider`, `CacheProvider`, `PsrCacheProvider`, array-backed `ChainProvider`,
+`ContainerProvider`, `InstanceProvider`, `WebIdentityProvider` and
+`IniFileProvider`. Credential HTTP ownership is isolated, including STS requests
+and the INI provider's SSO requests when its optional AsyncAws packages are
+installed. Lazy providers with no explicit HTTP client receive scoped AsyncAws
+defaults. Custom providers and one-shot iterable chains fail before use.
+
+Normal credential cache and selected-provider updates are published to caller
+objects when the operation finishes, without overwriting newer caller entries.
+Persistent cache pools retain their native keys and successful refreshes.
+Credential-provider objects installed in the caller remain unchanged; scoped
+HTTP clients are never installed there. Cache publication occurs at operation
+completion, so callbacks should not depend on identical internal cache timing.
+A refused redirect cannot save successful fallback credentials. Optional SSO
+package flows are protected through their HTTP boundary but are not covered by
+the core-only regression suite.
+
+Both health checks resolve `getSuppressedDestination()` for the fixed
+`ping@swiftmailer.invalid` probe. Success and SES `NotFoundException` prove the
+API answered; redirects and other API/transport failures are unhealthy. This
+probe requires access to the suppression endpoint and does not send mail. Older
+SES packages that expose only `sendEmail()` remain supported for sends and return
+false from `ping()` because they provide no safe health operation.
 
 ---
 
@@ -314,6 +524,10 @@ $transport = new Swift_Transport_Api_AmazonSesHttpTransport($ses);
 
 The connection string format is: `endpoint=https://your-resource.communication.azure.com/;accesskey=BASE64KEY`
 
+`ping()` signs a GET for a fixed nonexistent operation. Successful 2xx responses
+and the expected authenticated 404 count as healthy; redirects and other 4xx/5xx
+responses count as unhealthy.
+
 ```php
 $connectionString = 'endpoint=https://your-resource.communication.azure.com/;accesskey=BASE64KEY';
 $transport = new Swift_Transport_Api_AzureTransport($connectionString);
@@ -326,7 +540,7 @@ $transport = new Swift_Transport_Api_AzureTransport($connectionString);
 | | |
 |-|-|
 | **Class** | `Swift_Transport_Api_GoogleTransport` |
-| **DSN** | `gmail+api://...` (not DSN-constructible -- requires Google Client) |
+| **DSN** | `gmail+api://ACCESS_TOKEN@default` or `gmail+api://CLIENT_ID:CLIENT_SECRET@default?refresh_token=TOKEN` |
 | **Base class** | `AbstractApiTransport` (directly, no Guzzle) |
 | **Constructor** | `(Google\Client $googleClient, ?EventDispatcher $eventDispatcher)` |
 | **Dependency** | `google/apiclient` |
@@ -334,7 +548,38 @@ $transport = new Swift_Transport_Api_AzureTransport($connectionString);
 | **Tags** | No |
 | **Metadata** | No |
 
-Sends the entire message as a base64url-encoded RFC 2822 string via the Gmail API `users.messages.send` method.
+The [Gmail DSN forms](dsn.md#gmail-sdk-dsns) construct a real Google Client with explicit bearer or renewable OAuth credentials. Native client injection remains available for advanced authentication/cache/callback settings. The factory can take a caller-owned Guzzle client through `gmailHttpClient` without altering the existing SES argument.
+
+Sends the complete MIME message once as a base64url-encoded RFC 2822 string via
+`users.messages.send`, including attachments and Bcc. Each send executes immediately
+on a scoped copy of the Google Client, even when the supplied client uses deferred
+operations. Its original deferred mode and HTTP client configuration are preserved.
+
+The scoped HTTP policy refuses redirects for both Gmail and SDK token exchanges.
+A 3xx response raises `Swift_Transport_NonRetryableException`, preventing default
+Swift retries from replaying the operation. Ordinary Google SDK exceptions retain
+the existing zero-return behavior. Authentication callbacks and the shared token
+cache retain normal SDK behavior, including token updates by Google's default
+callback. Custom Google Client subclasses must support cloning and honor the
+HTTP-client/defer setters; unsupported customizations fail before reporting success.
+Injected HTTP clients must expose a Guzzle-compatible configuration with a callable
+handler. The isolated client uses those options and middleware; custom overrides
+of an injected HTTP client's send/request methods are not copied.
+
+A successful send must return a JSON Message with a nonempty string `id` without
+whitespace or control characters. String `"0"` is valid. The transport validates
+the HTTP response before Google model hydration and caller retry middleware,
+then checks the decoded SDK result. Missing, malformed or interrupted successful
+responses raise a permanent acceptance ambiguity; retry, failover and round-robin
+wrappers cannot automatically resend. Each explicit send has its own scope.
+OAuth token responses retain their own schema and ordinary SDK error handling.
+
+Terminal Gmail failures use a static Swift diagnostic and safe numeric status,
+without SDK messages or previous causes that can retain OAuth credentials.
+This intentionally changes SDK-specific terminal diagnostics. PHP Error causes
+are terminal; ordinary Google SDK exceptions before successful send acceptance
+continue returning zero. Custom SDK implementations must execute the guarded
+HTTP request and return a valid Message instead of inventing acceptance.
 
 ```php
 $client = new Google\Client();
@@ -350,8 +595,8 @@ $transport = new Swift_Transport_Api_GoogleTransport($client);
 | | |
 |-|-|
 | **Class** | `Swift_Transport_Api_MicrosoftGraphTransport` |
-| **DSN** | `microsoft-graph://...` (not DSN-constructible -- requires GraphServiceClient) |
-| **Base class** | `AbstractApiTransport` (directly, no Guzzle) |
+| **DSN** | `microsoft-graph://TOKEN@default` or explicit application credentials |
+| **Base class** | `AbstractApiTransport` (HTTP through Kiota SDK) |
 | **Constructor** | `(GraphServiceClient $client, ?string $sendingAccountUserId = null, ?EventDispatcher $eventDispatcher = null)` |
 | **Dependency** | `microsoft/microsoft-graph` |
 | **Auth method** | Microsoft Graph SDK (OAuth2 / app credentials) |
@@ -374,7 +619,34 @@ $transport->useFromAddressAsSendingAccountUserId();
 $transport->setSendingAccountUserId('other-user@company.com');
 ```
 
+The [Graph DSN forms](dsn.md#microsoft-graph-sdk-dsns) construct a real SDK adapter
+with an externally managed bearer or renewable application credentials. App mode
+requires `tenant_id` and `user_id` and uses the fixed Graph `.default` scope.
+Optional `graphHttpClient` and `graphTokenHttpClient` factory arguments keep
+resource and OAuth HTTP configuration separate. The resource configuration is
+copied, with native `/me` translation, Kiota response handling and authentication
+defaults removed; caller clients remain unchanged. Native SDK injection supports
+advanced authentication and callbacks.
+
 The Graph transport has grown well beyond simple sends: large attachments (>= 3 MB, `LARGE_ATTACHMENT_THRESHOLD`) are routed through the draft + upload-session flow and rejected above Graph's 150 MB per-attachment cap (`MAX_ATTACHMENT_SIZE`), and `text/calendar` parts (`METHOD:REQUEST` / `CANCEL`) can be converted into real Calendar events via `enableCalendarEventConversion()`. Those flows are covered in the dedicated [Microsoft Graph guide](microsoft-graph.md); this page documents only the constructor and transport basics.
+
+Graph resource requests refuse redirects through a scoped Kiota adapter without
+changing the supplied client. Standard Kiota/PhpLeague OAuth token requests also
+refuse redirects through a scoped provider copy; custom authentication owns its
+HTTP policy. See
+[SDK compatibility and request destinations](microsoft-graph.md#request-destinations-and-sdk-compatibility).
+
+Returned Graph operation failures use static Swift diagnostics and safe numeric
+HTTP/exception codes, without original SDK messages or previous causes. Kiota
+response status and observed OAuth token HTTP status survive SDK exception-code
+loss. Final 401/403 errors and recognized OAuth authentication errors, including
+`400 invalid_client`, stop the default Swift retry wrapper through static
+authentication diagnostics; known
+transient errors retain its retry classification. Redirects and PHP Error causes
+retain a direct nonretryable marker even after their unsafe causes are removed.
+This intentionally changes SDK-specific diagnostic access. See the
+[Graph failure contract](microsoft-graph.md#failure-diagnostics).
+
 
 ---
 
@@ -617,7 +889,27 @@ $transport = new Swift_Transport_Api_PostalTransport('your-api-key', 'postal.exa
 | **Tags** | No |
 | **Metadata** | No |
 
-> **Note:** Sweego payloads include fixed fields `channel: email`, `provider: sweego`, and `campaign-type: transactional`.
+> **Note:** Sweego payloads include fixed fields `channel: email`, `provider: sweego`, and `campaign-type: transac`.
+
+To addresses use Sweego's public `recipients` list; Cc and Bcc use the separate
+`cc` and `bcc` lists, with optional display names preserved. Sender and recipient
+names are omitted only when absent or empty; the string `"0"` is retained. Blind
+recipients are excluded from the public recipient list and custom headers. Sweego requires
+at least one To recipient, so Cc/Bcc-only messages throw a
+`Swift_TransportException` before an HTTP request. This check runs after
+recipient policies: a redirect can supply a safe To address, while an allowlist
+that leaves only Cc/Bcc recipients causes an explicit failure. Message recipient
+fields are restored after policy processing, including on failure.
+
+See Sweego's [recipient visibility guide](https://learn.sweego.io/docs/sending/how_to_send_email_by_api)
+and [send schema](https://learn.sweego.io/docs/sweego/send-send-post).
+
+Attachment and inline-image bodies are base64-encoded from their original bytes
+for Sweego's JSON API, including stream-backed files. Pass raw content to
+`Swift_Attachment` / `Swift_Image`; pre-encoded-looking strings are treated as
+raw bytes too. Empty files retain their required content field, and required
+filenames such as `"0"` are preserved. Inline content IDs and dispositions are
+retained; absent optional metadata is omitted.
 
 ```php
 $transport = new Swift_Transport_Api_SweegoTransport('your-api-key');
@@ -633,8 +925,8 @@ $transport = new Swift_Transport_Api_SweegoTransport('your-api-key');
 | Postmark | -- | Server token header | JSON | Yes (single) | Yes | No |
 | Mailgun | `$domain`, `$host` | HTTP Basic | multipart/form-data | Yes (multi) | Yes | No |
 | Brevo | -- | `api-key` header | JSON | Yes (multi) | Yes | No |
-| Amazon SES (API) | `SesClient` | AWS SDK | SDK call | Yes (multi) | No | Yes |
-| Amazon SES (HTTP) | `$sesClient` | AWS SDK | SDK call | Yes (multi) | No | Yes |
+| Amazon SES (API) | `AsyncAws\Ses\SesClient` | AWS SDK | SDK call | Yes (multi) | No | Yes |
+| Amazon SES (HTTP) | `AsyncAws\Ses\SesClient` | AWS SDK | SDK call | Yes (multi) | No | Yes |
 | Azure | `$connectionString` | HMAC-SHA256 | JSON | No | No | No |
 | Google | `Google\Client` | OAuth2 | RFC 2822 raw | No | No | Yes |
 | Microsoft Graph | `GraphServiceClient`, `$userId` | Graph SDK | Graph objects | No | No | Yes |
@@ -670,6 +962,29 @@ try {
 
 The event system fires a `failedMessage` event before throwing, allowing plugins to react to failures. Failed recipient addresses are collected into the `$failedRecipients` array.
 
+The HTTP provider parsers share a bounded JSON decoder. A nonempty response
+must decode to an object or array; malformed JSON, scalar JSON (including
+`null`) and invalid fields used for identifiers or counts become transport
+exceptions. Provider errors retain printable error details. Generic decoding
+errors include the HTTP status without copying the raw response body into the
+exception message. Programming errors such as an unrelated `TypeError` still
+propagate.
+
+Empty responses retain each provider's existing acknowledgement rules.
+MailerSend's HTTP 202 and SendGrid's successful status/header acknowledgements
+do not require a JSON body. This validation does not require every provider
+to return a message identifier; valid scalar identifiers are normalized to
+strings for `Swift_SentMessage`.
+
+A malformed or unreadable response after HTTP success can leave delivery
+uncertain. These failures, invalid message identifiers and recognized
+acceptance results that conflict with an HTTP error carry
+`Swift_Transport_NonRetryableException` in their exception chain. Retry, failover
+and load-balanced wrappers do not replay them, even if an
+outer exception message contains a transient-error phrase. Custom retry
+classifiers cannot override these hard terminal failures; they classify ordinary
+transport failures. See [Retry](sending.md#retry).
+
 For transports extending `AbstractHttpApiTransport`, the `send()` method:
 
 1. Fires `beforeSendPerformed` event (cancellable)
@@ -678,15 +993,35 @@ For transports extending `AbstractHttpApiTransport`, the `send()` method:
 4. On failure: fires `failedMessage` event, throws `Swift_TransportException`
 5. Always fires `sendPerformed` event in `finally` block
 
-> **Note:** The event dispatcher is optional across all API transports. Every dispatch site is null-safe (`$this->eventDispatcher?->...`), so a transport constructed without an `EventDispatcher` sends normally and simply skips event firing.
+> **Note:** The event dispatcher is optional. Without plugins, omitted dispatchers do not fire public events. Registering a plugin lazily creates a dispatcher and enables its listener; an injected dispatcher is preserved.
 
 ---
 
 ## Security
 
-Two safeguards apply across the HTTP API transports:
+The built-in HTTP API transports enforce the following request/response safeguards:
 
 **Response size limit.** `AbstractHttpApiTransport::getResponseBody()` caps each provider response at `MAX_RESPONSE_SIZE` (1 MB, i.e. `1048576` bytes). A declared `Content-Length` over the cap -- or a streamed body that grows past it while reading -- throws `Swift_TransportException`, guarding against memory exhaustion from a hostile or malfunctioning endpoint.
+
+**Redirect refusal.** Sends and network health checks set
+`allow_redirects: false` on each request, including requests through an injected
+HTTP client. A 3xx send response becomes a transport failure carrying the
+non-retryable marker described above; network health checks return false.
+Same-origin redirects are refused too: configure the intended endpoint explicitly.
+The supplied client's defaults are preserved. MailPace's `ping()` only starts the
+transport locally and makes no HTTP request.
+
+This policy covers the 17 built-in providers that extend
+`AbstractHttpApiTransport`. Gmail separately enforces redirect refusal through
+scoped Google SDK/HTTP configuration, including authentication token exchanges.
+Graph resource requests separately use a scoped Kiota adapter/HTTP policy for
+mail, draft/upload and calendar operations. Its standard Kiota/PhpLeague OAuth
+chain separately scopes token HTTP for initial grants, refresh and CAE, preserving
+the caller's provider/HTTP configuration and shared cache. Custom authentication
+outside that chain and SES retain their own HTTP policies.
+Custom HTTP transports should set both `http_errors: false` and
+`allow_redirects: false` when issuing requests, and supplied clients must honor
+Guzzle's request options.
 
 **Endpoint URL validation.** Transports that accept a caller-supplied host -- `InfoBipTransport` (`$baseUrl`) and `PostalTransport` (`$host`) -- pass it through `Swift_Transport_UrlValidator::validate()` in the constructor. The validator enforces HTTPS, rejects `localhost`/loopback hosts (`127.0.0.1`, `0.0.0.0`, `localhost`, `::1`), and rejects hosts that resolve to private or reserved IP ranges -- an SSRF guard for configurable endpoints. An invalid host throws `InvalidArgumentException` before any request is made.
 
@@ -730,3 +1065,13 @@ class Swift_Transport_Api_MyProviderTransport extends Swift_Transport_AbstractHt
     }
 }
 ```
+
+### Graph operation acceptance
+
+Graph validates raw success responses before SDK model hydration: documented
+202 no-content acknowledgements, typed model IDs, complete event lookup results,
+upload-session metadata and sequential chunk completion. Malformed or interrupted
+success is terminal and cannot be replayed by retry/pool transports. A later
+failure after an accepted calendar notification is also terminal. Valid Outlook
+empty-body final uploads are confirmed through their 201 Location response.
+See [the operation contracts](microsoft-graph.md#operation-acceptance).

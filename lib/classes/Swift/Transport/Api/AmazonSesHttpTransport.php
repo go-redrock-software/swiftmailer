@@ -25,10 +25,17 @@ class Swift_Transport_Api_AmazonSesHttpTransport extends Swift_Transport_Abstrac
 
     public function ping(): bool
     {
-        try {
-            // Perform a lightweight request to check if the connection is working
-            $this->sesClient->listIdentities();
+        // Older supported SES packages expose only sendEmail, with no safe health operation.
+        if (!$this->sesClient instanceof AsyncAws\Ses\SesClient || !(new ReflectionObject($this->sesClient))->hasMethod('getSuppressedDestination')) {
+            return false;
+        }
 
+        try {
+            // Resolve the real SES v2 operation; listIdentities belongs to SES v1.
+            Swift_Transport_Api_SesRequestPolicy::run($this->sesClient, static fn (AsyncAws\Ses\SesClient $client) => $client->getSuppressedDestination(['EmailAddress' => 'ping@swiftmailer.invalid'])->resolve());
+
+            return true;
+        } catch (AsyncAws\Ses\Exception\NotFoundException $e) {
             return true;
         } catch (Exception $e) {
             return false;
@@ -37,18 +44,30 @@ class Swift_Transport_Api_AmazonSesHttpTransport extends Swift_Transport_Abstrac
 
     public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null, ?Swift_Envelope $envelope = null): int
     {
+        return $this->sendWithEvents($message, $failedRecipients, $envelope, fn (?Swift_Envelope $effective): int => $this->sendMessage($message, $effective));
+    }
+
+    private function sendMessage(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope): int
+    {
         try {
-            $tags      = $this->extractSesTagsFromMessage($message);
-            $request   = $this->getRequest($message, $tags);
-            $messageId = $this->sesClient->sendEmail($request)->getMessageId();
+            $tags    = $this->extractSesTagsFromMessage($message);
+            $request = $this->getRequest($message, $tags);
+            if (null !== $envelope) {
+                $request['Destination']                    = ['ToAddresses' => \array_values(\array_unique($envelope->getRecipients()))];
+                $request['FeedbackForwardingEmailAddress'] = $envelope->getSender();
+            }
+            if (null !== $envelope && !isset($request['Content']['Raw'])) {
+                $request['Content'] = ['Raw' => ['Data' => $this->getRawMessageWithoutBcc($message)]];
+            }
+            $messageId = Swift_Transport_Api_SesRequestPolicy::run($this->sesClient, static fn (AsyncAws\Ses\SesClient $client) => $client->sendEmail($request)->getMessageId());
+            if (null === $messageId || '' === $messageId) {
+                return 0;
+            }
             $message->getHeaders()->addTextHeader('X-SES-Message-ID', $messageId);
 
-            return $this->getRecipientCount($message);
-        } catch (Exception $e) {
-            if (null !== $failedRecipients) {
-                $failedRecipients = \array_merge($failedRecipients, $this->getFailedRecipients($message));
-            }
-            throw new Swift_TransportException('Failed to send email', 0, $e);
+            return null !== $envelope ? \count(\array_unique($envelope->getRecipients())) : $this->getRecipientCount($message);
+        } catch (Throwable $e) {
+            throw Swift_Transport_Api_SesRequestPolicy::detachedFailure($e, 'Failed to send email');
         }
     }
 
@@ -81,11 +100,15 @@ class Swift_Transport_Api_AmazonSesHttpTransport extends Swift_Transport_Abstrac
             ],
         ];
 
-        $bodyPart = ['Data' => $message->getBody(), 'Charset' => 'UTF-8'];
-        if ('text/html' === $message->getBodyContentType()) {
-            $request['Content']['Simple']['Body']['Html'] = $bodyPart;
+        if ($message->getChildren()) {
+            $request['Content'] = ['Raw' => ['Data' => $this->getRawMessageWithoutBcc($message)]];
         } else {
-            $request['Content']['Simple']['Body']['Text'] = $bodyPart;
+            $bodyPart = ['Data' => $message->getBody(), 'Charset' => 'UTF-8'];
+            if ('text/html' === $message->getBodyContentType()) {
+                $request['Content']['Simple']['Body']['Html'] = $bodyPart;
+            } else {
+                $request['Content']['Simple']['Body']['Text'] = $bodyPart;
+            }
         }
 
         if ($replyTo = $message->getReplyTo()) {
@@ -156,18 +179,5 @@ class Swift_Transport_Api_AmazonSesHttpTransport extends Swift_Transport_Abstrac
     private function getRecipientCount(Swift_Mime_SimpleMessage $message): int
     {
         return \count($message->getTo() ?? []) + \count($message->getCc() ?? []) + \count($message->getBcc() ?? []);
-    }
-
-    private function getFailedRecipients(Swift_Mime_SimpleMessage $message): array
-    {
-        $failedRecipients = [];
-
-        foreach (['To', 'Cc', 'Bcc'] as $type) {
-            foreach ($message->{'get'.$type}() ?? [] as $address => $name) { // I hate this
-                $failedRecipients[] = $address;
-            }
-        }
-
-        return $failedRecipients;
     }
 }

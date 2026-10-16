@@ -580,7 +580,7 @@ class Swift_Transport_LoadBalancedTransportTest extends SwiftMailerTestCase
         }
     }
 
-    public function testRestartingTransportRestartsDeadDelegates()
+    public function testRestartingTransportRestartsDeadDelegatesWithZeroRetryPeriod()
     {
         $e = new Swift_TransportException('b0rken');
 
@@ -655,6 +655,7 @@ class Swift_Transport_LoadBalancedTransportTest extends SwiftMailerTestCase
             $this->assertFalse($transport->isStarted());
         }
         // Restart and re-try
+        $transport->setRetryPeriod(0);
         $transport->start();
         $this->assertTrue($transport->isStarted());
         $this->assertEquals(10, $transport->send($message2));
@@ -1161,7 +1162,7 @@ class Swift_Transport_LoadBalancedTransportTest extends SwiftMailerTestCase
         $this->assertCount(2, $transport->getTransports());
     }
 
-    public function testStartRevivesDeadTransports()
+    public function testStartRevivesDeadTransportsWithZeroRetryPeriod()
     {
         $e = new Swift_TransportException('b0rken');
 
@@ -1194,6 +1195,7 @@ class Swift_Transport_LoadBalancedTransportTest extends SwiftMailerTestCase
         $this->assertFalse($transport->isStarted());
 
         // Restart should revive dead transports
+        $transport->setRetryPeriod(0);
         $transport->start();
         $this->assertTrue($transport->isStarted());
     }

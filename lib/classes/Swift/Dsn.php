@@ -73,6 +73,8 @@ readonly class Swift_Dsn
 
     private ?int $port;
 
+    private ?string $path;
+
     private array $parameters;
 
     /**
@@ -88,6 +90,7 @@ readonly class Swift_Dsn
         $this->password   = $dsn->getPassword();
         $this->host       = $dsn->getHost();
         $this->port       = $dsn->getPort();
+        $this->path       = $dsn->getPath();
         $this->parameters = $dsn->getParameters();
     }
 
@@ -114,6 +117,11 @@ readonly class Swift_Dsn
     public function getPort(): ?int
     {
         return $this->port;
+    }
+
+    public function getPath(): ?string
+    {
+        return $this->path ?? null;
     }
 
     public function getParameters(): array

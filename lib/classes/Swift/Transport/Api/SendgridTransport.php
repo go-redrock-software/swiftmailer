@@ -11,23 +11,71 @@ class Swift_Transport_Api_SendgridTransport extends Swift_Transport_AbstractHttp
 {
     private const HOST = 'https://api.sendgrid.com';
 
+    private ?bool $clickTracking = null;
+
+    private ?bool $clickTrackingText = null;
+
+    private ?bool $openTracking = null;
+
+    public function getClickTracking(): ?bool
+    {
+        return $this->clickTracking;
+    }
+
+    /** Null leaves the provider setting unspecified. */
+    public function setClickTracking(?bool $enabled): static
+    {
+        $this->clickTracking = $enabled;
+
+        return $this;
+    }
+
+    public function getClickTrackingText(): ?bool
+    {
+        return $this->clickTrackingText;
+    }
+
+    /** Controls the separate text/plain flag; null leaves it unspecified. */
+    public function setClickTrackingText(?bool $enabled): static
+    {
+        $this->clickTrackingText = $enabled;
+
+        return $this;
+    }
+
+    public function getOpenTracking(): ?bool
+    {
+        return $this->openTracking;
+    }
+
+    /** Null leaves the provider setting unspecified. */
+    public function setOpenTracking(?bool $enabled): static
+    {
+        $this->openTracking = $enabled;
+
+        return $this;
+    }
+
     #[Override]
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
+        $this->validateEnvelope($message, $envelope);
+
         $payload = $this->getPayload($message);
 
         $response = $this->httpClient->request('POST', $this->getEndpoint(), [
             'headers' => \array_merge($this->getAuthHeaders(), [
                 'Content-Type' => 'application/json',
             ]),
-            'body'        => \json_encode($payload),
-            'http_errors' => false,
+            'body'            => \json_encode($payload),
+            'http_errors'     => false,
+            'allow_redirects' => false,
         ]);
 
         $statusCode = $response->getStatusCode();
         if ($statusCode < 200 || $statusCode >= 300) {
-            $body     = \json_decode($this->getResponseBody($response), true);
-            $errorMsg = $body['errors'][0]['message'] ?? 'Unknown SendGrid error';
+            $body     = $this->parseResponse($response);
+            $errorMsg = $this->responseText($body['errors'][0]['message'] ?? null, 'Unknown SendGrid error');
             throw new Swift_TransportException('SendGrid API error: '.$errorMsg);
         }
 
@@ -49,7 +97,7 @@ class Swift_Transport_Api_SendgridTransport extends Swift_Transport_AbstractHttp
     #[Override]
     protected function parseResponse(ResponseInterface $response): array
     {
-        return \json_decode($this->getResponseBody($response), true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     #[Override]
@@ -96,6 +144,17 @@ class Swift_Transport_Api_SendgridTransport extends Swift_Transport_AbstractHttp
             'from'             => \array_filter(['email' => $fromEmail, 'name' => $fromName]),
             'subject'          => $message->getSubject(),
         ];
+
+        // Keep explicit false values; omitted settings preserve provider behavior.
+        if (null !== $this->clickTracking) {
+            $payload['tracking_settings']['click_tracking']['enable'] = $this->clickTracking;
+        }
+        if (null !== $this->clickTrackingText) {
+            $payload['tracking_settings']['click_tracking']['enable_text'] = $this->clickTrackingText;
+        }
+        if (null !== $this->openTracking) {
+            $payload['tracking_settings']['open_tracking']['enable'] = $this->openTracking;
+        }
 
         // Reply-To
         if ($replyTo = $message->getReplyTo()) {

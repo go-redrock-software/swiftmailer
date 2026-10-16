@@ -412,10 +412,29 @@ Two classes turn connection strings into transports:
   `ALLOWED_DSN_PARAMETERS` (unknown ones emit an `E_USER_WARNING`), and builds the
   concrete transport. SMTP schemes resolve provider host/port/encryption defaults from
   `SMTP_HOST_MAP`; a `?retries=` query parameter wraps the result in a
-  `RetryTransport`. The sendmail path is constrained to an allowlist of binaries.
+  `RetryTransport`. SMTP `timeout`, `auth_mode` and `local_domain` options are
+  validated before connection and applied through native setters. Plain HTTP providers use explicit constructor mappings for multi-part credentials,
+  custom HTTPS endpoints and Mailtrap sandbox/live mode. SES SDK schemes construct a real AsyncAws client with explicit credentials, region
+  and endpoint and can share a caller-owned Symfony HTTP client. Gmail constructs a real
+  Google Client using explicit bearer or renewable OAuth credentials, a fixed scope/universe,
+  and optional caller-owned Guzzle HTTP. Its refresh adapter preserves zero-valued form
+  credentials while retaining SDK request/response/cache handling. Gmail rejects unknown
+  options before construction. Graph constructs native Graph/Kiota clients with explicit
+  bearer or renewable application credentials, fixed endpoints/scope and separate resource/token
+  Guzzle clients. Its resource configuration is isolated and stripped of authentication defaults;
+  native SDK cache/renewal/CAE state remains in use. Both SDK routes reject unknown
+  options before I/O. Scoped SMTP,
+  HTTP provider and SendGrid options share canonical-name/scalar/occurrence validation using PHP's
+  configured query separators. A small adapter preserves literal-zero userinfo
+  lost by the installed Nyholm 2.0.1 parser while retaining its validated URL/query representation.
+  The sendmail path is constrained to an allowlist of binaries.
 
-> `Swift::createTransportFromDsn()` exists but is dead code (annotated as such); use
-> the factory. See [dsn.md](dsn.md) for the full scheme and parameter reference.
+- `Swift::createTransportFromDsn()` is a legacy mailer convenience helper. It
+  delegates transport construction to `DsnTransportFactory` and returns a
+  `Swift_Mailer`, retaining its original intended return kind despite the name.
+  Call the factory directly for a `Swift_Transport`. The metadata parser is not
+  used to construct transports. See [dsn.md](dsn.md) for the full scheme and
+  parameter reference.
 
 ## Webhook subsystem
 

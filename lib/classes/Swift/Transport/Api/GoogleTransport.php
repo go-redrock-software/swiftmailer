@@ -36,19 +36,12 @@ class Swift_Transport_Api_GoogleTransport extends Swift_Transport_AbstractApiTra
             $this->start();
         }
 
-        if ($evt = $this->eventDispatcher?->createSendEvent($this, $message)) {
-            $this->eventDispatcher->dispatchEvent($evt, 'beforeSendPerformed');
-            if ($evt->bubbleCancelled()) {
-                $evt->setResult(Swift_Events_SendEvent::RESULT_FAILED);
-                $evt->cancelBubble(false);
-                $this->eventDispatcher->dispatchEvent($evt, 'sendPerformed');
+        return $this->sendWithEvents($message, $failedRecipients, $envelope, fn (?Swift_Envelope $effective): int => $this->sendMessage($message, $effective));
+    }
 
-                return 0;
-            }
-        }
-
-        // Get the Gmail Service from the Google Client
-        $service = new Google\Service\Gmail($this->getApiConnection());
+    private function sendMessage(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope): int
+    {
+        $this->validateEnvelope($message, $envelope);
 
         $toRecipients  = \count($message->getTo() ?? []);
         $ccRecipients  = \count($message->getCc() ?? []);
@@ -56,29 +49,51 @@ class Swift_Transport_Api_GoogleTransport extends Swift_Transport_AbstractApiTra
 
         $totalRecipients = $toRecipients + $ccRecipients + $bccRecipients;
 
+        $policy = new Swift_Transport_Api_GmailRequestPolicy();
+        $http   = null;
         try {
+            $client = $this->getApiConnection();
+            if (!(new ReflectionObject($client))->isCloneable()) {
+                throw new Swift_Transport_NonRetryableException('The Google client must support cloning for isolated HTTP requests.');
+            }
+            // Authentication normally initializes this cache. Share it across copies
+            // so refresh credentials and token callbacks retain their normal behavior.
+            $client->getCache();
+            $scoped = clone $client;
+            $http   = new Swift_Transport_Api_NoRedirectClient($client->getHttpClient(), $policy->assertUsable(...), $policy->validateResponse(...));
+            $scoped->setHttpClient($http);
+            $scoped->setDefer(false);
+            if ($scoped->getHttpClient() !== $http || $scoped->shouldDefer()) {
+                throw new Swift_Transport_NonRetryableException('The Google client must honor scoped HTTP configuration and immediate execution.');
+            }
+            $service = new Google\Service\Gmail($scoped);
+
             // Create base64url encoded RFC 2822 formatted message and add to the Gmail service
             $msg = new Google\Service\Gmail\Message();
             $msg->setRaw(getRawMessage($message));
             // Send the email
             /** @noinspection CallableParameterUseCaseInTypeContextInspection */
-            $message = $service->users_messages->send('me', $msg);
-
-            if ($evt) {
-                $evt->setResult(Swift_Events_SendEvent::RESULT_SUCCESS);
+            $result = $service->users_messages->send('me', $msg);
+            if ($result instanceof Psr\Http\Message\RequestInterface) {
+                throw new Swift_Transport_NonRetryableException('Gmail returned a deferred request instead of a send result.');
             }
+            $http->assertNoRedirect();
+            $policy->assertAccepted($result);
 
             return $totalRecipients;
-        } catch (Exception $e) {
-            if ($evt) {
-                $evt->setResult(Swift_Events_SendEvent::RESULT_FAILED);
+        } catch (Throwable $error) {
+            try {
+                $http?->assertNoRedirect();
+                $policy->assertAfterFailure();
+            } catch (Throwable $refusal) {
+                $error = $refusal;
+            }
+            if (Swift_Transport_RetryPolicy::isTerminalFailure($error)) {
+                // SDK traces can retain OAuth clients, requests and token bodies.
+                throw new Swift_Transport_NonRetryableException('Gmail send failed permanently; automatic retry is disabled.', $error->getCode());
             }
 
             return 0;
-        } finally {
-            if ($evt) {
-                $this->eventDispatcher->dispatchEvent($evt, 'sendPerformed');
-            }
         }
     }
 

@@ -60,6 +60,9 @@ class Swift_Events_SendEvent extends Swift_Events_EventObject
     /** Optional explicit SMTP envelope. */
     private ?Swift_Envelope $envelope = null;
 
+    /** @var array|null Recipient state before the first recipient policy rewrites the message. */
+    private ?array $recipientState = null;
+
     /**
      * Create a new SendEvent for $source and $message.
      */
@@ -88,6 +91,23 @@ class Swift_Events_SendEvent extends Swift_Events_EventObject
     public function getMessage()
     {
         return $this->message;
+    }
+
+    /**
+     * Capture the original To/Cc/Bcc fields once for cooperating recipient policies.
+     *
+     * Completion listeners run in registration order, so every recipient policy
+     * must restore this shared snapshot rather than another policy's temporary fields.
+     *
+     * @return array{to: array|null, cc: array|null, bcc: array|null}
+     */
+    public function captureRecipientState(): array
+    {
+        return $this->recipientState ??= [
+            'to'  => $this->message->getTo(),
+            'cc'  => $this->message->getCc(),
+            'bcc' => $this->message->getBcc(),
+        ];
     }
 
     /**

@@ -9,6 +9,44 @@ Symfony Mailer while preserving full backward compatibility.
 Unreleased
 ----------
 
+ Security:
+
+ * Standard Kiota/PhpLeague Graph OAuth token requests now refuse redirects,
+   including initial grants, refresh and CAE challenges. Scoped provider copies
+   preserve caller HTTP configuration and shared authentication state, while a
+   terminal redirect marker survives SDK fallback/error handling (GitLab #60).
+
+ * Microsoft Graph resource requests now refuse HTTP redirects during mail,
+   draft/upload-session and calendar operations. The transport uses a scoped
+   Kiota adapter copy, preserving caller configuration and ordinary SDK
+   authentication/retry behavior. Redirect failures disable default Swift
+   retries. Graph OAuth token HTTP policy remains separate (GitLab #58).
+
+ * Gmail SDK sends now refuse redirects for message requests and token
+   exchanges using scoped HTTP configuration. Caller-owned SDK/client defaults
+   and normal authentication callbacks/cache behavior are preserved (GitLab #55).
+
+ * Built-in HTTP API sends and network health checks now refuse redirects
+   per request, including when an injected client enables them. Requests stay
+   at the configured endpoint instead of automatically resubmitting credentials
+   or message data to a Location target (GitLab #53).
+
+ * Sweego now sends Cc and Bcc through their native API fields. Previously,
+   blind recipients were included in the public To list. Display names and
+   delivery counts are preserved. Messages with no To recipient are rejected
+   before HTTP because Sweego requires a public recipient (GitLab #48).
+
+ * API transports now create a dispatcher when the first plugin is registered.
+   Previously, omitting the optional dispatcher silently discarded listeners,
+   including allowlist and redirect policies. Injected dispatchers are preserved
+   and subsequent registrations reuse the same dispatcher (GitLab #44).
+
+ * AllowlistPlugin and RedirectingPlugin now enforce recipient policy on
+   explicit SMTP envelopes, preventing envelope-only recipients from bypassing
+   dev/staging delivery restrictions. The explicit sender is preserved, and
+   cooperating recipient plugins restore the original message in either
+   registration order.
+
  Documentation:
 
  * Complete in-repo documentation overhaul so no external docs site is
@@ -28,6 +66,52 @@ Unreleased
    autoloading, and behavior are unchanged.
 
  Bug Fixes:
+
+ * Swift, IO and transport exceptions now accept PHP Throwable causes,
+   preserving TypeError/ParseError identities and retry-marker chains instead
+   of throwing a second constructor TypeError. PHP Error causes are permanent
+   under the default retry classifier, preventing automatic replay (GitLab #61).
+
+ * Gmail sends now execute immediately even when the supplied Google Client
+   has deferred operations enabled; the caller's deferred mode is preserved.
+   Deferred request objects are no longer counted as accepted mail (GitLab #56).
+
+ * Gmail raw MIME export no longer appends attachments a second time after the
+   final MIME boundary. Binary, stream and inline attachments remain part of
+   the complete base64url-encoded message (GitLab #57).
+
+ * Azure's health check now accepts successful 2xx responses and its expected
+   authenticated 404 acknowledgement. Redirects and other client/server errors
+   are reported as unhealthy (GitLab #54).
+
+ * Sweego now preserves sender display names such as "0", using the same
+   name omission rules as recipient addresses. Null and empty names
+   remain omitted (GitLab #52).
+
+ * HTTP API transports now handle scalar/malformed JSON, invalid response
+   fields and conflicting HTTP acceptance statuses through normal transport
+   failure reporting. Ambiguous responses disable automatic retry with the
+   default classifier to avoid duplicate delivery. Existing empty-body and
+   status/header-only acknowledgements are preserved (GitLab #50).
+
+ * Sweego attachments and inline images are now base64-encoded for the API
+   instead of sent as raw bytes. Empty file content and filename "0" retain
+   their required fields; absent optional metadata is omitted (GitLab #49).
+
+ * Explicit API envelopes now control raw delivery payloads for Postal,
+   Mandrill, Mailgun, Infobip and both SES variants. Other API paths reject
+   unsupported overrides before submission. Raw MIME copies omit blind-recipient
+   headers and preserve visible headers and attachments. Provider-specific
+   sender limits are documented (GitLab #39).
+ * SES, Gmail and Graph SDK sends now expose the effective envelope to recipient
+   policy plugins and always dispatch completion for cleanup. SES no longer
+   bypasses allowlist/redirect policies. SES counts all submitted recipients;
+   Graph excludes Reply-To from its delivery count (GitLab #39).
+
+ * AllowlistPlugin catch-all mode now preserves allowed To/Cc/Bcc recipients
+   and redirects blocked recipients from every field, including Cc-only and
+   Bcc-only messages. Recipient fields are restored after sending, and an
+   existing catch-all display name is preserved (GitLab #34).
 
  * ESMTP greeting: when EHLO fails and the HELO fallback fails too, the
    exception keeps the EHLO reply (and its code). A server that closes the
