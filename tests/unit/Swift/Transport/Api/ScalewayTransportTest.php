@@ -160,16 +160,10 @@ class ScalewayTransportTest extends TestCase
                 $this->callback(function (array $options): bool {
                     $payload = $options['json'];
 
-                    // CC recipients should be merged into the to array
-                    $this->assertCount(2, $payload['to']);
+                    $this->assertCount(1, $payload['to']);
                     $this->assertSame(['email' => 'to@example.com', 'name' => 'To User'], $payload['to'][0]);
-                    $this->assertSame(['email' => 'cc@example.com', 'name' => 'CC User'], $payload['to'][1]);
-
-                    // CC should appear as an additional_header
-                    $this->assertNotEmpty($payload['additional_headers']);
-                    $ccHeader = $payload['additional_headers'][0];
-                    $this->assertSame('Cc', $ccHeader['key']);
-                    $this->assertSame('CC User <cc@example.com>', $ccHeader['value']);
+                    $this->assertSame([['email' => 'cc@example.com', 'name' => 'CC User']], $payload['cc']);
+                    $this->assertArrayNotHasKey('additional_headers', $payload);
 
                     return true;
                 }),
@@ -204,10 +198,9 @@ class ScalewayTransportTest extends TestCase
                 $this->callback(function (array $options): bool {
                     $payload = $options['json'];
 
-                    // BCC recipients should be merged into the to array
-                    $this->assertCount(2, $payload['to']);
+                    $this->assertCount(1, $payload['to']);
                     $this->assertSame(['email' => 'to@example.com', 'name' => 'To User'], $payload['to'][0]);
-                    $this->assertSame(['email' => 'bcc@example.com', 'name' => 'BCC User'], $payload['to'][1]);
+                    $this->assertSame([['email' => 'bcc@example.com', 'name' => 'BCC User']], $payload['bcc']);
 
                     // BCC should NOT appear in additional_headers
                     $this->assertArrayNotHasKey('additional_headers', $payload);
@@ -246,15 +239,11 @@ class ScalewayTransportTest extends TestCase
                 $this->callback(function (array $options): bool {
                     $payload = $options['json'];
 
-                    // All recipients merged into to
-                    $this->assertCount(3, $payload['to']);
+                    $this->assertCount(1, $payload['to']);
                     $this->assertSame(['email' => 'to@example.com', 'name' => 'To User'], $payload['to'][0]);
-                    $this->assertSame(['email' => 'cc@example.com', 'name' => 'CC User'], $payload['to'][1]);
-                    $this->assertSame(['email' => 'bcc@example.com', 'name' => 'BCC User'], $payload['to'][2]);
-
-                    // Only CC header, no BCC header
-                    $this->assertCount(1, $payload['additional_headers']);
-                    $this->assertSame('Cc', $payload['additional_headers'][0]['key']);
+                    $this->assertSame([['email' => 'cc@example.com', 'name' => 'CC User']], $payload['cc']);
+                    $this->assertSame([['email' => 'bcc@example.com', 'name' => 'BCC User']], $payload['bcc']);
+                    $this->assertArrayNotHasKey('additional_headers', $payload);
 
                     return true;
                 }),
@@ -605,6 +594,76 @@ class ScalewayTransportTest extends TestCase
 
         $this->transport->start();
         $this->transport->send($message);
+    }
+
+    /** @dataProvider provideRecipientFields */
+    public function testRecipientFieldsStaySeparate(array $to, array $cc, array $bcc, bool $explicit): void
+    {
+        $message = (new \Swift_Message('Recipient privacy'))->setFrom('sender@example.com')
+            ->setTo($to)->setCc($cc)->setBcc($bcc)->setReplyTo('reply@example.com')->setBody('Body');
+        $original = $message->toString();
+        $this->httpClientMock->expects($this->once())->method('request')->willReturnCallback(function ($method, $url, $options) use ($to, $cc, $bcc) {
+            $payload = $options['json'];
+            foreach (['to' => $to, 'cc' => $cc, 'bcc' => $bcc] as $field => $addresses) {
+                $expected = [];
+                foreach ($addresses as $email => $name) {
+                    $expected[] = ['email' => $email, 'name' => $name];
+                }
+                $this->assertSame($expected, $payload[$field] ?? []);
+            }
+            $this->assertSame([['key' => 'Reply-To', 'value' => 'reply@example.com']], $payload['additional_headers']);
+            unset($payload['bcc']);
+            foreach (\array_keys($bcc) as $address) {
+                $this->assertStringNotContainsString($address, \json_encode($payload));
+            }
+
+            return new \GuzzleHttp\Psr7\Response(200, [], '{"emails":[{"message_id":"scaleway-id"}]}');
+        });
+        $transport = new \Swift_Transport_Api_ScalewayTransport('test-key', 'test-project', 'fr-par', $this->httpClientMock, new \Swift_Events_SimpleEventDispatcher());
+        $failed    = [];
+
+        $this->assertSame(\count($to) + \count($cc) + \count($bcc), $transport->send($message, $failed, $explicit ? \Swift_Envelope::fromMessage($message) : null));
+        $this->assertSame([], $failed);
+        $this->assertSame($original, $message->toString());
+    }
+
+    public static function provideRecipientFields(): iterable
+    {
+        foreach ([false, true] as $explicit) {
+            yield 'all fields / envelope '.(int) $explicit => [['to@example.com' => 'Public'], ['cc@example.com' => 'Copy'], ['hidden@example.com' => 'Private'], $explicit];
+            yield 'Cc only / envelope '.(int) $explicit => [[], ['cc@example.com' => 'Copy'], [], $explicit];
+            yield 'Bcc only / envelope '.(int) $explicit => [[], [], ['hidden@example.com' => 'Private'], $explicit];
+        }
+    }
+
+    /** @dataProvider provideRecipientPolicies */
+    public function testRecipientPolicyControlsAllSubmittedFields(string $policy): void
+    {
+        $message = (new \Swift_Message('Policy privacy'))->setFrom('sender@safe.test')
+            ->setTo(['to@safe.test' => 'Public'])->setCc(['cc@safe.test' => 'Copy'])
+            ->setBcc(['hidden@outside.test' => 'Private'])->setBody('Body');
+        $original = $message->toString();
+        $this->httpClientMock->expects($this->once())->method('request')->willReturnCallback(function ($method, $url, $options) use ($policy) {
+            $payload = $options['json'];
+            $this->assertArrayNotHasKey('bcc', $payload);
+            $this->assertStringNotContainsString('hidden@outside.test', \json_encode($payload));
+            $this->assertSame('allowlist' === $policy ? 'to@safe.test' : 'sink@safe.test', $payload['to'][0]['email']);
+            $this->assertSame('allowlist' === $policy ? [['email' => 'cc@safe.test', 'name' => 'Copy']] : [], $payload['cc'] ?? []);
+
+            return new \GuzzleHttp\Psr7\Response(200, [], '{"emails":[{"message_id":"scaleway-id"}]}');
+        });
+        $transport = new \Swift_Transport_Api_ScalewayTransport('test-key', 'test-project', 'fr-par', $this->httpClientMock, new \Swift_Events_SimpleEventDispatcher());
+        $transport->registerPlugin('allowlist' === $policy ? new \Swift_Plugins_AllowlistPlugin(['*@safe.test']) : new \Swift_Plugins_RedirectingPlugin('sink@safe.test'));
+        $failed = [];
+
+        $this->assertSame('allowlist' === $policy ? 2 : 1, $transport->send($message, $failed));
+        $this->assertSame($original, $message->toString());
+    }
+
+    public static function provideRecipientPolicies(): iterable
+    {
+        yield 'allowlist' => ['allowlist'];
+        yield 'redirect' => ['redirect'];
     }
 
     private function createSwiftMessage(): \Swift_Mime_SimpleMessage
