@@ -377,7 +377,7 @@ class Swift_Transport_Api_MicrosoftGraphTransport extends Swift_Transport_Abstra
 
             $failedRecipients = [];
         } catch (Throwable $e) {
-            $exception       = new Swift_TransportException("Failed to send email: {$e->getMessage()}", $e->getCode(), $e);
+            $exception       = Swift_Transport_Api_GraphRequestPolicy::detachedFailure($e);
             $recipient_count = 0;
             $failure         = true;
         }

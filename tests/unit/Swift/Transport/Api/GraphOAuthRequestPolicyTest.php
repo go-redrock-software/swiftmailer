@@ -277,7 +277,7 @@ class Swift_Transport_Api_GraphOAuthRequestPolicyTest extends TestCase
         return ['tokens' => \count($fixture->tokens), 'access_token' => $token->getToken(), 'context_code' => $current->getParams()['code'], 'callbacks' => \count($contexts)];
     }
 
-    public function testOrdinaryTokenErrorsRetainTheirSdkCauseAndCleanup(): void
+    public function testOrdinaryTokenErrorsRetainStatusAndCleanup(): void
     {
         $fixture   = $this->sdk('client credentials', [new Response(400, ['Content-Type' => 'application/json'], '{"error":"invalid_client","error_description":"fixture authentication denied"}')], [new Response(202)]);
         $snapshot  = $this->snapshot($fixture);
@@ -288,7 +288,8 @@ class Swift_Transport_Api_GraphOAuthRequestPolicyTest extends TestCase
             $transport->send($this->message(), $failed);
             $this->fail('Ordinary OAuth errors must remain failed sends.');
         } catch (Swift_TransportException $error) {
-            $this->assertInstanceOf(League\OAuth2\Client\Provider\Exception\IdentityProviderException::class, $error->getPrevious());
+            $this->assertNull($error->getPrevious());
+            $this->assertSame(400, $error->getCode());
         }
         $this->assertCount(1, $fixture->tokens);
         $this->assertSame([], $fixture->resources);
@@ -439,7 +440,8 @@ class Swift_Transport_Api_GraphOAuthRequestPolicyTest extends TestCase
             $this->fail('Unsupported known providers cannot bypass the token policy.');
         } catch (Swift_TransportException $error) {
             $this->assertFalse((new Swift_Transport_DefaultRetryClassifier())->isRetryable($error));
-            $this->assertInstanceOf(Swift_Transport_NonRetryableException::class, $error->getPrevious());
+            $this->assertInstanceOf(Swift_Transport_NonRetryableException::class, $error);
+            $this->assertNull($error->getPrevious());
             $this->assertCount(4, $failed);
         }
         $this->assertSame([], $fixture->tokens);
@@ -535,7 +537,8 @@ class Swift_Transport_Api_GraphOAuthRequestPolicyTest extends TestCase
             $sender->send($this->message(), $failed);
             $this->fail('Callback failures must remain transport failures.');
         } catch (Swift_TransportException $failure) {
-            $this->assertSame($error, $failure->getPrevious());
+            $this->assertNull($failure->getPrevious());
+            $this->assertSame($programmerError, Swift_Transport_RetryPolicy::isTerminalFailure($failure));
         }
         $this->assertCount(1, $fixture->tokens);
         $this->assertSame([], $fixture->resources);

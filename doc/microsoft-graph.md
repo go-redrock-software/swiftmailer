@@ -39,9 +39,8 @@ event model see [events.md](events.md).
 Each Swift send uses an isolated copy of a standard Kiota `GuzzleRequestAdapter`.
 All Graph resource requests refuse HTTP redirects: `sendMail`, draft creation,
 small attachments, upload sessions and chunks, draft send, and calendar
-lookup/create/update/cancel. A 3xx response becomes a transport failure carrying
-`Swift_Transport_NonRetryableException` in its cause chain, so the default Swift
-retry wrapper does not replay it. Later steps in that send are not attempted.
+lookup/create/update/cancel. A 3xx response, including a rejected transfer with redirect headers, becomes a
+`Swift_Transport_NonRetryableException`, so Swift retry/pool wrappers do not replay it. Later steps in that send are not attempted.
 `ping()` remains local-only.
 
 The caller's `GraphServiceClient`, adapter, base URL, HTTP options and handler
@@ -77,8 +76,8 @@ callbacks. The existing cache/context objects are shared. Normal SDK changes to
 derived scopes or a context returned by a CAE callback are published when
 authentication resolves; a newer caller/reentrant state update is preserved.
 Normal successful refresh, token reuse, CAE callbacks and ordinary errors retain
-SDK behavior. Callback PHP errors remain the previous cause of the transport
-exception.
+SDK behavior internally. Returned failures detach unsafe messages/causes; callback
+PHP Errors retain a direct nonretryable marker instead of the original cause.
 
 When a CAE callback returns a different token context, the fallback grant uses
 that context's current client credentials, code, redirect URI, grant-specific
@@ -422,6 +421,25 @@ wrap a hand-built transport in.
 
 ---
 
+## Failure diagnostics
+
+Returned SDK operation failures are Swift transport exceptions with a static
+message and safe numeric code. Kiota stores HTTP status separately from the PHP
+Exception code; the transport preserves that status. Standard OAuth token status
+is recorded by the scoped HTTP guard before League decoding can discard it.
+Only the latest request/authentication operation contributes that metadata.
+
+Use `getCode()` and `Swift_Transport_RetryPolicy::isTerminalFailure()` when handling
+these failures. Original SDK messages and `getPrevious()` causes are intentionally
+unavailable because their graphs can retain OAuth credentials, requests and upload
+URLs. Ordinary failures remain Swift_TransportException; hard refusals, PHP Error
+causes and failed metadata inspection use Swift_Transport_NonRetryableException.
+The default retry classifier recognizes final 401/403 and standard OAuth
+authentication error codes, including `400 invalid_client`, through a static
+authentication-failure diagnostic. It retains existing transient statuses,
+including HTTP 500. Other shared classifier rules remain unchanged.
+Arbitrary caller frames, SDK logging and callbacks remain caller-controlled.
+
 ## Known limitations
 
 - **`send()` does not mark the transport started.** It dispatches `beforeTransportStarted`
@@ -432,6 +450,7 @@ wrap a hand-built transport in.
   dropped, and it is counted as an extra recipient in the return value.
 - **Body must be `text/plain` or `text/html`.** Any other body content type is unmapped and
   will surface as an unhandled error rather than a wrapped `Swift_TransportException`.
+- **Successful-response ambiguity remains under audit.** A draft response missing its ID can currently cause automatic repeated draft creation. See [#86](https://code.go-redrock.com/trac/swiftmailer/-/issues/86); status/diagnostic fixes do not close this acceptance gap.
 - **No tags / metadata.** Unlike SendGrid/Mailgun/etc., the `X-Mailer-Tag` and
   `X-Mailer-Metadata-*` conventions are not implemented for Graph.
 - **Large-attachment and calendar flows are mock-tested only** — validate against a live

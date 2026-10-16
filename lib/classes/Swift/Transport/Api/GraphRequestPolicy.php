@@ -1,7 +1,10 @@
 <?php
 
 use GuzzleHttp\ClientInterface;
+use GuzzleHttp\Exception\RequestException;
+use League\OAuth2\Client\Provider\Exception\IdentityProviderException;
 use Microsoft\Graph\GraphServiceClient;
+use Microsoft\Kiota\Abstractions\ApiException;
 use Microsoft\Kiota\Abstractions\BaseRequestBuilder;
 use Microsoft\Kiota\Abstractions\RequestAdapter;
 use Microsoft\Kiota\Http\GuzzleRequestAdapter;
@@ -16,6 +19,66 @@ use Microsoft\Kiota\Http\GuzzleRequestAdapter;
  */
 class Swift_Transport_Api_GraphRequestPolicy
 {
+    /** Return safe failure metadata without retaining SDK/client exception graphs. */
+    public static function detachedFailure(#[SensitiveParameter] Throwable $error): Swift_TransportException
+    {
+        $terminal = Swift_Transport_RetryPolicy::isTerminalFailure($error);
+        try {
+            $code                  = self::failureCode($error);
+            $authenticationFailure = \in_array($code, [0, 400], true) && self::isOAuthAuthenticationFailure($error);
+        } catch (Throwable) {
+            $terminal              = true;
+            $code                  = 0;
+            $authenticationFailure = false;
+        }
+        $class  = $terminal ? Swift_Transport_NonRetryableException::class : Swift_TransportException::class;
+        $detail = $authenticationFailure ? '; authentication failed' : (500 === $code ? '; internal server error' : '');
+
+        return new $class('Failed to send email through Microsoft Graph (status '.$code.$detail.').', $code);
+    }
+
+    private static function isOAuthAuthenticationFailure(#[SensitiveParameter] Throwable $error): bool
+    {
+        for ($cause = $error; null !== $cause; $cause = $cause->getPrevious()) {
+            if (!$cause instanceof IdentityProviderException) {
+                continue;
+            }
+            $body = $cause->getResponseBody();
+            if (\is_array($body) && \in_array($body['error'] ?? null, ['invalid_request', 'invalid_client', 'invalid_grant', 'unauthorized_client', 'unsupported_grant_type', 'invalid_scope'], true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function failureCode(#[SensitiveParameter] Throwable $error): int
+    {
+        // Kiota stores HTTP status separately from Exception::getCode(). Prefer
+        // response metadata; keep explicit redirect markers ahead of their causes.
+        for ($cause = $error; null !== $cause; $cause = $cause->getPrevious()) {
+            $status = null;
+            if ($cause instanceof Swift_Transport_NonRetryableException) {
+                $status = $cause->getCode();
+            } elseif ($cause instanceof ApiException) {
+                $status = $cause->getResponseStatusCode();
+            } elseif ($cause instanceof RequestException && null !== ($response = $cause->getResponse())) {
+                $status = $response->getStatusCode();
+            }
+            if (\is_int($status) && $status >= 100 && $status <= 599) {
+                return $status;
+            }
+        }
+        for ($cause = $error; null !== $cause; $cause = $cause->getPrevious()) {
+            $code = (int) $cause->getCode();
+            if (0 !== $code) {
+                return $code;
+            }
+        }
+
+        return 0;
+    }
+
     public static function scopeClient(#[SensitiveParameter] GraphServiceClient $client): GraphServiceClient
     {
         if (!(new ReflectionObject($client))->isCloneable()) {

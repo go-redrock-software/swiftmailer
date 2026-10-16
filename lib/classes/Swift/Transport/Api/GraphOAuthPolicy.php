@@ -76,13 +76,14 @@ class Swift_Transport_Api_GraphOAuthPolicy implements AuthenticationProvider
     {
         $this->http->assertNoRedirect();
         $this->grants->assertValid();
+        $this->http->resetResponseStatus();
         try {
             $this->grants->begin($additionalAuthenticationContext);
             $promise = $this->provider->authenticateRequest($request, $additionalAuthenticationContext);
         } catch (Throwable $error) {
             $this->grants->onFailure($error);
             $this->complete();
-            throw $error;
+            throw $this->withHttpStatus($error);
         }
 
         return $promise->then(
@@ -94,9 +95,20 @@ class Swift_Transport_Api_GraphOAuthPolicy implements AuthenticationProvider
             function (Throwable $error): never {
                 $this->grants->onFailure($error);
                 $this->complete();
-                throw $error;
+                throw $this->withHttpStatus($error);
             },
         );
+    }
+
+    private function withHttpStatus(#[SensitiveParameter] Throwable $error): Throwable
+    {
+        $status = $this->http->getLastResponseStatus();
+
+        // GenericProvider can replace the response with an exception coded 0.
+        // Retain the real token endpoint status until the outer send detaches it.
+        return null !== $status && $status >= 400 && $status <= 599
+            ? new Swift_TransportException('Graph OAuth token request failed.', $status, $error)
+            : $error;
     }
 
     private function complete(): void

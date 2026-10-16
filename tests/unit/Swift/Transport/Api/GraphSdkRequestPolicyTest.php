@@ -147,8 +147,9 @@ class Swift_Transport_Api_GraphSdkRequestPolicyTest extends TestCase
             $transport->send($message, $failed);
             $this->fail('An ordinary SDK error must retain its normal transport failure.');
         } catch (Swift_TransportException $error) {
-            $this->assertInstanceOf(Microsoft\Graph\Generated\Models\ODataErrors\ODataError::class, $error->getPrevious());
-            $this->assertTrue((new Swift_Transport_DefaultRetryClassifier())->isRetryable($error));
+            $this->assertNull($error->getPrevious());
+            $this->assertSame(403, $error->getCode());
+            $this->assertFalse((new Swift_Transport_DefaultRetryClassifier())->isRetryable($error));
         }
         $this->assertCount(3, $wire);
         $this->assertCount(4, $failed);
@@ -262,7 +263,8 @@ class Swift_Transport_Api_GraphSdkRequestPolicyTest extends TestCase
             $transport->send($message, $failed);
             $this->fail('An unsupported adapter cannot report accepted recipients.');
         } catch (Swift_TransportException $error) {
-            $this->assertInstanceOf(Swift_Transport_NonRetryableException::class, $error->getPrevious());
+            $this->assertInstanceOf(Swift_Transport_NonRetryableException::class, $error);
+            $this->assertNull($error->getPrevious());
             $this->assertFalse((new Swift_Transport_DefaultRetryClassifier())->isRetryable($error));
             $this->assertCount(4, $failed);
             $this->assertSame(Swift_Events_SendEvent::RESULT_FAILED, $observer->result);
@@ -429,7 +431,8 @@ class Swift_Transport_Api_GraphSdkRequestPolicyTest extends TestCase
             $this->fail('The client must honor scoped adapters and builders.');
         } catch (Swift_TransportException $error) {
             $this->assertFalse((new Swift_Transport_DefaultRetryClassifier())->isRetryable($error));
-            $this->assertInstanceOf(Swift_Transport_NonRetryableException::class, $error->getPrevious());
+            $this->assertInstanceOf(Swift_Transport_NonRetryableException::class, $error);
+            $this->assertNull($error->getPrevious());
             $this->assertCount(4, $failed);
         }
         $this->assertSame([], $wire);

@@ -21,6 +21,8 @@ class Swift_Transport_Api_NoRedirectClient implements ClientInterface
 
     private ?Swift_Transport_NonRetryableException $failure = null;
 
+    private ?int $lastResponseStatus = null;
+
     public function __construct(#[SensitiveParameter] private ClientInterface $client, #[SensitiveParameter] private ?Closure $requestValidator = null, #[SensitiveParameter] private ?Closure $responseValidator = null)
     {
     }
@@ -98,18 +100,16 @@ class Swift_Transport_Api_NoRedirectClient implements ClientInterface
                         ($this->requestValidator)($request, $options);
                     }
 
+                    $this->lastResponseStatus = null;
                     try {
                         $promise = $next($request, $options);
                     } catch (Throwable $error) {
-                        if (null !== $this->responseValidator) {
-                            $this->validateFailure($error, $request);
-                        }
-                        throw $error;
+                        $this->validateFailure($error, $request);
                     }
 
                     return $promise->then(
                         fn (ResponseInterface $response): ResponseInterface => $this->validateResponse($response, $request),
-                        null === $this->responseValidator ? null : fn (Throwable $error) => $this->validateFailure($error, $request),
+                        fn (Throwable $error) => $this->validateFailure($error, $request),
                     );
                 };
             }, 'swift_redirect_response');
@@ -125,6 +125,16 @@ class Swift_Transport_Api_NoRedirectClient implements ClientInterface
     public function assertNoRedirect(): void
     {
         $this->assertUsable();
+    }
+
+    public function getLastResponseStatus(): ?int
+    {
+        return $this->lastResponseStatus;
+    }
+
+    public function resetResponseStatus(): void
+    {
+        $this->lastResponseStatus = null;
     }
 
     private function scopedClient(): ClientInterface
@@ -158,7 +168,8 @@ class Swift_Transport_Api_NoRedirectClient implements ClientInterface
 
     private function validateResponse(#[SensitiveParameter] ResponseInterface $response, #[SensitiveParameter] ?RequestInterface $request = null, #[SensitiveParameter] ?Throwable $error = null): ResponseInterface
     {
-        $status = $response->getStatusCode();
+        $status                   = $response->getStatusCode();
+        $this->lastResponseStatus = $status;
         if ($status >= 300 && $status < 400) {
             $this->failure = new Swift_Transport_NonRetryableException(\sprintf('Refusing an HTTP redirect (HTTP %d); automatic retry is disabled.', $status), $status);
             throw $this->failure;

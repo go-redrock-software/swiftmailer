@@ -471,7 +471,7 @@ class Swift_Transport_Api_GraphOAuthGrantPolicyTest extends TestCase
     }
 
     /** @dataProvider ordinaryFailures */
-    public function testValidatedFallbackRetainsNativeOAuthFailures(int $status): void
+    public function testValidatedFallbackRetainsOAuthStatusAndClassification(int $status): void
     {
         $errors = [];
         foreach ([false, true] as $scoped) {
@@ -494,7 +494,8 @@ class Swift_Transport_Api_GraphOAuthGrantPolicyTest extends TestCase
             $this->assertSame($new, $fixture->provider->getTokenRequestContext());
         }
         $classifier = new Swift_Transport_DefaultRetryClassifier();
-        $this->assertSame($errors[0]->getCode(), $errors[1]->getCode());
+        $this->assertSame(0, $errors[0]->getCode());
+        $this->assertSame($status, $errors[1]->getCode());
         $this->assertSame($classifier->isRetryable($errors[0]), $classifier->isRetryable($errors[1]));
     }
 

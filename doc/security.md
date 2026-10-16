@@ -106,6 +106,19 @@ endpoints/universe and the send scope. Ambient credential selection is disabled.
 Invalid factory inputs and SDK-construction failures use static diagnostics
 without retaining credential-bearing SDK causes.
 
+**7. Graph failure graphs and status.** Returned Graph SDK operation failures
+contain static Swift diagnostics and safe numeric status, with no credential-bearing
+SDK message or previous cause. Isolated tests inspect full printed exception
+objects and string traces across resource, OAuth, draft/upload and calendar paths.
+Kiota response metadata and operation-local token HTTP status prevent ordinary
+401/403 errors from being mistaken for connection failures coded zero. Recognized
+OAuth token error codes receive a static authentication-failure diagnostic; raw
+provider descriptions are never copied. HTTP 500
+retains a static transient classification. Redirects, rejected 3xx responses and
+PHP Error causes retain hard-failure markers. Caller-owned frames, SDK logging
+and callbacks remain caller-controlled. Successful-response ambiguity is a
+separate open Graph audit (#86).
+
 ## Plugin output escaping
 
 Escaping in the debug/reporting plugins is **not uniform** -- know which output is safe to render in a browser:

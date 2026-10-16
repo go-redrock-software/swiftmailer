@@ -627,6 +627,18 @@ refuse redirects through a scoped provider copy; custom authentication owns its
 HTTP policy. See
 [SDK compatibility and request destinations](microsoft-graph.md#request-destinations-and-sdk-compatibility).
 
+Returned Graph operation failures use static Swift diagnostics and safe numeric
+HTTP/exception codes, without original SDK messages or previous causes. Kiota
+response status and observed OAuth token HTTP status survive SDK exception-code
+loss. Final 401/403 errors and recognized OAuth authentication errors, including
+`400 invalid_client`, stop the default Swift retry wrapper through static
+authentication diagnostics; known
+transient errors retain its retry classification. Redirects and PHP Error causes
+retain a direct nonretryable marker even after their unsafe causes are removed.
+This intentionally changes SDK-specific diagnostic access. See the
+[Graph failure contract](microsoft-graph.md#failure-diagnostics).
+
+
 ---
 
 ### Resend
