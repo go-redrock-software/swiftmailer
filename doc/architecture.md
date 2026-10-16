@@ -50,7 +50,7 @@ register a PSR-0 map for these — autoloading is handled by `lib/swift_required
 | `lib/mime_types.php` | Extension → MIME type map (consumed by attachments) |
 | `lib/class_aliases.php` | `Swift\Message` → `Swift_Message` forward-compat aliases |
 | `class_map.php` | Underscore → namespace map (used by Rector migration) |
-| `generate_class_map.php` | Regenerates `class_map.php` from the source tree |
+| `generate_class_map.php` | Regenerates `class_map.php` and `lib/class_aliases.php` from the source tree |
 | `rector.php` | Namespace-migration tooling (opt-in, reads `class_map.php`) |
 
 Tests mirror the source tree under `tests/unit/Swift/` using the same underscore
@@ -58,13 +58,16 @@ naming (`tests/unit/Swift/Mime/SimpleMessageTest.php`).
 
 ### Forward-compatible namespaced aliases
 
-`lib/class_aliases.php` registers a `class_alias()` for every class, so callers may
-write `Swift\Message` instead of `Swift_Message`. It is loaded eagerly at the end of
-`swift_required.php`. `class_map.php` (the underscore → namespace map) is produced by
-`generate_class_map.php`, which parses `lib/` with nikic/php-parser; `rector.php`
+`lib/class_aliases.php` registers a `class_alias()` for each named global `Swift_`
+class, interface, trait or enum, so callers may write `Swift\Message` instead of
+`Swift_Message`. Enum aliases preserve the identity and values of their cases.
+The alias file is loaded eagerly at the end of `swift_required.php`. `class_map.php` (the underscore → namespace map) is produced by
+`generate_class_map.php`, which parses `lib/` with nikic/php-parser and writes both
+generated files from the same sorted symbol map; `rector.php`
 consumes that map to drive an optional full namespace migration
-(`RenameUnderscoreToNamespaceRector` + `RenameClassRector`). None of this is required
-at runtime — it exists to ease an eventual move off underscore names.
+(`RenameUnderscoreToNamespaceRector` + `RenameClassRector`). The generator and
+migration tools are development-only; runtime autoloading uses the committed
+`lib/class_aliases.php` file.
 
 ## Autoloading and bootstrap
 

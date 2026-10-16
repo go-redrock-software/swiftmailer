@@ -77,6 +77,7 @@
 \class_alias('Swift_Mailer_RecipientIterator', 'Swift\Mailer\RecipientIterator');
 \class_alias('Swift_MemorySpool', 'Swift\MemorySpool');
 \class_alias('Swift_Message', 'Swift\Message');
+\class_alias('Swift_MessageLimits', 'Swift\MessageLimits');
 \class_alias('Swift_MimePart', 'Swift\MimePart');
 \class_alias('Swift_Mime_Attachment', 'Swift\Mime\Attachment');
 \class_alias('Swift_Mime_CharsetObserver', 'Swift\Mime\CharsetObserver');
@@ -125,6 +126,7 @@
 \class_alias('Swift_Plugins_PopBeforeSmtpPlugin', 'Swift\Plugins\PopBeforeSmtpPlugin');
 \class_alias('Swift_Plugins_Pop_Pop3Connection', 'Swift\Plugins\Pop\Pop3Connection');
 \class_alias('Swift_Plugins_Pop_Pop3Exception', 'Swift\Plugins\Pop\Pop3Exception');
+\class_alias('Swift_Plugins_ReadReceiptPlugin', 'Swift\Plugins\ReadReceiptPlugin');
 \class_alias('Swift_Plugins_RedirectingPlugin', 'Swift\Plugins\RedirectingPlugin');
 \class_alias('Swift_Plugins_Reporter', 'Swift\Plugins\Reporter');
 \class_alias('Swift_Plugins_ReporterPlugin', 'Swift\Plugins\ReporterPlugin');
@@ -136,7 +138,9 @@
 \class_alias('Swift_Plugins_Timer', 'Swift\Plugins\Timer');
 \class_alias('Swift_Preferences', 'Swift\Preferences');
 \class_alias('Swift_ReplacementFilterFactory', 'Swift\ReplacementFilterFactory');
+\class_alias('Swift_ReportResult', 'Swift\ReportResult');
 \class_alias('Swift_RfcComplianceException', 'Swift\RfcComplianceException');
+\class_alias('Swift_SendResult', 'Swift\SendResult');
 \class_alias('Swift_SendmailTransport', 'Swift\SendmailTransport');
 \class_alias('Swift_SentMessage', 'Swift\SentMessage');
 \class_alias('Swift_Signer', 'Swift\Signer');
@@ -163,6 +167,8 @@
 \class_alias('Swift_Transport_Api_AmazonSesHttpTransport', 'Swift\Transport\Api\AmazonSesHttpTransport');
 \class_alias('Swift_Transport_Api_AzureTransport', 'Swift\Transport\Api\AzureTransport');
 \class_alias('Swift_Transport_Api_BrevoTransport', 'Swift\Transport\Api\BrevoTransport');
+\class_alias('Swift_Transport_Api_Calendar_IcsParser', 'Swift\Transport\Api\Calendar\IcsParser');
+\class_alias('Swift_Transport_Api_Calendar_ParsedEvent', 'Swift\Transport\Api\Calendar\ParsedEvent');
 \class_alias('Swift_Transport_Api_GmailRefreshCredentials', 'Swift\Transport\Api\GmailRefreshCredentials');
 \class_alias('Swift_Transport_Api_GmailRequestPolicy', 'Swift\Transport\Api\GmailRequestPolicy');
 \class_alias('Swift_Transport_Api_GoogleTransport', 'Swift\Transport\Api\GoogleTransport');
@@ -219,6 +225,7 @@
 \class_alias('Swift_Transport_SmtpAgent', 'Swift\Transport\SmtpAgent');
 \class_alias('Swift_Transport_SpoolTransport', 'Swift\Transport\SpoolTransport');
 \class_alias('Swift_Transport_StreamBuffer', 'Swift\Transport\StreamBuffer');
+\class_alias('Swift_Transport_UrlValidator', 'Swift\Transport\UrlValidator');
 \class_alias('Swift_Webhook_AbstractPayloadConverter', 'Swift\Webhook\AbstractPayloadConverter');
 \class_alias('Swift_Webhook_Converter_AhaSendConverter', 'Swift\Webhook\Converter\AhaSendConverter');
 \class_alias('Swift_Webhook_Converter_AmazonSesConverter', 'Swift\Webhook\Converter\AmazonSesConverter');
@@ -238,3 +245,4 @@
 \class_alias('Swift_Webhook_PayloadConverterInterface', 'Swift\Webhook\PayloadConverterInterface');
 \class_alias('Swift_Webhook_RequestHandler', 'Swift\Webhook\RequestHandler');
 \class_alias('Swift_Webhook_SignatureVerificationException', 'Swift\Webhook\SignatureVerificationException');
+\class_alias('Swift_Webhook_TimestampExtractorInterface', 'Swift\Webhook\TimestampExtractorInterface');
