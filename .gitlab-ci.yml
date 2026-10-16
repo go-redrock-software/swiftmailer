@@ -116,6 +116,29 @@ tests:
       junit: phpunit-report.xml
     expire_in: 30 days
 
+# Native SDK contracts also run without development dependencies, on the lowest
+# versions that Composer can resolve with the existing constraints/advisories.
+# Separate caches prevent a no-dev vendor tree from leaking into PHPUnit jobs.
+sdk-compatibility:
+  extends: .test-job
+  parallel:
+    matrix:
+      - PHP_VERSION: ["8.3", "8.5"]
+  image: "php:${PHP_VERSION}-fpm"
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}-sdk-lowest-php${PHP_VERSION}"
+    paths:
+      - vendor/
+    policy: pull-push
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq git unzip libicu-dev libzip-dev libxml2-dev libcurl4-openssl-dev > /dev/null
+    - docker-php-ext-install intl iconv mbstring zip dom curl > /dev/null 2>&1 || true
+    - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+    - composer update --prefer-lowest --prefer-stable --no-dev --no-plugins --no-scripts --no-interaction --no-progress
+  script:
+    - test ! -d vendor/phpunit/phpunit
+    - php tests/compatibility/sdk.php
+
 # ---------------------------------------------------------------------------
 # Integration stage — smoke tests against Mailpit
 # ---------------------------------------------------------------------------

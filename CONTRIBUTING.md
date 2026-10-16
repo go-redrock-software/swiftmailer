@@ -69,6 +69,26 @@ non-zero on those known deprecations. When you legitimately add or remove a depr
 regenerate the baseline with the bridge's `generateBaseline` option pointed at the same
 file, and commit the diff.
 
+### Merge-train regression contracts
+
+See [the feature-to-test inventory](doc/regression-tests.md) for coverage of the
+merged maintenance train and compatibility fixes. Native Gmail, SES and Graph
+contracts are included in normal PHPUnit and can also run with production
+packages only:
+
+```bash
+php tests/compatibility/sdk.php
+```
+
+Every contract uses a synthetic HTTP boundary and fails the process when its
+behavior changes. The `sdk-compatibility` GitLab matrix runs the same 12 contracts
+on PHP 8.3 and 8.5 with `composer update --prefer-lowest --prefer-stable --no-dev
+--no-plugins --no-scripts`. Run that dependency resolution in an isolated checkout;
+it replaces the development vendor tree. Existing package constraints and security
+advisories remain active. Normal PHPUnit tests cover current dependencies on both
+runtimes. Lowest-version dependency deprecations remain visible diagnostics; these
+functional checks do not establish deprecation-free support for old dependencies.
+
 ## Code style
 
 ```bash
@@ -207,7 +227,7 @@ defaults it to `1.0.0`, which trips roave/security-advisories' `swiftmailer/swif
 | Stage | Jobs |
 |-|-|
 | quality | `qodana` — JetBrains Qodana scan (`develop` branch only) |
-| test | `validate` (`composer validate --strict`), `security-audit` (`composer audit`), `code-style` (PHP-CS-Fixer dry-run), `phpstan` (level 5, 1G), `tests` (PHP **8.3 + 8.5** matrix, JUnit artifact) |
+| test | `validate` (`composer validate --strict`), `security-audit` (`composer audit`), `code-style` (PHP-CS-Fixer dry-run), `phpstan` (level 5, 1G), `tests` (PHP **8.3 + 8.5** matrix, JUnit artifact), `sdk-compatibility` (same runtimes, lowest-resolvable production dependencies) |
 | integration | `smoke-tests` — runs `tests/smoke/Swift/Smoke/MailpitSmokeTest.php` against an `axllent/mailpit` service; `allow_failure` |
 | mutation | `mutation-testing` (full Infection; scheduled + `master`/`main`) and `mutation-testing-mr` (Infection on changed `lib/classes` files only, on MRs); both `allow_failure` |
 
