@@ -1,0 +1,224 @@
+[
+  {
+    "mr": 1,
+    "source_branch": "fix/33-escape-recipient-addresses-in-html-delive",
+    "source_sha": "ffef30c405ba0774393fa4c4b970048b4d4828c2",
+    "original_target": "master"
+  },
+  {
+    "mr": 2,
+    "source_branch": "fix/34-preserve-allowlist-redirect-recipients",
+    "source_sha": "7e6f700eaaf1869366ea8760800487065180fae4",
+    "original_target": "master"
+  },
+  {
+    "mr": 3,
+    "source_branch": "fix/36-strip-bcc-with-explicit-envelope",
+    "source_sha": "f42d51617b1b7a99e0b6cf1b8fb938b6a6438382",
+    "original_target": "master"
+  },
+  {
+    "mr": 4,
+    "source_branch": "fix/37-enforce-envelope-recipient-policies",
+    "source_sha": "aa7c79f300037ba74d8b6aea275472f4db5fc0af",
+    "original_target": "fix/34-preserve-allowlist-redirect-recipients"
+  },
+  {
+    "mr": 5,
+    "source_branch": "fix/38-mailpit-smoke-deprecation-policy",
+    "source_sha": "6b5820e7513d66ee6699b883836517009b79ccd9",
+    "original_target": "master"
+  },
+  {
+    "mr": 6,
+    "source_branch": "fix/40-mutation-runner-bootstrap-order",
+    "source_sha": "1da35d227c9a9de15b32a6211a82d9a333e160e3",
+    "original_target": "fix/33-escape-recipient-addresses-in-html-delive"
+  },
+  {
+    "mr": 7,
+    "source_branch": "fix/39-api-envelope-delivery",
+    "source_sha": "798bc797f48d0acda24d7f3b1e924634a2146d45",
+    "original_target": "fix/37-enforce-envelope-recipient-policies"
+  },
+  {
+    "mr": 8,
+    "source_branch": "fix/43-preserve-scaleway-blind-recipients",
+    "source_sha": "cae5890306ca691b844cc741873acc3e88acefbb",
+    "original_target": "master"
+  },
+  {
+    "mr": 9,
+    "source_branch": "fix/42-enforce-calendar-recipient-policies",
+    "source_sha": "cee254751095a69950fe166ae425247b7cc75017",
+    "original_target": "fix/44-bind-default-api-listeners"
+  },
+  {
+    "mr": 10,
+    "source_branch": "fix/44-bind-default-api-listeners",
+    "source_sha": "44c1953ab1098211758850aecfba5995e750f15c",
+    "original_target": "fix/39-api-envelope-delivery"
+  },
+  {
+    "mr": 11,
+    "source_branch": "fix/45-fetch-mutation-target-ref",
+    "source_sha": "5d254dd293b3b572cc8806c60ec96cc1b3efea20",
+    "original_target": "fix/40-mutation-runner-bootstrap-order"
+  },
+  {
+    "mr": 12,
+    "source_branch": "fix/48-preserve-sweego-blind-recipients",
+    "source_sha": "7e309ac526c9488def6f8e2d8287f21bdd1cd23f",
+    "original_target": "fix/44-bind-default-api-listeners"
+  },
+  {
+    "mr": 13,
+    "source_branch": "fix/49-encode-sweego-attachments",
+    "source_sha": "5faabb7c6c9a695336c191091200b9b41392991b",
+    "original_target": "fix/48-preserve-sweego-blind-recipients"
+  },
+  {
+    "mr": 14,
+    "source_branch": "fix/50-validate-http-json-responses",
+    "source_sha": "29044b7e4cb882407ede6dad357b5886bca9adbb",
+    "original_target": "fix/49-encode-sweego-attachments"
+  },
+  {
+    "mr": 15,
+    "source_branch": "fix/51-synchronize-namespace-alias-generation",
+    "source_sha": "b562a18516634f95e50337c535adcc77b4205241",
+    "original_target": "master"
+  },
+  {
+    "mr": 16,
+    "source_branch": "refactor/47-protect-sweego-http-contract",
+    "source_sha": "4ccd34c97a9041ffeb42e64a9aeb815ee6de956b",
+    "original_target": "fix/50-validate-http-json-responses"
+  },
+  {
+    "mr": 17,
+    "source_branch": "fix/53-disable-http-api-redirects",
+    "source_sha": "78a743344f60b916f8dec2b7bc61b57088c933b7",
+    "original_target": "refactor/47-protect-sweego-http-contract"
+  },
+  {
+    "mr": 18,
+    "source_branch": "fix/55-isolate-gmail-sdk-requests",
+    "source_sha": "b4c056cce2152336ecdeb1c0f08985c424d73d67",
+    "original_target": "fix/53-disable-http-api-redirects"
+  },
+  {
+    "mr": 19,
+    "source_branch": "fix/58-isolate-graph-sdk-requests",
+    "source_sha": "224834e04648f6214dbffaf2be4f9736eff31164",
+    "original_target": "fix/55-isolate-gmail-sdk-requests"
+  },
+  {
+    "mr": 20,
+    "source_branch": "fix/60-isolate-graph-oauth-requests",
+    "source_sha": "062337ad5afe3904551b7c5082cefd3b01dd5820",
+    "original_target": "fix/58-isolate-graph-sdk-requests"
+  },
+  {
+    "mr": 21,
+    "source_branch": "fix/59-isolate-ses-sdk-requests",
+    "source_sha": "c3fb293a7c795cce1a010ad49c20fe97cc95de06",
+    "original_target": "fix/60-isolate-graph-oauth-requests"
+  },
+  {
+    "mr": 22,
+    "source_branch": "fix/64-preserve-ses-mime-parts",
+    "source_sha": "75c3d8279907b7b1860f0498e5720abe31e84e61",
+    "original_target": "fix/59-isolate-ses-sdk-requests"
+  },
+  {
+    "mr": 23,
+    "source_branch": "fix/62-refresh-graph-cae-grants",
+    "source_sha": "c25c22bbc30c41fcd41a907336c6f52fe91bf094",
+    "original_target": "fix/60-isolate-graph-oauth-requests"
+  },
+  {
+    "mr": 24,
+    "source_branch": "fix/66-honor-terminal-transport-failures",
+    "source_sha": "8e110f3f3eac28810acf24dd64a37990c3911de2",
+    "original_target": "fix/62-refresh-graph-cae-grants"
+  },
+  {
+    "mr": 25,
+    "source_branch": "fix/68-preserve-pool-backend-policies",
+    "source_sha": "baee94fd3b39cb252da5b266519766fe30d8464b",
+    "original_target": "fix/66-honor-terminal-transport-failures"
+  },
+  {
+    "mr": 26,
+    "source_branch": "feat/29-configure-pool-retry-period",
+    "source_sha": "11416ca3e16e70ab7f265c27a7c4330d1b080519",
+    "original_target": "fix/68-preserve-pool-backend-policies"
+  },
+  {
+    "mr": 27,
+    "source_branch": "feat/15-configure-sendgrid-tracking",
+    "source_sha": "fdb4bd9b7de5a586269b1a718ea35cbec04d11c0",
+    "original_target": "feat/29-configure-pool-retry-period"
+  },
+  {
+    "mr": 28,
+    "source_branch": "fix/71-restore-dsn-mailer-helper",
+    "source_sha": "36cc7e08608a5b2a1634dc6a4dfcbd5e60d56567",
+    "original_target": "feat/15-configure-sendgrid-tracking"
+  },
+  {
+    "mr": 29,
+    "source_branch": "feat/72-configure-smtp-dsn-options",
+    "source_sha": "99987f5f77b6e24bfefbd62a4dd4fb07ae9ef8b0",
+    "original_target": "fix/71-restore-dsn-mailer-helper"
+  },
+  {
+    "mr": 30,
+    "source_branch": "feat/74-construct-http-provider-dsns",
+    "source_sha": "4b66a8dc31c2fa28f6443c79ca20d7639274977b",
+    "original_target": "feat/72-configure-smtp-dsn-options"
+  },
+  {
+    "mr": 31,
+    "source_branch": "fix/76-redact-dsn-parser-errors",
+    "source_sha": "010cb32afb073f1e574524887ef15aff5e927df6",
+    "original_target": "feat/74-construct-http-provider-dsns"
+  },
+  {
+    "mr": 32,
+    "source_branch": "feat/78-construct-ses-sdk-dsns",
+    "source_sha": "083d3184d7835baefd867eb257395e077af0deeb",
+    "original_target": "fix/76-redact-dsn-parser-errors"
+  },
+  {
+    "mr": 33,
+    "source_branch": "fix/81-validate-gmail-send-acceptance",
+    "source_sha": "65233ca2fe7db8eacd7e9476740fe62f1aec0011",
+    "original_target": "feat/78-construct-ses-sdk-dsns"
+  },
+  {
+    "mr": 34,
+    "source_branch": "feat/83-construct-gmail-sdk-dsns",
+    "source_sha": "b86ba5532df0e23a6425af2b87442d96c70a1501",
+    "original_target": "fix/81-validate-gmail-send-acceptance"
+  },
+  {
+    "mr": 35,
+    "source_branch": "fix/84-detach-graph-sdk-failures",
+    "source_sha": "e336569e1dc28f8505f29788a528c8859612530d",
+    "original_target": "feat/83-construct-gmail-sdk-dsns"
+  },
+  {
+    "mr": 36,
+    "source_branch": "fix/86-validate-graph-operation-acceptance",
+    "source_sha": "f45d4710627597299b67cea428af776bb2a0a1eb",
+    "original_target": "fix/84-detach-graph-sdk-failures"
+  },
+  {
+    "mr": 37,
+    "source_branch": "feat/87-construct-graph-sdk-dsns",
+    "source_sha": "7c6d29806ad33d9d8b833c31e1e244c7daa107e3",
+    "original_target": "fix/86-validate-graph-operation-acceptance"
+  }
+]
