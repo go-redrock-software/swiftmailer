@@ -52,13 +52,15 @@ try {
     $configured = (new ReflectionProperty(Microsoft\Kiota\Http\GuzzleRequestAdapter::class, 'guzzleClient'))->getValue($adapter);
     $handler    = new ReflectionProperty(GuzzleHttp\HandlerStack::class, 'handler');
     $auth       = (new ReflectionProperty(Microsoft\Kiota\Http\GuzzleRequestAdapter::class, 'authenticationProvider'))->getValue($adapter);
-    $guard      = Microsoft\Graph\GraphServiceClient::class                                                  === $client::class && Microsoft\Graph\GraphRequestAdapter::class === $adapter::class
-                                                                                                                                && $configured instanceof GuzzleHttp\Client && $handler->getValue($configured->getConfig('handler')) === $resourceHandler
-                                                                                                                                && ('bearer' === $input['auth'] || $auth->getAccessTokenProvider()->getOauthProvider()->getHttpClient() === $tokenHttp);
-    if (!$guard) {
+    if (Microsoft\Graph\GraphServiceClient::class     !== $client::class
+        || Microsoft\Graph\GraphRequestAdapter::class !== $adapter::class
+        || !$configured instanceof GuzzleHttp\Client
+        || $handler->getValue($configured->getConfig('handler')) !== $resourceHandler
+        || ('bearer' !== $input['auth'] && $auth->getAccessTokenProvider()->getOauthProvider()->getHttpClient() !== $tokenHttp)) {
         echo \json_encode(['guard' => false]);
         exit;
     }
+    $guard    = true;
     $observer = new class implements Swift_Events_SendListener {
         public int $before = 0;
 
