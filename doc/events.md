@@ -1,13 +1,13 @@
 # Event System
 
-SwiftMailer uses an event-driven architecture. Transports and the mailer dispatch events at key points in the send lifecycle. Plugins subscribe to these events via listener interfaces.
+SwiftMailer uses an event-driven architecture. Transports dispatch events at key points in the send lifecycle (`Swift_Mailer` dispatches none; its `registerPlugin()` delegates to the transport). Plugins subscribe to these events via listener interfaces.
 
 ## Event Lifecycle
 
 Every send is bookended by the same two `SendEvent` dispatches, with
 transport-family-specific events in between.
 
-**Common to all transports** (SMTP, Sendmail, Spool, Null, and HTTP API):
+**Common to all transports** (SMTP, Sendmail, Spool, Null, HTTP API, and SDK API):
 
 ```
 1. beforeSendPerformed   (SendEvent)
@@ -30,6 +30,14 @@ fire one extra event between steps 2 and 3, and dispatch `sendPerformed` from a
                  exceptionThrown (TransportExceptionEvent), then the exception propagates
 ```
 
+**SDK API transports** (Microsoft Graph, Google, AmazonSesApi, AmazonSesHttp) extend
+`Swift_Transport_AbstractApiTransport` directly and send through
+`sendWithEvents()`. It dispatches the two `SendEvent`s, with `sendPerformed` in a
+`finally` block, and never emits `sentMessage` or `failedMessage`. The result is
+`RESULT_SUCCESS` when the SDK reports at least one accepted recipient, otherwise
+`RESULT_FAILED`. Failed recipients come from the recipient groups (for example
+Graph calendar attendees), then the envelope, then the To/Cc/Bcc headers.
+
 SMTP transports instead emit `commandSent` (CommandEvent) and `responseReceived`
 (ResponseEvent) throughout the SMTP conversation, and never emit `sentMessage`
 or `failedMessage`.
@@ -51,12 +59,12 @@ sources):
 
 | Event | Listener interface | Dispatch points |
 |-|-|-|
-| `SendEvent` | `SendListener` | `beforeSendPerformed` + `sendPerformed` in every transport's `send()` -- `AbstractSmtpTransport`, `AbstractHttpApiTransport`, `SendmailTransport`, `SpoolTransport`, `NullTransport` |
+| `SendEvent` | `SendListener` | `beforeSendPerformed` + `sendPerformed` in every transport's `send()` -- `AbstractSmtpTransport`, `AbstractHttpApiTransport`, `SendmailTransport`, `SpoolTransport`, `NullTransport`, and `AbstractApiTransport::sendWithEvents()` for the SDK API transports |
 | `SentMessageEvent` | `SentMessageListener` | `sentMessage` -- `AbstractHttpApiTransport::send()` on success (HTTP API only) |
 | `FailedMessageEvent` | `FailedMessageListener` | `failedMessage` -- `AbstractHttpApiTransport::send()` on failure (HTTP API only) |
 | `CommandEvent` | `CommandListener` | `commandSent` -- `AbstractSmtpTransport`, as each SMTP command is written |
 | `ResponseEvent` | `ResponseListener` | `responseReceived` -- `AbstractSmtpTransport`, on each server response |
-| `TransportChangeEvent` | `TransportChangeListener` | `start()`: `beforeTransportStarted` + `transportStarted`; `stop()`: `beforeTransportStopped` + `transportStopped`. SMTP/Sendmail fire all four; HTTP API fires the two start events but **not** `transportStopped` -- `AbstractApiTransport::stop()` emits `beforeTransportStopped` only |
+| `TransportChangeEvent` | `TransportChangeListener` | `start()`: `beforeTransportStarted` + `transportStarted`; `stop()`: `beforeTransportStopped` + `transportStopped`. SMTP/Sendmail fire all four; HTTP API fires the two start events but **not** `transportStopped` -- `AbstractApiTransport::stop()` emits `beforeTransportStopped` only. AmazonSesApi and AmazonSesHttp `start()` fire **no** start events. Microsoft Graph also dispatches `beforeTransportStarted` (without `transportStarted`) on every send; cancelling it makes that send return `0` |
 | `TransportExceptionEvent` | `TransportExceptionListener` | `exceptionThrown` -- `throwException()` in `AbstractSmtpTransport` and `AbstractApiTransport` |
 
 ## New Events
@@ -184,8 +192,14 @@ class MySendListener implements Swift_Events_SendListener
 |-|-|-|
 | `getMessage()` | `Swift_Mime_SimpleMessage` | The message being sent |
 | `getTransport()` | `Swift_Transport` | The transport performing the send |
+| `getSource()` | `Swift_Transport` | Alias for `getTransport()` (inherited) |
 | `getResult()` | `int` | Result bitmask (see constants above) |
+| `setResult($result)` | `void` | Set the result code (used by transports) |
 | `getFailedRecipients()` | `string[]` | Addresses that were not accepted |
+| `setFailedRecipients($recipients)` | `void` | Set the failed recipients (used by transports) |
+| `cancelBubble($cancel = true)` | `void` | Stop later listeners; in `beforeSendPerformed` this also prevents the send (inherited) |
+| `bubbleCancelled()` | `bool` | Whether the bubble was cancelled (inherited) |
+| `captureRecipientState()` | `array` | Shared To/Cc/Bcc snapshot (see [Recipient policy snapshots](#recipient-policy-snapshots)) |
 | `reject(?string $reason)` | `void` | Reject the message, preventing send and cancelling bubble |
 | `isRejected()` | `bool` | Whether a listener has rejected the message |
 | `getRejectionReason()` | `?string` | Human-readable rejection reason, if provided |
@@ -215,7 +229,7 @@ or modified instance; the transport re-reads it via `getEnvelope()` after
 
 ### Pre-Send Rejection
 
-Plugins can prevent sending in `beforeSendPerformed` using the `reject()` method (preferred) or `cancelBubble(true)`. The transport will not attempt to send, and `sendPerformed` still fires. SMTP, Sendmail, Spool, and Null transports set the result to `RESULT_FAILED` first; the HTTP API base (`Swift_Transport_AbstractHttpApiTransport`) dispatches `sendPerformed` without changing the result, so on a rejected API send it stays `RESULT_PENDING`.
+Plugins can prevent sending in `beforeSendPerformed` using the `reject()` method (preferred) or `cancelBubble(true)`. The transport will not attempt to send, and `sendPerformed` still fires. SMTP, Sendmail, Spool, Null, and SDK API transports set the result to `RESULT_FAILED` first; the HTTP API base (`Swift_Transport_AbstractHttpApiTransport`) dispatches `sendPerformed` without changing the result, so on a rejected API send it stays `RESULT_PENDING`.
 
 The `reject()` method is preferred because it records a rejection reason and also cancels the bubble automatically:
 
@@ -301,7 +315,7 @@ class MyTransportListener implements Swift_Events_TransportChangeListener
 
 ### TransportExceptionEvent
 
-Fired when a transport encounters an error. Listeners can suppress the exception by cancelling the bubble.
+Fired when a transport encounters an error. Listeners can suppress the exception by cancelling the bubble. A registered [LoggerPlugin](plugins.md#loggerplugin) cancels the bubble and then throws a new exception, so suppression only works from a listener registered before it.
 
 ```php
 class MyExceptionListener implements Swift_Events_TransportExceptionListener
@@ -344,7 +358,7 @@ Listeners (plugins) are registered via the mailer or directly on a transport:
 // Via mailer (preferred)
 $mailer->registerPlugin($myPlugin);
 
-// Via transport (for transport-level events)
+// Via transport (same effect: Swift_Mailer::registerPlugin() delegates here)
 $transport->registerPlugin($myPlugin);
 ```
 
@@ -352,9 +366,9 @@ A single class can implement multiple listener interfaces to react to different 
 
 ### API transports and a null dispatcher
 
-HTTP API transports (see [api-transports.md](api-transports.md)) declare their dispatcher as `?Swift_Events_EventDispatcher` and null-guard every dispatch (`$this->eventDispatcher?->...`). When the dispatcher is `null`:
+API transports (HTTP and SDK; see [api-transports.md](api-transports.md)) declare their dispatcher as `?Swift_Events_EventDispatcher` and null-guard every dispatch (`$this->eventDispatcher?->...`). A transport you construct directly without a dispatcher has none until the first `registerPlugin()` call:
 
-- No events fire for that transport -- including `sentMessage` and `failedMessage`.
-- `registerPlugin()` silently does nothing (`$this->eventDispatcher?->bindEventListener(...)`), so any plugin you register is dropped without error.
+- `registerPlugin()` creates a `Swift_Events_SimpleEventDispatcher` when there is none and binds the plugin, so plugins are never dropped. Events fire from then on.
+- With no plugins registered there is no dispatcher, so no events fire for that transport.
 
-Transports built through the DSN factory always receive a `Swift_Events_SimpleEventDispatcher`, so this only affects HTTP API transports you construct directly without passing a dispatcher. SMTP-based transports take a required dispatcher and are never null.
+Transports built through the DSN factory always receive a `Swift_Events_SimpleEventDispatcher`. SMTP-based transports take a required dispatcher and are never null.

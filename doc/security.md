@@ -12,13 +12,19 @@ This fork of SwiftMailer ships a set of defensive features aimed at the ways a m
 | `#[\SensitiveParameter]` on keys/passwords | On, automatic | -- |
 | Guzzle request/response error leakage | On, automatic (`http_errors => false`) | -- |
 | API response body size cap (1 MiB) | On, automatic | -- |
-| HTTP API redirect refusal | Direct HTTP, Gmail, Graph resources and standard Graph OAuth | Applied through per-request options or scoped SDK/HTTP configuration |
+| HTTP API redirect refusal | Direct HTTP, Gmail, Graph resources, standard Graph OAuth and SES | Applied through per-request options or scoped SDK/HTTP configuration |
+| Duplicate-delivery (replay) guards for ambiguous acceptance and terminal failures | On, automatic | -- |
+| Bcc privacy with SMTP envelopes and API providers | On, automatic | -- |
+| Recipient policies on explicit envelopes | On when plugin used | Register `AllowlistPlugin` / `RedirectingPlugin` |
+| API transport dispatcher created for plugins | On, automatic | -- |
+| DSN diagnostic and CLI credential redaction | On, automatic | -- |
+| `HtmlReporter` recipient escaping | On when plugin used | -- |
 | Sendmail metacharacter rejection | On, automatic | `setCommand()` |
 | Sendmail binary allowlist (DSN) | On when using DSN factory | -- |
 | DSN parameter validation | On, automatic | -- |
 | API endpoint URL / SSRF validation | On for custom base URLs | -- |
 | TLS certificate verification | On (PHP secure defaults) | `verify_peer`, `peer_fingerprint` |
-| CRAM-MD5 deprecation + auth ordering | On, automatic | `setAuthMode()` to force one |
+| CRAM-MD5 deprecation + auth ordering | On, automatic | `setAuthMode()` to force one (required for XOAUTH2) |
 | NTLM: v2 only (v1 removed) | On, automatic | -- |
 | Transport serialization blocked | On, automatic | -- |
 | Unserialize class allowlist (spool) | On, automatic | -- |
@@ -58,9 +64,15 @@ SMTP transports suppress the `Bcc` header during transmission even when an expli
 
 Older releases skipped this suppression for explicit envelopes and could disclose blind recipients to every recipient through the transmitted `Bcc` header (CWE-200). On those releases, remove the Bcc header yourself before sending with an explicit envelope; retain any intended blind recipients in the envelope's recipient list.
 
+API providers also keep blind recipients private. Sweego and Scaleway send Cc
+and Bcc in their native API fields; older releases put them in the public To list
+(GitLab #48, #43). Raw MIME copies sent by the envelope-aware API paths (Postal,
+Mandrill, Mailgun, Infobip) and by both SES transports omit the Bcc headers, while
+the provider's recipient field still routes the blind copies (GitLab #39, #64).
+
 ## Credential protection
 
-Three independent layers keep secrets out of logs, traces, and error output:
+Several independent layers keep secrets out of logs, traces, and error output:
 
 **1. SMTP AUTH redaction in the logger.** `Swift_Plugins_LoggerPlugin` recognizes the `AUTH` command and redacts it and the base64 credential exchange that follows:
 
@@ -96,6 +108,8 @@ and string traces. This boundary covers returned SES send failures, including
 PHP Error causes; it does not sanitize arbitrary caller-owned argument frames.
 Malformed or incomplete successful SES responses are terminal acceptance
 ambiguities and cannot trigger automatic resend through retry/failover.
+A caller-supplied AsyncAws retry strategy also cannot replay a send after
+successful response headers.
 
 **6. Gmail failure graphs and acceptance.** Returned terminal Gmail send errors
 use static diagnostics and safe numeric status without retaining SDK messages,
@@ -106,7 +120,9 @@ argument recording enabled and disabled. Caller-owned argument frames and event
 callbacks remain caller-controlled. Ordinary SDK errors retain zero-return
 behavior. Successful sends require an observed valid Message JSON and decoded
 message ID; ambiguous acceptance cannot trigger automatic resend through retry
-or pool wrappers. Token exchange bodies are validated by the Google SDK.
+or pool wrappers. Caller Guzzle middleware cannot replay a send after successful
+response headers either; ordinary failure and credential retries keep working.
+Token exchange bodies are validated by the Google SDK.
 Gmail DSNs select explicit bearer or refresh credentials, fixed standard Google
 endpoints/universe and the send scope. Ambient credential selection is disabled.
 Invalid factory inputs and SDK-construction failures use static diagnostics
@@ -158,7 +174,7 @@ The debug/reporting plugins escape dynamic text before emitting HTML:
 
 Before the fix tracked in [issue #33](https://code.go-redrock.com/trac/swiftmailer/-/issues/33), `HtmlReporter` inserted recipient addresses directly into its HTML output (CWE-79). A valid quoted address such as `"<img src=x onerror=alert(1)>"@example.org` could execute JavaScript when an application displayed the report in a browser. Address validation alone does not prevent HTML injection. The reporter now renders addresses as text, including literal entity-like input; callers should pass the original address without pre-escaping it. On older releases, avoid displaying `HtmlReporter` output containing untrusted recipients in a browser.
 
-`Swift_Plugins_RedirectingPlugin` keeps original recipients in private properties and adds no `X-Swift-*` headers, so it does not leak them into the message.
+`Swift_Plugins_RedirectingPlugin` stores the original recipients as a snapshot on each send event, which supports nested and overlapping sends, and adds no `X-Swift-*` headers, so it does not leak them into the message.
 
 ## Transport hardening
 
@@ -191,10 +207,25 @@ Original envelope-only addresses are not copied into MIME headers or metadata.
 On older releases, avoid explicit envelopes when relying on these safety plugins.
 
 The integration regressions exercise SMTP command generation, an envelope-aware
-HTTP transport's request payload, and a header-based provider payload. Full
-envelope override support in concrete API providers is a separate gap tracked
-in [issue #39](https://code.go-redrock.com/trac/swiftmailer/-/issues/39); for
-example, SendGrid currently builds payload addresses from message headers.
+HTTP transport's request payload, and a header-based provider payload. Explicit
+API envelopes control the raw delivery payloads for Postal, Mandrill, Mailgun,
+Infobip and both SES variants. Other API transports reject an unsupported sender
+or recipient override with `Swift_TransportException` before submission, instead
+of silently sending to the header recipients
+([issue #39](https://code.go-redrock.com/trac/swiftmailer/-/issues/39)). See
+[explicit envelopes](api-transports.md#explicit-envelopes) for each provider.
+
+### Graph calendar recipient policies
+
+When Graph converts calendar invitations, the allowlist, catch-all and redirect
+policies also apply to the ICS attendees, and lookups use the adjusted audience.
+A cancellation under a recipient policy requires a known organizer, a safe stored
+audience and an exact event version: the delete is sent with `If-Match` and the
+stored ETag, so a changed audience is never cancelled. HTTP 412 becomes a
+`Swift_Transport_NonRetryableException`. Updates to existing events are rejected
+while a recipient policy is active, because the transport has no verified
+conditional update (GitLab #42). See
+[calendar invitation conversion](microsoft-graph.md#calendar-invitation-conversion).
 
 ### Sendmail command validation and allowlist
 
@@ -211,7 +242,9 @@ A binary outside this list throws `InvalidArgumentException`.
 
 ### DSN parameter validation
 
-`Swift_Transport_DsnTransportFactory` only honours a fixed set of DSN query parameters: `verify_peer`, `peer_fingerprint`, `source_ip`, `smtputf8`, `command`, `retries`, `retry_delay`. Any unknown parameter is ignored and raises an `E_USER_WARNING` so typos and injection attempts surface instead of being silently applied.
+`Swift_Transport_DsnTransportFactory` only honours a fixed set of DSN query parameters: `verify_peer`, `peer_fingerprint`, `source_ip`, `smtputf8`, `command`, `retries`, `retry_delay`, `click_tracking`, `click_tracking_text`, `open_tracking`, `timeout`, `auth_mode`, `local_domain`, `region`, `inbox_id`, `session_token`, `refresh_token`, `tenant_id`, `user_id`. Pools accept only `retry_period` after the closing parenthesis.
+
+Scoped options fail fast: SMTP connection options, HTTP provider options, SendGrid tracking options and the Gmail and Graph SDK options throw `InvalidArgumentException` when they are used with the wrong scheme, misspelled, repeated or given a non-scalar value. Any other unknown parameter is ignored. It raises an `@`-suppressed `E_USER_WARNING`, so only a custom error handler sees it.
 
 ### API endpoint URL validation (SSRF)
 
@@ -222,6 +255,8 @@ Transports that accept a **custom base URL** (`Swift_Transport_Api_InfoBipTransp
 - rejects any host that is -- or whose DNS name resolves to -- a private or reserved IP range.
 
 This prevents a misconfigured or attacker-supplied endpoint from turning the mailer into an SSRF vector.
+
+The DSN factory applies the same validator to the endpoint of every HTTP provider DSN that accepts a custom host or base path. An endpoint that is not a public HTTPS address throws `InvalidArgumentException` before the transport is built.
 
 ### HTTP API request destinations
 
@@ -251,10 +286,30 @@ policy for initial grants, refresh and CAE. A redirect stays non-retryable if th
 SDK replaces its error or attempts a fallback grant. Original provider/HTTP
 configuration and shared cache behavior are retained.
 
-Custom authentication/token implementations outside that known chain own their
-HTTP policy. SES retains its SDK HTTP policy and requires a separate safeguard. See
-[API request safeguards](api-transports.md#security) for the scope and custom
-HTTP transport requirements.
+SES sends and health probes use an operation-local AsyncAws client copy. Redirects
+are refused for resource requests and the supported AsyncAws credential-provider
+chain, with the same non-retryable marker. An opaque SDK object, custom SES
+subclass or uninitialized client fails with a permanent transport exception
+(GitLab #59, #63).
+
+Custom authentication/token implementations outside these known chains own their
+HTTP policy. See [API request safeguards](api-transports.md#security) for the
+scope and custom HTTP transport requirements.
+
+### Duplicate-delivery (replay) safety
+
+Swift's retry and pool wrappers do not resend a message that a provider may
+already have accepted. For the 17 direct HTTP providers, malformed or ambiguous success
+responses (for example, an invalid message identifier or conflicting acceptance
+statuses) raise `Swift_Transport_NonRetryableException` (GitLab #50). Items 5 to 8
+under [Credential protection](#credential-protection) describe the equivalent
+SES, Gmail and Graph acceptance checks.
+
+`Swift_Transport_RetryPolicy::isTerminalFailure()` treats a
+`Swift_Transport_NonRetryableException` or a PHP `Error` anywhere in the cause
+chain as terminal. `RetryTransport` checks it before any classifier, including a
+permissive custom one, and the failover and load-balanced pools rethrow such a
+failure instead of trying another backend (GitLab #66).
 
 ### API response body size cap
 
@@ -263,6 +318,8 @@ HTTP transport requirements.
 ## TLS
 
 SMTP+TLS connections use PHP's stream defaults, under which `verify_peer` and `verify_peer_name` are enabled -- certificate verification is **on by default**. The library never silently disables it.
+
+STARTTLS negotiates TLS 1.2 or 1.3 only. A failed handshake raises a catchable `Swift_TransportException` with the reason, even when a host error handler turns PHP warnings into exceptions.
 
 Two DSN parameters let you tune TLS:
 
@@ -284,21 +341,21 @@ Equivalently, on a transport built directly, pass stream context options via `se
 
 ### CRAM-MD5 deprecated
 
-`Swift_Transport_Esmtp_Auth_CramMd5Authenticator` still works but triggers `E_USER_DEPRECATED`, because CRAM-MD5 relies on the cryptographically weak MD5 algorithm. Prefer XOAUTH2, or PLAIN over TLS.
+`Swift_Transport_Esmtp_Auth_CramMd5Authenticator` still works but triggers `E_USER_DEPRECATED`, because CRAM-MD5 relies on the cryptographically weak MD5 algorithm. Prefer XOAUTH2 (select it explicitly with `setAuthMode('XOAUTH2')`), or PLAIN over TLS.
 
 ### Authentication mechanism ordering
 
-When no explicit auth mode is set, `Swift_Transport_Esmtp_AuthHandler` tries the server-advertised mechanisms in a **security-ordered** preference (lower number tried first):
+When no explicit auth mode is set, `Swift_Transport_Esmtp_AuthHandler` treats the credential as a password and tries the server-advertised mechanisms in this order (lower number tried first):
 
 | Priority | Mechanism |
 |-|-|
-| 0 | XOAUTH2 |
-| 1 | PLAIN |
-| 2 | LOGIN |
-| 3 | CRAM-MD5 |
-| 4 | NTLM |
+| 0 | PLAIN |
+| 1 | LOGIN |
+| 2 | CRAM-MD5 |
+| 3 | NTLM |
+| 4 | XOAUTH2 |
 
-Stronger mechanisms are attempted before the weaker/legacy ones. Pin a single mechanism with `setAuthMode()` (an invalid mode throws `Swift_TransportException`).
+XOAUTH2 is last because it sends the credential as a bearer token. Gmail treats a password sent that way as a failed login and then rejects the valid password (535-5.7.8). OAuth callers must select XOAUTH2 with `setAuthMode('XOAUTH2')`. Pin a single mechanism with `setAuthMode()` (an invalid mode throws `Swift_TransportException`).
 
 ### NTLM: v2 only
 

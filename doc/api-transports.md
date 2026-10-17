@@ -4,7 +4,7 @@ Swiftmailer's API transports send email via provider HTTP APIs instead of SMTP. 
 
 ## Architecture
 
-All HTTP API transports share a two-level inheritance chain:
+All API transports share a layered inheritance chain:
 
 ```
 Swift_Transport (interface)
@@ -45,10 +45,10 @@ All API transports implement the `Swift_Transport` interface:
 
 | Method | Description |
 |-|-|
-| `start()` | Initializes the transport; fires `beforeTransportStarted` / `transportStarted` events |
+| `start()` | Initializes the transport; fires `beforeTransportStarted` / `transportStarted` events (the two SES transports only set the started flag) |
 | `stop()` | Shuts down the transport; fires `beforeTransportStopped` event |
 | `isStarted()` | Returns whether the transport is active |
-| `ping()` | Lightweight connectivity check (provider-specific) |
+| `ping()` | Lightweight connectivity check (provider-specific); Gmail, Microsoft Graph and MailPace return `true` without a network request |
 | `send($message, &$failedRecipients, $envelope)` | Sends the message; returns recipient count |
 | `registerPlugin($plugin)` | Binds an event listener plugin |
 
@@ -81,7 +81,7 @@ payload formats remain in use.
 
 The following table describes this implementation, checked against the linked
 provider contracts on 2026-10-15. A matching envelope uses the message From address
-and the To/Cc/Bcc address multiset; recipient order and ASCII domain case do not
+and the set of distinct To/Cc/Bcc addresses; recipient order and ASCII domain case do not
 matter. Local-part case remains significant. “Matching only” describes the
 implemented endpoint, rather than every feature a provider might offer.
 
@@ -150,6 +150,20 @@ These protected methods are available to all HTTP API transports and are useful 
 | `getEnvelopeSender($message)` | Gets the envelope sender, preferring explicit envelope over From header |
 | `extractTags($message)` | Extracts and removes `X-Mailer-Tag` headers; returns `string[]` |
 | `extractMetadata($message)` | Extracts and removes `X-Mailer-Metadata-*` headers; returns `array<string, string>` |
+| `decodeJsonResponse($response)` | Reads the body within `MAX_RESPONSE_SIZE` and decodes it to an array; empty body returns `[]`; 1xx/3xx status, malformed or scalar JSON throw |
+| `invalidResponse($response, $reason, $previous, $ambiguous)` | Builds the exception for an invalid response; non-retryable below HTTP 400 or when `$ambiguous` is true |
+| `responseText($value, $fallback)` | Returns a scalar value as a string, else `$fallback` |
+| `responseErrors($value)` | Collects all scalar error details from a provider error structure; returns `string[]` |
+| `getResponseBody($response)` | Reads the body within `MAX_RESPONSE_SIZE` (see [Security](#security)) |
+
+These protected methods come from `AbstractApiTransport`, so HTTP and SDK transports both have them:
+
+| Method | Description |
+|-|-|
+| `validateEnvelope($message, $envelope, $supportsSenderOverride, $supportsRecipientOverride)` | Throws `Swift_TransportException` when an explicit envelope differs from the message From or To/Cc/Bcc and the provider cannot override it; does nothing without an envelope |
+| `getRawMessageWithoutBcc($message, $additionalHeaders)` | Renders a MIME copy without Bcc, Resent-Bcc, `X-Mailer-Tag` and `X-Mailer-Metadata-*` headers |
+| `sendWithEvents($message, &$failedRecipients, $envelope, $send, $recipientGroups)` | Runs an SDK send callback inside `beforeSendPerformed` / `sendPerformed` |
+| `throwException($exception)` | Dispatches `exceptionThrown`, then throws unless a listener cancels the event |
 
 ---
 
@@ -189,7 +203,7 @@ $message->getHeaders()->addTextHeader('X-Mailer-Metadata-campaign', 'feb-2026');
 | Resend | `tags` as `[{name, value}]` | `headers` object | Yes |
 | MailPace | `tags` (array) | Not supported | Yes |
 | Mailtrap | `category` (first tag only) | `custom_variables` object | No |
-| Postal | `tag` (first tag only) | Not supported | No |
+| Postal | `tag` (first tag only; dropped on explicit-envelope sends) | Not supported | No |
 | AhaSend | Not supported | Not supported | -- |
 | Mailomat | Not supported | Not supported | -- |
 | Scaleway | Not supported | Not supported | -- |
@@ -240,7 +254,7 @@ Both Amazon SES routes now support [SDK DSN construction](dsn.md#amazon-ses-sdk-
 | `gmail+api` | `GoogleTransport` |
 | `microsoft-graph` | `MicrosoftGraphTransport` |
 
-> **Note:** Every provider also exposes a `{scheme}+smtp` variant (e.g. `sendgrid+smtp`, `mailgun+smtp`, `brevo+smtp`) that maps to `Swift_Transport_EsmtpTransport` for SMTP delivery, and Mailtrap adds `mailtrap+sandbox`. The map further covers `null`, `native`/`sendmail`, and `smtp`/`smtp+tls`/`smtp+ssl`.
+> **Note:** Most providers also expose a `{scheme}+smtp` variant that maps to `Swift_Transport_EsmtpTransport` for SMTP delivery: `sendgrid+smtp`, `postmark+smtp`, `mailgun+smtp`, `brevo+smtp`, `resend+smtp`, `scaleway+smtp`, `infobip+smtp`, `mailersend+smtp`, `mailjet+smtp`, `ahasend+smtp`, `mailomat+smtp`, `mailtrap+smtp`, `sweego+smtp`, `amazon+smtp` and `gmail+smtp`. MailChimp uses `mandrill+smtp`. Azure, MailPace, Postal and Microsoft Graph have no SMTP variant. Mailtrap adds `mailtrap+sandbox`. The map further covers `null`, `native`/`sendmail`, and `smtp`/`smtp+tls`/`smtp+ssl`.
 
 ---
 
@@ -327,7 +341,7 @@ $transport = new Swift_Transport_Api_PostMarkTransport('your-server-token');
 | | |
 |-|-|
 | **Class** | `Swift_Transport_Api_MailGunTransport` |
-| **DSN** | `mailgun://API_KEY@default` |
+| **DSN** | `mailgun://API_KEY:DOMAIN@default` (add `?region=eu` for the EU API) |
 | **Base class** | `AbstractHttpApiTransport` |
 | **Constructor** | `(string $apiKey, string $domain, string $host = 'https://api.mailgun.net', ?ClientInterface $httpClient, ?EventDispatcher $eventDispatcher)` |
 | **API endpoint** | `{host}/v3/{domain}/messages` |
@@ -370,8 +384,8 @@ $transport = new Swift_Transport_Api_BrevoTransport('your-api-key');
 | | |
 |-|-|
 | **Class** | `Swift_Transport_Api_AmazonSesApiTransport` |
-| **DSN** | `amazon+api://...` (not fully DSN-constructible -- requires SesClient) |
-| **Base class** | `AbstractApiTransport` (HTTP through the Google SDK and Guzzle) |
+| **DSN** | `amazon+api://ACCESS_KEY:SECRET@default?region=REGION` (see [SES SDK DSNs](dsn.md#amazon-ses-sdk-dsns)) |
+| **Base class** | `AbstractApiTransport` (HTTP through async-aws and Symfony HttpClient) |
 | **Constructor** | `(SesClient $sesClient, ?EventDispatcher $eventDispatcher)` |
 | **Dependency** | `async-aws/ses` |
 | **Auth method** | AWS SDK credentials (IAM access key / secret) |
@@ -404,7 +418,7 @@ $transport = new Swift_Transport_Api_AmazonSesApiTransport($ses);
 | | |
 |-|-|
 | **Class** | `Swift_Transport_Api_AmazonSesHttpTransport` |
-| **DSN** | `amazon+http://...` (not fully DSN-constructible -- requires SesClient) |
+| **DSN** | `amazon+http://ACCESS_KEY:SECRET@default?region=REGION` (see [SES SDK DSNs](dsn.md#amazon-ses-sdk-dsns)) |
 | **Base class** | `AbstractApiTransport` (directly, no Guzzle) |
 | **Constructor** | `($sesClient, ?EventDispatcher $eventDispatcher)` |
 | **Dependency** | `async-aws/ses` |
@@ -479,6 +493,8 @@ Supported Symfony HTTP clients are `CurlHttpClient`, `NativeHttpClient`,
 `RetryableHttpClient`, `TraceableHttpClient` and `ScopingHttpClient` decorators.
 The policy clones decorator ownership and guards every retry strategy while
 retaining normal non-3xx decisions, delays, progress callbacks and trace records.
+If a retry strategy asks to retry an accepted 2xx `POST /v2/email/outbound-emails`
+response, the send fails as a permanent acceptance ambiguity instead.
 It sets `max_redirects=0` per request. Custom subclasses and other decorators
 (including `CachingHttpClient`) require an isolation contract and currently fail
 before a request. These restrictions apply even when credentials are cached.
@@ -516,7 +532,7 @@ false from `ping()` because they provide no safe health operation.
 | | |
 |-|-|
 | **Class** | `Swift_Transport_Api_AzureTransport` |
-| **DSN** | `azure://CONNECTION_STRING@default` |
+| **DSN** | `azure://CONNECTION_STRING@default` (URL-encode the connection string) |
 | **Base class** | `AbstractHttpApiTransport` |
 | **Constructor** | `(string $connectionString, ?ClientInterface $httpClient, ?EventDispatcher $eventDispatcher)` |
 | **API endpoint** | `{endpoint}/emails:send?api-version=2024-07-01-preview` |
@@ -543,7 +559,7 @@ $transport = new Swift_Transport_Api_AzureTransport($connectionString);
 |-|-|
 | **Class** | `Swift_Transport_Api_GoogleTransport` |
 | **DSN** | `gmail+api://ACCESS_TOKEN@default` or `gmail+api://CLIENT_ID:CLIENT_SECRET@default?refresh_token=TOKEN` |
-| **Base class** | `AbstractApiTransport` (directly, no Guzzle) |
+| **Base class** | `AbstractApiTransport` (HTTP through the Google SDK and Guzzle) |
 | **Constructor** | `(Google\Client $googleClient, ?EventDispatcher $eventDispatcher)` |
 | **Dependency** | `google/apiclient` |
 | **Auth method** | Google OAuth2 / Service Account |
@@ -573,7 +589,9 @@ whitespace or control characters. String `"0"` is valid. The transport validates
 the HTTP response before Google model hydration and caller retry middleware,
 then checks the decoded SDK result. Missing, malformed or interrupted successful
 responses raise a permanent acceptance ambiguity; retry, failover and round-robin
-wrappers cannot automatically resend. Each explicit send has its own scope.
+wrappers cannot automatically resend. After acceptance, a second
+`users/me/messages/send` POST in the same scope (for example from caller retry
+middleware) is refused with the same permanent ambiguity. Each explicit send has its own scope.
 OAuth token responses retain their own schema and ordinary SDK error handling.
 
 Terminal Gmail failures use a static Swift diagnostic and safe numeric status,
@@ -676,7 +694,7 @@ $transport = new Swift_Transport_Api_ResendTransport('re_xxxxxxxxxxxx');
 | | |
 |-|-|
 | **Class** | `Swift_Transport_Api_ScalewayTransport` |
-| **DSN** | `scaleway://API_KEY@default` |
+| **DSN** | `scaleway://PROJECT_ID:API_KEY@default` |
 | **Base class** | `AbstractHttpApiTransport` |
 | **Constructor** | `(string $apiKey, string $projectId, string $region = 'fr-par', ?ClientInterface $httpClient, ?EventDispatcher $eventDispatcher)` |
 | **API endpoint** | `https://api.scaleway.com/transactional-email/v1alpha1/regions/{region}/emails` |
@@ -702,7 +720,7 @@ checked on 2026-10-15. Delivery and account permissions still depend on Scaleway
 | | |
 |-|-|
 | **Class** | `Swift_Transport_Api_InfoBipTransport` |
-| **DSN** | `infobip://API_KEY@default` |
+| **DSN** | `infobip://API_KEY@xxx.api.infobip.com` |
 | **Base class** | `AbstractHttpApiTransport` |
 | **Constructor** | `(string $apiKey, string $baseUrl, ?ClientInterface $httpClient, ?EventDispatcher $eventDispatcher)` |
 | **API endpoint** | `https://{baseUrl}/email/3/send` |
@@ -755,6 +773,8 @@ $transport = new Swift_Transport_Api_MailPaceTransport('your-api-token');
 
 > **Note:** This transport uses the Mandrill API (MailChimp's transactional email service). The API key is passed in the request body, not in headers. The `ping()` method calls `/api/1.0/users/ping` and expects `"PONG!"` as the response.
 
+> **Note:** The return value counts only recipients that Mandrill reports as `sent` or `queued`. Rejected or invalid recipients lower the count, but they are not added to `$failedRecipients` and no exception is thrown.
+
 ```php
 $transport = new Swift_Transport_Api_MailChimpTransport('your-mandrill-api-key');
 ```
@@ -787,7 +807,7 @@ $transport = new Swift_Transport_Api_MailerSendTransport('mlsn.xxxxxxxxxxxx');
 | | |
 |-|-|
 | **Class** | `Swift_Transport_Api_MailJetTransport` |
-| **DSN** | `mailjet://PUBLIC_KEY@default` (requires both keys -- see note) |
+| **DSN** | `mailjet://PUBLIC_KEY:PRIVATE_KEY@default` (requires both keys -- see note) |
 | **Base class** | `AbstractHttpApiTransport` |
 | **Constructor** | `(string $publicKey, string $privateKey, ?ClientInterface $httpClient, ?EventDispatcher $eventDispatcher)` |
 | **API endpoint** | `https://api.mailjet.com/v3.1/send` |
@@ -846,7 +866,7 @@ $transport = new Swift_Transport_Api_MailomatTransport('your-api-key');
 | | |
 |-|-|
 | **Class** | `Swift_Transport_Api_MailtrapTransport` |
-| **DSN** | `mailtrap://API_KEY@default` |
+| **DSN** | `mailtrap://API_KEY@default`; sandbox: `mailtrap+sandbox://API_KEY@INBOX_ID` or `mailtrap+sandbox://API_KEY@default?inbox_id=INBOX_ID` |
 | **Base class** | `AbstractHttpApiTransport` |
 | **Constructor** | `(string $apiKey, bool $sandbox = false, ?string $inboxId = null, ?ClientInterface $httpClient, ?EventDispatcher $eventDispatcher)` |
 | **API endpoint** | Production: `https://send.api.mailtrap.io/api/send`; Sandbox: `https://sandbox.api.mailtrap.io/api/send/{inboxId}` |
@@ -869,13 +889,15 @@ $transport = new Swift_Transport_Api_MailtrapTransport('your-api-key', true, 'in
 | | |
 |-|-|
 | **Class** | `Swift_Transport_Api_PostalTransport` |
-| **DSN** | `postal://API_KEY@default` |
+| **DSN** | `postal://API_KEY@postal.example.com` |
 | **Base class** | `AbstractHttpApiTransport` |
 | **Constructor** | `(string $apiKey, string $host, ?ClientInterface $httpClient, ?EventDispatcher $eventDispatcher)` |
 | **API endpoint** | `https://{host}/api/v1/send/message` |
 | **Auth method** | Server API key header (`X-Server-API-Key: {apiKey}`) |
-| **Tags** | Yes -- `tag` (first tag only, single string) |
+| **Tags** | Yes -- `tag` (first tag only, single string); dropped on explicit-envelope sends |
 | **Metadata** | No |
+
+> **Note:** A send with an explicit envelope uses `/api/v1/send/raw`, which carries no tag field. The `X-Mailer-Tag` header is removed from the raw MIME, so the tag is dropped.
 
 > **Important:** The `$host` parameter should be the hostname only, without the `https://` protocol prefix. The transport prepends `https://` automatically. The resulting host is validated at construction time -- HTTPS-only, with localhost/loopback and private/reserved IPs rejected (see [Security](#security)).
 
@@ -956,20 +978,20 @@ $transport = new Swift_Transport_Api_SweegoTransport('your-api-key');
 
 ## Error Handling
 
-All API transports throw `Swift_TransportException` on failure. The exception message includes the provider name and the provider's error response when available.
+API transports throw `Swift_TransportException` on failure, with two exceptions. Gmail returns `0` for an ordinary Google SDK error before acceptance (see [Google Gmail API](#google-gmail-api)). The HTTP and SES transports return `0` when an `exceptionThrown` listener cancels the event. For the 17 HTTP transports, the message names the transport class and includes the provider's error response when available. The SES, Gmail and Graph transports use static messages.
 
 ```php
 try {
     $numSent = $mailer->send($message, $failedRecipients);
 } catch (Swift_TransportException $e) {
-    // e.g. "SendGrid API error: The from address does not match a verified Sender Identity."
-    // e.g. "Mailgun API error: Forbidden"
-    // e.g. "Brevo API error (unauthorized): Your API key is wrong"
+    // e.g. "Failed to send email via Swift_Transport_Api_SendgridTransport: SendGrid API error: The from address does not match a verified Sender Identity."
+    // e.g. "Failed to send email via Swift_Transport_Api_MailGunTransport: Mailgun API error: Forbidden"
+    // e.g. "Failed to send email via Swift_Transport_Api_BrevoTransport: Brevo API error (unauthorized): Your API key is wrong"
     echo $e->getMessage();
 }
 ```
 
-The event system fires a `failedMessage` event before throwing, allowing plugins to react to failures. Failed recipient addresses are collected into the `$failedRecipients` array.
+The 17 HTTP transports fire a `failedMessage` event before throwing, allowing plugins to react to failures. The SES, Gmail and Graph transports do not fire `sentMessage` or `failedMessage`; they fire only `beforeSendPerformed` and `sendPerformed` around a send. Failed recipient addresses are collected into the `$failedRecipients` array.
 
 The HTTP provider parsers share a bounded JSON decoder. A nonempty response
 must decode to an object or array; malformed JSON, scalar JSON (including
@@ -1010,7 +1032,7 @@ For transports extending `AbstractHttpApiTransport`, the `send()` method:
 
 The built-in HTTP API transports enforce the following request/response safeguards:
 
-**Response size limit.** `AbstractHttpApiTransport::getResponseBody()` caps each provider response at `MAX_RESPONSE_SIZE` (1 MB, i.e. `1048576` bytes). A declared `Content-Length` over the cap -- or a streamed body that grows past it while reading -- throws `Swift_TransportException`, guarding against memory exhaustion from a hostile or malfunctioning endpoint.
+**Response size limit.** `AbstractHttpApiTransport::getResponseBody()` caps each provider response at `MAX_RESPONSE_SIZE` (1 MB, i.e. `1048576` bytes). A known body size over the cap -- or a streamed body that grows past it while reading -- throws `Swift_TransportException`, guarding against memory exhaustion from a hostile or malfunctioning endpoint.
 
 **Redirect refusal.** Sends and network health checks set
 `allow_redirects: false` on each request, including requests through an injected
@@ -1041,16 +1063,31 @@ Guzzle's request options.
 Extend `Swift_Transport_AbstractHttpApiTransport` and implement five abstract methods:
 
 ```php
+use Psr\Http\Message\ResponseInterface;
+
 class Swift_Transport_Api_MyProviderTransport extends Swift_Transport_AbstractHttpApiTransport
 {
     protected function doSend(Swift_Mime_SimpleMessage $message, ?Swift_Envelope $envelope = null): array
     {
+        // Reject an explicit envelope that differs from the message headers
+        $this->validateEnvelope($message, $envelope);
+
         $tags     = $this->extractTags($message);
         $metadata = $this->extractMetadata($message);
         $body     = $this->getMessageBody($message);
 
-        // Build payload, call API via $this->httpClient
-        // Return ['message_id' => ..., 'recipients' => ...]
+        $response = $this->httpClient->request('POST', $this->getEndpoint(), [
+            'headers'         => $this->getAuthHeaders(),
+            'json'            => ['body' => $body, 'tags' => $tags, 'metadata' => $metadata], // provider-specific payload
+            'http_errors'     => false,
+            'allow_redirects' => false,
+        ]);
+        $result = $this->parseResponse($response);
+        if ($response->getStatusCode() >= 400) {
+            throw new Swift_TransportException('MyProvider API error: '.$this->responseText($result['error'] ?? null, 'Unknown error'));
+        }
+
+        return ['message_id' => $result['id'] ?? null, 'recipients' => $this->countRecipients($message)];
     }
 
     protected function getEndpoint(): string
@@ -1065,7 +1102,7 @@ class Swift_Transport_Api_MyProviderTransport extends Swift_Transport_AbstractHt
 
     protected function parseResponse(ResponseInterface $response): array
     {
-        return json_decode($response->getBody()->getContents(), true) ?? [];
+        return $this->decodeJsonResponse($response);
     }
 
     protected function getPingEndpoint(): string

@@ -101,7 +101,7 @@ smtp+tls://user:pass@smtp.example.com:587
 smtp+ssl://user:pass@smtp.example.com:465
 ```
 
-When no port is given, `smtp+ssl` defaults to 465 and the others to 587.
+When no port is given, `smtp+ssl` defaults to 465 and the others to 587. A host of `default`, or no host, connects to `localhost`.
 
 ### HTTP API
 
@@ -317,7 +317,7 @@ SES API parameters.
 
 ### Provider `+smtp` convenience schemes
 
-These map to `Swift_Transport_EsmtpTransport` with the provider's SMTP host, port, and encryption preset, so you only supply credentials. Supply the credentials as `user:pass`; use `@default` for the host to accept the preset, or pass a real host to override it (e.g. a different AWS SES region). Port can be overridden via the DSN port; **encryption is fixed** to the value below.
+These map to `Swift_Transport_EsmtpTransport` with the provider's SMTP host, port, and encryption preset, so you only supply credentials. Supply the credentials as `user:pass`; use `@default` for the host to accept the preset, or pass a real host to override it (e.g. a different AWS SES region). Port can be overridden via the DSN port; **encryption is fixed** to the value below. To authenticate with an OAuth access token, add `?auth_mode=xoauth2`; without it, automatic selection tries PLAIN, LOGIN, CRAM-MD5 and NTLM before XOAUTH2 and sends the token as a password.
 
 | Scheme | Host | Port | Encryption |
 |-|-|-|-|
@@ -343,7 +343,7 @@ sendgrid+smtp://apikey:apikey@default
 amazon+smtp://AKIA...:secret@email-smtp.eu-west-1.amazonaws.com:587
 ```
 
-> Note: `mandrill` is available **only** as `mandrill+smtp` — there is no `mandrill` API scheme.
+> Note: `mandrill` is available **only** as `mandrill+smtp` — there is no `mandrill` API scheme. For the Mandrill Transactional HTTP API, use `mailchimp://API_KEY@default`.
 
 ### Mailtrap sandbox
 
@@ -354,15 +354,13 @@ mailtrap+sandbox://APITOKEN@12345
 mailtrap+sandbox://APITOKEN@default?inbox_id=12345
 ```
 
-> The `inbox_id` parameter is **not** in the allowed-parameter whitelist, so passing it emits an "unknown DSN parameter" warning (the value is still applied). Putting the inbox ID in the host position avoids the warning.
-
 ## DSN Query Parameters
 
-Only a fixed whitelist of parameters is accepted (`Swift_Transport_DsnTransportFactory::ALLOWED_DSN_PARAMETERS`):
+Only a fixed whitelist of parameters is accepted (a private constant of `Swift_Transport_DsnTransportFactory`):
 
 `verify_peer`, `peer_fingerprint`, `source_ip`, `smtputf8`, `command`, `retries`, `retry_delay`, `click_tracking`, `click_tracking_text`, `open_tracking`, `timeout`, `auth_mode`, `local_domain`
 
-Provider-specific parameters also include `region`, `inbox_id`, `session_token`, `refresh_token`, `tenant_id` and `user_id`; each is restricted to its documented scheme. SDK routes use their strict contracts above and reject unsupported options. Other unknown parameters trigger an `E_USER_WARNING` (`unknown DSN parameter "x" will be ignored`) and are ignored.
+Provider-specific parameters also include `region`, `inbox_id`, `session_token`, `refresh_token`, `tenant_id` and `user_id`; each is restricted to its documented scheme. The `gmail+api` and `microsoft-graph` schemes use their strict contracts above and reject unsupported options. On all other schemes, including the SES schemes, other unknown parameters are ignored and raise an `E_USER_WARNING` (`Swiftmailer: unknown DSN parameter "x" will be ignored. Allowed parameters: ...`). The warning is silenced with `@`, so only a registered error handler (`set_error_handler()`) sees it.
 
 ### SMTP parameters
 
@@ -370,7 +368,7 @@ These apply to the SMTP schemes (`smtp`, `smtp+tls`, `smtp+ssl`, and the provide
 
 | Parameter | Type | Description |
 |-|-|-|
-| `verify_peer` | bool | TLS peer verification (also sets `verify_peer_name`). **Setting `false` emits an `E_USER_WARNING`** — it disables certificate verification and is insecure; use only for local development. |
+| `verify_peer` | bool | TLS peer verification (also sets `verify_peer_name`). **Setting `false` emits an `E_USER_WARNING`** (silenced with `@`; only a registered error handler sees it) — it disables certificate verification and is insecure; use only for local development. |
 | `peer_fingerprint` | string | Expected TLS peer certificate fingerprint (pinning). |
 | `source_ip` | string | Local IP address to bind the outgoing connection to. |
 | `smtputf8` | bool | Set `false` to disable SMTPUTF8 and fall back to IDN address encoding. Omitted/`true` keeps the default auto encoder. |
@@ -461,6 +459,8 @@ sendgrid://SG.your-key@default?retries=3&retry_delay=1000
 smtp+tls://user:pass@mail.example.com:587?retries=2&retry_delay=500
 ```
 
+A non-numeric `retries` value (e.g. `abc`) is read as `0` and silently applies no wrapper. `retry_delay` without a positive `retries` is ignored.
+
 **Hardened caps** — the values are bounded and out-of-range values throw `InvalidArgumentException`:
 
 | Cap | Value |
@@ -470,7 +470,7 @@ smtp+tls://user:pass@mail.example.com:587?retries=2&retry_delay=500
 | Total retry budget | 300 s (retries stop once elapsed) |
 | Per-sleep ceiling | 60000 ms |
 
-Backoff formula: `retry_delay * 2^attempt + random(0, retry_delay/2)`. Only transient failures (connection timeouts, SMTP 4xx, HTTP 429/5xx) are retried; permanent failures are thrown immediately.
+Backoff formula: `retry_delay * 2^attempt + random(0, retry_delay/2)`. Only transient failures (connection timeouts, SMTP 4xx, HTTP 429/502/503/504) are retried; permanent failures are thrown immediately. See [retry classification](sending.md#retry) for the full order.
 
 Retry parameters also work on the inner DSNs of a `failover(...)`/`roundrobin(...)` wrapper, since each inner DSN is resolved independently.
 
@@ -536,16 +536,19 @@ Wraps a single inner transport with automatic retry using the `RetryTransport` *
 $transport = $factory->fromDsnString('retry(sendgrid://KEY@default)');
 ```
 
+Do not combine both forms on one DSN: `retry(sendgrid://KEY@default?retries=2)` wraps a `RetryTransport` inside another `RetryTransport`, so the retries multiply.
+
 ### Nesting
 
-`retry(...)` is matched first, so it can wrap a failover/round-robin group, and each inner DSN of a group may itself carry retry query parameters:
+`retry(...)` is matched first, so it can wrap a failover/round-robin group, and each inner DSN of a group may itself carry retry query parameters or be a `retry(...)` wrapper:
 
 ```
 retry(failover(sendgrid://KEY@default postmark://KEY@default)?retry_period=15)
 failover(smtp+tls://u:p@a.example.com:587?retries=2 smtp+tls://u:p@b.example.com:587)?retry_period=30
+failover(retry(sendgrid://KEY@default) postmark://KEY@default)
 ```
 
-> Limitation: inner DSNs of `failover(...)`/`roundrobin(...)` are split on whitespace, so you **cannot** nest one space-separated group inside another (e.g. `failover(failover(a b) c)`). Wrap with `retry(...)`, or use per-DSN `?retries=` parameters, to combine behaviours.
+> Limitation: inner DSNs of `failover(...)`/`roundrobin(...)` are split on whitespace, so you **cannot** nest one space-separated group inside another (e.g. `failover(failover(a b) c)`). Such a DSN throws `InvalidArgumentException` (`Malformed transport wrapper DSN; retry_period belongs after a pool wrapper.`). Wrap with `retry(...)`, or use per-DSN `?retries=` parameters, to combine behaviours.
 
 **Syntax:** `wrapper(dsn1 dsn2 dsn3)?retry_period=N` for pools — space-separated DSNs inside the parentheses, followed by an optional pool query.
 

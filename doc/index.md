@@ -24,8 +24,8 @@ Maintained by [Redrock Software Corporation](https://www.go-redrock.com/). This 
 
 | Guide | Contents |
 |-|-|
-| [api-transports.md](api-transports.md) | All 21 HTTP API transports: constructors, auth, tags/metadata mapping |
-| [microsoft-graph.md](microsoft-graph.md) | Microsoft Graph: auth modes, large attachments, calendar invite conversion |
+| [api-transports.md](api-transports.md) | All 21 API transports (17 HTTP/JSON, 4 SDK-backed): constructors, auth, tags/metadata mapping |
+| [microsoft-graph.md](microsoft-graph.md) | Microsoft Graph: auth modes, request destinations, DSNs, large attachments, calendar invite conversion, operation acceptance, failure diagnostics |
 | [dsn.md](dsn.md) | DSN connection strings: every scheme, query parameters, wrappers |
 | [cli.md](cli.md) | `bin/swiftmailer-test` -- validate a transport from the command line |
 
@@ -42,6 +42,7 @@ Maintained by [Redrock Software Corporation](https://www.go-redrock.com/). This 
 | Guide | Contents |
 |-|-|
 | [architecture.md](architecture.md) | How the codebase fits together: DI container, transport hierarchy, MIME pipeline, testing |
+| [regression-tests.md](regression-tests.md) | Merge-train regression coverage: which tests protect each merged fix |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Dev setup, tests, code style, static analysis, CI |
 | [../docs/SYMFONY_MAILER_PARITY.md](../docs/SYMFONY_MAILER_PARITY.md) | Feature mapping against Symfony Mailer |
 

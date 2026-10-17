@@ -8,10 +8,10 @@ The original SwiftMailer was abandoned by its creators in November 2021. [Redroc
 
 ### What We've Done
 
-Since taking over, Redrock has shipped a major modernization of SwiftMailer (v6.4.0) that back-ports the most valuable Symfony Mailer capabilities while preserving full backward compatibility:
+Since taking over, Redrock has shipped a major modernization of SwiftMailer (v6.4.0) that back-ports the most valuable Symfony Mailer capabilities while preserving backward compatibility for existing mail code (intentional delivery-safety changes are listed in [doc/upgrading.md](doc/upgrading.md)):
 
-- **21 HTTP API transports** -- SendGrid, Mailgun, Postmark, Brevo, Amazon SES, Azure, Gmail API, Microsoft Graph, Resend, Scaleway, InfoBip, MailPace, Mandrill, MailerSend, Mailjet, AhaSend, Mailomat, Mailtrap, Postal, Sweego, and more
-- **DSN transport factory** -- create any transport from a connection string, with `failover()`, `roundrobin()`, and `retry()` wrappers
+- **21 API transports** -- SendGrid, Mailgun, Postmark, Brevo, Amazon SES, Azure, Gmail API, Microsoft Graph, Resend, Scaleway, InfoBip, MailPace, Mandrill, MailerSend, Mailjet, AhaSend, Mailomat, Mailtrap, Postal, Sweego, and more (17 HTTP/JSON, 4 SDK-backed), including SendGrid click/open tracking controls
+- **DSN transport factory** -- create any transport from a connection string, including SES, Gmail and Graph SDK transports, with `failover()`, `roundrobin()`, and `retry()` wrappers and optional pool `retry_period` cooldowns
 - **Webhook system** -- process inbound delivery/bounce/engagement webhooks from 14 providers with signature verification
 - **New events** -- `SentMessageEvent` and `FailedMessageEvent` for post-send tracking
 - **New plugins** -- `AllowlistPlugin` (dev/staging safety), `CssInlinerPlugin` (auto CSS inlining), `SentMessagePlugin` (post-send inspection), `ReadReceiptPlugin` (MDN read receipts + tracking pixel)
@@ -31,7 +31,7 @@ SwiftMailer is not dead -- it's actively maintained and developed. Our roadmap i
 - **PHP version support** -- staying current with the latest PHP releases
 - **Community contributions** -- we welcome pull requests, bug reports, and feature requests
 
-If your application uses SwiftMailer, you don't have to migrate. Upgrade to this fork and get modern features with zero code changes to your existing mail code.
+If your application uses SwiftMailer, you don't have to migrate. Upgrade to this fork and get modern features without rewriting your existing mail code. Review [doc/upgrading.md](doc/upgrading.md) for the intentional delivery-safety changes, such as unsupported API envelope overrides that now throw.
 
 ## Requirements
 
@@ -93,9 +93,9 @@ $mailer = new Swift_Mailer($transport);
 
 ## Features
 
-### 21 HTTP API Transports
+### 21 API Transports
 
-SendGrid, Mailgun, Postmark, Brevo, Amazon SES (API + HTTP), Azure Communication Services, Google Gmail API, Microsoft Graph, Resend, Scaleway, InfoBip, MailPace, MailChimp/Mandrill, MailerSend, Mailjet, AhaSend, Mailomat, Mailtrap, Postal, Sweego.
+SendGrid, Mailgun, Postmark, Brevo, Amazon SES (API + HTTP), Azure Communication Services, Google Gmail API, Microsoft Graph, Resend, Scaleway, InfoBip, MailPace, MailChimp/Mandrill, MailerSend, Mailjet, AhaSend, Mailomat, Mailtrap, Postal, Sweego. Seventeen use HTTP/JSON directly; SES (both variants), Gmail and Microsoft Graph use vendor SDK clients.
 
 See [doc/api-transports.md](doc/api-transports.md) for constructor arguments, authentication, and examples.
 
@@ -111,7 +111,7 @@ Wrap any transport with automatic retry logic featuring exponential backoff:
 
 ```php
 $inner = new Swift_Transport_Api_SendgridTransport('SG.your-key');
-$transport = new Swift_RetryTransport($inner, maxRetries: 3, baseDelay: 1000);
+$transport = new Swift_Transport_RetryTransport($inner, maxRetries: 3, baseDelayMs: 1000);
 
 // Or via DSN
 $transport = $factory->fromDsnString('retry(sendgrid://KEY@default)');
@@ -178,13 +178,19 @@ $mailer->send($message, $failedRecipients, $envelope);
 
 - **Auto TLS** -- STARTTLS negotiation mode alongside traditional `ssl`/`tls`
 - **Smart SMTPUTF8** -- `AutoAddressEncoder` detects SMTPUTF8 server capability and switches encoding automatically
-- **DSN parameters** -- `verify_peer`, `peer_fingerprint`, `source_ip`, `smtputf8` via DSN query string
+- **DSN parameters** -- `verify_peer`, `peer_fingerprint`, `source_ip`, `smtputf8`, `timeout`, `auth_mode`, `local_domain` via DSN query string (see [doc/dsn.md](doc/dsn.md) for all parameters)
 
 ### Security Hardening
 
 - `#[SensitiveParameter]` on all API key constructor parameters (PHP 8.2+)
 - Guzzle exception chain sanitized to prevent API key leakage in stack traces
 - Serialization blocked on transport objects (`__sleep`/`__wakeup` throw)
+- Recipient policies (`AllowlistPlugin`, `RedirectingPlugin`) enforced on explicit envelopes; Bcc kept private for SMTP envelopes and API providers
+- HTTP redirects refused for API sends, including Gmail, Graph and SES SDK requests
+- Ambiguous provider acceptance and terminal failures are never replayed by retry or failover wrappers
+- DSN parse diagnostics and CLI output redact credentials; `HtmlReporter` escapes recipient addresses
+
+See [doc/security.md](doc/security.md) for the complete list.
 
 ### CLI Testing Tool
 
@@ -197,7 +203,7 @@ The `bin/swiftmailer-test` command-line tool validates your transport configurat
 ### CI & Quality
 
 - GitHub Actions CI pipeline with a PHP 8.3--8.5 test matrix
-- GitLab CI pipeline with unit tests (PHP 8.3/8.5), Mailpit smoke tests, and Infection mutation testing
+- GitLab CI pipeline with unit tests (PHP 8.3/8.5), lowest-dependency SDK compatibility jobs, Mailpit smoke tests, and Infection mutation testing
 - PHPStan level 5 static analysis
 - PHP-CS-Fixer code style enforcement
 
@@ -219,8 +225,10 @@ The complete documentation lives in [doc/](doc/index.md) -- no external docs sit
 | [doc/webhooks.md](doc/webhooks.md) | Webhook processing for delivery and engagement events |
 | [doc/plugins.md](doc/plugins.md) | All 14 bundled plugins and writing your own |
 | [doc/signers.md](doc/signers.md) | DKIM, DomainKeys, and S/MIME signing |
+| [doc/japanese.md](doc/japanese.md) | Sending in Japanese (ISO-2022-JP) |
 | [doc/security.md](doc/security.md) | Security hardening: defaults and opt-in protections |
 | [doc/architecture.md](doc/architecture.md) | Codebase internals for contributors |
+| [doc/regression-tests.md](doc/regression-tests.md) | Merge-train regression coverage index |
 | [doc/upgrading.md](doc/upgrading.md) | Migration guide from stock SwiftMailer 6.x |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Dev setup, tests, style, static analysis, CI |
 

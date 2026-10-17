@@ -165,9 +165,12 @@ and are not subject to the replay window.
 |-|-|
 | `InvalidArgumentException` | `$secret` is an empty string, or the body is not valid JSON |
 | `Swift_Webhook_SignatureVerificationException` | Signature invalid, timestamp outside the replay window, or `$remoteIp` not in `$allowedIps` |
+| `TypeError` | The body is valid JSON but not an object or array (for example `123` or `"x"`); it reaches `convert(array $payload)` |
 
 `Swift_Webhook_SignatureVerificationException` extends `RuntimeException`; its
 message has the form `Webhook signature verification failed for provider "<name>".`
+For an IP allowlist rejection, `<name>` is `<provider>: remote IP not in allowlist`,
+for example `... for provider "sendgrid: remote IP not in allowlist".`
 
 ## Supported Providers
 
@@ -202,7 +205,7 @@ described here (never `null` or an empty string):
 | Postmark | Shared webhook token | Timing-safe compare with `X-Postmark-Webhook-Token` |
 | Amazon SES | Expected SNS **Topic ARN** | Full SNS signature validation (fetches cert, RSA verify) |
 | Brevo | Webhook token | Timing-safe compare with `X-Brevo-Webhook-Token` |
-| Resend | Svix signing secret (`whsec_...`) | HMAC-SHA256 over `svix-id.svix-timestamp.body` |
+| Resend | Svix signing secret (`whsec_...`; the prefix is optional) | HMAC-SHA256 over `svix-id.svix-timestamp.body` |
 | MailerSend | HMAC signing secret | HMAC-SHA256 of the raw body (hex `Signature` header) |
 | Mailjet | Basic-Auth password portion | Timing-safe compare against the `Authorization: Basic` password |
 | Mandrill | `"webhook_key\|webhook_url"` (pipe-delimited) | HMAC-SHA1 of URL + sorted POST vars, base64 |
@@ -210,7 +213,7 @@ described here (never `null` or an empty string):
 | Mailomat | Webhook secret | HMAC-SHA256 of `id.event.timestamp` (from headers) |
 | Mailtrap | HMAC signing secret | HMAC-SHA256 of the raw body (hex `Mailtrap-Signature` header) |
 | Sweego | Base64 webhook secret | HMAC-SHA256 over `webhook-id.webhook-timestamp.body` |
-| MailPace | Base64 Ed25519 public key | Ed25519 (`sodium_crypto_sign_verify_detached`) |
+| MailPace | Base64 Ed25519 public key | Ed25519 (`sodium_crypto_sign_verify_detached`; requires `ext-sodium`, which composer does not require -- without it verification is a fatal "undefined function" error) |
 
 ## Provider-Specific Setup
 
@@ -423,12 +426,18 @@ class WebhookController extends Controller
 {
     public function sendgrid(Request $request)
     {
+        // HeaderBag::all() returns a list of values per header; converters expect strings
+        $headers = array_map(
+            fn ($values) => \is_array($values) ? ($values[0] ?? '') : $values,
+            $request->headers->all(),
+        );
+
         $handler = new Swift_Webhook_RequestHandler();
         $events = $handler->handle(
             new Swift_Webhook_Converter_SendgridConverter(),
             $request->getContent(),
-            $request->headers->all(),
-            config('services.sendgrid.webhook_secret'),
+            $headers,
+            (string) config('services.sendgrid.webhook_secret'), // must be non-empty
         );
 
         foreach ($events as $event) {
@@ -524,7 +533,7 @@ class MyProviderConverter extends Swift_Webhook_AbstractPayloadConverter
 
 The base class provides:
 - `verifyHmac(string $data, string $signature, string $secret, string $algo)` -- timing-safe HMAC comparison
-- `createDeliveryEvent(...)` -- factory for delivery events (takes a `DateTimeImmutable` timestamp)
+- `createDeliveryEvent(...)` -- factory for delivery events (takes a `DateTimeImmutable` timestamp). If you construct `Swift_Webhook_Event` directly instead, its constructor throws `InvalidArgumentException` for a type other than `delivery` or `engagement`
 - `createEngagementEvent(...)` -- factory for engagement events (takes a `DateTimeImmutable` timestamp)
 - `parseTimestamp(int|string $timestamp)` -- parses Unix timestamps, ISO 8601, and common formats into a `DateTimeImmutable`
 - `extractTimestamp(string $rawBody, array $headers): ?int` -- override to expose a timestamp for [replay protection](#replay-protection); returns `null` by default (check skipped). `Swift_Webhook_AbstractPayloadConverter` already implements `Swift_Webhook_TimestampExtractorInterface`, so you only override this method
