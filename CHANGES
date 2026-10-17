@@ -11,7 +11,8 @@ Unreleased
 ----------
 
  The v6.5.1 to v6.5.8 tags (2026-09-21 to 2026-10-14) were cut from this
- section without separate headings, and `Swift::VERSION` still reports 6.5.0.
+ section without separate headings. Those tags report `Swift::VERSION` 6.5.0;
+ develop reports 6.5.8 from GitLab #104 on.
  Entries that cite a GitLab issue were merged after v6.5.8 and are not yet in
  a tag.
 
@@ -158,6 +159,10 @@ Unreleased
    autoloading, and behavior are unchanged.
 
  Bug Fixes:
+
+ * Swift::VERSION reports 6.5.8, the latest release tag, instead of 6.5.0.
+   A test checks that the latest reachable release tag matches the constant,
+   so a release commit must bump it before tagging (GitLab #104).
 
  * Preserve independent pool failure histories after cloning, including subclasses
    with their own clone hooks. Retain serialized metadata compatibility and lazy
