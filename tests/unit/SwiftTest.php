@@ -108,4 +108,17 @@ class SwiftTest extends TestCase
         $this->assertCount(0, Swift::$inits);
         \spl_autoload_unregister(['Swift', 'autoload']);
     }
+
+    public function testVersionMatchesLatestReachableReleaseTag(): void
+    {
+        // v6.5.1 to v6.5.8 were tagged while VERSION still said 6.5.0 (#104). A release commit
+        // must bump VERSION before it is tagged, so the latest tag always names the reported version.
+        $root = \dirname(__DIR__, 2);
+        $tag  = @\exec('git -C '.\escapeshellarg($root).' describe --tags --abbrev=0 --match "v[0-9]*" 2>/dev/null', $output, $status);
+        if (0 !== $status || '' === (string) $tag) {
+            $this->markTestSkipped('No release tags in this checkout (CI uses a shallow clone without tags).');
+        }
+
+        $this->assertSame(\ltrim($tag, 'v'), Swift::VERSION);
+    }
 }
