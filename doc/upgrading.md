@@ -46,6 +46,7 @@ The fork preserves these stock SwiftMailer 6.x APIs:
 
 - **Custom transports:** `Swift_Transport::send()` has a third parameter, `?Swift_Envelope $envelope = null`. A custom class that implements `Swift_Transport` with the stock two-parameter signature causes a fatal error when PHP loads it. Add the parameter to your `send()` method.
 - **STARTTLS:** TLS 1.0 and 1.1 are disabled. STARTTLS negotiates only TLS 1.2 or TLS 1.3, so a server that supports only older TLS versions fails with `Swift_TransportException`.
+- **STARTTLS without EHLO:** stock 6.x fell back to plaintext `HELO` when a STARTTLS server rejected `EHLO`, and sent the message unencrypted. The fork throws `Swift_TransportException` instead. A server that accepts only `HELO` needs an unencrypted transport or SMTPS.
 - **DKIM `rsa-sha1`:** `Swift_Signers_DKIMSigner::setHashAlgorithm('rsa-sha1')` throws `InvalidArgumentException` (RFC 8301). Use `rsa-sha256` (the default) or `ed25519-sha256`.
 - **OpenDKIM signer removed:** `Swift_Signers_OpenDKIMSigner` no longer exists. Use `Swift_Signers_DKIMSigner`.
 - **DomainKeys default hash:** `Swift_Signers_DomainKeySigner` now uses `rsa-sha256` by default (stock always used `rsa-sha1`). RFC 4870 defines only `rsa-sha1`, so a strict DomainKeys verifier can reject the new default. Call `setHashAlgorithm('rsa-sha1')` to keep the old behavior (deprecated).

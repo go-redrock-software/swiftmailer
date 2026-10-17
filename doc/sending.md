@@ -91,22 +91,26 @@ The library defines exactly three encryption-mode constants (in
 | Constant | String value | Meaning |
 |-|-|-|
 | `CONNECTION_ENCRYPTION_MODE_NONE` | `null` | Plain SMTP, no encryption (default) |
-| `CONNECTION_ENCRYPTION_MODE_STARTTLS` | `'tls'` | SMTP with STARTTLS -- best-effort encryption negotiated after connecting |
+| `CONNECTION_ENCRYPTION_MODE_STARTTLS` | `'tls'` | SMTP with STARTTLS -- encryption negotiated after connecting; the session fails if TLS cannot be negotiated |
 | `CONNECTION_ENCRYPTION_MODE_TLS` | `'ssl'` | SMTPS -- SMTP over TLS, always encrypted from the first byte |
 
 ```php
 // SMTPS = SMTP over TLS (always encrypted), typically port 465
 $transport = new Swift_SmtpTransport('smtp.example.org', 465, CONNECTION_ENCRYPTION_MODE_TLS);
 
-// SMTP with STARTTLS (best-effort encryption), typically port 587
+// SMTP with STARTTLS (required encryption), typically port 587
 $transport = new Swift_SmtpTransport('smtp.example.org', 587, CONNECTION_ENCRYPTION_MODE_STARTTLS);
 ```
 
 When STARTTLS is selected, the transport issues `EHLO`, then `STARTTLS`, then
-re-issues `EHLO` over the upgraded connection before sending mail. If the first
-`EHLO` fails, the transport falls back to `HELO` and skips `STARTTLS`, so the
-session continues without TLS. If `HELO` also fails, the exception message is
-`EHLO failed: ...; HELO fallback failed: ...`.
+re-issues `EHLO` over the upgraded connection before sending mail. STARTTLS is an
+ESMTP extension, so if the first `EHLO` fails the transport throws
+`Swift_TransportException` (`Unable to connect with STARTTLS encryption: EHLO
+failed: ...`) instead of falling back to `HELO` in plaintext. A failed `STARTTLS`
+throws even if an `exceptionThrown` listener cancels the event. Without
+encryption, a failed `EHLO` still falls back to `HELO`; if that also fails, the
+message is `EHLO failed: ...; HELO fallback failed: ...`. If the `EHLO` after a
+successful `STARTTLS` fails, the transport falls back to `HELO` over TLS.
 
 > **Note.** For encryption to work, your PHP build must have the matching
 > OpenSSL stream wrappers. Check with `stream_get_transports()` -- look for

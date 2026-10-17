@@ -354,6 +354,16 @@ class Swift_Transport_EsmtpTransport extends Swift_Transport_AbstractSmtpTranspo
                 [250],
             );
         } catch (Swift_TransportException $e) {
+            if ($this->params[CONNECTION_ENCRYPTION_MODE_STARTTLS]) {
+                // STARTTLS is an ESMTP extension, so it cannot follow HELO. Falling back would
+                // send the whole session in plaintext, a downgrade an attacker forces by rejecting EHLO.
+                $this->throwRequiredStartTlsFailure(new Swift_TransportException(
+                    'Unable to connect with STARTTLS encryption: EHLO failed: '.$e->getMessage(),
+                    $e->getCode(),
+                    $e,
+                ));
+            }
+
             return $this->doHeloAfterFailedEhlo($e);
         }
 
@@ -374,7 +384,7 @@ class Swift_Transport_EsmtpTransport extends Swift_Transport_AbstractSmtpTranspo
                     return $this->doHeloAfterFailedEhlo($e);
                 }
             } catch (Swift_TransportException $e) {
-                $this->throwException($e);
+                $this->throwRequiredStartTlsFailure($e);
             }
         }
 
@@ -400,6 +410,19 @@ class Swift_Transport_EsmtpTransport extends Swift_Transport_AbstractSmtpTranspo
      * error: a server that closes the connection after EHLO (e.g. "421 4.7.0 ... (EHLO)") would
      * otherwise show only HELO's "got an empty response".
      */
+    /**
+     * Reports a failed required STARTTLS to exceptionThrown listeners, then throws even if a
+     * listener cancels the event: continuing would send the session in plaintext.
+     */
+    private function throwRequiredStartTlsFailure(Swift_TransportException $e): never
+    {
+        if ($evt = $this->eventDispatcher->createTransportExceptionEvent($this, $e)) {
+            $this->eventDispatcher->dispatchEvent($evt, 'exceptionThrown');
+        }
+
+        throw $e;
+    }
+
     private function doHeloAfterFailedEhlo(Swift_TransportException $ehloFailure)
     {
         try {
