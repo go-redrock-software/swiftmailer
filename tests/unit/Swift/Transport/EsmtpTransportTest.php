@@ -1008,6 +1008,90 @@ class Swift_Transport_EsmtpTransportTest extends Swift_Transport_AbstractSmtpEve
         $smtp->start();
     }
 
+    public function testStartTlsRefusesHeloFallbackWhenEhloIsRejected()
+    {
+        // An attacker who rejects EHLO must not turn a required STARTTLS session into plaintext HELO
+        $buf = $this->getScriptedBuffer([
+            0 => "220 server.tld ready\r\n",
+            1 => "500 EHLO not understood\r\n",
+            2 => "250 HELO accepted\r\n",
+            3 => "250 OK\r\n",
+        ], $written, true);
+        $smtp = $this->getTransport($buf);
+        $smtp->setEncryption(CONNECTION_ENCRYPTION_MODE_STARTTLS);
+
+        $message = (new Swift_Message('Secret'))
+            ->setFrom('sender@example.org')
+            ->setTo('recipient@example.org')
+            ->setBody('Confidential body');
+
+        try {
+            (new Swift_Mailer($smtp))->send($message);
+            $this->fail('A rejected EHLO must not fall back to HELO when STARTTLS is required');
+        } catch (Swift_TransportException $e) {
+            $this->assertStringStartsWith('Unable to connect with STARTTLS encryption: EHLO failed: ', $e->getMessage());
+            $this->assertSame(500, $e->getCode());
+        }
+
+        $this->assertFalse($smtp->isStarted());
+        $this->assertCount(1, $written, 'Only EHLO may be sent: no HELO, MAIL FROM or DATA in plaintext');
+        $this->assertMatchesRegularExpression('~^EHLO ~', $written[0]);
+    }
+
+    public function testRequiredStartTlsFailureIsThrownEvenIfAListenerCancelsIt()
+    {
+        // A listener that suppresses transport exceptions must not let a failed STARTTLS continue in plaintext
+        $buf = $this->getScriptedBuffer([
+            0 => "220 server.tld ready\r\n",
+            1 => "250 ServerName\r\n",
+            2 => "454 TLS not available\r\n",
+        ], $written, false);
+        $smtp = $this->getTransport($buf, new Swift_Events_SimpleEventDispatcher());
+        $smtp->setEncryption(CONNECTION_ENCRYPTION_MODE_STARTTLS);
+
+        $listener = new class implements Swift_Events_TransportExceptionListener {
+            public array $seen = [];
+
+            public function exceptionThrown(Swift_Events_TransportExceptionEvent $evt)
+            {
+                $this->seen[] = $evt->getException()->getMessage();
+                $evt->cancelBubble();
+            }
+        };
+        $smtp->registerPlugin($listener);
+
+        try {
+            $smtp->start();
+            $this->fail('A failed STARTTLS must throw even when a listener cancels the exception event');
+        } catch (Swift_TransportException $e) {
+            $this->assertSame('Unable to connect with STARTTLS encryption', $e->getMessage());
+        }
+
+        $this->assertFalse($smtp->isStarted());
+        $this->assertContains('Unable to connect with STARTTLS encryption', $listener->seen, 'Listeners still observe the failure');
+        $this->assertCount(2, $written);
+        $this->assertSame("STARTTLS\r\n", $written[1]);
+    }
+
+    /**
+     * A buffer that records every command and answers it with the scripted reply for its sequence
+     * number. The greeting is read with sequence 0.
+     */
+    private function getScriptedBuffer(array $replies, ?array &$written, bool $tlsAvailable)
+    {
+        $written = [];
+        $buf     = $this->getBuffer();
+        $buf->shouldReceive('write')->andReturnUsing(function ($command) use (&$written) {
+            $written[] = $command;
+
+            return \count($written);
+        });
+        $buf->shouldReceive('readLine')->andReturnUsing(fn ($sequence) => $replies[$sequence] ?? false);
+        $buf->shouldReceive('startTLS')->andReturn($tlsAvailable);
+
+        return $buf;
+    }
+
     public function testAutoAddressEncoderIsUpdatedOnSmtpUtf8()
     {
         $buf         = $this->getBuffer();

@@ -51,6 +51,11 @@ Unreleased
 
  Security:
 
+ * A required STARTTLS session no longer falls back to plaintext HELO when
+   the server rejects EHLO, and a failed STARTTLS throws even if an
+   exceptionThrown listener cancels the event. The HELO fallback remains for
+   unencrypted sessions and after TLS is established (GitLab #103).
+
  * Amazon SES sends and health probes use an operation-local SDK copy that
    refuses redirects for resource requests and the AsyncAws credential-provider
    chain. A redirect is a non-retryable failure (GitLab #59, #63).

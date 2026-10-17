@@ -24,6 +24,7 @@ This fork of SwiftMailer ships a set of defensive features aimed at the ways a m
 | DSN parameter validation | On, automatic | -- |
 | API endpoint URL / SSRF validation | On for custom base URLs | -- |
 | TLS certificate verification | On (PHP secure defaults) | `verify_peer`, `peer_fingerprint` |
+| STARTTLS downgrade refusal (no plaintext HELO fallback) | On when STARTTLS is selected | -- |
 | CRAM-MD5 deprecation + auth ordering | On, automatic | `setAuthMode()` to force one (required for XOAUTH2) |
 | NTLM: v2 only (v1 removed) | On, automatic | -- |
 | Transport serialization blocked | On, automatic | -- |
@@ -320,6 +321,8 @@ failure instead of trying another backend (GitLab #66).
 SMTP+TLS connections use PHP's stream defaults, under which `verify_peer` and `verify_peer_name` are enabled -- certificate verification is **on by default**. The library never silently disables it.
 
 STARTTLS negotiates TLS 1.2 or 1.3 only. A failed handshake raises a catchable `Swift_TransportException` with the reason, even when a host error handler turns PHP warnings into exceptions.
+
+STARTTLS cannot be downgraded. If the server rejects the first `EHLO`, the transport throws instead of falling back to plaintext `HELO`, so an attacker who rejects `EHLO` cannot strip encryption. A failed STARTTLS throws even when an `exceptionThrown` listener cancels the event; the listener still sees the failure.
 
 Two DSN parameters let you tune TLS:
 
