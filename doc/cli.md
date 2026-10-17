@@ -15,7 +15,7 @@ Run `php bin/swiftmailer-test --help` (or `-h`) to print usage and exit `0`.
 
 ## Flags
 
-All options use the `--key=value` form. A `--flag` without `=` is rejected (`Option "--flag" requires a value.`). Options other than those below are ignored.
+All options use the `--key=value` form. A `--flag` without `=` is rejected (`Error: Option "--flag" requires a value (use --option=value).`). Options other than those below are ignored.
 
 | Flag | Required | Default | Description |
 |-|-|-|-|
@@ -55,8 +55,10 @@ The tool prints a fixed DSN placeholder, followed by from, to and subject:
 DSN:       [redacted]
 ```
 
-It never previews DSN userinfo, API keys, host/path/query fields or nested DSN
-contents. After construction it prints the transport class for diagnostics.
+This preview line never shows DSN userinfo, API keys, host/path/query fields or
+nested DSN contents. After construction it prints the transport class for
+diagnostics. Error lines print the transport's exception message, which can name
+the host (e.g. `Connection could not be established with host ...`).
 The placeholder is used for both environment and positional DSNs, including
 malformed input. Argument-based DSNs still expose credentials in the host's
 process list; use the environment pattern above.
@@ -73,7 +75,7 @@ The tool runs these steps, printing progress (info in cyan, success in green; wa
 1. Parse arguments.
 2. Resolve the DSN and print the redacted placeholder plus message summary.
 3. Build the transport via `Swift_Transport_DsnTransportFactory` and print its class.
-4. `start()` the transport (opens the connection / validates the API client).
+4. `start()` the transport (opens the SMTP connection; HTTP API transports are not contacted until the send).
 5. Build a `Swift_Message` and send it via `Swift_Mailer`.
 6. `stop()` the transport (always attempted, even on failure).
 
@@ -84,7 +86,7 @@ The tool runs these steps, printing progress (info in cyan, success in green; wa
 | `0` | Email accepted for delivery (≥ 1 recipient), or `--help` shown. |
 | `1` | Composer autoloader missing; invalid/missing arguments; no DSN resolved; transport creation failed; connection/`start()` failed; send threw; or the message was not accepted (0 recipients). |
 
-Colour output honours the [`NO_COLOR`](https://no-color.org/) convention and is disabled when stdout is not a TTY.
+Colour output honours the [`NO_COLOR`](https://no-color.org/) convention and is disabled when stdout is not a TTY. The stdout check also controls colour on stderr.
 
 ## Examples
 

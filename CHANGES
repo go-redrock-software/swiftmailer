@@ -10,24 +10,82 @@ are documented in doc/upgrading.md.
 Unreleased
 ----------
 
- Fixed:
+ The v6.5.1 to v6.5.8 tags (2026-09-21 to 2026-10-14) were cut from this
+ section without separate headings, and `Swift::VERSION` still reports 6.5.0.
+ Entries that cite a GitLab issue were merged after v6.5.8 and are not yet in
+ a tag.
 
- * Preserve independent pool failure histories after cloning, including subclasses
-   with their own clone hooks. Retain serialized metadata compatibility and lazy
-   initialization for subclasses that omit the parent constructor (GitLab #90).
- * Preserve legacy immediate pool recovery on start() unless a retry period is
-   explicitly configured. Timed recovery remains available through constructors,
-   setRetryPeriod() and pool DSNs (GitLab #90).
- * Restore recipient snapshots from each send event and honor overridden
-   getMessage() implementations. Shared plugins now support nested and overlapping
-   sends without losing another message's original recipients (GitLab #90).
- * Accept equivalent API envelopes when the same mailbox appears in multiple
-   recipient fields, while still rejecting actual audience overrides (GitLab #90).
- * Prevent caller Gmail middleware and SES retry strategies from replaying send
-   requests after successful response headers. Ordinary failure and credential
-   retries retain their existing behavior (GitLab #90).
+ New Features:
+
+ * SendGrid transport: setClickTracking(), setClickTrackingText() and
+   setOpenTracking() control SendGrid tracking settings, also available as
+   the `click_tracking`, `click_tracking_text` and `open_tracking` DSN
+   options. Omitted options keep the account defaults. DSN options respect
+   PHP's configured query separators (GitLab #15).
+
+ * Failover and round-robin pools accept a failed-backend retry period
+   through their constructors, setRetryPeriod() or a `?retry_period=` pool
+   DSN option. Pools without a configured period keep legacy manual
+   recovery (GitLab #29, #31).
+
+ * SMTP DSNs accept `timeout`, `auth_mode` and `local_domain`, validated
+   before connecting. A literal "0" username or password is preserved
+   through DSN parsing and SMTP AUTH (GitLab #72, #73).
+
+ * HTTP provider transports can be built from DSNs, including multi-part
+   credentials (Mailgun, Mailjet, Scaleway), custom public HTTPS endpoints
+   (Infobip, Postal, Mailgun), `region` and the Mailtrap sandbox `inbox_id`.
+   Invalid options fail before any HTTP request (GitLab #74).
+
+ * Amazon SES `amazon+api` and `amazon+http` DSNs construct an AsyncAws
+   client with explicit credentials, region, endpoint and optional
+   `session_token`. Ambient AWS credential chains are not used (GitLab #78).
+
+ * Gmail `gmail+api` DSNs construct a Google Client with an explicit bearer
+   token or renewable OAuth credentials (`refresh_token`), fixed endpoints
+   and the send scope (GitLab #83).
+
+ * Microsoft Graph DSNs construct native SDK clients in bearer or
+   application mode (`tenant_id`, `user_id`), with fixed Graph and Entra
+   endpoints and separate resource and token HTTP clients (GitLab #87).
 
  Security:
+
+ * Amazon SES sends and health probes use an operation-local SDK copy that
+   refuses redirects for resource requests and the AsyncAws credential-provider
+   chain. A redirect is a non-retryable failure (GitLab #59, #63).
+
+ * DSN parse failures no longer expose credentials: the factory and helpers
+   replace parser diagnostics with a static message, and the CLI prints
+   `DSN: [redacted]` (GitLab #76, #77).
+
+ * Failover and round-robin pools forward registered plugins to inactive
+   backends, so a restored backend keeps recipient policies. The failed
+   backend is the one retired, and dead entries are restored only once
+   (GitLab #68, #69, #70).
+
+ * SES failures use static diagnostics and a safe status without retaining
+   credential-bearing SDK causes. Malformed or incomplete successful responses
+   are terminal and are not resent (GitLab #79, #80).
+
+ * Gmail sends require a valid Message JSON and message ID. Ambiguous
+   acceptance is terminal, caller HTTP retries cannot replay an accepted send,
+   and returned failures do not retain OAuth-bearing SDK causes (GitLab #81, #82).
+
+ * Graph SDK failures are detached from credential-bearing causes and keep a
+   safe numeric status, so 401/403 errors are not treated as connection
+   failures (GitLab #84, #85).
+
+ * Graph operation acceptance (status, IDs, collections, upload sessions) is
+   validated before SDK coercion. Unconfirmed success is a permanent failure
+   and cannot cause a duplicate send or event (GitLab #86).
+
+ * An unresolved Graph CAE challenge is classified as an authentication
+   failure even when its exception code is zero, so default retries do not
+   replay the same token (GitLab #88).
+
+ * SDK send callbacks that take only the envelope no longer receive the send
+   event, which kept the SDK transport out of exception traces (GitLab #89).
 
  * Standard Kiota/PhpLeague Graph OAuth token requests now refuse redirects,
    including initial grants, refresh and CAE challenges. Scoped provider copies
@@ -70,7 +128,7 @@ Unreleased
    explicit SMTP envelopes, preventing envelope-only recipients from bypassing
    dev/staging delivery restrictions. The explicit sender is preserved, and
    cooperating recipient plugins restore the original message in either
-   registration order.
+   registration order (GitLab #37).
 
  * Scaleway now submits To, Cc and Bcc in their separate API fields, keeping
    blind recipients out of the public To list. Names, recipient counts and
@@ -100,6 +158,43 @@ Unreleased
    autoloading, and behavior are unchanged.
 
  Bug Fixes:
+
+ * Preserve independent pool failure histories after cloning, including subclasses
+   with their own clone hooks. Retain serialized metadata compatibility and lazy
+   initialization for subclasses that omit the parent constructor (GitLab #90).
+ * Preserve legacy immediate pool recovery on start() unless a retry period is
+   explicitly configured. Timed recovery remains available through constructors,
+   setRetryPeriod() and pool DSNs (GitLab #90).
+ * Restore recipient snapshots from each send event and honor overridden
+   getMessage() implementations. Shared plugins now support nested and overlapping
+   sends without losing another message's original recipients (GitLab #90).
+ * Accept equivalent API envelopes when the same mailbox appears in multiple
+   recipient fields, while still rejecting actual audience overrides (GitLab #90).
+ * Prevent caller Gmail middleware and SES retry strategies from replaying send
+   requests after successful response headers. Ordinary failure and credential
+   retries retain their existing behavior (GitLab #90).
+
+ * Retry, failover and round-robin wrappers stop on terminal failures
+   (Swift_Transport_NonRetryableException or a PHP Error cause) before any
+   custom retry classifier runs. The new Swift_Transport_RetryPolicy holds the
+   check. Replacing a failover pool clears its cached backend (GitLab #66, #67).
+
+ * Graph CAE fallback grants use the current grant inputs after a claims
+   challenge, and certificate refresh uses a consistent assertion type
+   (GitLab #62, #65).
+
+ * SES sends of messages with attachments, inline parts or alternative
+   bodies submit complete raw MIME instead of dropping child parts (GitLab #64).
+
+ * `Swift::createTransportFromDsn()` builds its transport through
+   Swift_Transport_DsnTransportFactory again and returns a configured
+   Swift_Mailer (GitLab #71).
+
+ * Scoped Graph clients are cloned without rerunning the SDK constructor,
+   preserving caller-registered serialization factories and registries.
+
+ * Graph calendar audience reads request the event `id` with the attendees
+   (GitLab #89).
 
  * Swift, IO and transport exceptions now accept PHP Throwable causes,
    preserving TypeError/ParseError identities and retry-marker chains instead
@@ -184,6 +279,20 @@ Unreleased
    invalid `Properties` field.
  * MailPace transport: no longer emits an unsupported metadata field.
  * Sweego transport: campaign-type value aligned with the documented value.
+ * Gmail transport: the raw message is base64url-encoded, as the Gmail API
+   requires, instead of standard base64.
+ * STARTTLS: a failed TLS handshake raises a catchable
+   Swift_TransportException with the reason, even when a host error handler
+   turns PHP warnings into exceptions.
+ * Microsoft Graph transport: the multipart/alternative text body is no
+   longer treated as an attachment (previously a TypeError), and calendar
+   parts are kept on the delegated path instead of being dropped.
+ * Microsoft Graph transport: calendar parts with Content-Type parameters
+   (for example `text/calendar; method=REQUEST`) are detected for event
+   conversion.
+ * Microsoft Graph transport: converted calendar events are keyed on the
+   invite UID plus attendees, so one UID sent to several recipients no longer
+   fails, and updates and cancellations find their events.
  * Microsoft Graph transport: all To recipients are now sent and counted
    (previously only the first To address was used and To recipients were
    never counted, so a single-To message reported 0 sent).
@@ -192,7 +301,7 @@ Unreleased
    `start()`/`stop()`/exception dispatch.
  * SMTP transports now suppress Bcc headers when sending with an explicit
    envelope, preventing disclosure of blind recipients (CWE-200). The original
-   Bcc field is restored after the transaction, including on failure.
+   Bcc field is restored after the transaction, including on failure (GitLab #36).
 
 6.5.0 (2026-06-04)
 ------------------

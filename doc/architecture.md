@@ -3,8 +3,7 @@
 An internals guide for developers working **on** SwiftMailer, not just with it. It
 maps the code in `lib/classes/Swift/` to the concepts that hold it together:
 autoloading, the dependency container, the transport hierarchy, the send flow, the
-MIME subsystem, events, and the DSN/webhook/signer subsystems. Everything here was
-verified against the source; file paths are clickable.
+MIME subsystem, events, and the DSN/webhook/signer subsystems.
 
 For user-facing usage, see the companion chapters instead of duplicating them here:
 [sending.md](sending.md), [messages.md](messages.md), [headers.md](headers.md),
@@ -90,7 +89,8 @@ cost anything once you touch the library.
 
 `Swift::init($callable)` lets application code register its own tweak that runs at the
 same first-load moment (e.g. to override a service before anything resolves it).
-`Swift::VERSION` is the authoritative version string.
+`Swift::VERSION` holds the base version string (`6.5.0`); the v6.5.1 to v6.5.8 release
+tags did not change it, so use the Git tag or Composer metadata for the exact release.
 
 ## The dependency container
 
@@ -254,15 +254,27 @@ constructors and auth. The `Api/Calendar/` subfolder (`IcsParser`, `ParsedEvent`
 dependency-free helper for the Graph calendar-invite feature, not a transport — see
 [microsoft-graph.md](microsoft-graph.md).
 
+`Api/` also holds 15 non-transport helper classes used by the four SDK-backed
+transports:
+
+| Concern | Classes |
+|-|-|
+| Redirect refusal and request isolation | `NoRedirectClient` (scoped Guzzle client for Gmail and Graph), `GraphRequestPolicy`, `GraphOAuthPolicy`, `SesRequestPolicy`, `SesHttpClient`, `SesHttpResponse`, `SesCredentialProvider` |
+| Operation acceptance | `GmailRequestPolicy`, `GraphAcceptancePolicy` |
+| DSN credentials and OAuth grants | `GmailRefreshCredentials`, `GraphBearerAuthenticationProvider`, `GraphClientCredentialContext`, `GraphOAuthGrant`, `GraphOAuthGrantFactory`, `GraphOAuthGrantPolicy` |
+
+They are internal; see the security sections of
+[api-transports.md](api-transports.md#security) for the behavior they enforce.
+
 ### Meta-transports
 
 These wrap other transports rather than talking to a server:
 
 | Class | Behavior |
 |-|-|
-| `Swift_Transport_LoadBalancedTransport` | Round-robins sends across a pool |
-| `Swift_Transport_FailoverTransport` | Extends LoadBalanced; tries the next only when one fails |
-| `Swift_Transport_RetryTransport` | Retries a single inner transport with exponential backoff (`Swift_Transport_RetryClassifier` / `DefaultRetryClassifier` decide what is retryable) |
+| `Swift_Transport_LoadBalancedTransport` | Round-robins sends across a pool. An explicit `retry_period` (constructor, `setRetryPeriod()` or pool DSN) restores failed backends after a cooldown; without one, legacy manual recovery is kept |
+| `Swift_Transport_FailoverTransport` | Extends LoadBalanced; tries the next only when one fails. A terminal failure stops the fallback |
+| `Swift_Transport_RetryTransport` | Retries a single inner transport with exponential backoff (`Swift_Transport_RetryClassifier` / `DefaultRetryClassifier` decide what is retryable). `Swift_Transport_RetryPolicy::isTerminalFailure()` is checked first: a `Swift_Transport_NonRetryableException` or PHP `Error` anywhere in the cause chain is never retried, even with a custom classifier |
 | `Swift_Transport_SpoolTransport` | Queues to a `Swift_Spool` (`Swift_FileSpool`/`Swift_MemorySpool`) for deferred flushing |
 | `Swift_Transport_NullTransport` | Discards mail; useful for tests |
 
@@ -401,6 +413,14 @@ Event objects extend `Swift_Events_EventObject` (base `Event`). One deliberate b
 retroactively corrupt another listener's view. `SendEvent` also adds `reject($reason)`
 (sets a rejection flag and cancels bubbling) for the `AllowlistPlugin`-style veto path.
 
+`SendEvent` also coordinates cooperating recipient policies. `captureRecipientState()`
+records the original To/Cc/Bcc once per event, so every policy restores the same
+snapshot, including during nested or overlapping sends. Policies register a filter
+with `addRecipientFilter()`; transports publish their audiences with
+`setRecipientGroups()`/`getRecipientGroups()`, and `filterRecipients()` applies the
+same filters to audiences discovered later (for example, a stored Graph calendar
+event). `hasRecipientFilters()` tells a transport whether any policy is active.
+
 ## DSN subsystem
 
 Two classes turn connection strings into transports:
@@ -412,7 +432,7 @@ Two classes turn connection strings into transports:
 - `Swift_Transport_DsnTransportFactory::fromDsnString()` is the real entry point. It
   recognizes the `retry(...)`, `failover(...)`, and `roundrobin(...)` wrapper syntax
   (recursing on the inner DSNs), validates query parameters against
-  `ALLOWED_DSN_PARAMETERS` (unknown ones emit an `E_USER_WARNING`), and builds the
+  `ALLOWED_DSN_PARAMETERS` (unknown ones emit an `@`-suppressed `E_USER_WARNING`), and builds the
   concrete transport. SMTP schemes resolve provider host/port/encryption defaults from
   `SMTP_HOST_MAP`; a `?retries=` query parameter wraps the result in a
   `RetryTransport`. SMTP `timeout`, `auth_mode` and `local_domain` options are
@@ -458,7 +478,7 @@ Message signing lives in `Swift/Signers/`:
 |-|-|
 | `Swift_Signers_DKIMSigner` | DKIM (RSA-SHA256 and Ed25519-SHA256), header oversigning |
 | `Swift_Signers_DomainKeySigner` | Legacy DomainKeys |
-| `Swift_Signers_SMimeSigner` | S/MIME certificate signing (no encryption yet) |
+| `Swift_Signers_SMimeSigner` | S/MIME signing and/or encryption |
 
 `Swift_Signer`, `Swift_Signers_HeaderSigner`, and `Swift_Signers_BodySigner` are the
 interfaces; messages accept a signer via `attachSigner()`.
@@ -469,7 +489,8 @@ interfaces; messages accept a signer via `attachSigner()`.
 from the shell. It builds on `Swift/Cli/`: `ArgumentParser` (→ `ParsedArguments`,
 or `HelpRequestedException`) and `ConsoleOutput`. It reads the DSN from
 `SWIFTMAILER_DSN` (preferred — a DSN on the command line leaks credentials to the
-process list, which the tool warns about) and masks the password when echoing.
+process list, which the tool warns about) and prints `DSN: [redacted]` instead of any
+DSN fields.
 
 ## Testing
 
@@ -478,7 +499,7 @@ suites, each a directory under `tests/`:
 
 | Suite | Directory | Scope |
 |-|-|-|
-| `SwiftMailer unit tests` | `tests/unit` | Isolated class behavior (mirrors `lib/classes/Swift/`) |
+| `SwiftMailer unit tests` | `tests/unit` | Isolated class behavior (mirrors `lib/classes/Swift/`, plus cross-component `Integration/` and CI-configuration `Ci/` tests) |
 | `SwiftMailer acceptance tests` | `tests/acceptance` | End-to-end against real services (config-gated) |
 | `SwiftMailer bug` | `tests/bug` | Regression tests for specific fixed issues |
 | `SwiftMailer smoke tests` | `tests/smoke` | Live smoke checks (config-gated) |
@@ -489,6 +510,15 @@ Run everything with `composer test`, a single file with
 workaround), adds `lib/` to the include path, boots Mockery, and pulls in the optional
 `acceptance.conf.php`/`smoke.conf.php`. Mockery is registered as a PHPUnit listener
 alongside `SymfonyTestsListener`.
+
+`tests/fixtures/` holds standalone PHP scripts that tests run in child processes
+(for example, privacy reports and the HTML reporter streaming worker).
+`tests/compatibility/sdk.php` defines 12 native SDK contracts. `SdkCompatibilityTest`
+runs them in normal PHPUnit, and the `sdk-compatibility` GitLab CI job runs them on
+PHP 8.3 and 8.5 with the lowest permitted dependencies. Setting
+`SWIFTMAILER_REQUIRE_FPM=1` (as GitLab CI does) makes missing PHP-FPM a failure
+instead of a skip. See [regression-tests.md](regression-tests.md) for the tests
+that protect each merged fix.
 
 ### The deprecation baseline
 

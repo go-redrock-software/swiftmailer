@@ -1,15 +1,15 @@
 # Message Headers
 
 Every MIME entity in SwiftMailer -- the message, its attachments, its MIME
-parts, and its embedded images -- stores its headers in a single `HeaderSet`
-object, retrieved with `getHeaders()`. Most standard headers have named
+parts, and its embedded images -- stores its headers in a single header set
+(`Swift_Mime_SimpleHeaderSet`), retrieved with `getHeaders()`. Most standard headers have named
 accessors on the message (see [messages.md](messages.md)); this page covers
-working with the `HeaderSet` and individual `Swift_Mime_Header` instances
+working with the header set and individual `Swift_Mime_Header` instances
 directly, which you need when adding custom headers or modifying existing ones.
 
 ## Header Basics
 
-Fetch the `HeaderSet` from any MIME entity:
+Fetch the header set from any MIME entity:
 
 ```php
 $message = new Swift_Message();
@@ -43,7 +43,7 @@ Or render the whole set with `toString()`:
 ```php
 echo $headers->toString();
 /*
-Message-ID: <1234869991.499a9ee7f1d5e@swift.generated>
+Message-ID: <f8c5b3d130a3ccb6414c3bf1c705d9b7@swift.generated>
 Date: Tue, 17 Feb 2009 22:26:31 +1100
 Subject: Awesome subject!
 From: sender@example.org
@@ -221,7 +221,9 @@ echo $to->toString();
 
 Other useful methods: `getNameAddresses()`, `getAddresses()`,
 `getNameAddressStrings()`, and `removeAddresses()`. Invalid addresses throw
-`Swift_RfcComplianceException`.
+`Swift_RfcComplianceException`. A non-ASCII local part (before the `@`) cannot
+be IDN-encoded and throws `Swift_AddressEncoderException` when the header is
+rendered.
 
 ### ID Headers
 
@@ -274,8 +276,8 @@ $attachment->getHeaders()->addDateHeader('X-Created-Time', new DateTimeImmutable
 ### Retrieving headers
 
 `get()` returns a single header by name (case-insensitive); `getAll()` returns
-an array. Both accept an optional zero-based index because some headers (e.g.
-`Received`) may appear multiple times.
+an array. `get()` accepts an optional zero-based index because some headers
+(e.g. `Received`) may appear multiple times; `getAll()` takes only the name.
 
 ```php
 $toHeader = $headers->get('To');        // first To header

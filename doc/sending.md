@@ -103,7 +103,10 @@ $transport = new Swift_SmtpTransport('smtp.example.org', 587, CONNECTION_ENCRYPT
 ```
 
 When STARTTLS is selected, the transport issues `EHLO`, then `STARTTLS`, then
-re-issues `EHLO` over the upgraded connection before sending mail.
+re-issues `EHLO` over the upgraded connection before sending mail. If the first
+`EHLO` fails, the transport falls back to `HELO` and skips `STARTTLS`, so the
+session continues without TLS. If `HELO` also fails, the exception message is
+`EHLO failed: ...; HELO fallback failed: ...`.
 
 > **Note.** For encryption to work, your PHP build must have the matching
 > OpenSSL stream wrappers. Check with `stream_get_transports()` -- look for
@@ -158,19 +161,24 @@ explicitly.
 `XOAUTH2`, `PLAIN`, `LOGIN`, `CRAM-MD5`, and `NTLM`. By default the handler
 tries the mechanisms the server advertises in EHLO, in this preference order:
 
-1. `XOAUTH2`
-2. `PLAIN`
-3. `LOGIN`
-4. `CRAM-MD5`
-5. `NTLM`
+1. `PLAIN`
+2. `LOGIN`
+3. `CRAM-MD5`
+4. `NTLM`
+5. `XOAUTH2`
 
-Force a single mechanism with `setAuthMode()`:
+Automatic selection treats the password as a password, so `XOAUTH2` is only a
+last resort. To authenticate with an OAuth2 access token, select `XOAUTH2`
+explicitly. Force a single mechanism with `setAuthMode()`:
 
 ```php
 $transport->setAuthMode('XOAUTH2'); // or PLAIN, LOGIN, CRAM-MD5, NTLM
 ```
 
-An invalid mode throws `Swift_TransportException` (`Auth mode <x> is invalid`).
+`setAuthMode()` does not validate the mode. An invalid mode throws
+`Swift_TransportException` (`Auth mode <x> is invalid`, with the mode in lower
+case) at AUTH time, when the connection starts. A DSN `auth_mode` is validated
+earlier, when the transport is built.
 
 > **CRAM-MD5 is deprecated.** The CRAM-MD5 authenticator emits an
 > `E_USER_DEPRECATED` warning because it relies on the cryptographically weak
@@ -189,7 +197,7 @@ custom registered keyword `0`.
 |-|-|-|
 | `setTimeout($seconds)` | `30` | Connection/read timeout in seconds |
 | `setSourceIp($ip)` | none | Local IP to bind the outgoing connection to (wrap IPv6 in `[]`) |
-| `setLocalDomain($domain)` | `[127.0.0.1]` | Name used in the `EHLO`/`HELO` command; IP addresses are auto-wrapped in brackets per RFC 5321 |
+| `setLocalDomain($domain)` | `$_SERVER['SERVER_NAME']` if it is a valid hostname, else `[127.0.0.1]` | Name used in the `EHLO`/`HELO` command; IP addresses are auto-wrapped in brackets per RFC 5321 |
 | `setStreamOptions($options)` | `[]` | Stream context options passed to `stream_context_create()` |
 | `setPipelining($bool)` | auto-detected | Override SMTP `PIPELINING`; by default it is enabled when the server advertises the extension |
 
@@ -249,7 +257,10 @@ supported:
 | `-t` | Reads recipients from the message headers and pipes the message with no feedback -- `send()` always reports 100% success. Include `-i` or `-oi` to stop `.`-only lines from terminating input early. |
 
 In `-t` mode the transport appends a `-f<sender>` flag (shell-escaped) if one
-is not already present. Any other command flags raise a
+is not already present. With an explicit [envelope](#controlling-the-smtp-envelope),
+`-t` mode uses only the envelope sender (as `-f`); sendmail still delivers to
+the header recipients, although `send()` returns the envelope recipient count.
+Use `-bs` when you need envelope recipients. Any other command flags raise a
 `Swift_TransportException` (`Unsupported sendmail command flags ...`).
 
 > **Command hardening.** `setCommand()` rejects any command containing shell
@@ -288,10 +299,13 @@ $transport = new Swift_FailoverTransport([
 ```
 
 When a transport throws an ordinary backend failure, the failover is logged via
-`trigger_error()` at
+`@trigger_error()` at
 `E_USER_WARNING` level (`Swiftmailer: Failover from <class>: <message>`), then
-the next transport is tried. If every transport fails or none are configured, a
-`Swift_TransportException` is thrown.
+the next transport is tried. The `@` silences the warning, so only a registered
+error handler sees it. If every transport throws or none are configured, a
+`Swift_TransportException` is thrown. A transport that returns `0` also passes
+the message to the next one; if none accepts it and at least one returned `0`
+without throwing, `send()` returns `0` instead of throwing.
 
 ### Load balancing
 
@@ -309,9 +323,10 @@ $transport = new Swift_LoadBalancedTransport([
 A transport that throws an ordinary backend failure is retired until its
 next explicit `start()`, or until an explicitly configured cooldown expires.
 Ordinary errors raised while stopping that backend are logged via
-`trigger_error()` at `E_USER_WARNING`
-(`Swiftmailer: LoadBalancedTransport error from <class>: <message>`). If all
-transports are exhausted, a `Swift_TransportException` is thrown.
+`@trigger_error()` at `E_USER_WARNING`
+(`Swiftmailer: LoadBalancedTransport error from <class>: <message>`); only a
+registered error handler sees them. If every transport throws and is retired,
+or none are configured, a `Swift_TransportException` is thrown.
 
 ### Restoring and checking a pool
 
@@ -443,7 +458,9 @@ Spooling queues messages for deferred delivery -- for example, to move mail
 sending out of the request/response cycle. `Swift_SpoolTransport` wraps a
 `Swift_Spool` implementation; each `send()` enqueues the message (dispatching
 `beforeSendPerformed`/`sendPerformed` with a `SPOOLED` result) and returns `1`
-(or the envelope recipient count when an envelope is supplied).
+(or the envelope recipient count when an envelope is supplied). If the spool
+fails to queue the message, the event result is `FAILED` but the return value
+is the same, so it does not reflect a queue failure.
 
 ```php
 $spool = new Swift_FileSpool('/var/spool/swiftmailer');
@@ -467,9 +484,8 @@ $sent = $spool->flushQueue($realTransport, $failedRecipients);
 | `Swift_MemorySpool` | In-memory array | Clones each queued message. On flush, retries up to 3 times (`setFlushRetries()`), re-queuing a failing message and waiting 0.5 s between rounds. Not persistent across requests. |
 | `Swift_FileSpool` | Filesystem | Serializes messages to a spool directory. Supports optional HMAC integrity signing and hardened unserialization (see below). |
 
-`Swift_MemorySpool` and `Swift_FileSpool` both extend
-`Swift_ConfigurableSpool`, which adds two flush limits honored by
-`flushQueue()`:
+Only `Swift_FileSpool` extends `Swift_ConfigurableSpool`, which adds two flush
+limits honored by `flushQueue()`. `Swift_MemorySpool` has no flush limits:
 
 ```php
 $spool->setMessageLimit(10); // stop after 10 messages per flush
@@ -577,14 +593,18 @@ $numSent = $mailer->send($message, $failures, $envelope);
 
 `Swift_Envelope` is a readonly value object: the sender must be a non-empty
 string and there must be at least one string recipient, otherwise the
-constructor throws `InvalidArgumentException`. `Swift_Envelope::fromMessage()`
-builds one using the same header-derivation logic the transports use. When an
+constructor throws `InvalidArgumentException`. The constructor does not check
+address syntax. `Swift_Envelope::fromMessage()` builds one using the same
+header-derivation logic the transports use, and throws `Swift_SwiftException`
+when it cannot derive a sender or any recipient. When an
 explicit envelope is supplied, the SMTP transport uses its sender and recipients
 instead of deriving delivery addresses from headers. It still suppresses the
 `Bcc` header during transmission and restores the original field afterward,
 including on failure. An absent `Bcc` field remains absent. A `beforeSendPerformed` listener may
 replace the envelope via `setEnvelope()`; the transport re-reads it after the
-event fires.
+event fires. `RedirectingPlugin` and `AllowlistPlugin` also filter explicit
+envelope recipients; see
+[recipient safety policies](security.md#recipient-safety-policies-and-explicit-envelopes).
 
 API transport support depends on the provider endpoint. Postal and Mandrill
 support independent recipients and sender fields; Mailgun and Infobip support
@@ -667,7 +687,8 @@ try/catch and skip addresses that fail.
 
 ## Send Results and Events
 
-On a successful send, HTTP API transports produce a `Swift_SentMessage` value
+On a successful send, 17 of the 21 HTTP API transports (all except Gmail, the
+two SES transports and Microsoft Graph) produce a `Swift_SentMessage` value
 object (available through the `SentMessageEvent`) exposing the
 provider-assigned message ID, accepted-recipient count, raw debug data, and any
 failed recipients:

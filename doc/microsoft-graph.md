@@ -203,9 +203,10 @@ $mailer    = new Swift_Mailer($transport);
 > resolves. Add `'Calendars.ReadWrite'` to the scope array if you enable calendar
 > conversion.
 
-The optional third constructor argument is a `Swift_Events_EventDispatcher`. When you
-build the mailer through the normal Swiftmailer wiring it is injected for you; pass it
-explicitly only when constructing the transport by hand and you want plugin/event support.
+The optional third constructor argument is a `Swift_Events_EventDispatcher`. `Swift_Mailer`
+does not inject one. The DSN factory injects a dispatcher; for direct construction, the
+first `registerPlugin()` call creates one. Pass it explicitly only when you want to share
+an existing dispatcher.
 
 ---
 
@@ -290,6 +291,9 @@ How it works:
 4. Any attachment **larger than 150 MB** is rejected up front with a
    `Swift_TransportException` *before* the draft is created, so a doomed send never orphans
    a half-built draft. (Exactly 150 MB is allowed; only strictly-greater is rejected.)
+   With [calendar conversion](#calendar-invitation-conversion), calendar operations run
+   before the mail, so an invite can already be created and sent when the oversize mail
+   then fails. That failure is terminal.
 
 ```php
 // Lower the threshold to 1 MB, e.g. to stay well under a proxy body limit.
@@ -339,10 +343,11 @@ converted; everything else rides along untouched.
   Exchange email the invitation itself, so sending the raw message too would duplicate it.
   Re-enable a covering email (still without the broken `.ics`) with
   `setSendEmailAlongsideEvent(true)` / inspect via `isSendingEmailAlongsideEvent()`.
-- **Real attachments alongside an invite are still delivered.** If the message carries a
-  genuine non-`.ics` attachment next to the invite, the email *is* sent (so the attachment
-  reaches the recipient) even though the invite was converted — only the `.ics` part is
-  dropped from the outgoing mail.
+- **Real attachments alongside an invite are still delivered.** If the message carries any
+  other non-alternative MIME child next to the invite (an attachment, an embedded image, or
+  an unconverted `PUBLISH`/`REPLY`/unparseable calendar part), the email *is* sent (so that
+  part reaches the recipient) even though the invite was converted — only the converted
+  `.ics` part is dropped from the outgoing mail.
 - **Invite correlation.** The originating `.ics` UID plus normalized attendees are
   stored in the `SwiftInviteKey` single-value extended property. The transport does
   not set Graph `transactionId` or use Graph-generated `iCalUId` for this lookup.
@@ -439,13 +444,30 @@ The transport is event-aware and null-safe (it works with or without a dispatche
 |-|-|-|
 | `beforeSendPerformed` | Before building the payload | Bubble-cancel → send is skipped, `sendPerformed` fires with `RESULT_FAILED`, returns `0` |
 | `beforeTransportStarted` | Before contacting Graph | Bubble-cancel → returns `0` (with `RESULT_FAILED` if a send event exists) |
+| `exceptionThrown` | When a local check fails: no From in from-address mode, an attachment over 150 MB, no draft ID or no upload session returned | Bubble-cancel does not make the send succeed; it still fails |
 | `sendPerformed` | Always, in a `finally` | Carries `RESULT_SUCCESS` or `RESULT_FAILED` (+ failed recipients) |
+
+The transport never fires `sentMessage` or `failedMessage`; use `sendPerformed` for the result.
 
 `start()` separately fires `beforeTransportStarted` / `transportStarted`, and `stop()`
 fires `beforeTransportStopped` (inherited). See [events.md](events.md) and
 [plugins.md](plugins.md) for the listener model. `registerPlugin()` binds a listener to the
 dispatcher as usual. If no dispatcher was injected, the first registration creates
 a simple dispatcher; subsequent listeners reuse it.
+
+---
+
+## Public helper methods
+
+| Member | Description |
+|-|-|
+| `convertSwiftEmailAddressToGraphRecipient(array $swift_email, bool $strict = false)` | Converts one `[address => name]` entry to a Graph `Recipient`; `$strict` throws `InvalidArgumentException` when the name is missing |
+| `convertSwiftAttachmentToGraphAttachment(Swift_Mime_SimpleMimeEntity $swiftAttachment)` | Converts a MIME child to a Graph `FileAttachment` |
+| `convertParsedEventToGraphEvent(Swift_Transport_Api_Calendar_ParsedEvent $parsed)` | Maps a parsed `.ics` event to a Graph `Event` |
+| `INVITE_KEY_PROPERTY_ID` | ID of the `SwiftInviteKey` single-value extended property used for [invite correlation](#behavior-details) |
+
+With an explicit envelope (which must match the message), the transport also sets the
+Graph message `from` to the message From address.
 
 ---
 

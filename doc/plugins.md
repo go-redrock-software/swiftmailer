@@ -3,21 +3,25 @@
 Plugins extend or modify SwiftMailer's behaviour before, during, and after a
 message is sent. Every plugin is an *event listener*: it implements one or more
 of the listener interfaces described in [events.md](events.md) and reacts when
-the mailer or transport dispatches the matching event.
+the transport dispatches the matching event.
 
 ## Registering plugins
 
 Register a plugin on the mailer (preferred) or directly on a transport:
 
 ```php
-$mailer = new Swift_Mailer(new Swift_SmtpTransport('smtp.example.org', 25));
+$transport = new Swift_SmtpTransport('smtp.example.org', 25);
+$mailer    = new Swift_Mailer($transport);
 
 $mailer->registerPlugin(new Swift_Plugins_AntiFloodPlugin(100));
 
-// Transport-level events (start/stop, SMTP command/response) can also be
-// listened for by registering on the transport itself:
+// Same effect: Swift_Mailer::registerPlugin() only delegates to the transport
 $transport->registerPlugin($myPlugin);
 ```
+
+Both paths are the same. `Swift_Mailer` dispatches no events itself, so a
+plugin registered on the mailer also receives transport-level events
+(start/stop, SMTP command/response).
 
 A plugin may implement several listener interfaces at once, so a single class
 can react to different events. Nothing else is required — once registered, the
@@ -41,8 +45,10 @@ object live in [events.md](events.md). In short:
 
 Plugins that reject a send do so from `beforeSendPerformed` via
 `$evt->reject($reason)` (see [Pre-Send Rejection](events.md)). Rejected sends
-never reach the transport, and `sendPerformed` still fires with a rejected
-result.
+never reach the transport, and `sendPerformed` still fires. Check
+`$evt->isRejected()` to detect a rejection: the result code depends on the
+transport family (`RESULT_FAILED` for SMTP, Sendmail, Spool, Null and SDK API
+transports; it stays `RESULT_PENDING` for HTTP API transports).
 
 ## Plugin catalogue
 
@@ -90,7 +96,7 @@ foreach ($recipients as $recipient) {
 }
 ```
 
-**Constructor:** `__construct(int $threshold = 99, int $sleep = 0, ?Swift_Plugins_Sleeper $sleeper = null)`
+**Constructor:** `__construct($threshold = 99, $sleep = 0, ?Swift_Plugins_Sleeper $sleeper = null)` (integers; the parameters are untyped)
 
 Also exposes `setThreshold()` / `getThreshold()` and `setSleepTime()` /
 `getSleepTime()`.
@@ -133,7 +139,7 @@ $mailer->registerPlugin(new Swift_Plugins_ThrottlerPlugin(
 ));
 ```
 
-**Constructor:** `__construct(int $rate, int $mode = self::BYTES_PER_MINUTE, ?Swift_Plugins_Sleeper $sleeper = null, ?Swift_Plugins_Timer $timer = null)`
+**Constructor:** `__construct($rate, $mode = self::BYTES_PER_MINUTE, ?Swift_Plugins_Sleeper $sleeper = null, ?Swift_Plugins_Timer $timer = null)` (integers; the parameters are untyped)
 
 **Gotchas:**
 - The default mode is `BYTES_PER_MINUTE`; always pass the mode you mean.
@@ -181,12 +187,16 @@ Two loggers ship with the library:
 
 - `Swift_Plugins_Loggers_ArrayLogger` — stores entries in an array; read with
   `dump()`, empty with `clear()`. Bounded to a **ring buffer of 50 entries by
-  default** (`__construct(int $size = 50)`); the oldest entries drop off once
+  default** (`__construct($size = 50)`); the oldest entries drop off once
   the cap is reached.
 - `Swift_Plugins_Loggers_EchoLogger` — prints entries as they happen.
-  `__construct(bool $isHtml = true)`; in HTML mode each line is appended with
+  `__construct($isHtml = true)`; in HTML mode each line is appended with
   `<br />`. **Every entry is passed through `htmlspecialchars()`** before
-  output, so logged server data cannot inject markup into an HTML page.
+  output, so logged server data cannot inject markup into an HTML page. This
+  applies in both modes: plain-text output (`false`) is also HTML-escaped, so
+  CLI output shows `&lt;`, `&gt;` and `&quot;`. HTML mode does not use
+  `ENT_SUBSTITUTE`, so an entry that contains invalid UTF-8 prints as an empty
+  line.
 
 ```php
 // Capture the transcript for later inspection
@@ -210,9 +220,13 @@ $mailer->registerPlugin(
   follows is logged as `>> [REDACTED]` until the next recognised SMTP verb
   (`EHLO`, `HELO`, `MAIL`, `RCPT`, `DATA`, `QUIT`, `RSET`, `NOOP`, `STARTTLS`).
   Usernames and passwords never reach the log.
-- `exceptionThrown` logs the error, cancels the event bubble, and re-throws a
-  `Swift_TransportException`. The plugin does not swallow the failure — it
-  enriches and rethrows it.
+- `exceptionThrown` logs the error, cancels the event bubble, and throws a
+  **new** plain `Swift_TransportException` with the same message and code and
+  the original's previous exception. The original exception object (and any
+  subclass, such as a retry classification) is lost. Because it throws inside
+  dispatch, `TransportExceptionListener`s registered after it do not run. A
+  listener can suppress the exception by cancelling the bubble only if it is
+  registered before LoggerPlugin (LoggerPlugin then does not run).
 - Implementing `Swift_Plugins_Logger` itself, the plugin proxies `add()`,
   `clear()`, and `dump()` straight through to the underlying logger.
 
@@ -248,7 +262,9 @@ Captures the `Swift_SentMessage` value object produced after each successful
 send, so you can read provider message IDs and recipient counts afterwards.
 Only HTTP API transports (subclasses of
 `Swift_Transport_AbstractHttpApiTransport`) dispatch the underlying
-`SentMessageEvent`.
+`SentMessageEvent`. The SDK API transports (Microsoft Graph, Google,
+AmazonSesApi and AmazonSesHttp) do not, so this plugin collects nothing for
+them.
 
 **Class:** `Swift_Plugins_SentMessagePlugin`
 **Implements:** `Swift_Events_SentMessageListener`
@@ -317,7 +333,7 @@ $mailer->registerPlugin(new Swift_Plugins_RedirectingPlugin(
 ));
 ```
 
-**Constructor:** `__construct(string|array $recipient, array $whitelist = [])`
+**Constructor:** `__construct($recipient, array $whitelist = [])` (`$recipient` is a string or an array of strings)
 
 Also exposes `setRecipient()` / `getRecipient()` and `setWhitelist()` /
 `getWhitelist()`.
@@ -375,6 +391,14 @@ send is rejected with a descriptive reason naming every original address:
 AllowlistPlugin: all recipients removed by allowlist filter (a@x.com, b@y.com)
 ```
 
+A header-only send is not rejected while a non-empty additional recipient group
+remains (for example Graph calendar attendees). With an explicit envelope, the
+reason names no addresses:
+
+```
+AllowlistPlugin: all envelope recipients removed by allowlist filter
+```
+
 That reason is available via `$evt->getRejectionReason()` (and is logged by
 [LoggerPlugin](#loggerplugin)).
 
@@ -399,7 +423,9 @@ original-recipient snapshot when `sendPerformed` restores the message; a plugin
 completion without any recipient policy leaves cleanup untouched. Snapshots belong
 to each send event, so reusing a plugin across nested or overlapping sends does
 not overwrite another message’s originals. Custom event subclasses retain their
-`getMessage()` behavior when capturing and restoring recipients.
+`getMessage()` behavior when capturing and restoring recipients. This only
+matters with a custom dispatcher: `Swift_Events_SimpleEventDispatcher` matches
+events by exact class and never delivers a `SendEvent` subclass to listeners.
 
 **Gotchas:**
 - Patterns are case-insensitive. Wildcards use `*@domain` syntax; anything else
@@ -422,7 +448,7 @@ fixed address, restoring the original afterwards.
 $mailer->registerPlugin(new Swift_Plugins_ImpersonatePlugin('bounces@example.com'));
 ```
 
-**Constructor:** `__construct(string $sender)`
+**Constructor:** `__construct($sender)` (a string)
 
 **Gotcha:** the original return-path is stashed in a temporary
 `X-Swift-Return-Path` header for the duration of the send and removed again on
@@ -437,8 +463,8 @@ sender.
 
 Personalises a single message per recipient by substituting placeholder tokens
 in the subject, body, headers, and text child parts. Register it **once** with
-the full recipient→replacement map, then add every recipient to the message —
-not once per recipient in a loop.
+the full recipient→replacement map, then send the message in a loop with one
+To address per send.
 
 **Class:** `Swift_Plugins_DecoratorPlugin`
 **Implements:** `Swift_Events_SendListener`, `Swift_Plugins_Decorator_Replacements`
@@ -455,19 +481,24 @@ $mailer->registerPlugin(new Swift_Plugins_DecoratorPlugin($replacements));
 $message = (new Swift_Message('Hello {name}'))
     ->setFrom('app@example.com')
     ->setBody('Your code is {code}.');
-$message->addTo('alice@example.com');
-$message->addTo('bob@example.com');
 
-$mailer->send($message); // Alice and Bob each get their own values
+foreach (array_keys($replacements) as $address) {
+    $message->setTo($address);
+    $mailer->send($message); // Alice and Bob each get their own values
+}
 ```
 
-**Constructor:** `__construct(array|Swift_Plugins_Decorator_Replacements $replacements)`
+**Constructor:** `__construct($replacements)` (an array or a
+`Swift_Plugins_Decorator_Replacements`). `setReplacements()` replaces the map
+later.
 
 **On-the-fly lookups:** instead of an array, pass any implementation of
 `Swift_Plugins_Decorator_Replacements`. Its single method
-`getReplacementsFor(string $address): ?array` is called once per recipient and
-returns the replacement map (or `null` for none) — ideal for database-backed
-lookups:
+`getReplacementsFor($address)` is called once per send with the first To
+address and returns the replacement map (or `null` for none) — ideal for
+database-backed lookups. The interface parameter is untyped, so an
+implementation must not declare `string $address` (PHP rejects the narrower
+signature); a `?array` return type is allowed:
 
 ```php
 class DbReplacements implements Swift_Plugins_Decorator_Replacements
@@ -576,8 +607,8 @@ Runtime setters: `setMode()` / `getMode()`, `setAddress()` / `getAddress()`,
   are advisory — recipients' clients may ignore or decline them.
 - **Pixel mode** does nothing unless a `$pixelUrlGenerator` is supplied and
   returns a non-empty URL. The pixel is injected just before `</body>` (or
-  appended if there is no `</body>`), into the HTML body and any `text/html`
-  child parts. The URL is escaped with `htmlspecialchars(…, ENT_QUOTES)`.
+  appended if there is no `</body>`), into the main body if it is non-empty
+  HTML, or otherwise into each non-empty `text/html` child part. The URL is escaped with `htmlspecialchars(…, ENT_QUOTES)`.
 - All modifications (body, child bodies, and the MDN header) are restored on
   `sendPerformed`.
 
@@ -619,7 +650,7 @@ backend:
 |-|-|
 | `RESULT_PASS` (`0x01`) | Recipient accepted for delivery |
 | `RESULT_FAIL` (`0x10`) | Recipient could not be accepted |
-| `notify(Swift_Mime_SimpleMessage $message, string $address, int $result)` | Called once per To/Cc/Bcc recipient |
+| `notify(Swift_Mime_SimpleMessage $message, $address, $result)` | Called once per To/Cc/Bcc recipient. `$address` and `$result` are untyped in the interface; do not add `string`/`int` types in an implementation |
 
 `HtmlReporter` escapes each recipient address as UTF-8 text, including quotes,
 ampersands and angle brackets. Invalid UTF-8 sequences are replaced with U+FFFD.
@@ -662,12 +693,12 @@ $pop->setPassword('pass');
 $mailer->registerPlugin($pop);
 ```
 
-**Constructor:** `__construct(string $host, int $port = 110, ?string $crypto = null)`
+**Constructor:** `__construct($host, $port = 110, $crypto = null)` (the parameters are untyped)
 
 The optional `$crypto` selects an encryption mode (e.g. `'tls'` / `'ssl'`).
 Fluent setters: `setUsername()`, `setPassword()`, `setTimeout()` (default 10s),
-`setConnection()` (inject a `Swift_Plugins_Pop_Pop3Connection` for testing), and
-`bindSmtp()`.
+and `setConnection()` (inject a `Swift_Plugins_Pop_Pop3Connection` for
+testing). `bindSmtp()` returns nothing, so do not chain it.
 
 **Gotchas:**
 - Just before the transport starts, the plugin connects to POP3, authenticates,

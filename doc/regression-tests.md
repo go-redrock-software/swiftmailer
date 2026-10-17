@@ -3,7 +3,10 @@
 This inventory covers the 37 original merge requests and the integration,
 reporter and compatibility follow-ups merged into `develop`. It identifies
 executable behavior checks rather than claiming that every possible input is
-covered. New behavioral fixes must extend the relevant contract test.
+covered. New behavioral fixes must extend the relevant contract test. Fixes
+released before the merge train (v6.5.1 to v6.5.8, such as the TLS handshake and
+Graph calendar corrections) have tests in their own suites, such as
+`StreamBufferTest` and the `MicrosoftGraph*Test` files, but are not indexed here.
 
 ## Original merge requests
 
@@ -56,7 +59,7 @@ covered. New behavioral fixes must extend the relevant contract test.
 | !41 / #90 | [PoolCompatibilityTest](../tests/unit/Swift/Transport/PoolCompatibilityTest.php) | 68 cases preserve serialized/cloned pools, subclasses that skip the parent constructor, legacy manual recovery and explicit cooldowns. |
 | !41 / #90 | [RecipientStateCompatibilityTest](../tests/unit/Swift/Integration/RecipientStateCompatibilityTest.php) | 41 cases preserve overridden getters, nested plugin snapshots, caller recipients and event state. |
 | !41 / #90 | [EnvelopeCompatibilityTest](../tests/unit/Swift/Integration/EnvelopeCompatibilityTest.php) | 30 cases preserve equivalent derived envelopes, repeated addresses and provider delivery behavior. |
-| !41 / #90, expanded by #91 | [AcceptedReplayCompatibilityTest](../tests/unit/Swift/Transport/Api/AcceptedReplayCompatibilityTest.php) | 97 cases cover Gmail and both SES transports at 200/201/202 through plain, retry, failover and round-robin delivery. Caller callbacks/strategies cannot replay accepted requests or trigger a fallback; message bytes and caller clients remain intact. A credential-request control retains legitimate caller retries. |
+| !41 / #90, expanded by !42 / #91 | [AcceptedReplayCompatibilityTest](../tests/unit/Swift/Transport/Api/AcceptedReplayCompatibilityTest.php) | 97 cases cover Gmail and both SES transports at 200/201/202 through plain, retry, failover and round-robin delivery. Caller callbacks/strategies cannot replay accepted requests or trigger a fallback; message bytes and caller clients remain intact. A credential-request control retains legitimate caller retries. |
 
 The Gmail request-policy suite also checks that repeated sends export complete MIME
 exactly once, protecting the attachment-export correction in `lib/functions.php`.
@@ -90,7 +93,8 @@ Infrastructure changes (Infection bootstrap and inherited child-process
 deprecation policy) are verified by the native tool/process exits, not tests that
 merely assert configuration strings. The preceding #90 changed-line Infection
 run killed 111 of 115 mutants, with one errored and three reviewed equivalent
-survivors (97.39% MSI); no mutation threshold or baseline was relaxed. The #91
+survivors (97.39% MSI; the survivor review is recorded under "Native changed-line
+mutation verification" in #90's handoff); no mutation threshold or baseline was relaxed. The #91
 coverage-only change has no production PHP diff to mutate.
 
 The historical upstream suite comparison in [#90's handoff](../docs/issues/90.md)

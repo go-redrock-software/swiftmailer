@@ -6,9 +6,11 @@ applications, maintained by [Redrock Software Corporation](https://www.go-redroc
 This fork continues Swiftmailer development for legacy and enterprise
 applications that cannot migrate to Symfony Mailer. It integrates features from
 Symfony Mailer -- including 21 HTTP API transports, a DSN factory, webhook
-processing, retry/failover transports, and more -- while preserving full
-backward compatibility with stock SwiftMailer 6.x. Classes keep the PSR-0
-`Swift_` prefix (e.g. `Swift_Message`), so existing code works unchanged.
+processing, retry/failover transports, and more -- while keeping high
+compatibility with stock SwiftMailer 6.x. Classes keep the PSR-0 `Swift_`
+prefix (e.g. `Swift_Message`), so most existing code works unchanged. A small
+number of changes are not backward compatible; see
+[Backward-Incompatible Changes](upgrading.md#backward-incompatible-changes).
 
 ## System Requirements
 
@@ -21,6 +23,9 @@ Swift Mailer requires **PHP 8.3 or later** with the following extensions:
 | `intl` | Internationalized domain names (IDN) for address encoding |
 | `openssl` | TLS/SSL encryption for SMTP and API transports |
 
+The `sodium` extension is optional. It is necessary only for Ed25519 DKIM
+signing (see [signers.md](signers.md)).
+
 ## Installation
 
 The recommended way to install Swiftmailer is via [Composer](https://getcomposer.org/):
@@ -31,8 +36,9 @@ composer require go-redrock/swiftmailer
 
 Composer generates a `vendor/autoload.php` autoloader. If you are not using
 Composer, the library can be bootstrapped directly by requiring
-`lib/swift_required.php`, which registers the PSR-0 autoloader and defines the
-encryption-mode constants.
+`lib/swift_required.php`, which registers the PSR-0 autoloader, defines the
+encryption-mode constants, and registers namespace aliases for every class
+(for example, `Swift\Message` is an alias of `Swift_Message`).
 
 ## Basic Usage
 

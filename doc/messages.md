@@ -75,7 +75,7 @@ be sent:
 echo $message->toString();
 
 /*
-Message-ID: <1230173678.4952f5eeb1432@swift.generated>
+Message-ID: <76bb3331f5d66f48573ab017a89b0227@swift.generated>
 Date: Thu, 25 Dec 2008 13:54:38 +1100
 Subject: Example subject
 From: Chris Corbyn <chris@w3style.co.uk>
@@ -156,7 +156,7 @@ $message->attach(
 > (`/` and `\`), NUL bytes, control characters (`\x00`-`\x1F`, `\x7F`), and
 > Unicode bidirectional-override characters (U+202A-U+202E, U+2066-U+2069) that
 > could be used to spoof the displayed extension. Names longer than 255
-> characters are truncated, preserving the extension.
+> bytes are truncated, preserving the extension.
 
 ### From dynamic content
 
@@ -244,9 +244,9 @@ $message->setBody('<img src="'.$cid.'" alt="Image" />', 'text/html');
 Recipients live on the message itself; the transport reads them at send time.
 There are three types:
 
-- **`To:`** -- the primary recipients (required)
+- **`To:`** -- the primary recipients (usual)
 - **`Cc:`** -- copied recipients (optional)
-- **`Bcc:`** -- hidden recipients; each only sees their own address (optional)
+- **`Bcc:`** -- blind-copied recipients; their addresses are hidden from all recipients (optional)
 
 ### Address syntax
 
@@ -303,24 +303,25 @@ $message->addTo('person2@example.org', 'Person 2 Name');
 `setCc()`/`addCc()` and `setBcc()`/`addBcc()` work the same way.
 
 > To send an individually-addressed copy to each recipient (rather than one
-> message with everyone in the `To:` header), use the batch-send helper covered
+> message with everyone in the `To:` header), use the batch-send pattern covered
 > in [sending.md](sending.md).
 
 ### Internationalized addresses
 
 Non-ASCII characters may appear in an address's domain (internationalized domain
-names). By default SwiftMailer encodes such domains as Punycode
+names). In message headers SwiftMailer encodes such domains as Punycode
 (e.g. `xn--xample-ova.invalid`), which every mail server accepts.
 
-To send to addresses with non-ASCII characters on *both* sides of the `@`
-(RFC 6531), your outbound SMTP server must advertise the `SMTPUTF8` extension.
-Switch the transport to the UTF-8 address encoder and enable the handler -- see
-[sending.md](sending.md) for transport setup:
+For the SMTP envelope (`MAIL FROM` / `RCPT TO`), `Swift_SmtpTransport` detects
+RFC 6531 support automatically. Its default extension handlers include
+`Swift_Transport_Esmtp_SmtpUtf8Handler`, and its default address encoder
+(`Swift_AddressEncoder_AutoAddressEncoder`) sends UTF-8 addresses when the server
+advertises `SMTPUTF8` and Punycode when it does not. No configuration is
+necessary -- see [sending.md](sending.md) for transport setup.
 
-```php
-$transport->setExtensionHandlers([new Swift_Transport_Esmtp_SmtpUtf8Handler()]);
-$transport->setAddressEncoder(new Swift_AddressEncoder_Utf8AddressEncoder());
-```
+Message headers always use the IDN encoder, so the local part (before the `@`)
+of a header address must be ASCII. A non-ASCII local part throws
+`Swift_AddressEncoderException` when the message is rendered.
 
 ## Sender Details
 
@@ -391,7 +392,8 @@ Knowing the correct charset matters -- an incorrect one produces garbled mail.
 
 Each MIME part's body is encoded before transport. Binary attachments use
 base64 (`Swift_Mime_ContentEncoder_Base64ContentEncoder`); text parts default to
-quoted-printable (`Swift_Mime_ContentEncoder_QpContentEncoder`, or
+quoted-printable (`Swift_Mime_ContentEncoder_QpContentEncoderProxy`, which
+selects `Swift_Mime_ContentEncoder_QpContentEncoder` or
 `Swift_Mime_ContentEncoder_NativeQpContentEncoder`). Set the encoder with
 `setEncoder()`.
 
@@ -400,8 +402,14 @@ outbound SMTP server advertises `8BITMIME` and can downgrade on delivery, you
 may prefer `Swift_Mime_ContentEncoder_PlainContentEncoder` in `8bit` mode for
 more compact, readable output (especially for non-Western languages):
 
+`setExtensionHandlers()` replaces the whole handler list, so append to the
+existing handlers to keep authentication and SMTPUTF8 support:
+
 ```php
-$transport->setExtensionHandlers([new Swift_Transport_Esmtp_EightBitMimeHandler()]);
+$transport->setExtensionHandlers(array_merge(
+    $transport->getExtensionHandlers(),
+    [new Swift_Transport_Esmtp_EightBitMimeHandler()]
+));
 $message->setEncoder(new Swift_Mime_ContentEncoder_PlainContentEncoder('8bit'));
 ```
 

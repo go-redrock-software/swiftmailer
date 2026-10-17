@@ -102,7 +102,7 @@ $signer->setHeaderCanon('relaxed')->setBodyCanon('relaxed');
 
 ### Header selection and oversigning
 
-By default the signer signs every header except a small ignore list (`return-path`, `x-transport`). Add more with `ignoreHeader()`:
+By default the signer signs every non-empty header except a small ignore list (`return-path`, `x-transport`). Add more with `ignoreHeader()`:
 
 ```php
 $signer->ignoreHeader('X-Internal-Route');
@@ -128,7 +128,7 @@ $signer->setOversigning(false);   // disable (not recommended)
 |-|-|-|
 | `setSignerIdentity($identity)` | `i=` | Agent/user identity, defaults to `@domain` |
 | `setSignatureTimestamp($ts)` | `t=` | Signing time (defaults to `time()`) |
-| `setSignatureExpiration($ts)` | `x=` | Expiry time |
+| `setSignatureExpiration($value)` | `x=` | Expiry time. With the default timestamp, `$value` is an offset in seconds from the signing time (`x = t + $value`). After `setSignatureTimestamp($ts)`, `$value` is an absolute Unix timestamp |
 | `setDebugHeaders(true)` | `z=` + `X-DebugHash` | Emit diagnostic headers |
 
 ### DNS setup
@@ -154,7 +154,7 @@ $signer = new Swift_Signers_DKIMSigner($privateKey, 'example.com', 'mail');
 $signer
     ->setHeaderCanon('relaxed')
     ->setBodyCanon('relaxed')
-    ->setSignatureExpiration(time() + 3600);   // optional x=
+    ->setSignatureExpiration(3600);   // optional x=, 1 hour after t=
 
 $message = (new Swift_Message('Hello'))
     ->setFrom(['no-reply@example.com' => 'Example'])
@@ -191,7 +191,7 @@ Differences from the DKIM signer:
 | Aspect | DomainKeySigner |
 |-|-|
 | Constructor | `($privateKey, $domainName, $selector)` -- no passphrase argument |
-| Default hash | `rsa-sha256` |
+| Default hash | `rsa-sha256` (RFC 4870 defines only `rsa-sha1`, so a strict DomainKeys verifier can reject it) |
 | `setHashAlgorithm('rsa-sha1')` | Accepted but **deprecated** (`E_USER_DEPRECATED`); prefer `rsa-sha256` |
 | Canonicalization | `setCanon('simple' \| 'nofws')` |
 | `ignoreHeader('from')` | Throws `Swift_SwiftException` (From must be signed) |
@@ -212,7 +212,7 @@ public function __construct(
 )
 ```
 
-You can pass everything up front, or configure it afterwards with the setters below. Certificate/key paths are resolved with `realpath()` and passed to OpenSSL as `file://` URIs.
+You can pass everything up front, or configure it afterwards with the setters below. The constructor ignores `$signCertificate` unless you also pass `$signPrivateKey`. Certificate/key paths are resolved with `realpath()` and passed to OpenSSL as `file://` URIs (the `$extraCerts` path of `setSignCertificate()` is resolved with `realpath()` only).
 
 ### Signing
 
@@ -270,6 +270,8 @@ By default S/MIME only protects the body. To also protect header fields (`Subjec
 ```php
 $signer->setWrapFullMessage(true);
 ```
+
+`setWrapFullMessage()` returns `null`, not the signer, so do not chain it.
 
 The S/MIME signer alters `Content-Type`, `Content-Transfer-Encoding`, and `Content-Disposition`.
 
