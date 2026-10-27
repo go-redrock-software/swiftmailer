@@ -15,11 +15,14 @@
  */
 abstract class Swift
 {
-    public const VERSION = '6.5.0';
+    public const VERSION = '6.5.9';
 
     public static $initialized = false;
 
     public static $inits = [];
+
+    /** @var array<string, string>|null lower-case Swift\... alias => original Swift_... name */
+    private static ?array $aliases = null;
 
     /**
      * Registers an initializer callable that will be called the first time
@@ -54,6 +57,7 @@ abstract class Swift
 
         // @codeCoverageIgnoreStart
         require $path;
+        self::declareAlias($class);
 
         if (self::$inits && !self::$initialized) {
             self::$initialized = true;
@@ -77,6 +81,49 @@ abstract class Swift
             self::$inits[] = $callable;
         }
         \spl_autoload_register(['Swift', 'autoload']);
+    }
+
+    /**
+     * Make namespaced aliases (e.g. Swift\Message for Swift_Message) available without loading any class.
+     *
+     * An alias is declared the first time its name is autoloaded, or when autoload() loads its original,
+     * so `instanceof Swift\Message` and `Swift\Message` parameter types accept Swift_Message objects.
+     *
+     * @param array<string, string> $aliases lower-case alias => original class, as generated in lib/class_aliases.php
+     */
+    public static function registerAliases(array $aliases): void
+    {
+        if (null === self::$aliases) {
+            \spl_autoload_register(self::autoloadAlias(...));
+        }
+        self::$aliases = $aliases + (self::$aliases ?? []);
+    }
+
+    private static function autoloadAlias(string $alias): void
+    {
+        $original = self::$aliases[\strtolower($alias)] ?? null;
+        if (null === $original) {
+            return;
+        }
+        if (!self::isDeclared($original)) {
+            // Loading the original through autoload() declares the alias as well.
+            \spl_autoload_call($original);
+        }
+        // Covers an original that was loaded without autoload(), e.g. by a direct require.
+        self::declareAlias($original);
+    }
+
+    private static function declareAlias(string $original): void
+    {
+        $alias = \str_replace('_', '\\', $original);
+        if (isset(self::$aliases[\strtolower($alias)]) && self::isDeclared($original) && !self::isDeclared($alias)) {
+            \class_alias($original, $alias, false);
+        }
+    }
+
+    private static function isDeclared(string $name): bool
+    {
+        return \class_exists($name, false) || \interface_exists($name, false) || \trait_exists($name, false);
     }
 
     /**

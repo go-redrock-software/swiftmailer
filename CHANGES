@@ -6,6 +6,31 @@ Maintained by `Redrock Software Corporation <https://www.go-redrock.com/>`_ sinc
 applications that cannot migrate to Symfony Mailer, integrating features from
 Symfony Mailer while preserving full backward compatibility.
 
+6.5.9 (2026-10-27)
+------------------
+
+ Performance:
+
+ * Namespaced aliases (`Swift\Message` for `Swift_Message`) are declared
+   lazily. `lib/swift_required.php` is a Composer "files" entry, so it runs
+   on every request of the host application; it used to require 217 eager
+   `class_alias()` calls that loaded every aliased class and ran the
+   `Swift::init()` callbacks on requests that never send mail. Bootstrap now
+   declares only the `Swift` class. `lib/class_aliases.php` is a lower-case
+   alias => original map passed to the new `Swift::registerAliases()`; an
+   alias is declared on first use of its name, or when `Swift::autoload()`
+   loads its original, so `Swift\X` type checks keep accepting `Swift_X`
+   objects. The alias set is unchanged. Remaining differences:
+   `class_exists('Swift\X', false)` is false until `Swift_X` or `Swift\X` is
+   used, and a class loaded by a direct `require` gets its alias only when
+   the alias name is autoloaded.
+ * `Swift::VERSION` reports 6.5.9 (v6.5.1 to v6.5.8 reported 6.5.0).
+
+ Tests:
+
+ * `SwiftTest` restores `Swift::autoload` after unregistering it, so later
+   tests no longer depend on eager alias loading.
+
 Unreleased
 ----------
 
