@@ -47,7 +47,7 @@ register a PSR-0 map for these — autoloading is handled by `lib/swift_required
 | `lib/dependency_maps/` | Service registrations for the `Swift_DependencyContainer` |
 | `lib/preferences.php` | Boots global defaults (charset, cache type) |
 | `lib/mime_types.php` | Extension → MIME type map (consumed by attachments) |
-| `lib/class_aliases.php` | `Swift\Message` → `Swift_Message` forward-compat aliases |
+| `lib/class_aliases.php` | Generated lower-case `swift\message` → `Swift_Message` map for the lazy forward-compat aliases |
 | `class_map.php` | Underscore → namespace map (used by Rector migration) |
 | `generate_class_map.php` | Regenerates `class_map.php` and `lib/class_aliases.php` from the source tree |
 | `rector.php` | Namespace-migration tooling (opt-in, reads `class_map.php`) |
@@ -57,10 +57,29 @@ naming (`tests/unit/Swift/Mime/SimpleMessageTest.php`).
 
 ### Forward-compatible namespaced aliases
 
-`lib/class_aliases.php` registers a `class_alias()` for each named global `Swift_`
-class, interface, trait or enum, so callers may write `Swift\Message` instead of
-`Swift_Message`. Enum aliases preserve the identity and values of their cases.
-The alias file is loaded eagerly at the end of `swift_required.php`. `class_map.php` (the underscore → namespace map) is produced by
+Each named global `Swift_` class, interface, trait or enum has a namespaced alias,
+so callers may write `Swift\Message` instead of `Swift_Message`. The alias refers to
+the same class; enum aliases preserve the identity and values of their cases.
+
+The aliases are lazy. `lib/class_aliases.php` only returns a map (lower-case alias →
+original class), which `swift_required.php` passes to `Swift::registerAliases()`.
+That loads no Swift class, so a request that never sends mail does not load the
+library. An alias is declared when:
+
+| Trigger | Mechanism |
+|-|-|
+| Its name is autoloaded (`new Swift\Message`, static calls, `extends`/`implements`, `class_exists('Swift\Message')`) | The alias autoloader loads the original, then declares the alias. Lookup is case-insensitive |
+| Its original is loaded by `Swift::autoload()` | `autoload()` declares the alias right after it requires the class file |
+
+PHP never autoloads for `instanceof`, parameter or return types, or
+`class_exists($name, false)`. Because an alias is declared with its original, any
+`Swift_X` object already matches `Swift\X` type checks, as with the former eager
+aliases. Two differences remain: `class_exists('Swift\X', false)` and
+`get_declared_classes()` show an alias only after `Swift_X` or `Swift\X` is used,
+and a `Swift_` class loaded without `Swift::autoload()` (for example by a direct
+`require`) gets its alias only when the alias name is autoloaded.
+
+`class_map.php` (the underscore → namespace map) is produced by
 `generate_class_map.php`, which parses `lib/` with nikic/php-parser and writes both
 generated files from the same sorted symbol map; `rector.php`
 consumes that map to drive an optional full namespace migration
@@ -78,7 +97,8 @@ migration tools are development-only; runtime autoloading uses the committed
 3. Calls `Swift::registerAutoload(...)` with a closure that lazily loads the four
    dependency maps (`cache_deps`, `mime_deps`, `message_deps`, `transport_deps`) and
    `preferences.php`.
-4. `require`s `class_aliases.php` eagerly.
+4. Calls `Swift::registerAliases()` with the map from `class_aliases.php`. This
+   registers the lazy alias autoloader and loads no Swift class.
 
 `Swift::autoload()` (in `lib/classes/Swift.php`) is registered with
 `spl_autoload_register`. It ignores any class name not prefixed `Swift_`, maps the

@@ -1,6 +1,6 @@
 <?php
 
-// Resolve reflected (possibly mutated) classes before eager namespace aliases.
+// Resolve reflected (possibly mutated) classes before Composer can load the originals.
 $implementations = \json_decode($argv[1], true, flags: JSON_THROW_ON_ERROR);
 \spl_autoload_register(static function (string $class) use ($implementations): void {
     if (isset($implementations[$class])) {

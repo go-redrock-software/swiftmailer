@@ -2,7 +2,7 @@
 
 $config = \json_decode('cli' === \PHP_SAPI ? $argv[1] : $_SERVER['SWIFT_STREAM_CONFIG'], true, flags: \JSON_THROW_ON_ERROR);
 \spl_autoload_register(static function (string $class) use ($config): void {
-    // Register the actual selected implementation before eager Composer aliases.
+    // Register the actual selected implementation before Composer can load the original.
     // During Infection this is the mutant, not the original repository file.
     if ('Swift_Plugins_Reporters_HtmlReporter' === $class) {
         require $config['implementation'];

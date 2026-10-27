@@ -1,6 +1,6 @@
 <?php
 
-// Preload reflected implementations before eager aliases, including mutation files.
+// Preload reflected implementations before Composer can load the originals, including mutation files.
 foreach (\array_slice($argv, 1, 6) as $implementation) {
     require $implementation;
 }

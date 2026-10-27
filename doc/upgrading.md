@@ -220,7 +220,7 @@ vendor/bin/swiftmailer-test 'sendgrid://SG.your-key@default' --to=you@example.co
 
 ### Use Namespace Aliases
 
-Every class is also available under a `Swift\` namespace alias, for example `Swift\Message` for `Swift_Message`. The aliases are registered at bootstrap; the `Swift_` names continue to work.
+Every class is also available under a `Swift\` namespace alias, for example `Swift\Message` for `Swift_Message`. The aliases are lazy: each one is declared on first use of either name, so bootstrap loads no Swift class. The `Swift_` names continue to work.
 
 ```php
 $message = new Swift\Message('Subject');   // same class as Swift_Message

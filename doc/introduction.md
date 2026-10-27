@@ -38,7 +38,8 @@ Composer generates a `vendor/autoload.php` autoloader. If you are not using
 Composer, the library can be bootstrapped directly by requiring
 `lib/swift_required.php`, which registers the PSR-0 autoloader, defines the
 encryption-mode constants, and registers namespace aliases for every class
-(for example, `Swift\Message` is an alias of `Swift_Message`).
+(for example, `Swift\Message` is an alias of `Swift_Message`). Classes and aliases
+load on first use.
 
 ## Basic Usage
 
