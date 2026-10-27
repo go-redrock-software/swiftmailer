@@ -8,18 +8,28 @@ class SwiftTest extends TestCase
 
     private array $savedInits;
 
+    private array $savedAutoloaders;
+
     protected function setUp(): void
     {
-        $this->wasInitialized = Swift::$initialized;
-        $this->savedInits     = Swift::$inits;
-        Swift::$initialized   = false;
-        Swift::$inits         = [];
+        $this->savedAutoloaders = \spl_autoload_functions();
+        $this->wasInitialized   = Swift::$initialized;
+        $this->savedInits       = Swift::$inits;
+        Swift::$initialized     = false;
+        Swift::$inits           = [];
     }
 
     protected function tearDown(): void
     {
         Swift::$initialized = $this->wasInitialized;
         Swift::$inits       = $this->savedInits;
+        // Remove only what a test registered: Swift::autoload() must stay registered, because
+        // namespace aliases are lazy and later tests still load Swift classes on first use.
+        foreach (\spl_autoload_functions() as $autoloader) {
+            if (!\in_array($autoloader, $this->savedAutoloaders, true)) {
+                \spl_autoload_unregister($autoloader);
+            }
+        }
     }
 
     public function testInit(): void
@@ -99,13 +109,13 @@ class SwiftTest extends TestCase
         });
 
         $this->assertCount(1, Swift::$inits);
-        \spl_autoload_unregister(['Swift', 'autoload']);
+        $this->assertContains(['Swift', 'autoload'], \spl_autoload_functions());
     }
 
     public function testRegisterAutoloadWithNull(): void
     {
         Swift::registerAutoload(null);
         $this->assertCount(0, Swift::$inits);
-        \spl_autoload_unregister(['Swift', 'autoload']);
+        $this->assertContains(['Swift', 'autoload'], \spl_autoload_functions());
     }
 }
