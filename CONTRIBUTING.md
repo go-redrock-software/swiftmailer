@@ -133,8 +133,9 @@ Config is `infection.json5`: it mutates `lib/classes` (excluding
 Coverage generation and Infection's mutant runner both use the isolated
 `vendor/bin/simple-phpunit` executable. Keep these in sync. The project-installed
 `vendor/bin/phpunit` loads the project's Composer files before PHPUnit executes
-its configured bootstrap. Swift's eager namespace aliases then load source
-classes before Infection can install its include interceptor, causing tests to
+its configured bootstrap. Any source class loaded that early (the former
+eager namespace aliases loaded all of them; now only `Swift.php`) is loaded
+before Infection can install its include interceptor, causing tests to
 exercise the original classes and report escaping mutants. The isolated runner
 loads the project through the test bootstrap after interception is active.
 
@@ -170,7 +171,8 @@ php generate_class_map.php
 ```
 
 This parses `lib/` and rewrites both `class_map.php` (underscore → namespace)
-and `lib/class_aliases.php` (runtime `Swift\...` aliases) from one sorted map.
+and `lib/class_aliases.php` (the map behind the lazy runtime `Swift\...` aliases) from
+one sorted map.
 Commit both generated files alongside your source change. The command includes
 named global `Swift_` classes, interfaces, traits and enums; it ignores anonymous
 classes and already namespaced declarations. Re-running it leaves the outputs

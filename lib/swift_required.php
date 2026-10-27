@@ -28,5 +28,5 @@ Swift::registerAutoload(static function () {
     require_once __DIR__.'/preferences.php';
 });
 
-// Register namespace aliases (e.g. Swift\Message -> Swift_Message)
-require_once __DIR__.'/class_aliases.php';
+// Register lazy namespace aliases (e.g. Swift\Message -> Swift_Message); this loads no Swift class
+Swift::registerAliases(require __DIR__.'/class_aliases.php');
