@@ -7,6 +7,31 @@ applications that cannot migrate to Symfony Mailer, integrating features from
 Symfony Mailer while retaining legacy APIs. Intentional delivery-safety changes
 are documented in doc/upgrading.md.
 
+6.5.9 (2026-10-27)
+------------------
+
+ Performance:
+
+ * Namespaced aliases (`Swift\Message` for `Swift_Message`) are declared
+   lazily. `lib/swift_required.php` is a Composer "files" entry, so it runs
+   on every request of the host application; it used to require 217 eager
+   `class_alias()` calls that loaded every aliased class and ran the
+   `Swift::init()` callbacks on requests that never send mail. Bootstrap now
+   declares only the `Swift` class. `lib/class_aliases.php` is a lower-case
+   alias => original map passed to the new `Swift::registerAliases()`; an
+   alias is declared on first use of its name, or when `Swift::autoload()`
+   loads its original, so `Swift\X` type checks keep accepting `Swift_X`
+   objects. The alias set is unchanged. Remaining differences:
+   `class_exists('Swift\X', false)` is false until `Swift_X` or `Swift\X` is
+   used, and a class loaded by a direct `require` gets its alias only when
+   the alias name is autoloaded.
+ * `Swift::VERSION` reports 6.5.9 (v6.5.1 to v6.5.8 reported 6.5.0).
+
+ Tests:
+
+ * `SwiftTest` restores `Swift::autoload` after unregistering it, so later
+   tests no longer depend on eager alias loading.
+
 Unreleased
 ----------
 
@@ -163,26 +188,17 @@ Unreleased
    `swiftmailer/swiftmailer` via a VCS repository). Class names,
    autoloading, and behavior are unchanged.
 
- * Namespace aliases (`Swift\Message` for `Swift_Message`) are lazy. The
-   Composer autoloader no longer loads all 242 library classes and no longer
-   runs the init callbacks (dependency maps, preferences.php) on every
-   request; both happen on first use of a Swift class. An alias is declared
-   when its name is first autoloaded or when its original class loads, so
-   `instanceof Swift\X` and `Swift\X` parameter types still accept `Swift_X`
-   objects. Observable differences: `class_exists('Swift\X', false)` and
-   `get_declared_classes()` show an alias only after `Swift_X` or `Swift\X`
-   is used; a `Swift_` class loaded without the library autoloader (for
-   example by a direct require) gets its alias only when the alias name is
-   autoloaded; `Swift::init()` callbacks registered after bootstrap now run
-   on first use (the eager aliases had already run the initializers);
-   `lib/class_aliases.php` returns an alias map for the new
-   `Swift::registerAliases()` instead of declaring aliases. Requiring
-   `lib/swift_required.php` without Composer no longer fails on classes
-   that extend SDK classes.
+ * Lazy namespace aliases (released in 6.5.9, see above) now come from
+   `generate_class_map.php`, which writes `lib/class_aliases.php` as the
+   lower-case alias map for `Swift::registerAliases()`; it covers all 242
+   classes, including those added after 6.5.8. `Swift::init()` callbacks
+   registered after bootstrap now run on first use (the eager aliases had
+   already run the initializers). Requiring `lib/swift_required.php` without
+   Composer no longer fails on classes that extend SDK classes.
 
  Bug Fixes:
 
- * Swift::VERSION reports 6.5.8, the latest release tag, instead of 6.5.0.
+ * Swift::VERSION reports the latest release tag (now 6.5.9) instead of 6.5.0.
    A test checks that the latest reachable release tag matches the constant,
    so a release commit must bump it before tagging (GitLab #104).
 

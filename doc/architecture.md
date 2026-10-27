@@ -109,8 +109,9 @@ cost anything once you touch the library.
 
 `Swift::init($callable)` lets application code register its own tweak that runs at the
 same first-load moment (e.g. to override a service before anything resolves it).
-`Swift::VERSION` holds the base version string (`6.5.0`); the v6.5.1 to v6.5.8 release
-tags did not change it, so use the Git tag or Composer metadata for the exact release.
+`Swift::VERSION` names the latest release tag (6.5.9 at the time of writing); a test
+keeps the two in step (GitLab #104). The v6.5.1 to v6.5.8 tags still report 6.5.0, so
+use the Git tag or Composer metadata for those releases.
 
 ## The dependency container
 

@@ -15,7 +15,7 @@
  */
 abstract class Swift
 {
-    public const VERSION = '6.5.8';
+    public const VERSION = '6.5.9';
 
     public static $initialized = false;
 
